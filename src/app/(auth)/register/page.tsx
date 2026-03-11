@@ -5,7 +5,6 @@ import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import Link from 'next/link'
 
 export default function RegisterPage() {
   const [businessName, setBusinessName] = useState('')
@@ -24,7 +23,11 @@ export default function RegisterPage() {
     setLoading(true)
     setError('')
 
-    const { data: authData, error: authError } = await supabase.auth.signUp({ email, password })
+    // 1. Crear usuario en auth
+    const { data: authData, error: authError } = await supabase.auth.signUp({
+      email,
+      password,
+    })
 
     if (authError || !authData.user) {
       setError(authError?.message || 'Error al crear la cuenta')
@@ -32,6 +35,7 @@ export default function RegisterPage() {
       return
     }
 
+    // 2. Crear negocio
     const slug = businessName.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')
     const { data: business, error: bizError } = await supabase
       .from('businesses')
@@ -45,6 +49,7 @@ export default function RegisterPage() {
       return
     }
 
+    // 3. Crear perfil
     await supabase.from('profiles').insert({
       id: authData.user.id,
       business_id: business.id,
@@ -52,16 +57,16 @@ export default function RegisterPage() {
       name: businessName,
     })
 
-    router.push('/')
+    router.push('/dashboard')
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="bg-white p-8 rounded-xl shadow-sm border w-full max-w-md">
-        <h1 className="text-2xl font-bold text-gray-900 mb-1">Creá tu negocio</h1>
-        <p className="text-gray-500 mb-6 text-sm">Empezá gratis, sin tarjeta de crédito</p>
+    <div className="min-h-screen flex items-center justify-center bg-background">
+      <div className="bg-card p-8 rounded-xl shadow-sm border border-border w-full max-w-md">
+        <h1 className="text-2xl font-bold text-foreground mb-2">Creá tu negocio</h1>
+        <p className="text-muted-foreground mb-6">Empezá gratis, sin tarjeta de crédito</p>
 
-        <div className="space-y-3">
+        <div className="space-y-4">
           <Input
             placeholder="Nombre del negocio (ej: Kiosco Don Juan)"
             value={businessName}
@@ -86,13 +91,13 @@ export default function RegisterPage() {
           </Button>
         </div>
 
-        <p className="text-center text-sm text-gray-500 mt-4">
+        <p className="text-center text-sm text-muted-foreground mt-4">
           ¿Ya tenés cuenta?{' '}
-          <Link href="/login" className="text-blue-600 hover:underline">
+          <a href="/login" className="text-blue-600 hover:underline">
             Ingresá
-          </Link>
+          </a>
         </p>
       </div>
     </div>
   )
-}
+}   

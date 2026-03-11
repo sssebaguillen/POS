@@ -28,10 +28,10 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="bg-white p-8 rounded-xl shadow-sm border w-full max-w-md">
-        <h1 className="text-2xl font-bold text-gray-900 mb-1">POS LATAM</h1>
-        <p className="text-gray-500 mb-6 text-sm">Ingresá a tu negocio</p>
+    <div className="min-h-screen flex items-center justify-center bg-background">
+      <div className="bg-card p-8 rounded-xl shadow-sm border border-border w-full max-w-md">
+        <h1 className="text-2xl font-bold text-foreground mb-1">POS LATAM</h1>
+        <p className="text-muted-foreground mb-6 text-sm">Ingresá a tu negocio</p>
 
         <div className="space-y-3">
           <Input
@@ -53,7 +53,7 @@ export default function LoginPage() {
           </Button>
         </div>
 
-        <p className="text-center text-sm text-gray-500 mt-4">
+        <p className="text-center text-sm text-muted-foreground mt-4">
           ¿No tenés cuenta?{' '}
           <Link href="/register" className="text-blue-600 hover:underline">
             Registrá tu negocio

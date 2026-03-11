@@ -2,42 +2,85 @@
 
 import { usePathname } from 'next/navigation'
 import Link from 'next/link'
-import { ShoppingCart, Package, BarChart2, ClipboardList, Settings } from 'lucide-react'
+import { X, ShoppingCart, Package, ClipboardList, BarChart2, LineChart, Settings, Sun, Moon } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { useTheme } from '@/components/shared/ThemeProvider'
 
 const links = [
   { href: '/', label: 'Vender', icon: ShoppingCart },
+  { href: '/dashboard', label: 'Dashboard', icon: BarChart2 },
+  { href: '/stats', label: 'Estadísticas', icon: LineChart },
   { href: '/products', label: 'Productos', icon: Package },
-  { href: '/sales', label: 'Ventas', icon: BarChart2 },
   { href: '/inventory', label: 'Stock', icon: ClipboardList },
   { href: '/settings', label: 'Configuración', icon: Settings },
 ]
 
-export default function Sidebar() {
+interface Props {
+  open: boolean
+  onClose: () => void
+}
+
+export default function Sidebar({ open, onClose }: Props) {
   const pathname = usePathname()
+  const { theme, toggle } = useTheme()
 
   return (
-    <aside className="w-56 min-h-screen bg-white border-r flex flex-col shrink-0">
-      <div className="px-6 py-5 border-b">
-        <span className="font-bold text-lg text-gray-900">POS LATAM</span>
-      </div>
-      <nav className="flex-1 py-4 px-3 space-y-1">
-        {links.map(({ href, label, icon: Icon }) => (
-          <Link
-            key={href}
-            href={href}
-            className={cn(
-              'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
-              pathname === href
-                ? 'bg-gray-900 text-white'
-                : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
-            )}
+    <>
+      {/* Backdrop */}
+      {open && (
+        <div
+          className="fixed inset-0 bg-black/25 backdrop-blur-[2px] z-40 transition-opacity"
+          onClick={onClose}
+        />
+      )}
+
+      {/* Drawer */}
+      <aside
+        className={cn(
+          'fixed top-0 left-0 h-full w-64 bg-surface shadow-xl z-50 flex flex-col transition-transform duration-200 ease-in-out',
+          open ? 'translate-x-0' : '-translate-x-full'
+        )}
+      >
+        <div className="px-5 h-14 border-b border-edge/60 flex items-center justify-between">
+          <span className="font-bold text-lg text-heading">POS LATAM</span>
+          <button
+            onClick={onClose}
+            className="p-1 rounded-lg hover:bg-hover-bg transition-colors"
           >
-            <Icon size={18} />
-            {label}
-          </Link>
-        ))}
-      </nav>
-    </aside>
+            <X size={18} className="text-hint" />
+          </button>
+        </div>
+
+        <nav className="flex-1 py-3 px-3 space-y-0.5">
+          {links.map(({ href, label, icon: Icon }) => (
+            <Link
+              key={href}
+              href={href}
+              onClick={onClose}
+              className={cn(
+                'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
+                pathname === href
+                  ? 'bg-emerald-700 text-white'
+                  : 'text-body hover:bg-hover-bg hover:text-heading'
+              )}
+            >
+              <Icon size={18} />
+              {label}
+            </Link>
+          ))}
+        </nav>
+
+        <div className="px-3 py-3 border-t border-edge-soft flex items-center justify-between">
+          <span className="text-xs text-hint px-2">© 2026 POS LATAM</span>
+          <button
+            onClick={toggle}
+            className="p-2 rounded-lg hover:bg-hover-bg transition-colors text-subtle"
+            title={theme === 'dark' ? 'Modo claro' : 'Modo oscuro'}
+          >
+            {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+          </button>
+        </div>
+      </aside>
+    </>
   )
 }
