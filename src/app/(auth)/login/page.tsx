@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import Link from 'next/link'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
@@ -23,16 +24,16 @@ export default function LoginPage() {
       setLoading(false)
       return
     }
-    router.push('/dashboard')
+    router.push('/')
   }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
       <div className="bg-white p-8 rounded-xl shadow-sm border w-full max-w-md">
-        <h1 className="text-2xl font-bold text-gray-900 mb-2">POS LATAM</h1>
-        <p className="text-gray-500 mb-6">Ingresá a tu negocio</p>
+        <h1 className="text-2xl font-bold text-gray-900 mb-1">POS LATAM</h1>
+        <p className="text-gray-500 mb-6 text-sm">Ingresá a tu negocio</p>
 
-        <div className="space-y-4">
+        <div className="space-y-3">
           <Input
             type="email"
             placeholder="Email"
@@ -54,9 +55,9 @@ export default function LoginPage() {
 
         <p className="text-center text-sm text-gray-500 mt-4">
           ¿No tenés cuenta?{' '}
-          <a href="/register" className="text-blue-600 hover:underline">
+          <Link href="/register" className="text-blue-600 hover:underline">
             Registrá tu negocio
-          </a>
+          </Link>
         </p>
       </div>
     </div>

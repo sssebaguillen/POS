@@ -27,14 +27,15 @@ export async function middleware(request: NextRequest) {
 
   const { data: { user } } = await supabase.auth.getUser()
 
-  // Rutas protegidas — redirigir a login si no hay sesión
-  if (!user && request.nextUrl.pathname.startsWith('/dashboard')) {
+  const isAuthRoute = request.nextUrl.pathname.startsWith('/login') ||
+    request.nextUrl.pathname.startsWith('/register')
+
+  if (!user && !isAuthRoute) {
     return NextResponse.redirect(new URL('/login', request.url))
   }
 
-  // Si ya está logueado y va a login, redirigir al dashboard
-  if (user && request.nextUrl.pathname === '/login') {
-    return NextResponse.redirect(new URL('/dashboard', request.url))
+  if (user && isAuthRoute) {
+    return NextResponse.redirect(new URL('/', request.url))
   }
 
   return supabaseResponse
