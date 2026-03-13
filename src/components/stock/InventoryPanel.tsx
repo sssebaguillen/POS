@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -33,6 +33,7 @@ interface InventoryProduct {
 type FilterStatus = 'all' | 'low' | 'out' | 'discontinued'
 
 interface Props {
+  businessId: string | null
   initialProducts: InventoryProduct[]
   categories: InventoryCategory[]
 }
@@ -71,15 +72,57 @@ const statusConfig = {
   },
 }
 
-export default function InventoryPanel({ initialProducts, categories }: Props) {
+export default function InventoryPanel({ businessId, initialProducts, categories }: Props) {
   const [products, setProducts] = useState(initialProducts)
   const [query, setQuery] = useState('')
   const [selectedCategory, setSelectedCategory] = useState<string>('all')
   const [statusFilter, setStatusFilter] = useState<FilterStatus>('all')
   const [loadingId, setLoadingId] = useState<string | null>(null)
   const [showNewProduct, setShowNewProduct] = useState(false)
+  const [crudError, setCrudError] = useState<string | null>(null)
+  const [resolvedBusinessId, setResolvedBusinessId] = useState<string | null>(businessId)
 
-  const supabase = createClient()
+  const supabase = useMemo(() => createClient(), [])
+  const effectiveBusinessId = businessId ?? resolvedBusinessId
+
+  useEffect(() => {
+    let cancelled = false
+
+    async function resolveBusinessId() {
+      if (businessId) {
+        setResolvedBusinessId(businessId)
+        return
+      }
+
+      const { data: rpcBusinessId } = await supabase.rpc('get_business_id')
+      if (!cancelled && typeof rpcBusinessId === 'string' && rpcBusinessId.length > 0) {
+        setResolvedBusinessId(rpcBusinessId)
+        return
+      }
+
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+
+      if (!user) return
+
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('business_id')
+        .eq('id', user.id)
+        .maybeSingle()
+
+      if (!cancelled && profile?.business_id) {
+        setResolvedBusinessId(profile.business_id)
+      }
+    }
+
+    void resolveBusinessId()
+
+    return () => {
+      cancelled = true
+    }
+  }, [businessId, supabase])
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
@@ -96,12 +139,11 @@ export default function InventoryPanel({ initialProducts, categories }: Props) {
     })
   }, [products, query, selectedCategory, statusFilter])
 
-  // Aggregate stats
   const activeProducts = products.filter(p => p.is_active)
   const totalStock = activeProducts.reduce((acc, p) => acc + p.stock, 0)
   const inventoryValue = activeProducts.reduce((acc, p) => acc + p.cost * p.stock, 0)
   const avgMargin = (() => {
-    const withCost = activeProducts.filter(p => p.cost > 0)
+    const withCost = activeProducts.filter(p => p.cost > 0 && p.price > 0)
     if (withCost.length === 0) return 0
     const margins = withCost.map(p => ((p.price - p.cost) / p.price) * 100)
     return margins.reduce((a, b) => a + b, 0) / margins.length
@@ -111,15 +153,26 @@ export default function InventoryPanel({ initialProducts, categories }: Props) {
   const categoryCount = new Set(products.map(p => p.category_id).filter(Boolean)).size
 
   async function updateProduct(productId: string, values: Partial<InventoryProduct>) {
+    if (!effectiveBusinessId) {
+      setCrudError('No se encontro el negocio activo para actualizar productos.')
+      return
+    }
+
+    setCrudError(null)
     setLoadingId(productId)
+
     const { error } = await supabase
       .from('products')
       .update(values)
       .eq('id', productId)
+      .eq('business_id', effectiveBusinessId)
 
     if (!error) {
       setProducts(prev => prev.map(p => (p.id === productId ? { ...p, ...values } : p)))
+    } else {
+      setCrudError(error.message)
     }
+
     setLoadingId(null)
   }
 
@@ -144,6 +197,33 @@ export default function InventoryPanel({ initialProducts, categories }: Props) {
       price: Number(nextPrice) || product.price,
       cost: Number(nextCost) || product.cost,
     })
+  }
+
+  async function handleDeleteProduct(product: InventoryProduct) {
+    if (!effectiveBusinessId) {
+      setCrudError('No se encontro el negocio activo para eliminar productos.')
+      return
+    }
+
+    const confirmed = window.confirm(`Eliminar "${product.name}"? Esta accion no se puede deshacer.`)
+    if (!confirmed) return
+
+    setCrudError(null)
+    setLoadingId(product.id)
+
+    const { error } = await supabase
+      .from('products')
+      .delete()
+      .eq('id', product.id)
+      .eq('business_id', effectiveBusinessId)
+
+    if (!error) {
+      setProducts(prev => prev.filter(p => p.id !== product.id))
+    } else {
+      setCrudError(error.message)
+    }
+
+    setLoadingId(null)
   }
 
   function exportCsv() {
@@ -178,29 +258,38 @@ export default function InventoryPanel({ initialProducts, categories }: Props) {
     <div className="flex flex-col h-screen overflow-hidden">
       <PageHeader title="Stock">
         <Button variant="outline" size="sm" className="rounded-lg text-xs" disabled>
-          ↓ Importar
+          Importar
         </Button>
-        <Button variant="outline" size="sm" className="rounded-lg text-xs" onClick={exportCsv} disabled={filtered.length === 0}>
-          ↑ Exportar
+        <Button
+          variant="outline"
+          size="sm"
+          className="rounded-lg text-xs"
+          onClick={exportCsv}
+          disabled={filtered.length === 0}
+        >
+          Exportar
         </Button>
         <Button variant="outline" size="sm" className="rounded-lg text-xs" disabled>
-          📁 Categorías
+          Categorias
         </Button>
         <Button variant="outline" size="sm" className="rounded-lg text-xs" disabled>
-          🏷️ Marcas
+          Marcas
         </Button>
-        <Button size="sm" className="rounded-lg text-xs bg-emerald-700 hover:bg-emerald-800 text-white" onClick={() => setShowNewProduct(true)}>
-          + Nuevo producto
+        <Button
+          size="sm"
+          className="rounded-lg text-xs bg-emerald-700 hover:bg-emerald-800 text-white"
+          onClick={() => setShowNewProduct(true)}
+        >
+          Nuevo producto
         </Button>
       </PageHeader>
 
-      {/* Filters */}
       <div className="bg-surface border-b border-edge/60 px-5 py-3">
         <div className="flex flex-wrap items-center gap-3">
           <Input
             value={query}
             onChange={e => setQuery(e.target.value)}
-            placeholder="Buscar producto, marca o código..."
+            placeholder="Buscar producto, marca o codigo..."
             className="h-9 max-w-xs rounded-lg text-sm"
           />
           <select
@@ -208,10 +297,10 @@ export default function InventoryPanel({ initialProducts, categories }: Props) {
             value={selectedCategory}
             onChange={e => setSelectedCategory(e.target.value)}
           >
-            <option value="all">Todas las categorías</option>
+            <option value="all">Todas las categorias</option>
             {categories.map(category => (
               <option key={category.id} value={category.id}>
-                {category.icon} {category.name}
+                {category.name}
               </option>
             ))}
           </select>
@@ -237,7 +326,12 @@ export default function InventoryPanel({ initialProducts, categories }: Props) {
         </div>
       </div>
 
-      {/* Product grid */}
+      {crudError && (
+        <div className="mx-5 mt-4 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+          {crudError}
+        </div>
+      )}
+
       <div className="flex-1 overflow-y-auto p-5">
         {filtered.length === 0 ? (
           <div className="rounded-2xl bg-surface border border-edge/60 p-12 text-center text-hint">
@@ -248,7 +342,7 @@ export default function InventoryPanel({ initialProducts, categories }: Props) {
             {filtered.map(product => {
               const status = getStatus(product)
               const config = statusConfig[status]
-              const margin = product.cost > 0
+              const margin = product.cost > 0 && product.price > 0
                 ? Math.round(((product.price - product.cost) / product.price) * 100)
                 : 0
               const stockPercent = product.min_stock > 0
@@ -260,23 +354,19 @@ export default function InventoryPanel({ initialProducts, categories }: Props) {
                   key={product.id}
                   className={`rounded-2xl border-2 bg-surface p-4 flex flex-col relative transition-shadow hover:shadow-md ${config.border}`}
                 >
-                  {/* Status badge */}
                   <span className={`absolute top-3 right-3 text-[10px] font-bold px-2 py-0.5 rounded-full ${config.badge}`}>
                     {config.label}
                   </span>
 
-                  {/* Emoji */}
-                  <div className="text-4xl mb-3 mx-auto">
-                    {product.categories?.icon ?? '📦'}
+                  <div className="h-12 w-12 mb-3 mx-auto rounded-xl bg-surface-alt border border-edge flex items-center justify-center text-xs font-semibold text-subtle">
+                    CAT
                   </div>
 
-                  {/* Name */}
                   <h3 className="font-semibold text-heading text-sm leading-tight mb-1 line-clamp-2">
                     {product.name}
                   </h3>
 
-                  {/* Tags */}
-                  <div className="flex flex-wrap gap-1 mb-3">
+                  <div className="flex flex-wrap gap-1 mb-3 min-h-5">
                     {product.categories?.name && (
                       <span className="text-[10px] px-1.5 py-0.5 rounded bg-surface-alt text-subtle">
                         {product.categories.name}
@@ -284,7 +374,6 @@ export default function InventoryPanel({ initialProducts, categories }: Props) {
                     )}
                   </div>
 
-                  {/* Prices */}
                   <div className="grid grid-cols-2 gap-2 mb-3">
                     <div className="rounded-lg bg-surface-alt px-2 py-1.5">
                       <p className="text-[10px] text-hint uppercase font-medium">Venta</p>
@@ -301,7 +390,6 @@ export default function InventoryPanel({ initialProducts, categories }: Props) {
                     </div>
                   </div>
 
-                  {/* Stock bar */}
                   <div className="mb-3">
                     <div className="flex items-baseline justify-between mb-1">
                       <span className="text-lg font-bold text-heading">
@@ -317,28 +405,34 @@ export default function InventoryPanel({ initialProducts, categories }: Props) {
                     </div>
                   </div>
 
-                  {/* Actions */}
-                  <div className="flex gap-1.5 mt-auto">
+                  <div className="grid grid-cols-2 gap-1.5 mt-auto">
                     <button
                       onClick={() => handleEditProduct(product)}
                       disabled={loadingId === product.id}
-                      className="flex-1 text-xs py-1.5 rounded-lg border border-edge text-body hover:bg-hover-bg transition-colors disabled:opacity-50"
+                      className="text-xs py-1.5 rounded-lg border border-edge text-body hover:bg-hover-bg transition-colors disabled:opacity-50"
                     >
-                      ✏️ Editar
+                      Editar
                     </button>
                     <button
                       onClick={() => handleAdjustStock(product)}
                       disabled={loadingId === product.id}
-                      className="flex-1 text-xs py-1.5 rounded-lg border border-edge text-body hover:bg-hover-bg transition-colors disabled:opacity-50"
+                      className="text-xs py-1.5 rounded-lg border border-edge text-body hover:bg-hover-bg transition-colors disabled:opacity-50"
                     >
-                      + Ajustar
+                      Ajustar
                     </button>
                     <button
                       onClick={() => updateProduct(product.id, { is_active: !product.is_active })}
                       disabled={loadingId === product.id}
-                      className="flex-1 text-xs py-1.5 rounded-lg border border-edge text-body hover:bg-hover-bg transition-colors disabled:opacity-50"
+                      className="text-xs py-1.5 rounded-lg border border-edge text-body hover:bg-hover-bg transition-colors disabled:opacity-50"
                     >
-                      ⊘ Baja
+                      {product.is_active ? 'Baja' : 'Activar'}
+                    </button>
+                    <button
+                      onClick={() => handleDeleteProduct(product)}
+                      disabled={loadingId === product.id}
+                      className="text-xs py-1.5 rounded-lg border border-red-200 text-red-600 hover:bg-red-50 transition-colors disabled:opacity-50"
+                    >
+                      Eliminar
                     </button>
                   </div>
                 </article>
@@ -351,19 +445,19 @@ export default function InventoryPanel({ initialProducts, categories }: Props) {
       <NewProductModal
         open={showNewProduct}
         onClose={() => setShowNewProduct(false)}
+        businessId={effectiveBusinessId}
         categories={categories}
         onCreated={product => setProducts(prev => [product, ...prev])}
       />
 
-      {/* Bottom stats bar */}
       <div className="bg-surface border-t border-edge/60 px-5 py-2.5 flex items-center gap-6 text-xs text-subtle shrink-0 overflow-x-auto">
         <span className="flex items-center gap-1.5">
           <span className="w-2 h-2 rounded-full bg-emerald-500" />
           {activeProducts.length} productos activos
         </span>
-        <span>○ {totalStock} uds en stock</span>
-        <span>$ Valor inventario ${inventoryValue.toLocaleString('es-AR')}</span>
-        <span>↗ Margen promedio {avgMargin.toFixed(0)}%</span>
+        <span>{totalStock} uds en stock</span>
+        <span>Valor inventario ${inventoryValue.toLocaleString('es-AR')}</span>
+        <span>Margen promedio {avgMargin.toFixed(0)}%</span>
         <span className="flex items-center gap-1.5">
           <span className="w-2 h-2 rounded-full bg-red-500" />
           {outOfStock} sin stock
@@ -372,7 +466,7 @@ export default function InventoryPanel({ initialProducts, categories }: Props) {
           <span className="w-2 h-2 rounded-full bg-amber-500" />
           {lowStock} stock bajo
         </span>
-        <span className="ml-auto">📁 {categoryCount} categorías</span>
+        <span className="ml-auto">{categoryCount} categorias</span>
       </div>
     </div>
   )

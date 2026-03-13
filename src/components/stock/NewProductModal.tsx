@@ -17,9 +17,9 @@ function FieldGroup({ label, required, error, hint, children }: {
   children: React.ReactNode
 }) {
   return (
-    <div className="flex flex-col gap-1.5">
+    <div className="flex flex-col gap-1">
       <div className="flex items-baseline justify-between">
-        <label className="text-xs font-semibold text-subtle uppercase tracking-wide">
+        <label className="text-[11px] font-semibold text-subtle uppercase tracking-wide">
           {label}{required && <span className="text-red-400 ml-0.5">*</span>}
         </label>
         {hint && <span className="text-[11px] text-emerald-600 font-medium">{hint}</span>}
@@ -53,6 +53,7 @@ interface NewProduct {
 interface Props {
   open: boolean
   onClose: () => void
+  businessId: string | null
   categories: Category[]
   onCreated: (product: NewProduct) => void
 }
@@ -69,7 +70,7 @@ const EMPTY_FORM = {
   is_active: true,
 }
 
-export default function NewProductModal({ open, onClose, categories, onCreated }: Props) {
+export default function NewProductModal({ open, onClose, businessId, categories, onCreated }: Props) {
   const [form, setForm] = useState(EMPTY_FORM)
   const [loading, setLoading] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
@@ -95,8 +96,37 @@ export default function NewProductModal({ open, onClose, categories, onCreated }
     const errs = validate()
     if (Object.keys(errs).length > 0) { setErrors(errs); return }
 
+    let activeBusinessId = businessId
+    if (!activeBusinessId) {
+      const { data: rpcBusinessId } = await supabase.rpc('get_business_id')
+      if (typeof rpcBusinessId === 'string' && rpcBusinessId.length > 0) {
+        activeBusinessId = rpcBusinessId
+      }
+    }
+
+    if (!activeBusinessId) {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+
+      if (user) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('business_id')
+          .eq('id', user.id)
+          .maybeSingle()
+        activeBusinessId = profile?.business_id ?? null
+      }
+    }
+
+    if (!activeBusinessId) {
+      setErrors({ _global: 'No se encontró el negocio activo para crear productos.' })
+      return
+    }
+
     setLoading(true)
     const payload = {
+      business_id: activeBusinessId,
       name: form.name.trim(),
       sku: form.sku.trim() || null,
       barcode: form.barcode.trim() || null,
@@ -147,56 +177,71 @@ export default function NewProductModal({ open, onClose, categories, onCreated }
 
   return (
     <Dialog open={open} onOpenChange={v => !v && handleClose()}>
-      <DialogContent className="sm:max-w-[480px] p-0 gap-0 rounded-2xl overflow-hidden bg-app-bg" showCloseButton={false}>
+      <DialogContent className="sm:max-w-[640px] p-0 gap-0 rounded-2xl overflow-hidden bg-app-bg" showCloseButton={false}>
         {/* Header */}
-        <div className="bg-emerald-700 px-6 py-4 flex items-center justify-between">
+        <div className="bg-emerald-700 px-6 py-3.5 flex items-center justify-between">
           <h2 className="text-base font-bold text-white">Nuevo producto</h2>
           <button
             onClick={handleClose}
             className="w-7 h-7 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center transition-colors"
           >
-            <span className="text-white text-sm">✕</span>
+            <span className="text-white text-sm">X</span>
           </button>
         </div>
 
         <form onSubmit={handleSubmit} className="flex flex-col">
-          <div className="px-6 py-5 flex flex-col gap-5 max-h-[calc(100vh-220px)] overflow-y-auto">
+          <div className="px-6 py-4">
+            <div className="grid grid-cols-2 gap-3.5">
 
-            {errors._global && (
-              <p className="text-xs text-red-700 bg-red-50 border border-red-200 rounded-xl px-3.5 py-2.5">{errors._global}</p>
-            )}
+              {errors._global && (
+                <p className="col-span-2 text-xs text-red-700 bg-red-50 border border-red-200 rounded-xl px-3 py-2">{errors._global}</p>
+              )}
 
-            {/* Nombre */}
-            <FieldGroup label="Nombre" required error={errors.name}>
-              <Input
-                value={form.name}
-                onChange={e => set('name', e.target.value)}
-                placeholder="Ej: Pan sin TACC x500g"
-                className={`h-10 rounded-xl text-sm ${errors.name ? 'border-red-400 focus-visible:ring-red-200' : 'border-edge focus-visible:ring-emerald-200 focus-visible:border-emerald-400'}`}
-                autoFocus
-              />
-            </FieldGroup>
+              {/* Nombre */}
+              <div className="col-span-2">
+                <FieldGroup label="Nombre" required error={errors.name}>
+                  <Input
+                    value={form.name}
+                    onChange={e => set('name', e.target.value)}
+                    placeholder="Ej: Pan sin TACC x500g"
+                    className={`h-9 rounded-xl text-sm ${errors.name ? 'border-red-400 focus-visible:ring-red-200' : 'border-edge focus-visible:ring-emerald-200 focus-visible:border-emerald-400'}`}
+                    autoFocus
+                  />
+                </FieldGroup>
+              </div>
 
-            {/* Categoría */}
-            <FieldGroup label="Categoría">
-              <select
-                value={form.category_id}
-                onChange={e => set('category_id', e.target.value)}
-                className="h-10 w-full rounded-xl border border-edge px-3 text-sm bg-surface text-body focus:outline-none focus:ring-2 focus:ring-emerald-200 focus:border-emerald-400 transition-colors appearance-none cursor-pointer"
-                style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 10px center' }}
-              >
-                <option value="">Sin categoría</option>
-                {categories.map(cat => (
-                  <option key={cat.id} value={cat.id}>{cat.icon} {cat.name}</option>
-                ))}
-              </select>
-            </FieldGroup>
+              {/* Categoría */}
+              <FieldGroup label="Categoría">
+                <select
+                  value={form.category_id}
+                  onChange={e => set('category_id', e.target.value)}
+                  className="h-9 w-full rounded-xl border border-edge px-3 text-sm bg-surface text-body focus:outline-none focus:ring-2 focus:ring-emerald-200 focus:border-emerald-400 transition-colors appearance-none cursor-pointer"
+                  style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 10px center' }}
+                >
+                  <option value="">Sin categoría</option>
+                  {categories.map(cat => (
+                    <option key={cat.id} value={cat.id}>{cat.icon} {cat.name}</option>
+                  ))}
+                </select>
+              </FieldGroup>
 
-            {/* Divider */}
-            <div className="h-px bg-edge-soft" />
+              {/* Estado */}
+              <div className="flex items-end">
+                <label className="w-full flex items-center justify-between cursor-pointer select-none rounded-xl border border-edge bg-surface px-3 py-2.5">
+                  <span className="text-xs font-semibold text-subtle uppercase tracking-wide">Activo</span>
+                  <button
+                    type="button"
+                    onClick={() => set('is_active', !form.is_active)}
+                    className={`relative w-9 h-5 rounded-full transition-colors cursor-pointer ${form.is_active ? 'bg-emerald-600' : 'bg-muted-foreground'}`}
+                    aria-label="Cambiar estado activo"
+                  >
+                    <span
+                      className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-card shadow-sm transition-transform ${form.is_active ? 'translate-x-4' : 'translate-x-0'}`}
+                    />
+                  </button>
+                </label>
+              </div>
 
-            {/* Precio y Costo */}
-            <div className="grid grid-cols-2 gap-4">
               <FieldGroup label="Precio venta" required error={errors.price}>
                 <div className="relative">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-hint">$</span>
@@ -207,7 +252,7 @@ export default function NewProductModal({ open, onClose, categories, onCreated }
                     value={form.price}
                     onChange={e => set('price', e.target.value)}
                     placeholder="0"
-                    className={`h-10 rounded-xl text-sm pl-7 ${errors.price ? 'border-red-400 focus-visible:ring-red-200' : 'border-edge focus-visible:ring-emerald-200 focus-visible:border-emerald-400'}`}
+                    className={`h-9 rounded-xl text-sm pl-7 ${errors.price ? 'border-red-400 focus-visible:ring-red-200' : 'border-edge focus-visible:ring-emerald-200 focus-visible:border-emerald-400'}`}
                   />
                 </div>
               </FieldGroup>
@@ -221,14 +266,11 @@ export default function NewProductModal({ open, onClose, categories, onCreated }
                     value={form.cost}
                     onChange={e => set('cost', e.target.value)}
                     placeholder="0"
-                    className={`h-10 rounded-xl text-sm pl-7 ${errors.cost ? 'border-red-400 focus-visible:ring-red-200' : 'border-edge focus-visible:ring-emerald-200 focus-visible:border-emerald-400'}`}
+                    className={`h-9 rounded-xl text-sm pl-7 ${errors.cost ? 'border-red-400 focus-visible:ring-red-200' : 'border-edge focus-visible:ring-emerald-200 focus-visible:border-emerald-400'}`}
                   />
                 </div>
               </FieldGroup>
-            </div>
 
-            {/* Stock */}
-            <div className="grid grid-cols-2 gap-4">
               <FieldGroup label="Stock inicial" error={errors.stock}>
                 <Input
                   type="number"
@@ -237,7 +279,7 @@ export default function NewProductModal({ open, onClose, categories, onCreated }
                   value={form.stock}
                   onChange={e => set('stock', e.target.value)}
                   placeholder="0"
-                  className={`h-10 rounded-xl text-sm ${errors.stock ? 'border-red-400 focus-visible:ring-red-200' : 'border-edge focus-visible:ring-emerald-200 focus-visible:border-emerald-400'}`}
+                  className={`h-9 rounded-xl text-sm ${errors.stock ? 'border-red-400 focus-visible:ring-red-200' : 'border-edge focus-visible:ring-emerald-200 focus-visible:border-emerald-400'}`}
                 />
               </FieldGroup>
               <FieldGroup label="Stock mínimo" error={errors.min_stock}>
@@ -248,22 +290,16 @@ export default function NewProductModal({ open, onClose, categories, onCreated }
                   value={form.min_stock}
                   onChange={e => set('min_stock', e.target.value)}
                   placeholder="0"
-                  className={`h-10 rounded-xl text-sm ${errors.min_stock ? 'border-red-400 focus-visible:ring-red-200' : 'border-edge focus-visible:ring-emerald-200 focus-visible:border-emerald-400'}`}
+                  className={`h-9 rounded-xl text-sm ${errors.min_stock ? 'border-red-400 focus-visible:ring-red-200' : 'border-edge focus-visible:ring-emerald-200 focus-visible:border-emerald-400'}`}
                 />
               </FieldGroup>
-            </div>
 
-            {/* Divider */}
-            <div className="h-px bg-edge-soft" />
-
-            {/* SKU y Código de barras */}
-            <div className="grid grid-cols-2 gap-4">
               <FieldGroup label="SKU">
                 <Input
                   value={form.sku}
                   onChange={e => set('sku', e.target.value)}
                   placeholder="Ej: PSTACC-500"
-                  className="h-10 rounded-xl text-sm border-edge focus-visible:ring-emerald-200 focus-visible:border-emerald-400"
+                  className="h-9 rounded-xl text-sm border-edge focus-visible:ring-emerald-200 focus-visible:border-emerald-400"
                 />
               </FieldGroup>
               <FieldGroup label="Código de barras">
@@ -271,30 +307,17 @@ export default function NewProductModal({ open, onClose, categories, onCreated }
                   value={form.barcode}
                   onChange={e => set('barcode', e.target.value)}
                   placeholder="Ej: 7790001234567"
-                  className="h-10 rounded-xl text-sm border-edge focus-visible:ring-emerald-200 focus-visible:border-emerald-400"
+                  className="h-9 rounded-xl text-sm border-edge focus-visible:ring-emerald-200 focus-visible:border-emerald-400"
                 />
               </FieldGroup>
             </div>
-
-            {/* Toggle activo */}
-            <label className="flex items-center justify-between cursor-pointer select-none bg-surface-alt rounded-xl px-4 py-3">
-              <span className="text-sm font-medium text-body">Producto activo</span>
-              <div
-                onClick={() => set('is_active', !form.is_active)}
-                className={`relative w-11 h-6 rounded-full transition-colors cursor-pointer ${form.is_active ? 'bg-emerald-600' : 'bg-muted-foreground'}`}
-              >
-                <span
-                  className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-card shadow-sm transition-transform ${form.is_active ? 'translate-x-5' : 'translate-x-0'}`}
-                />
-              </div>
-            </label>
           </div>
 
           {/* Footer */}
-          <div className="border-t border-edge-soft bg-surface-alt/80 px-6 py-4 flex items-center justify-end gap-3">
+          <div className="border-t border-edge-soft bg-surface-alt/80 px-6 py-3.5 flex items-center justify-end gap-2.5">
             <Button
               type="button"
-              variant="outline"
+              variant="cancel"
               onClick={handleClose}
               disabled={loading}
               className="h-9 px-5 rounded-xl text-sm"

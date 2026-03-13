@@ -14,6 +14,7 @@ interface SaleRecord {
   id: string
   total: number
   created_at: string
+  status: string | null
 }
 
 interface PaymentRecord {
@@ -75,6 +76,10 @@ function inferBrandFromSku(sku: string | null) {
   return token.length > 0 ? token : 'Sin marca'
 }
 
+function isCompletedSale(status: string | null) {
+  return status === null || status === 'completed'
+}
+
 export default function StatsView({ sales, payments, saleItems, products, categories }: Props) {
   const [period, setPeriod] = useState<Period>('today')
   const [fromDate, setFromDate] = useState('')
@@ -101,14 +106,20 @@ export default function StatsView({ sales, payments, saleItems, products, catego
     return { from: startOfDay(from), to: endOfDay(now) }
   }, [period, fromDate, toDate])
 
-  const filteredSales = useMemo(() => {
-    return sales.filter(sale => {
+  const filteredSales = useMemo(
+    () => sales.filter(sale => {
       const createdAt = new Date(sale.created_at)
-      return createdAt >= range.from && createdAt <= range.to
-    })
-  }, [sales, range])
+      return createdAt >= range.from && createdAt <= range.to && isCompletedSale(sale.status)
+    }),
+    [sales, range]
+  )
 
   const filteredSaleIds = useMemo(() => new Set(filteredSales.map(s => s.id)), [filteredSales])
+
+  const saleCreatedAtById = useMemo(
+    () => new Map(filteredSales.map(sale => [sale.id, sale.created_at])),
+    [filteredSales]
+  )
 
   const filteredItems = useMemo(() => {
     return saleItems.filter(item => filteredSaleIds.has(item.sale_id))
@@ -129,23 +140,37 @@ export default function StatsView({ sales, payments, saleItems, products, catego
   }, [filteredSales])
 
   const evolution = useMemo(() => {
-    const grouped: Record<string, { revenue: number; units: number }> = {}
+    const grouped: Record<string, { label: string; revenue: number; units: number }> = {}
     filteredSales.forEach(sale => {
-      const key = new Date(sale.created_at).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit' })
-      if (!grouped[key]) grouped[key] = { revenue: 0, units: 0 }
-      grouped[key].revenue += Number(sale.total)
+      const dayKey = sale.created_at.slice(0, 10)
+      if (!grouped[dayKey]) {
+        grouped[dayKey] = {
+          label: new Date(`${dayKey}T00:00:00`).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit' }),
+          revenue: 0,
+          units: 0,
+        }
+      }
+      grouped[dayKey].revenue += Number(sale.total)
     })
 
     filteredItems.forEach(item => {
-      const sale = filteredSales.find(s => s.id === item.sale_id)
-      if (!sale) return
-      const key = new Date(sale.created_at).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit' })
-      if (!grouped[key]) grouped[key] = { revenue: 0, units: 0 }
-      grouped[key].units += Number(item.quantity)
+      const createdAt = saleCreatedAtById.get(item.sale_id)
+      if (!createdAt) return
+      const dayKey = createdAt.slice(0, 10)
+      if (!grouped[dayKey]) {
+        grouped[dayKey] = {
+          label: new Date(`${dayKey}T00:00:00`).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit' }),
+          revenue: 0,
+          units: 0,
+        }
+      }
+      grouped[dayKey].units += Number(item.quantity)
     })
 
-    return Object.entries(grouped).map(([label, value]) => ({ label, ...value }))
-  }, [filteredSales, filteredItems])
+    return Object.entries(grouped)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([, value]) => value)
+  }, [filteredSales, filteredItems, saleCreatedAtById])
 
   const maxEvolution = Math.max(
     ...evolution.map(point => (evolutionMode === 'revenue' ? point.revenue : point.units)),
@@ -212,10 +237,10 @@ export default function StatsView({ sales, payments, saleItems, products, catego
   }
 
   const paymentLabels: Record<string, string> = {
-    cash: '💵 Efectivo',
-    card: '💳 Tarjeta',
-    transfer: '📲 Transferencia',
-    mercadopago: '📱 MercadoPago',
+    cash: 'Efectivo',
+    card: 'Tarjeta',
+    transfer: 'Transferencia',
+    mercadopago: 'MercadoPago',
   }
 
   return (

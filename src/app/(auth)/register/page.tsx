@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input'
 
 export default function RegisterPage() {
   const [businessName, setBusinessName] = useState('')
+  const [userName, setUserName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
@@ -16,7 +17,7 @@ export default function RegisterPage() {
   const supabase = createClient()
 
   async function handleRegister() {
-    if (!businessName || !email || !password) {
+    if (!businessName || !userName || !email || !password) {
       setError('Completá todos los campos')
       return
     }
@@ -35,27 +36,31 @@ export default function RegisterPage() {
       return
     }
 
-    // 2. Crear negocio
-    const slug = businessName.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')
-    const { data: business, error: bizError } = await supabase
-      .from('businesses')
-      .insert({ name: businessName, slug: `${slug}-${Date.now()}` })
-      .select()
-      .single()
+    // 2. Llamar a la función del servidor que crea negocio y perfil
+    //    con security definer — sin depender de la sesión del cliente
+    const { data: result, error: rpcError } = await supabase.rpc('bootstrap_new_user', {
+      p_user_id: authData.user.id,
+      p_business_name: businessName,
+      p_user_name: userName,
+    })
 
-    if (bizError || !business) {
-      setError('Error al crear el negocio')
+    if (rpcError || !result?.success) {
+      setError(result?.error || rpcError?.message || 'Error al configurar el negocio')
       setLoading(false)
       return
     }
 
-    // 3. Crear perfil
-    await supabase.from('profiles').insert({
-      id: authData.user.id,
-      business_id: business.id,
-      role: 'owner',
-      name: businessName,
+    // 3. Iniciar sesión
+    const { error: signInError } = await supabase.auth.signInWithPassword({
+      email,
+      password,
     })
+
+    if (signInError) {
+      setError('Cuenta creada. Por favor ingresá manualmente.')
+      setLoading(false)
+      return
+    }
 
     router.push('/dashboard')
   }
@@ -71,6 +76,11 @@ export default function RegisterPage() {
             placeholder="Nombre del negocio (ej: Kiosco Don Juan)"
             value={businessName}
             onChange={e => setBusinessName(e.target.value)}
+          />
+          <Input
+            placeholder="Tu nombre"
+            value={userName}
+            onChange={e => setUserName(e.target.value)}
           />
           <Input
             type="email"
@@ -100,4 +110,4 @@ export default function RegisterPage() {
       </div>
     </div>
   )
-}   
+}

@@ -54,7 +54,7 @@ export default function PaymentModal({ total, businessId, onClose }: Props) {
 
     if (saleError || !sale) {
       console.error(saleError)
-      setError('No se pudo registrar la venta')
+      setError(saleError?.message ?? 'No se pudo registrar la venta')
       setLoading(false)
       return
     }
@@ -72,7 +72,7 @@ export default function PaymentModal({ total, businessId, onClose }: Props) {
 
     if (saleItemsError) {
       console.error(saleItemsError)
-      setError('No se pudieron registrar los items de la venta')
+      setError(saleItemsError.message)
       setLoading(false)
       return
     }
@@ -87,7 +87,7 @@ export default function PaymentModal({ total, businessId, onClose }: Props) {
 
     if (paymentError) {
       console.error(paymentError)
-      setError('No se pudo registrar el pago')
+      setError(paymentError.message)
       setLoading(false)
       return
     }
@@ -101,11 +101,11 @@ export default function PaymentModal({ total, businessId, onClose }: Props) {
     }, 1200)
   }
 
-  const methods: { id: PaymentMethod; label: string; emoji: string }[] = [
-    { id: 'cash', label: 'Efectivo', emoji: '💵' },
-    { id: 'card', label: 'Tarjeta', emoji: '💳' },
-    { id: 'transfer', label: 'Transferencia', emoji: '📲' },
-    { id: 'mercadopago', label: 'MercadoPago', emoji: '📱' },
+  const methods: { id: PaymentMethod; label: string; icon: string }[] = [
+    { id: 'cash', label: 'Efectivo', icon: '$' },
+    { id: 'card', label: 'Tarjeta', icon: 'TC' },
+    { id: 'transfer', label: 'Transferencia', icon: 'TR' },
+    { id: 'mercadopago', label: 'MercadoPago', icon: 'MP' },
   ]
 
   return (
@@ -113,7 +113,7 @@ export default function PaymentModal({ total, businessId, onClose }: Props) {
       <div className="bg-surface rounded-2xl shadow-xl w-full max-w-sm">
         {success ? (
           <div className="p-10 flex flex-col items-center justify-center text-center">
-            <div className="text-5xl mb-3">✅</div>
+            <div className="text-5xl mb-3">OK</div>
             <p className="text-lg font-bold text-heading">¡Venta registrada!</p>
             {method === 'cash' && change > 0 && (
               <p className="text-sm text-subtle mt-1">
@@ -149,7 +149,7 @@ export default function PaymentModal({ total, businessId, onClose }: Props) {
                         : 'border-edge text-body hover:border-emerald-300'
                     }`}
                   >
-                    <span>{m.emoji}</span>
+                    <span>{m.icon}</span>
                     {m.label}
                   </button>
                 ))}

@@ -65,6 +65,10 @@ function startOfWeek(date: Date) {
   return copy
 }
 
+function isCompletedSale(status: string | null) {
+  return status === null || status === 'completed'
+}
+
 const paymentColors: Record<string, string> = {
   cash: 'bg-emerald-600',
   card: 'bg-indigo-500',
@@ -73,10 +77,10 @@ const paymentColors: Record<string, string> = {
 }
 
 const paymentLabels: Record<string, string> = {
-  cash: '💵 Efectivo',
-  card: '💳 Tarjeta',
-  transfer: '📲 Transferencia',
-  mercadopago: '📱 MercadoPago',
+  cash: 'Efectivo',
+  card: 'Tarjeta',
+  transfer: 'Transferencia',
+  mercadopago: 'MercadoPago',
 }
 
 export default function DashboardView({ sales, payments, saleItems, products }: Props) {
@@ -113,49 +117,59 @@ export default function DashboardView({ sales, payments, saleItems, products }: 
     }),
     [sales, periodRange])
 
-  const filteredSaleIds = useMemo(() => new Set(filteredSales.map(s => s.id)), [filteredSales])
+  const completedSales = useMemo(
+    () => filteredSales.filter(sale => isCompletedSale(sale.status)),
+    [filteredSales]
+  )
+
+  const filteredSaleIds = useMemo(() => new Set(completedSales.map(s => s.id)), [completedSales])
   const filteredItems = useMemo(() => saleItems.filter(i => filteredSaleIds.has(i.sale_id)), [saleItems, filteredSaleIds])
 
-  const totalSold = filteredSales.reduce((acc, s) => acc + Number(s.total), 0)
-  const transactions = filteredSales.length
+  const totalSold = completedSales.reduce((acc, s) => acc + Number(s.total), 0)
+  const transactions = completedSales.length
   const lowStockProducts = products.filter(p => p.is_active && p.stock <= p.min_stock)
   const outOfStockCount = lowStockProducts.filter(p => p.stock <= 0).length
   const lowStockCount = lowStockProducts.filter(p => p.stock > 0).length
 
   const mostUsedPayment = useMemo(() => {
     const counts: Record<string, number> = {}
-    filteredSales.forEach(s => {
+    completedSales.forEach(s => {
       const m = paymentsBySaleId.get(s.id) ?? 'sin dato'
       counts[m] = (counts[m] ?? 0) + 1
     })
     const winner = Object.entries(counts).sort((a, b) => b[1] - a[1])[0]
     return winner ? { method: winner[0], count: winner[1] } : null
-  }, [filteredSales, paymentsBySaleId])
+  }, [completedSales, paymentsBySaleId])
 
   // Vertical bar chart data
   const chartData = useMemo(() => {
     if (period === 'today') {
       return Array.from({ length: 13 }, (_, i) => {
         const hour = i + 8
-        const total = filteredSales
+        const total = completedSales
           .filter(s => new Date(s.created_at).getHours() === hour)
           .reduce((acc, s) => acc + Number(s.total), 0)
         return { label: `${hour.toString().padStart(2, '0')}:00`, value: total }
       })
     }
-    const groups: Record<string, number> = {}
-    filteredSales.forEach(s => {
-      const key = new Date(s.created_at).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit' })
-      groups[key] = (groups[key] ?? 0) + Number(s.total)
+    const groups = new Map<string, number>()
+    completedSales.forEach(s => {
+      const dayKey = s.created_at.slice(0, 10)
+      groups.set(dayKey, (groups.get(dayKey) ?? 0) + Number(s.total))
     })
-    return Object.entries(groups).map(([label, value]) => ({ label, value }))
-  }, [filteredSales, period])
+    return [...groups.entries()]
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([dayKey, value]) => ({
+        label: new Date(`${dayKey}T00:00:00`).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit' }),
+        value,
+      }))
+  }, [completedSales, period])
 
   const maxChartValue = Math.max(...chartData.map(d => d.value), 1)
 
   const paymentBreakdown = useMemo(() => {
     const totals: Record<string, number> = {}
-    filteredSales.forEach(s => {
+    completedSales.forEach(s => {
       const m = paymentsBySaleId.get(s.id) ?? 'sin dato'
       totals[m] = (totals[m] ?? 0) + Number(s.total)
     })
@@ -163,7 +177,7 @@ export default function DashboardView({ sales, payments, saleItems, products }: 
     return Object.entries(totals)
       .map(([method, amount]) => ({ method, amount, percent: grand > 0 ? (amount / grand) * 100 : 0 }))
       .sort((a, b) => b.amount - a.amount)
-  }, [filteredSales, paymentsBySaleId])
+  }, [completedSales, paymentsBySaleId])
 
   const topProducts = useMemo(() => {
     const map: Record<string, { name: string; qty: number; amount: number; icon: string }> = {}
@@ -171,7 +185,7 @@ export default function DashboardView({ sales, payments, saleItems, products }: 
       if (!item.product_id) return
       const product = productsById.get(item.product_id)
       if (!map[item.product_id]) {
-        map[item.product_id] = { name: product?.name ?? 'Eliminado', qty: 0, amount: 0, icon: '📦' }
+        map[item.product_id] = { name: product?.name ?? 'Eliminado', qty: 0, amount: 0, icon: 'CAT' }
       }
       map[item.product_id].qty += Number(item.quantity)
       map[item.product_id].amount += Number(item.total)
@@ -260,14 +274,14 @@ export default function DashboardView({ sales, payments, saleItems, products }: 
               value={`$${totalSold.toLocaleString('es-AR')}`}
             />
             <KPICard
-              icon="📋"
+              icon="T"
               iconBg="bg-amber-100"
               iconColor="text-amber-700"
               label="TRANSACCIONES"
               value={String(transactions)}
             />
             <KPICard
-              icon="⚠"
+              icon="!"
               iconBg="bg-red-100"
               iconColor="text-red-600"
               label="STOCK BAJO / SIN STOCK"
@@ -275,7 +289,7 @@ export default function DashboardView({ sales, payments, saleItems, products }: 
               subtitle={`${outOfStockCount} sin stock · ${lowStockCount} stock bajo`}
             />
             <KPICard
-              icon="💳"
+              icon="PM"
               iconBg="bg-emerald-100"
               iconColor="text-emerald-700"
               label="PAGO MÁS USADO"

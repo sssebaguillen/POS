@@ -1,7 +1,7 @@
 'use client'
 
-import { createContext, useContext, useState, useCallback } from 'react'
-import SidebarDrawer from '@/components/sidebar'
+import { createContext, useContext, useMemo, useState } from 'react'
+import Sidebar from '@/components/sidebar'
 
 interface SidebarContextValue {
   open: boolean
@@ -9,24 +9,32 @@ interface SidebarContextValue {
   close: () => void
 }
 
-const SidebarContext = createContext<SidebarContextValue>({
-  open: false,
-  toggle: () => {},
-  close: () => {},
-})
+const SidebarContext = createContext<SidebarContextValue | undefined>(undefined)
 
-export const useSidebar = () => useContext(SidebarContext)
+export function useSidebar() {
+  const context = useContext(SidebarContext)
+  if (!context) {
+    throw new Error('useSidebar must be used within AppShell')
+  }
+  return context
+}
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
-  const [open, setOpen] = useState(false)
-  const toggle = useCallback(() => setOpen(v => !v), [])
-  const close = useCallback(() => setOpen(false), [])
+  const [sidebarOpen, setSidebarOpen] = useState(false)
+  const value = useMemo(
+    () => ({
+      open: sidebarOpen,
+      toggle: () => setSidebarOpen(prev => !prev),
+      close: () => setSidebarOpen(false),
+    }),
+    [sidebarOpen]
+  )
 
   return (
-    <SidebarContext.Provider value={{ open, toggle, close }}>
-        <div className="min-h-screen bg-app-bg">
-        <SidebarDrawer open={open} onClose={close} />
-        {children}
+    <SidebarContext.Provider value={value}>
+      <div className="flex h-screen bg-background">
+        <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+        <main className="flex-1 min-h-0">{children}</main>
       </div>
     </SidebarContext.Provider>
   )

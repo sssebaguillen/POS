@@ -6,7 +6,7 @@ export default async function StatsPage() {
 
   const { data: sales } = await supabase
     .from('sales')
-    .select('id, total, created_at')
+    .select('id, total, created_at, status')
     .order('created_at', { ascending: false })
     .limit(3000)
 
@@ -60,6 +60,7 @@ export default async function StatsPage() {
         id: sale.id,
         total: Number(sale.total),
         created_at: sale.created_at,
+        status: sale.status,
       }))}
       payments={payments}
       saleItems={saleItems}

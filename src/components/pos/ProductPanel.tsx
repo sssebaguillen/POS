@@ -102,9 +102,9 @@ function ProductCard({
       disabled={disabled}
       className="group relative text-left p-4 rounded-2xl border border-edge/60 bg-surface hover:border-emerald-600 hover:shadow-md transition-all disabled:opacity-40 disabled:cursor-not-allowed min-w-[120px]"
     >
-      {/* Emoji */}
+      {/* Category marker */}
       <div className="text-3xl mb-3 leading-none">
-        {product.categories?.icon ?? '📦'}
+        {product.categories?.icon ?? 'CAT'}
       </div>
 
       {/* Name */}

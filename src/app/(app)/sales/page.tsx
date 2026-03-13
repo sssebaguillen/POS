@@ -1,5 +1,24 @@
 import { createClient } from '@/lib/supabase/server'
-import SalesHistoryPanel, { type SaleHistoryRow } from '@/components/sales/SalesHistoryPanel'
+import SalesHistoryPanel, {
+  type SaleHistoryRow,
+  type SaleItemDetail,
+} from '@/components/sales/SalesHistoryPanel'
+
+function getProductNameFromRelation(relation: unknown) {
+  if (Array.isArray(relation)) {
+    const first = relation[0]
+    if (first && typeof first === 'object' && 'name' in first && typeof first.name === 'string') {
+      return first.name
+    }
+    return 'Producto eliminado'
+  }
+
+  if (relation && typeof relation === 'object' && 'name' in relation && typeof relation.name === 'string') {
+    return relation.name
+  }
+
+  return 'Producto eliminado'
+}
 
 export default async function SalesPage() {
   const supabase = await createClient()
@@ -20,18 +39,42 @@ export default async function SalesPage() {
   const saleIds = (sales ?? []).map(sale => sale.id)
 
   let paymentsBySaleId: Record<string, string> = {}
+  let itemsBySaleId: Record<string, SaleItemDetail[]> = {}
 
   if (saleIds.length > 0) {
-    const { data: payments } = await supabase
-      .from('payments')
-      .select('sale_id, method, created_at')
-      .in('sale_id', saleIds)
-      .order('created_at', { ascending: false })
+    const [{ data: payments }, { data: saleItems }] = await Promise.all([
+      supabase
+        .from('payments')
+        .select('sale_id, method, created_at')
+        .in('sale_id', saleIds)
+        .order('created_at', { ascending: false }),
+      supabase
+        .from('sale_items')
+        .select('sale_id, quantity, unit_price, total, products(name)')
+        .in('sale_id', saleIds),
+    ])
 
     paymentsBySaleId = (payments ?? []).reduce<Record<string, string>>((acc, payment) => {
       if (!acc[payment.sale_id]) {
         acc[payment.sale_id] = payment.method
       }
+      return acc
+    }, {})
+
+    itemsBySaleId = (saleItems ?? []).reduce<Record<string, SaleItemDetail[]>>((acc, item) => {
+      const productName = getProductNameFromRelation(item.products)
+
+      if (!acc[item.sale_id]) {
+        acc[item.sale_id] = []
+      }
+
+      acc[item.sale_id].push({
+        product_name: productName,
+        quantity: Number(item.quantity),
+        unit_price: Number(item.unit_price),
+        total: Number(item.total),
+      })
+
       return acc
     }, {})
   }
@@ -42,6 +85,7 @@ export default async function SalesPage() {
     total: Number(sale.total),
     status: sale.status,
     payment_method: paymentsBySaleId[sale.id] ?? null,
+    items: itemsBySaleId[sale.id] ?? [],
   }))
 
   return <SalesHistoryPanel sales={rows} />

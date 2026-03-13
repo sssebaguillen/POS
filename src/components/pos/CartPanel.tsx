@@ -287,7 +287,7 @@ export default function CartPanel({ businessId }: Props) {
 
               <div className="grid grid-cols-2 gap-2">
                 <Button
-                  variant="outline"
+                  variant="cancel"
                   className="h-10 rounded-xl text-sm font-medium"
                   disabled={isEmpty}
                   onClick={handleCancelSale}
@@ -299,7 +299,7 @@ export default function CartPanel({ businessId }: Props) {
                   disabled={isEmpty}
                   onClick={() => setShowPayment(true)}
                 >
-                  💳 Cobrar
+                  Cobrar
                 </Button>
               </div>
             </div>

@@ -2,7 +2,9 @@
 
 import { usePathname } from 'next/navigation'
 import Link from 'next/link'
-import { X, ShoppingCart, Package, ClipboardList, BarChart2, LineChart, Settings, Sun, Moon } from 'lucide-react'
+import { X, ShoppingCart, Package, ClipboardList, BarChart2, LineChart, Settings, Sun, Moon, User, LogOut } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { createClient } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
 import { useTheme } from '@/components/shared/ThemeProvider'
 
@@ -23,6 +25,13 @@ interface Props {
 export default function Sidebar({ open, onClose }: Props) {
   const pathname = usePathname()
   const { theme, toggle } = useTheme()
+  const router = useRouter()
+  const supabase = createClient()
+
+  async function handleLogout() {
+    await supabase.auth.signOut()
+    router.push('/login')
+  }
 
   return (
     <>
@@ -70,15 +79,37 @@ export default function Sidebar({ open, onClose }: Props) {
           ))}
         </nav>
 
-        <div className="px-3 py-3 border-t border-edge-soft flex items-center justify-between">
-          <span className="text-xs text-hint px-2">© 2026 POS LATAM</span>
-          <button
-            onClick={toggle}
-            className="p-2 rounded-lg hover:bg-hover-bg transition-colors text-subtle"
-            title={theme === 'dark' ? 'Modo claro' : 'Modo oscuro'}
-          >
-            {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
-          </button>
+        <div className="px-3 py-3 border-t border-edge-soft flex flex-col gap-2">
+          <div className="flex items-center justify-between mb-1">
+            <button
+              className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-body hover:bg-hover-bg transition-colors flex-1 text-left"
+              onClick={() => router.push('/settings')}
+            >
+              <span className="flex items-center gap-2">
+                <User size={18} />
+                Perfil
+              </span>
+            </button>
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="p-2 rounded-lg text-red-500 hover:bg-red-50 hover:text-red-700 transition-colors"
+              title="Cerrar sesion"
+              aria-label="Cerrar sesion"
+            >
+              <LogOut size={18} />
+            </button>
+          </div>
+          <div className="flex items-center justify-between mt-2">
+            <span className="text-xs text-hint px-2">© 2026 POS LATAM</span>
+            <button
+              onClick={toggle}
+              className="p-2 rounded-lg hover:bg-hover-bg transition-colors text-subtle"
+              title={theme === 'dark' ? 'Modo claro' : 'Modo oscuro'}
+            >
+              {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+            </button>
+          </div>
         </div>
       </aside>
     </>

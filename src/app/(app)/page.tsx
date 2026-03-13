@@ -7,35 +7,51 @@ export default async function POSPage() {
     data: { user },
   } = await supabase.auth.getUser()
 
-  let businessId: string | null = null
+  let profileBusinessId: string | null = null
 
   if (user) {
-    const { data: profile } = await supabase
+    const { data: profile, error: profileError } = await supabase
       .from('profiles')
       .select('business_id')
       .eq('id', user.id)
       .single()
 
-    businessId = profile?.business_id ?? null
+    if (profileError) {
+      throw new Error(profileError.message)
+    }
+
+    profileBusinessId = profile?.business_id ?? null
   }
 
-  const { data: products } = await supabase
+  if (!profileBusinessId) {
+    throw new Error('No se encontro business_id en el perfil del usuario autenticado')
+  }
+
+  const { data: products, error: productsError } = await supabase
     .from('products')
     .select('*, categories(name, icon)')
     .eq('is_active', true)
     .order('sales_count', { ascending: false })
 
-  const { data: categories } = await supabase
+  if (productsError) {
+    throw new Error(productsError.message)
+  }
+
+  const { data: categories, error: categoriesError } = await supabase
     .from('categories')
     .select('*')
     .eq('is_active', true)
     .order('position')
 
+  if (categoriesError) {
+    throw new Error(categoriesError.message)
+  }
+
   return (
     <POSView
       products={products ?? []}
       categories={categories ?? []}
-      businessId={businessId}
+      businessId={profileBusinessId}
     />
   )
 }

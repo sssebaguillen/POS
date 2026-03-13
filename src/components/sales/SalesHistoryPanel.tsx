@@ -1,8 +1,17 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { Fragment, useMemo, useState } from 'react'
+import PageHeader from '@/components/shared/PageHeader'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+
+export interface SaleItemDetail {
+  product_name: string
+  quantity: number
+  unit_price: number
+  total: number
+}
 
 export interface SaleHistoryRow {
   id: string
@@ -10,6 +19,7 @@ export interface SaleHistoryRow {
   total: number
   status: string | null
   payment_method: string | null
+  items: SaleItemDetail[]
 }
 
 interface Props {
@@ -37,6 +47,7 @@ function normalizePayment(method: string | null) {
 
 export default function SalesHistoryPanel({ sales }: Props) {
   const [query, setQuery] = useState('')
+  const [expandedSaleId, setExpandedSaleId] = useState<string | null>(null)
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
@@ -51,9 +62,15 @@ export default function SalesHistoryPanel({ sales }: Props) {
 
   const summary = useMemo(() => {
     const total = filtered.reduce((acc, sale) => acc + Number(sale.total), 0)
+    const items = filtered.reduce(
+      (acc, sale) => acc + sale.items.reduce((itemAcc, item) => itemAcc + Number(item.quantity), 0),
+      0
+    )
+
     return {
       count: filtered.length,
       total,
+      items,
     }
   }, [filtered])
 
@@ -89,59 +106,113 @@ export default function SalesHistoryPanel({ sales }: Props) {
   }
 
   return (
-    <div className="p-6 space-y-4">
-      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-heading">Historial de ventas del dia</h1>
-          <p className="text-sm text-subtle">
-            {summary.count} transacciones · ${summary.total.toLocaleString('es-AR')}
-          </p>
-        </div>
-        <Button onClick={exportCsv} disabled={filtered.length === 0}>
+    <div className="flex flex-col h-screen overflow-hidden">
+      <PageHeader title="Ventas">
+        <Button onClick={exportCsv} disabled={filtered.length === 0} size="sm" className="rounded-lg text-xs">
           Exportar CSV
         </Button>
-      </div>
+      </PageHeader>
 
-      <div className="grid grid-cols-1 md:grid-cols-[1fr_auto] gap-3">
+      <div className="flex-1 overflow-y-auto p-6 space-y-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div className="rounded-xl border border-edge/60 bg-surface p-4">
+            <p className="text-xs uppercase tracking-wide text-hint">Transacciones</p>
+            <p className="text-2xl font-bold text-heading mt-1">{summary.count}</p>
+          </div>
+          <div className="rounded-xl border border-edge/60 bg-surface p-4">
+            <p className="text-xs uppercase tracking-wide text-hint">Total vendido</p>
+            <p className="text-2xl font-bold text-heading mt-1">${summary.total.toLocaleString('es-AR')}</p>
+          </div>
+          <div className="rounded-xl border border-edge/60 bg-surface p-4">
+            <p className="text-xs uppercase tracking-wide text-hint">Unidades vendidas</p>
+            <p className="text-2xl font-bold text-heading mt-1">{summary.items}</p>
+          </div>
+        </div>
+
         <Input
           value={query}
           onChange={e => setQuery(e.target.value)}
           placeholder="Buscar por id o metodo de pago..."
-          className="h-10"
+          className="h-10 max-w-md"
         />
-      </div>
 
-      <div className="rounded-xl border border-edge bg-surface overflow-hidden">
-        <table className="w-full text-sm">
-          <thead className="bg-surface-alt text-body">
-            <tr>
-              <th className="text-left px-4 py-2.5 font-medium">Hora</th>
-              <th className="text-left px-4 py-2.5 font-medium">Metodo</th>
-              <th className="text-left px-4 py-2.5 font-medium">Estado</th>
-              <th className="text-right px-4 py-2.5 font-medium">Total</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filtered.length === 0 ? (
-              <tr>
-                <td colSpan={4} className="px-4 py-10 text-center text-hint">
-                  No hay ventas para mostrar
-                </td>
-              </tr>
-            ) : (
-              filtered.map(sale => (
-                <tr key={sale.id} className="border-t">
-                  <td className="px-4 py-3">{formatTime(sale.created_at)}</td>
-                  <td className="px-4 py-3">{normalizePayment(sale.payment_method)}</td>
-                  <td className="px-4 py-3">{sale.status ?? 'completed'}</td>
-                  <td className="px-4 py-3 text-right font-semibold">
-                    ${Number(sale.total).toLocaleString('es-AR')}
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+        <div className="rounded-xl border border-edge bg-surface overflow-hidden">
+          <Table>
+            <TableHeader className="bg-surface-alt">
+              <TableRow>
+                <TableHead>Hora</TableHead>
+                <TableHead>Metodo</TableHead>
+                <TableHead>Estado</TableHead>
+                <TableHead className="text-right">Total</TableHead>
+                <TableHead className="text-right">Detalle</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filtered.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={5} className="h-24 text-center text-hint">
+                    No hay ventas para mostrar
+                  </TableCell>
+                </TableRow>
+              ) : (
+                filtered.map(sale => {
+                  const isExpanded = expandedSaleId === sale.id
+
+                  return (
+                    <Fragment key={sale.id}>
+                      <TableRow>
+                        <TableCell>{formatTime(sale.created_at)}</TableCell>
+                        <TableCell>{normalizePayment(sale.payment_method)}</TableCell>
+                        <TableCell>
+                          <span className="inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold bg-surface-alt text-body">
+                            {sale.status ?? 'completed'}
+                          </span>
+                        </TableCell>
+                        <TableCell className="text-right font-semibold">
+                          ${Number(sale.total).toLocaleString('es-AR')}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-8 rounded-lg text-xs"
+                            onClick={() => setExpandedSaleId(isExpanded ? null : sale.id)}
+                          >
+                            {isExpanded ? 'Ocultar' : 'Ver'}
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+
+                      {isExpanded && (
+                        <TableRow className="bg-surface-alt/50 hover:bg-surface-alt/50">
+                          <TableCell colSpan={5}>
+                            <div className="space-y-2 py-2">
+                              <p className="text-xs uppercase tracking-wide text-hint">Items de la venta</p>
+                              {sale.items.length === 0 ? (
+                                <p className="text-sm text-hint">No hay items registrados</p>
+                              ) : (
+                                sale.items.map((item, index) => (
+                                  <div key={`${sale.id}-${item.product_name}-${index}`} className="flex items-center justify-between text-sm">
+                                    <span className="text-body">
+                                      {item.product_name} x {item.quantity}
+                                    </span>
+                                    <span className="font-medium text-heading">
+                                      ${item.total.toLocaleString('es-AR')}
+                                    </span>
+                                  </div>
+                                ))
+                              )}
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </Fragment>
+                  )
+                })
+              )}
+            </TableBody>
+          </Table>
+        </div>
       </div>
     </div>
   )
