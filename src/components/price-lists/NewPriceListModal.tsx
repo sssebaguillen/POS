@@ -22,7 +22,7 @@ export default function NewPriceListModal({
 }: NewPriceListModalProps) {
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
-  const [multiplier, setMultiplier] = useState('1.00')
+  const [percentage, setPercentage] = useState('0')
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
 
@@ -31,7 +31,7 @@ export default function NewPriceListModal({
   function resetForm() {
     setName('')
     setDescription('')
-    setMultiplier('1.00')
+    setPercentage('0')
     setError(null)
   }
 
@@ -49,9 +49,9 @@ export default function NewPriceListModal({
       return
     }
 
-    const parsedMultiplier = Number(multiplier)
-    if (!multiplier.trim() || !Number.isFinite(parsedMultiplier) || parsedMultiplier <= 0) {
-      setError('El multiplicador global debe ser un numero mayor a 0')
+    const parsedPercentage = Number(percentage)
+    if (!percentage.trim() || !Number.isFinite(parsedPercentage) || parsedPercentage <= 0) {
+      setError('El margen debe ser un numero mayor a 0')
       return
     }
 
@@ -64,7 +64,7 @@ export default function NewPriceListModal({
         business_id: businessId,
         name: name.trim(),
         description: description.trim() || null,
-        multiplier: parsedMultiplier,
+        multiplier: 1 + parsedPercentage / 100,
       })
       .select('id, business_id, name, description, multiplier, is_default, created_at')
       .single()
@@ -144,21 +144,25 @@ export default function NewPriceListModal({
 
           <div className="flex flex-col gap-1">
             <label className="text-[11px] font-semibold text-subtle uppercase tracking-wide">
-              Multiplicador global<span className="text-red-400 ml-0.5">*</span>
+              Margen de ganancia<span className="text-red-400 ml-0.5">*</span>
             </label>
-            <Input
-              type="number"
-              min="0.0001"
-              step="0.0001"
-              value={multiplier}
-              onChange={event => {
-                setMultiplier(event.target.value)
-                setError(null)
-              }}
-              className="h-9 rounded-xl text-sm bg-surface border-edge focus-visible:ring-ring/50 focus-visible:border-ring"
-              required
-            />
-            <p className="text-[11px] text-hint">1.00 = precio base · 0.85 = -15% · 1.20 = +20%</p>
+            <div className="relative">
+              <Input
+                type="number"
+                min="0.01"
+                step="0.01"
+                value={percentage}
+                onChange={event => {
+                  setPercentage(event.target.value)
+                  setError(null)
+                }}
+                placeholder="Ej: 60"
+                className="h-9 rounded-xl text-sm bg-surface border-edge focus-visible:ring-ring/50 focus-visible:border-ring pr-8"
+                required
+              />
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-hint pointer-events-none">%</span>
+            </div>
+            <p className="text-[11px] text-hint">10% = +10% sobre el costo · 60% = +60% sobre el costo</p>
           </div>
 
           <div className="pt-1 flex items-center justify-end gap-2.5">

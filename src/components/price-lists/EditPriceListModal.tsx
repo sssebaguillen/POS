@@ -24,7 +24,7 @@ export default function EditPriceListModal({
 }: EditPriceListModalProps) {
   const [name, setName] = useState(list.name)
   const [description, setDescription] = useState(list.description ?? '')
-  const [multiplier, setMultiplier] = useState(String(list.multiplier))
+  const [percentage, setPercentage] = useState(((list.multiplier - 1) * 100).toFixed(2))
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [deleting, setDeleting] = useState(false)
@@ -35,7 +35,7 @@ export default function EditPriceListModal({
     if (!open) return
     setName(list.name)
     setDescription(list.description ?? '')
-    setMultiplier(String(list.multiplier))
+    setPercentage(((list.multiplier - 1) * 100).toFixed(2))
     setError(null)
   }, [open, list])
 
@@ -53,9 +53,9 @@ export default function EditPriceListModal({
       return
     }
 
-    const parsedMultiplier = Number(multiplier)
-    if (!multiplier.trim() || !Number.isFinite(parsedMultiplier) || parsedMultiplier <= 0) {
-      setError('El multiplicador global debe ser un numero mayor a 0')
+    const parsedPercentage = Number(percentage)
+    if (!percentage.trim() || !Number.isFinite(parsedPercentage) || parsedPercentage <= 0) {
+      setError('El margen debe ser un numero mayor a 0')
       return
     }
 
@@ -67,7 +67,7 @@ export default function EditPriceListModal({
       .update({
         name: name.trim(),
         description: description.trim() || null,
-        multiplier: parsedMultiplier,
+        multiplier: 1 + parsedPercentage / 100,
       })
       .eq('id', list.id)
       .select('id, business_id, name, description, multiplier, is_default, created_at')
@@ -168,21 +168,25 @@ export default function EditPriceListModal({
 
           <div className="flex flex-col gap-1">
             <label className="text-[11px] font-semibold text-subtle uppercase tracking-wide">
-              Multiplicador global<span className="text-red-400 ml-0.5">*</span>
+              Margen de ganancia<span className="text-red-400 ml-0.5">*</span>
             </label>
-            <Input
-              type="number"
-              min="0.0001"
-              step="0.0001"
-              value={multiplier}
-              onChange={event => {
-                setMultiplier(event.target.value)
-                setError(null)
-              }}
-              className="h-9 rounded-xl text-sm bg-surface border-edge focus-visible:ring-ring/50 focus-visible:border-ring"
-              required
-            />
-            <p className="text-[11px] text-hint">1.00 = precio base · 0.85 = -15% · 1.20 = +20%</p>
+            <div className="relative">
+              <Input
+                type="number"
+                min="0.01"
+                step="0.01"
+                value={percentage}
+                onChange={event => {
+                  setPercentage(event.target.value)
+                  setError(null)
+                }}
+                placeholder="Ej: 60"
+                className="h-9 rounded-xl text-sm bg-surface border-edge focus-visible:ring-ring/50 focus-visible:border-ring pr-8"
+                required
+              />
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-hint pointer-events-none">%</span>
+            </div>
+            <p className="text-[11px] text-hint">10% = +10% sobre el costo · 60% = +60% sobre el costo</p>
           </div>
 
           <div className="pt-1 flex items-center justify-between gap-2.5">

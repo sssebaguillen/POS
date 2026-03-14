@@ -30,8 +30,10 @@ export default function BrandOverrideModal({
   onSaved,
   onDeleted,
 }: BrandOverrideModalProps) {
-  const [multiplier, setMultiplier] = useState(
-    existingOverride ? String(existingOverride.multiplier) : String(defaultPriceList.multiplier)
+  const [percentage, setPercentage] = useState(
+    existingOverride
+      ? ((existingOverride.multiplier - 1) * 100).toFixed(2)
+      : ((defaultPriceList.multiplier - 1) * 100).toFixed(2)
   )
   const [saving, setSaving] = useState(false)
 
@@ -39,7 +41,11 @@ export default function BrandOverrideModal({
 
   useEffect(() => {
     if (!open) return
-    setMultiplier(existingOverride ? String(existingOverride.multiplier) : String(defaultPriceList.multiplier))
+    setPercentage(
+      existingOverride
+        ? ((existingOverride.multiplier - 1) * 100).toFixed(2)
+        : ((defaultPriceList.multiplier - 1) * 100).toFixed(2)
+    )
   }, [open, existingOverride, defaultPriceList])
 
   function handleClose() {
@@ -50,8 +56,8 @@ export default function BrandOverrideModal({
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault()
 
-    const parsedMultiplier = Number(multiplier)
-    if (!Number.isFinite(parsedMultiplier) || parsedMultiplier <= 0) {
+    const parsedPercentage = Number(percentage)
+    if (!Number.isFinite(parsedPercentage) || parsedPercentage <= 0) {
       return
     }
 
@@ -64,7 +70,7 @@ export default function BrandOverrideModal({
           price_list_id: priceListId,
           product_id: null,
           brand_id: brandId,
-          multiplier: parsedMultiplier,
+          multiplier: 1 + parsedPercentage / 100,
         },
         { onConflict: 'price_list_id,brand_id' }
       )
@@ -134,18 +140,22 @@ export default function BrandOverrideModal({
           </div>
 
           <div className="flex flex-col gap-1">
-            <label className="text-[11px] font-semibold text-subtle uppercase tracking-wide">Multiplicador</label>
-            <Input
-              type="number"
-              min="0.0001"
-              step="0.0001"
-              value={multiplier}
-              onChange={event => {
-                setMultiplier(event.target.value)
-              }}
-              className="h-9 rounded-xl text-sm bg-surface border-edge focus-visible:ring-ring/50 focus-visible:border-ring"
-            />
-            <p className="text-[11px] text-hint">1.00 = precio base · 0.85 = -15% · 1.20 = +20%</p>
+            <label className="text-[11px] font-semibold text-subtle uppercase tracking-wide">Margen de ganancia</label>
+            <div className="relative">
+              <Input
+                type="number"
+                min="0.01"
+                step="0.01"
+                value={percentage}
+                onChange={event => {
+                  setPercentage(event.target.value)
+                }}
+                placeholder="Ej: 60"
+                className="h-9 rounded-xl text-sm bg-surface border-edge focus-visible:ring-ring/50 focus-visible:border-ring pr-8"
+              />
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-hint pointer-events-none">%</span>
+            </div>
+            <p className="text-[11px] text-hint">10% = +10% sobre el costo · 60% = +60% sobre el costo</p>
           </div>
 
           <div className="pt-1 flex items-center justify-between gap-2.5">

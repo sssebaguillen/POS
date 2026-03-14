@@ -26,7 +26,7 @@ export default function ProductOverrideModal({
   effectiveMultiplier,
   onSaved,
 }: ProductOverrideModalProps) {
-  const [multiplier, setMultiplier] = useState(currentOverride ? String(currentOverride.multiplier) : '')
+  const [percentage, setPercentage] = useState(currentOverride ? ((currentOverride.multiplier - 1) * 100).toFixed(2) : '')
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
 
@@ -34,7 +34,7 @@ export default function ProductOverrideModal({
 
   useEffect(() => {
     if (!open) return
-    setMultiplier(currentOverride ? String(currentOverride.multiplier) : '')
+    setPercentage(currentOverride ? ((currentOverride.multiplier - 1) * 100).toFixed(2) : '')
     setError(null)
   }, [open, currentOverride])
 
@@ -49,7 +49,7 @@ export default function ProductOverrideModal({
     setSaving(true)
     setError(null)
 
-    const nextValue = multiplier.trim()
+    const nextValue = percentage.trim()
 
     if (!nextValue) {
       if (!currentOverride) {
@@ -76,12 +76,14 @@ export default function ProductOverrideModal({
       return
     }
 
-    const parsedMultiplier = Number(nextValue)
-    if (!Number.isFinite(parsedMultiplier) || parsedMultiplier <= 0) {
+    const parsedPercentage = Number(nextValue)
+    if (!Number.isFinite(parsedPercentage) || parsedPercentage <= 0) {
       setSaving(false)
-      setError('El multiplicador debe ser un numero mayor a 0')
+      setError('El margen debe ser un numero mayor a 0')
       return
     }
+
+    const parsedMultiplier = 1 + parsedPercentage / 100
 
     if (currentOverride) {
       const { data, error: updateError } = await supabase
@@ -162,24 +164,29 @@ export default function ProductOverrideModal({
           <div className="rounded-xl border border-edge/70 bg-surface-alt px-3 py-2.5">
             <p className="text-xs text-subtle uppercase tracking-wide">Producto</p>
             <p className="text-sm font-semibold text-heading">{product.name}</p>
-            <p className="text-xs text-hint mt-1">Multiplicador efectivo actual: {effectiveMultiplier.toFixed(4)}</p>
+            <p className="text-xs text-hint mt-1">Margen efectivo actual: +{((effectiveMultiplier - 1) * 100).toFixed(0)}%</p>
           </div>
 
           <div className="flex flex-col gap-1">
-            <label className="text-[11px] font-semibold text-subtle uppercase tracking-wide">Multiplicador</label>
-            <Input
-              type="number"
-              min="0.0001"
-              step="0.0001"
-              value={multiplier}
-              onChange={event => {
-                setMultiplier(event.target.value)
-                setError(null)
-              }}
-              placeholder="Vaciar para eliminar override"
-              className="h-9 rounded-xl text-sm bg-surface border-edge focus-visible:ring-ring/50 focus-visible:border-ring"
-            />
-            <p className="text-[11px] text-hint">1.00 = precio base · 0.85 = -15% · 1.20 = +20%</p>
+            <label className="text-[11px] font-semibold text-subtle uppercase tracking-wide">Margen de ganancia</label>
+            <div className="relative">
+              <Input
+                type="number"
+                min="0.01"
+                step="0.01"
+                value={percentage}
+                onChange={event => {
+                  setPercentage(event.target.value)
+                  setError(null)
+                }}
+                placeholder="Vaciar para eliminar override"
+                className="h-9 rounded-xl text-sm bg-surface border-edge focus-visible:ring-ring/50 focus-visible:border-ring pr-8"
+              />
+              {percentage.trim() !== '' && (
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-hint pointer-events-none">%</span>
+              )}
+            </div>
+            <p className="text-[11px] text-hint">10% = +10% sobre el costo · 60% = +60% sobre el costo</p>
           </div>
 
           <div className="pt-1 flex items-center justify-end gap-2.5">
