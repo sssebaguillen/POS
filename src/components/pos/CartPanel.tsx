@@ -1,12 +1,14 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Trash2, Plus, Minus, Barcode, ShoppingCart } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { useCartStore } from '@/lib/store/cart.store'
 import PaymentModal from '@/components/pos/PaymentModal'
 import { createClient } from '@/lib/supabase/client'
+import { calculateProductPrice } from '@/lib/price-lists'
+import type { PriceList, PriceListOverride } from '@/components/price-lists/types'
 
 type RightTab = 'current' | 'history'
 
@@ -20,9 +22,11 @@ interface SaleRow {
 
 interface Props {
   businessId: string | null
+  activePriceList: PriceList | null
+  priceListOverrides: PriceListOverride[]
 }
 
-export default function CartPanel({ businessId }: Props) {
+export default function CartPanel({ businessId, activePriceList, priceListOverrides }: Props) {
   const { items, removeItem, updateQuantity, subtotal, total, discount, clearCart } = useCartStore()
   const [showPayment, setShowPayment] = useState(false)
   const [activeTab, setActiveTab] = useState<RightTab>('current')
@@ -33,6 +37,37 @@ export default function CartPanel({ businessId }: Props) {
   const supabase = createClient()
 
   const isEmpty = items.length === 0
+
+  const adjustedItems = useMemo(() => {
+    return items.map(item => {
+      const unitPrice = activePriceList
+        ? calculateProductPrice(
+            item.product.cost,
+            item.product.id,
+            item.product.brand_id,
+            activePriceList,
+            priceListOverrides
+          )
+        : item.unit_price
+      return {
+        product_id: item.product.id,
+        quantity: item.quantity,
+        unit_price: unitPrice,
+        total: item.quantity * unitPrice,
+      }
+    })
+  }, [items, activePriceList, priceListOverrides])
+
+  const adjustedByProductId = useMemo(() => {
+    const map = new Map<string, { unit_price: number; total: number }>()
+    for (const ai of adjustedItems) {
+      map.set(ai.product_id, { unit_price: ai.unit_price, total: ai.total })
+    }
+    return map
+  }, [adjustedItems])
+
+  const adjustedSubtotal = adjustedItems.reduce((sum, i) => sum + i.total, 0)
+  const adjustedTotal = Math.max(0, adjustedSubtotal - discount)
 
   const filteredHistory = (() => {
     const q = historyQuery.trim().toLowerCase()
@@ -223,7 +258,7 @@ export default function CartPanel({ businessId }: Props) {
                           {item.product.name}
                         </p>
                         <p className="text-xs text-hint mt-0.5">
-                          ${item.unit_price.toLocaleString('es-AR')} c/u
+                          ${(adjustedByProductId.get(item.product.id)?.unit_price ?? item.unit_price).toLocaleString('es-AR')} c/u
                         </p>
                       </div>
 
@@ -247,7 +282,7 @@ export default function CartPanel({ businessId }: Props) {
 
                       <div className="text-right shrink-0">
                         <p className="text-sm font-semibold text-heading tabular-nums">
-                          ${item.total.toLocaleString('es-AR')}
+                          ${(adjustedByProductId.get(item.product.id)?.total ?? item.total).toLocaleString('es-AR')}
                         </p>
                         <button
                           onClick={() => removeItem(item.product.id)}
@@ -267,7 +302,7 @@ export default function CartPanel({ businessId }: Props) {
               <div className="space-y-1.5 text-sm">
                 <div className="flex justify-between text-subtle">
                   <span>Subtotal</span>
-                  <span className="tabular-nums">${subtotal().toLocaleString('es-AR')}</span>
+                  <span className="tabular-nums">${adjustedSubtotal.toLocaleString('es-AR')}</span>
                 </div>
                 <div className="flex justify-between text-subtle">
                   <span>Ítems</span>
@@ -281,7 +316,7 @@ export default function CartPanel({ businessId }: Props) {
                 )}
                 <div className="flex justify-between font-semibold text-heading text-2xl pt-2 border-t border-edge-soft leading-none">
                   <span>Total</span>
-                  <span className="tabular-nums">${total().toLocaleString('es-AR', { minimumFractionDigits: 2 })}</span>
+                  <span className="tabular-nums">${adjustedTotal.toLocaleString('es-AR', { minimumFractionDigits: 2 })}</span>
                 </div>
               </div>
 
@@ -352,8 +387,10 @@ export default function CartPanel({ businessId }: Props) {
 
       {showPayment && (
         <PaymentModal
-          total={total()}
+          total={adjustedTotal}
           businessId={businessId}
+          priceListId={activePriceList?.id ?? null}
+          saleItems={adjustedItems}
           onClose={() => setShowPayment(false)}
         />
       )}

@@ -9,19 +9,28 @@ import { createClient } from '@/lib/supabase/client'
 
 type PaymentMethod = 'cash' | 'card' | 'transfer' | 'mercadopago'
 
+interface SaleItemInput {
+  product_id: string
+  quantity: number
+  unit_price: number
+  total: number
+}
+
 interface Props {
   total: number
   businessId: string | null
+  priceListId: string | null
+  saleItems: SaleItemInput[]
   onClose: () => void
 }
 
-export default function PaymentModal({ total, businessId, onClose }: Props) {
+export default function PaymentModal({ total, businessId, priceListId, saleItems, onClose }: Props) {
   const [method, setMethod] = useState<PaymentMethod>('cash')
   const [cashReceived, setCashReceived] = useState('')
   const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState(false)
   const [error, setError] = useState('')
-  const { items, clearCart } = useCartStore()
+  const { clearCart } = useCartStore()
   const supabase = createClient()
 
   const change = method === 'cash' && cashReceived
@@ -48,6 +57,7 @@ export default function PaymentModal({ total, businessId, onClose }: Props) {
         discount: 0,
         total,
         status: 'completed',
+        price_list_id: priceListId,
       })
       .select()
       .single()
@@ -61,9 +71,9 @@ export default function PaymentModal({ total, businessId, onClose }: Props) {
 
     // 2. Insertar items
     const { error: saleItemsError } = await supabase.from('sale_items').insert(
-      items.map(item => ({
+      saleItems.map(item => ({
         sale_id: sale.id,
-        product_id: item.product.id,
+        product_id: item.product_id,
         quantity: item.quantity,
         unit_price: item.unit_price,
         total: item.total,

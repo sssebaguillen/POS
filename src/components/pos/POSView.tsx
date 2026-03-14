@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { Search, Menu } from 'lucide-react'
+import { Search, Menu, ChevronDown, Check } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { useSidebar } from '@/components/shared/AppShell'
@@ -9,11 +9,16 @@ import { useCartStore } from '@/lib/store/cart.store'
 import ProductPanel from '@/components/pos/ProductPanel'
 import CartPanel from '@/components/pos/CartPanel'
 import type { PosCategory, ProductWithCategory } from '@/components/pos/types'
+import type { PriceList, PriceListOverride } from '@/components/price-lists/types'
+import type { ActiveOperator } from '@/lib/operator'
 
 interface Props {
   products: ProductWithCategory[]
   categories: PosCategory[]
   businessId: string | null
+  priceLists: PriceList[]
+  priceListOverrides: PriceListOverride[]
+  activeOperator: ActiveOperator | null
 }
 
 function formatDate(date: Date) {
@@ -24,16 +29,35 @@ function formatDate(date: Date) {
   })
 }
 
-export default function POSView({ products, categories, businessId }: Props) {
+export default function POSView({ products, categories, businessId, priceLists, priceListOverrides, activeOperator }: Props) {
   const { toggle } = useSidebar()
   const [search, setSearch] = useState('')
   const searchRef = useRef<HTMLInputElement>(null)
   const clearCart = useCartStore(s => s.clearCart)
   const addItem = useCartStore(s => s.addItem)
 
+  const defaultList = priceLists.find(pl => pl.is_default) ?? priceLists[0] ?? null
+  const [activePriceListId, setActivePriceListId] = useState<string | null>(defaultList?.id ?? null)
+  const [listDropdownOpen, setListDropdownOpen] = useState(false)
+  const listDropdownRef = useRef<HTMLDivElement>(null)
+
+  const activePriceList = priceLists.find(pl => pl.id === activePriceListId) ?? null
+  const canSelectList = activeOperator?.permissions.stock === true
+
   useEffect(() => {
     searchRef.current?.focus()
   }, [])
+
+  useEffect(() => {
+    if (!listDropdownOpen) return
+    function handleClickOutside(event: MouseEvent) {
+      if (listDropdownRef.current && !listDropdownRef.current.contains(event.target as Node)) {
+        setListDropdownOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [listDropdownOpen])
 
   function handleNewSale() {
     clearCart()
@@ -86,6 +110,39 @@ export default function POSView({ products, categories, businessId }: Props) {
           </div>
         </div>
 
+        {priceLists.length > 0 && (
+          <div ref={listDropdownRef} className="relative shrink-0">
+            <button
+              disabled={!canSelectList}
+              onClick={() => canSelectList && setListDropdownOpen(prev => !prev)}
+              className={
+                'flex items-center gap-1.5 h-8 px-3 rounded-lg border border-edge text-sm font-medium transition-colors select-none ' +
+                (canSelectList
+                  ? 'hover:bg-hover-bg text-body'
+                  : 'opacity-60 cursor-not-allowed text-subtle')
+              }
+            >
+              <span className="text-hint text-xs">Lista:</span>
+              <span>{activePriceList?.name ?? 'Sin lista'}</span>
+              {canSelectList && <ChevronDown size={14} className="text-hint" />}
+            </button>
+            {listDropdownOpen && (
+              <div className="absolute top-full right-0 mt-1 bg-surface border border-edge rounded-xl shadow-md z-30 py-1 min-w-[180px]">
+                {priceLists.map(pl => (
+                  <button
+                    key={pl.id}
+                    onClick={() => { setActivePriceListId(pl.id); setListDropdownOpen(false) }}
+                    className="w-full flex items-center justify-between px-3 py-2 text-sm text-body hover:bg-hover-bg transition-colors"
+                  >
+                    <span>{pl.name}</span>
+                    {pl.id === activePriceListId && <Check size={14} className="text-primary" />}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
         <span className="text-sm text-subtle capitalize shrink-0 hidden md:block">
           {formatDate(new Date())}
         </span>
@@ -106,7 +163,11 @@ export default function POSView({ products, categories, businessId }: Props) {
           />
         </div>
         <div className="w-[380px] shrink-0 bg-surface border-l border-edge/60 flex flex-col">
-          <CartPanel businessId={businessId} />
+          <CartPanel
+            businessId={businessId}
+            activePriceList={activePriceList}
+            priceListOverrides={priceListOverrides}
+          />
         </div>
       </div>
     </div>

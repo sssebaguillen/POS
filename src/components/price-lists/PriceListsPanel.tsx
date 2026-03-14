@@ -18,6 +18,7 @@ import EditPriceListModal from '@/components/price-lists/EditPriceListModal'
 import ProductOverrideModal from '@/components/price-lists/ProductOverrideModal'
 import BrandOverrideModal from '@/components/price-lists/BrandOverrideModal'
 import type { PriceList, PriceListOverride, PriceListProduct } from '@/components/price-lists/types'
+import { calculateProductPrice } from '@/lib/price-lists'
 
 interface PriceListsPanelProps {
   businessId: string | null
@@ -26,9 +27,8 @@ interface PriceListsPanelProps {
   initialOverrides: PriceListOverride[]
 }
 
-function getMarginPercent(cost: number, finalPrice: number): number {
-  if (finalPrice <= 0) return 0
-  return Math.round(((finalPrice - cost) / finalPrice) * 100)
+function getMarginPercent(multiplier: number): number {
+  return Math.round((multiplier - 1) * 100)
 }
 
 export default function PriceListsPanel({
@@ -93,8 +93,14 @@ export default function PriceListsPanel({
       const activeMultiplier =
         productOverride?.multiplier ?? brandOverride?.multiplier ?? activeList.multiplier
 
-      const finalPrice = product.cost * activeMultiplier
-      const margin = getMarginPercent(product.cost, finalPrice)
+      const finalPrice = calculateProductPrice(
+        product.cost,
+        product.id,
+        product.brand_id ?? null,
+        activeList,
+        overrides
+      )
+      const margin = getMarginPercent(activeMultiplier)
 
       return {
         product,
@@ -359,7 +365,7 @@ export default function PriceListsPanel({
                               <span className="text-xs font-semibold uppercase tracking-wide text-subtle">{group.label}</span>
                               {group.brandOverride && (
                                 <span className="inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold bg-primary/10 text-primary">
-                                  x{group.brandOverride.multiplier.toFixed(2)}
+                                  +{((group.brandOverride.multiplier - 1) * 100).toFixed(0)}%
                                 </span>
                               )}
                             </div>
