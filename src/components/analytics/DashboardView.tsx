@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import PageHeader from '@/components/shared/PageHeader'
 import Link from 'next/link'
+import { endOfDay, isCompletedSale, startOfDay, startOfWeek } from '@/components/analytics/utils'
 
 type Period = 'today' | 'week' | 'month' | 'custom' | 'history'
 
@@ -43,30 +44,6 @@ interface Props {
   payments: PaymentRecord[]
   saleItems: SaleItemRecord[]
   products: ProductRecord[]
-}
-
-function startOfDay(date: Date) {
-  const copy = new Date(date)
-  copy.setHours(0, 0, 0, 0)
-  return copy
-}
-
-function endOfDay(date: Date) {
-  const copy = new Date(date)
-  copy.setHours(23, 59, 59, 999)
-  return copy
-}
-
-function startOfWeek(date: Date) {
-  const copy = startOfDay(date)
-  const day = copy.getDay()
-  const diff = day === 0 ? -6 : 1 - day
-  copy.setDate(copy.getDate() + diff)
-  return copy
-}
-
-function isCompletedSale(status: string | null) {
-  return status === null || status === 'completed'
 }
 
 const paymentColors: Record<string, string> = {
@@ -318,7 +295,7 @@ export default function DashboardView({ sales, payments, saleItems, products }: 
                     {chartData.map(bar => (
                       <div key={bar.label} className="flex-1 flex flex-col items-center justify-end h-full">
                         <div
-                          className="w-full max-w-[28px] bg-emerald-700 rounded-t transition-all mx-auto"
+                          className="w-full max-w-[28px] bg-primary rounded-t transition-all mx-auto"
                           style={{ height: `${maxChartValue > 0 ? (bar.value / maxChartValue) * 100 : 0}%`, minHeight: bar.value > 0 ? 4 : 0 }}
                         />
                         <span className="text-[9px] text-hint mt-1 truncate w-full text-center">
@@ -387,7 +364,7 @@ export default function DashboardView({ sales, payments, saleItems, products }: 
             <div className="rounded-2xl bg-surface border border-edge/60 p-5">
               <div className="flex items-center justify-between mb-4">
                 <p className="font-semibold text-heading">Alertas de stock</p>
-                <Link href="/inventory" className="text-xs text-emerald-700 font-medium hover:underline">
+                <Link href="/inventory" className="text-xs text-primary font-medium hover:underline">
                   Ver stock →
                 </Link>
               </div>

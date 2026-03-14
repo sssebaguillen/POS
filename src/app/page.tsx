@@ -1,6 +1,8 @@
 import { redirect } from 'next/navigation'
 import POSPage from './(app)/page'
 import AppShell from '@/components/shared/AppShell'
+import { cookies } from 'next/headers'
+import { getActiveOperator } from '@/lib/operator'
 
 export default async function Home() {
   // Dynamically import the POSPage logic
@@ -15,9 +17,12 @@ export default async function Home() {
     redirect('/login')
   }
 
+  const cookieStore = await cookies()
+  const activeOperator = getActiveOperator(cookieStore)
+
   // If logged in, render the POS (sale) screen
   return (
-    <AppShell>
+    <AppShell activeOperatorName={activeOperator?.name ?? null}>
       <POSPage />
     </AppShell>
   )

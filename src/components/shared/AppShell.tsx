@@ -9,6 +9,11 @@ interface SidebarContextValue {
   close: () => void
 }
 
+interface AppShellProps {
+  children: React.ReactNode
+  activeOperatorName: string | null
+}
+
 const SidebarContext = createContext<SidebarContextValue | undefined>(undefined)
 
 export function useSidebar() {
@@ -19,7 +24,7 @@ export function useSidebar() {
   return context
 }
 
-export default function AppShell({ children }: { children: React.ReactNode }) {
+export default function AppShell({ children, activeOperatorName }: AppShellProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const value = useMemo(
     () => ({
@@ -33,7 +38,11 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <SidebarContext.Provider value={value}>
       <div className="flex h-screen bg-background">
-        <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+        <Sidebar
+          open={sidebarOpen}
+          onClose={() => setSidebarOpen(false)}
+          activeOperatorName={activeOperatorName}
+        />
         <main className="flex-1 min-h-0">{children}</main>
       </div>
     </SidebarContext.Provider>

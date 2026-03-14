@@ -8,21 +8,11 @@ import { useSidebar } from '@/components/shared/AppShell'
 import { useCartStore } from '@/lib/store/cart.store'
 import ProductPanel from '@/components/pos/ProductPanel'
 import CartPanel from '@/components/pos/CartPanel'
-import type { Product } from '@/lib/types'
-
-interface Category {
-  id: string
-  name: string
-  icon: string
-}
-
-interface ProductWithCategory extends Product {
-  categories?: { name: string; icon: string } | null
-}
+import type { PosCategory, ProductWithCategory } from '@/components/pos/types'
 
 interface Props {
   products: ProductWithCategory[]
-  categories: Category[]
+  categories: PosCategory[]
   businessId: string | null
 }
 
@@ -100,7 +90,7 @@ export default function POSView({ products, categories, businessId }: Props) {
           {formatDate(new Date())}
         </span>
         <Button
-          className="h-9 px-4 bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg text-sm font-semibold shrink-0"
+          className="h-9 px-4 bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg text-sm font-semibold shrink-0"
           onClick={handleNewSale}
         >
           + Nueva venta
@@ -112,7 +102,6 @@ export default function POSView({ products, categories, businessId }: Props) {
         <div className="flex-1 min-w-0 overflow-y-auto">
           <ProductPanel
             products={products}
-            categories={categories}
             search={search}
           />
         </div>

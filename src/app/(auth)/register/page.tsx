@@ -95,7 +95,7 @@ export default function RegisterPage() {
             onChange={e => setPassword(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && handleRegister()}
           />
-          {error && <p className="text-red-500 text-sm">{error}</p>}
+          {error && <p className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">{error}</p>}
           <Button className="w-full" onClick={handleRegister} disabled={loading}>
             {loading ? 'Creando negocio...' : 'Crear negocio gratis'}
           </Button>
@@ -103,7 +103,7 @@ export default function RegisterPage() {
 
         <p className="text-center text-sm text-muted-foreground mt-4">
           ¿Ya tenés cuenta?{' '}
-          <a href="/login" className="text-blue-600 hover:underline">
+          <a href="/login" className="text-primary hover:underline">
             Ingresá
           </a>
         </p>

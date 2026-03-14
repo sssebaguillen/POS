@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react'
 import PageHeader from '@/components/shared/PageHeader'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
+import { endOfDay, isCompletedSale, startOfDay, startOfWeek } from '@/components/analytics/utils'
 
 type Period = 'today' | 'week' | 'month' | 'custom'
 type EvolutionMode = 'revenue' | 'units'
@@ -50,34 +51,10 @@ interface Props {
   categories: CategoryRecord[]
 }
 
-function startOfDay(date: Date) {
-  const copy = new Date(date)
-  copy.setHours(0, 0, 0, 0)
-  return copy
-}
-
-function endOfDay(date: Date) {
-  const copy = new Date(date)
-  copy.setHours(23, 59, 59, 999)
-  return copy
-}
-
-function startOfWeek(date: Date) {
-  const copy = startOfDay(date)
-  const day = copy.getDay()
-  const diff = day === 0 ? -6 : 1 - day
-  copy.setDate(copy.getDate() + diff)
-  return copy
-}
-
 function inferBrandFromSku(sku: string | null) {
   if (!sku) return 'Sin marca'
   const token = sku.split('-')[0].trim()
   return token.length > 0 ? token : 'Sin marca'
-}
-
-function isCompletedSale(status: string | null) {
-  return status === null || status === 'completed'
 }
 
 export default function StatsView({ sales, payments, saleItems, products, categories }: Props) {
@@ -310,13 +287,13 @@ export default function StatsView({ sales, payments, saleItems, products, catego
                 <div className="flex gap-1.5">
                   <button
                     onClick={() => setEvolutionMode('revenue')}
-                    className={`h-7 px-3 rounded-full text-xs font-medium transition-colors ${evolutionMode === 'revenue' ? 'bg-emerald-700 text-white' : 'bg-surface-alt text-body hover:bg-hover-bg'}`}
+                    className={`h-7 px-3 rounded-full text-xs font-medium transition-colors ${evolutionMode === 'revenue' ? 'bg-primary text-primary-foreground' : 'bg-surface-alt text-body hover:bg-hover-bg'}`}
                   >
                     $ Ingresos
                   </button>
                   <button
                     onClick={() => setEvolutionMode('units')}
-                    className={`h-7 px-3 rounded-full text-xs font-medium transition-colors ${evolutionMode === 'units' ? 'bg-emerald-700 text-white' : 'bg-surface-alt text-body hover:bg-hover-bg'}`}
+                    className={`h-7 px-3 rounded-full text-xs font-medium transition-colors ${evolutionMode === 'units' ? 'bg-primary text-primary-foreground' : 'bg-surface-alt text-body hover:bg-hover-bg'}`}
                   >
                     Unidades
                   </button>
@@ -333,7 +310,7 @@ export default function StatsView({ sales, payments, saleItems, products, catego
                       <div key={point.label} className="grid grid-cols-[70px_1fr_80px] items-center gap-2 text-xs">
                         <span className="text-subtle">{point.label}</span>
                         <div className="h-2 bg-surface-alt rounded-full overflow-hidden">
-                          <div className="h-2 bg-emerald-600 rounded-full" style={{ width: `${(value / maxEvolution) * 100}%` }} />
+                          <div className="h-2 bg-primary rounded-full" style={{ width: `${(value / maxEvolution) * 100}%` }} />
                         </div>
                         <span className="text-right text-body">{evolutionMode === 'revenue' ? `$${value.toLocaleString('es-AR')}` : value}</span>
                       </div>
@@ -373,13 +350,13 @@ export default function StatsView({ sales, payments, saleItems, products, catego
                 <div className="flex gap-1.5">
                   <button
                     onClick={() => setRankingMode('amount')}
-                    className={`h-7 px-3 rounded-full text-xs font-medium transition-colors ${rankingMode === 'amount' ? 'bg-emerald-700 text-white' : 'bg-surface-alt text-body hover:bg-hover-bg'}`}
+                    className={`h-7 px-3 rounded-full text-xs font-medium transition-colors ${rankingMode === 'amount' ? 'bg-primary text-primary-foreground' : 'bg-surface-alt text-body hover:bg-hover-bg'}`}
                   >
                     $ Monto
                   </button>
                   <button
                     onClick={() => setRankingMode('units')}
-                    className={`h-7 px-3 rounded-full text-xs font-medium transition-colors ${rankingMode === 'units' ? 'bg-emerald-700 text-white' : 'bg-surface-alt text-body hover:bg-hover-bg'}`}
+                    className={`h-7 px-3 rounded-full text-xs font-medium transition-colors ${rankingMode === 'units' ? 'bg-primary text-primary-foreground' : 'bg-surface-alt text-body hover:bg-hover-bg'}`}
                   >
                     Unidades
                   </button>
@@ -407,13 +384,13 @@ export default function StatsView({ sales, payments, saleItems, products, catego
                 <div className="flex gap-1.5">
                   <button
                     onClick={() => setBreakdownMode('category')}
-                    className={`h-7 px-3 rounded-full text-xs font-medium transition-colors ${breakdownMode === 'category' ? 'bg-emerald-700 text-white' : 'bg-surface-alt text-body hover:bg-hover-bg'}`}
+                    className={`h-7 px-3 rounded-full text-xs font-medium transition-colors ${breakdownMode === 'category' ? 'bg-primary text-primary-foreground' : 'bg-surface-alt text-body hover:bg-hover-bg'}`}
                   >
                     Categoría
                   </button>
                   <button
                     onClick={() => setBreakdownMode('brand')}
-                    className={`h-7 px-3 rounded-full text-xs font-medium transition-colors ${breakdownMode === 'brand' ? 'bg-emerald-700 text-white' : 'bg-surface-alt text-body hover:bg-hover-bg'}`}
+                    className={`h-7 px-3 rounded-full text-xs font-medium transition-colors ${breakdownMode === 'brand' ? 'bg-primary text-primary-foreground' : 'bg-surface-alt text-body hover:bg-hover-bg'}`}
                   >
                     Marca
                   </button>
@@ -429,7 +406,7 @@ export default function StatsView({ sales, payments, saleItems, products, catego
                       <span className="text-xs text-subtle">{row.percent.toFixed(0)}%</span>
                     </div>
                     <div className="h-2 rounded-full bg-surface-alt">
-                      <div className="h-2 rounded-full bg-emerald-600" style={{ width: `${row.percent}%` }} />
+                      <div className="h-2 rounded-full bg-primary" style={{ width: `${row.percent}%` }} />
                     </div>
                   </div>
                 ))

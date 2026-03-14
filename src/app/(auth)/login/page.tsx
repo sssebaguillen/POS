@@ -47,7 +47,7 @@ export default function LoginPage() {
             onChange={e => setPassword(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && handleLogin()}
           />
-          {error && <p className="text-red-500 text-sm">{error}</p>}
+          {error && <p className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">{error}</p>}
           <Button className="w-full" onClick={handleLogin} disabled={loading}>
             {loading ? 'Ingresando...' : 'Ingresar'}
           </Button>
@@ -55,7 +55,7 @@ export default function LoginPage() {
 
         <p className="text-center text-sm text-muted-foreground mt-4">
           ¿No tenés cuenta?{' '}
-          <Link href="/register" className="text-blue-600 hover:underline">
+          <Link href="/register" className="text-primary hover:underline">
             Registrá tu negocio
           </Link>
         </p>

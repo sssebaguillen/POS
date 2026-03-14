@@ -1,9 +1,10 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { isSettingsOperator, type OperatorRole, type SettingsOperator } from '@/components/settings/types'
 
 interface SettingsBusiness {
   id: string
@@ -11,10 +12,13 @@ interface SettingsBusiness {
   description: string | null
   whatsapp: string | null
   logo_url: string | null
+  slug: string
+  settings: { primary_color?: string } | null
 }
 
 interface SettingsFormProps {
   business: SettingsBusiness
+  operators: SettingsOperator[]
 }
 
 interface FormState {
@@ -22,6 +26,7 @@ interface FormState {
   description: string
   whatsapp: string
   logoUrl: string
+  primaryColor: string
 }
 
 function isValidHttpUrl(value: string): boolean {
@@ -33,27 +38,51 @@ function isValidHttpUrl(value: string): boolean {
   }
 }
 
-export default function SettingsForm({ business }: SettingsFormProps) {
+export default function SettingsForm({ business, operators }: SettingsFormProps) {
   const [form, setForm] = useState<FormState>({
     name: business.name,
     description: business.description ?? '',
     whatsapp: business.whatsapp ?? '',
     logoUrl: business.logo_url ?? '',
+    primaryColor: business.settings?.primary_color ?? '#4f46e5',
   })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
   const [logoPreviewError, setLogoPreviewError] = useState(false)
+  const [operatorList, setOperatorList] = useState<SettingsOperator[]>(operators)
+  const [operatorName, setOperatorName] = useState('')
+  const [operatorRole, setOperatorRole] = useState<OperatorRole>('cashier')
+  const [operatorPin, setOperatorPin] = useState('')
+  const [operatorError, setOperatorError] = useState('')
+  const [operatorSuccess, setOperatorSuccess] = useState('')
+  const [operatorLoading, setOperatorLoading] = useState(false)
+  const [deletingOperatorId, setDeletingOperatorId] = useState<string | null>(null)
+  const [copySuccess, setCopySuccess] = useState(false)
+  const [copyError, setCopyError] = useState('')
+  const copyTimeoutRef = useRef<number | null>(null)
 
   const supabase = createClient()
 
   const normalizedLogoUrl = form.logoUrl.trim()
   const hasLogoUrl = normalizedLogoUrl.length > 0
+  const publicCatalogUrl = useMemo(
+    () => `${typeof window !== 'undefined' ? window.location.origin : ''}/catalogo/${business.slug}`,
+    [business.slug]
+  )
 
   const canPreviewLogo = useMemo(() => {
     if (!hasLogoUrl) return false
     return isValidHttpUrl(normalizedLogoUrl)
   }, [hasLogoUrl, normalizedLogoUrl])
+
+  useEffect(() => {
+    return () => {
+      if (copyTimeoutRef.current !== null) {
+        window.clearTimeout(copyTimeoutRef.current)
+      }
+    }
+  }, [])
 
   function setField<K extends keyof FormState>(field: K, value: FormState[K]) {
     setForm(prev => ({ ...prev, [field]: value }))
@@ -63,6 +92,98 @@ export default function SettingsForm({ business }: SettingsFormProps) {
     if (field === 'logoUrl') {
       setLogoPreviewError(false)
     }
+  }
+
+  function normalizePin(value: string): string {
+    return value.replace(/\D/g, '').slice(0, 4)
+  }
+
+  function roleLabel(role: OperatorRole): string {
+    if (role === 'manager') return 'Manager'
+    return 'Cashier'
+  }
+
+  async function refreshOperators() {
+    const { data, error: operatorsError } = await supabase
+      .from('operators')
+      .select('id, name, role')
+      .eq('business_id', business.id)
+      .order('name')
+
+    if (operatorsError) {
+      setOperatorError(operatorsError.message)
+      return
+    }
+
+    setOperatorList((data ?? []).filter(isSettingsOperator))
+  }
+
+  async function handleCreateOperator(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+
+    const trimmedName = operatorName.trim()
+    const normalizedPin = normalizePin(operatorPin)
+
+    if (!trimmedName) {
+      setOperatorError('El nombre del operador es obligatorio.')
+      return
+    }
+
+    if (normalizedPin.length !== 4) {
+      setOperatorError('El PIN debe contener 4 digitos numericos.')
+      return
+    }
+
+    setOperatorLoading(true)
+    setOperatorError('')
+    setOperatorSuccess('')
+
+    const { data: createData, error: createError } = await supabase.rpc('create_operator', {
+      p_business_id: business.id,
+      p_name: trimmedName,
+      p_role: operatorRole,
+      p_pin: normalizedPin,
+    })
+
+    setOperatorLoading(false)
+
+    if (createError || !createData?.success) {
+      setOperatorError(createData?.error ?? createError?.message ?? 'Error al crear el operador.')
+      return
+    }
+
+    setOperatorName('')
+    setOperatorRole('cashier')
+    setOperatorPin('')
+    setOperatorSuccess('Operador creado correctamente.')
+    await refreshOperators()
+  }
+
+  async function handleDeleteOperator(operator: SettingsOperator) {
+    const confirmed = window.confirm(`Eliminar operador ${operator.name}?`)
+    if (!confirmed) {
+      return
+    }
+
+    setDeletingOperatorId(operator.id)
+    setOperatorError('')
+    setOperatorSuccess('')
+
+    const { error: deleteError } = await supabase
+      .from('operators')
+      .delete()
+      .eq('id', operator.id)
+      .eq('business_id', business.id)
+
+    setDeletingOperatorId(null)
+
+    if (deleteError) {
+      setOperatorError(deleteError.message)
+      return
+    }
+
+    setOperatorSuccess('Operador eliminado correctamente.')
+    setOperatorList(prev => prev.filter(item => item.id !== operator.id))
   }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -85,6 +206,10 @@ export default function SettingsForm({ business }: SettingsFormProps) {
         description: form.description.trim() || null,
         whatsapp: form.whatsapp.trim() || null,
         logo_url: normalizedLogoUrl || null,
+        settings: {
+          ...(business.settings ?? {}),
+          primary_color: form.primaryColor,
+        },
       })
       .eq('id', business.id)
 
@@ -95,15 +220,41 @@ export default function SettingsForm({ business }: SettingsFormProps) {
       return
     }
 
-    setSuccess('Configuración guardada correctamente.')
+    setSuccess('Configuración guardada. Aplicando cambios...')
+    setTimeout(() => {
+      window.location.reload()
+    }, 800)
+  }
+
+  async function handleCopyPublicUrl() {
+    setCopyError('')
+
+    try {
+      await navigator.clipboard.writeText(publicCatalogUrl)
+      setCopySuccess(true)
+
+      if (copyTimeoutRef.current !== null) {
+        window.clearTimeout(copyTimeoutRef.current)
+      }
+
+      copyTimeoutRef.current = window.setTimeout(() => {
+        setCopySuccess(false)
+        copyTimeoutRef.current = null
+      }, 2000)
+    } catch (copyUnknownError: unknown) {
+      const message = copyUnknownError instanceof Error ? copyUnknownError.message : 'No se pudo copiar el enlace.'
+      setCopyError(message)
+      setCopySuccess(false)
+    }
   }
 
   return (
-    <div className="rounded-xl bg-card border border-border/60 p-6 shadow-sm max-w-3xl">
-      <h2 className="text-base font-semibold text-foreground">Negocio</h2>
-      <p className="text-sm text-muted-foreground mt-1">Actualizá los datos visibles en el sistema y el catálogo público.</p>
+    <div className="grid gap-6 lg:grid-cols-2">
+      <div className="rounded-xl bg-card border border-border/60 p-6 shadow-sm">
+        <h2 className="text-base font-semibold text-foreground">Negocio</h2>
+        <p className="text-sm text-muted-foreground mt-1">Actualizá los datos visibles en el sistema y el catálogo público.</p>
 
-      <form onSubmit={handleSubmit} className="mt-6 space-y-5">
+        <form onSubmit={handleSubmit} className="mt-6 space-y-5">
         <div className="space-y-1.5">
           <label htmlFor="business-name" className="text-xs uppercase tracking-wide text-muted-foreground">
             Nombre
@@ -178,6 +329,47 @@ export default function SettingsForm({ business }: SettingsFormProps) {
           )}
         </div>
 
+        <div className="space-y-1.5">
+          <label htmlFor="public-catalog-url" className="text-xs uppercase tracking-wide text-muted-foreground">
+            URL publica del catalogo
+          </label>
+          <div className="flex gap-2">
+            <Input id="public-catalog-url" value={publicCatalogUrl} readOnly disabled />
+            <Button type="button" variant="outline" className="shrink-0" onClick={handleCopyPublicUrl}>
+              Copiar enlace
+            </Button>
+          </div>
+          {copySuccess && <p className="rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-700 dark:border-green-500/30 dark:bg-green-500/10 dark:text-green-400">¡Enlace copiado!</p>}
+          {copyError && <p className="text-xs text-destructive">{copyError}</p>}
+        </div>
+
+        <div className="space-y-2">
+          <label className="text-xs uppercase tracking-wide text-muted-foreground">
+            Color primario
+          </label>
+          <div className="flex items-center gap-3">
+            <input
+              type="color"
+              value={form.primaryColor}
+              onChange={e => setField('primaryColor', e.target.value)}
+              className="h-10 w-10 rounded-lg border border-input cursor-pointer bg-transparent p-0.5"
+            />
+            <span className="text-sm font-mono text-muted-foreground">
+              {form.primaryColor}
+            </span>
+            <button
+              type="button"
+              onClick={() => setField('primaryColor', '#4f46e5')}
+              className="text-xs text-muted-foreground hover:text-foreground transition-colors ml-auto"
+            >
+              Restablecer
+            </button>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Se aplica a botones, badges y acentos del sistema.
+          </p>
+        </div>
+
         {error && (
           <p className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
             {error}
@@ -185,17 +377,125 @@ export default function SettingsForm({ business }: SettingsFormProps) {
         )}
 
         {success && (
-          <p className="rounded-lg border border-primary/30 bg-primary/10 px-3 py-2 text-sm text-primary">
+          <p className="rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-700 dark:border-green-500/30 dark:bg-green-500/10 dark:text-green-400">
             {success}
           </p>
         )}
 
-        <div className="flex justify-end">
-          <Button type="submit" className="h-9 px-4" disabled={loading}>
-            {loading ? 'Guardando...' : 'Guardar cambios'}
-          </Button>
+          <div className="flex justify-end">
+            <Button type="submit" className="h-9 px-4" disabled={loading}>
+              {loading ? 'Guardando...' : 'Guardar cambios'}
+            </Button>
+          </div>
+        </form>
+      </div>
+
+      <div className="rounded-xl bg-card border border-border/60 p-6 shadow-sm">
+        <h2 className="text-base font-semibold text-foreground">Operadores</h2>
+        <p className="text-sm text-muted-foreground mt-1">
+          Crea subusuarios con PIN de 4 digitos para cambiar el operador activo durante el turno.
+        </p>
+
+        <div className="mt-5 space-y-2">
+          {operatorList.map(operator => (
+            <div
+              key={operator.id}
+              className="flex items-center justify-between rounded-lg border border-border/60 bg-background px-3 py-2"
+            >
+              <div>
+                <p className="text-sm font-medium text-foreground">{operator.name}</p>
+                <p className="text-xs uppercase tracking-wide text-muted-foreground">{roleLabel(operator.role)}</p>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                className="h-8 px-3 text-xs"
+                disabled={deletingOperatorId === operator.id}
+                onClick={() => handleDeleteOperator(operator)}
+              >
+                {deletingOperatorId === operator.id ? 'Eliminando...' : 'Eliminar'}
+              </Button>
+            </div>
+          ))}
         </div>
-      </form>
+
+        <form onSubmit={handleCreateOperator} className="mt-6 space-y-4">
+          <div className="space-y-1.5">
+            <label htmlFor="operator-name" className="text-xs uppercase tracking-wide text-muted-foreground">
+              Nombre
+            </label>
+            <Input
+              id="operator-name"
+              value={operatorName}
+              onChange={event => {
+                setOperatorName(event.target.value)
+                setOperatorError('')
+                setOperatorSuccess('')
+              }}
+              placeholder="Nombre del operador"
+              required
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <label htmlFor="operator-role" className="text-xs uppercase tracking-wide text-muted-foreground">
+              Rol
+            </label>
+            <select
+              id="operator-role"
+              value={operatorRole}
+              onChange={event => {
+                setOperatorRole(event.target.value as OperatorRole)
+                setOperatorError('')
+                setOperatorSuccess('')
+              }}
+              className="h-10 w-full rounded-lg border border-input bg-transparent px-3 text-sm outline-none transition-colors focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+            >
+              <option value="manager">Manager</option>
+              <option value="cashier">Cashier</option>
+            </select>
+          </div>
+
+          <div className="space-y-1.5">
+            <label htmlFor="operator-pin" className="text-xs uppercase tracking-wide text-muted-foreground">
+              PIN
+            </label>
+            <Input
+              id="operator-pin"
+              type="password"
+              inputMode="numeric"
+              autoComplete="off"
+              maxLength={4}
+              value={operatorPin}
+              onChange={event => {
+                setOperatorPin(normalizePin(event.target.value))
+                setOperatorError('')
+                setOperatorSuccess('')
+              }}
+              placeholder="4 digitos"
+              required
+            />
+          </div>
+
+          {operatorError && (
+            <p className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
+              {operatorError}
+            </p>
+          )}
+
+          {operatorSuccess && (
+            <p className="rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-700 dark:border-green-500/30 dark:bg-green-500/10 dark:text-green-400">
+              {operatorSuccess}
+            </p>
+          )}
+
+          <div className="flex justify-end">
+            <Button type="submit" className="h-9 px-4" disabled={operatorLoading}>
+              {operatorLoading ? 'Creando...' : 'Agregar operador'}
+            </Button>
+          </div>
+        </form>
+      </div>
     </div>
   )
 }

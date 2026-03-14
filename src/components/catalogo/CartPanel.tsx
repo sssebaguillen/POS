@@ -4,23 +4,12 @@ import { useMemo, useState } from 'react'
 import { Minus, Plus, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-
-interface CatalogProduct {
-  id: string
-  name: string
-  price: number
-  stock: number
-}
-
-interface CartItem {
-  product: CatalogProduct
-  quantity: number
-}
+import type { CatalogCartItem } from '@/components/catalogo/types'
 
 interface CartPanelProps {
   businessName: string
   businessWhatsapp: string | null
-  cartItems: CartItem[]
+  cartItems: CatalogCartItem[]
   onIncreaseQuantity: (productId: string) => void
   onDecreaseQuantity: (productId: string) => void
   onRemoveItem: (productId: string) => void

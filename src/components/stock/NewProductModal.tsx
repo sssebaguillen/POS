@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -8,9 +8,11 @@ import {
   Dialog,
   DialogContent,
 } from '@/components/ui/dialog'
+import type { PriceList } from '@/components/price-lists/types'
+import type { InventoryBrand } from '@/components/stock/types'
 
 function FieldGroup({ label, required, error, hint, children }: {
-  label: string
+  label: React.ReactNode
   required?: boolean
   error?: string
   hint?: string
@@ -46,6 +48,8 @@ interface NewProduct {
   is_active: boolean
   category_id: string | null
   sku: string | null
+  brand_id?: string | null
+  brand?: { id: string; name: string } | null
   barcode: string | null
   categories?: { name: string; icon: string } | null
 }
@@ -54,13 +58,16 @@ interface Props {
   open: boolean
   onClose: () => void
   businessId: string | null
+  defaultPriceList: PriceList | null
   categories: Category[]
+  brands: InventoryBrand[]
   onCreated: (product: NewProduct) => void
 }
 
 const EMPTY_FORM = {
   name: '',
   sku: '',
+  brand_id: '',
   barcode: '',
   category_id: '',
   price: '',
@@ -70,15 +77,69 @@ const EMPTY_FORM = {
   is_active: true,
 }
 
-export default function NewProductModal({ open, onClose, businessId, categories, onCreated }: Props) {
+export default function NewProductModal({ open, onClose, businessId, defaultPriceList, categories, brands, onCreated }: Props) {
   const [form, setForm] = useState(EMPTY_FORM)
   const [loading, setLoading] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
+  const [isPriceEdited, setIsPriceEdited] = useState(false)
+  const [brandInput, setBrandInput] = useState('')
+  const [showBrandOptions, setShowBrandOptions] = useState(false)
   const supabase = createClient()
+
+  const filteredBrands = useMemo(() => {
+    const query = brandInput.trim().toLowerCase()
+    if (!query) return brands
+    return brands.filter(brand => brand.name.toLowerCase().includes(query))
+  }, [brands, brandInput])
+
+  const suggestedPrice = (() => {
+    if (!defaultPriceList) return null
+    const parsedCost = Number(form.cost)
+    if (!Number.isFinite(parsedCost) || parsedCost <= 0) return null
+    return parsedCost * defaultPriceList.multiplier
+  })()
 
   function set(field: string, value: string | boolean) {
     setForm(prev => ({ ...prev, [field]: value }))
     setErrors(prev => ({ ...prev, [field]: '' }))
+  }
+
+  function handleCostChange(value: string) {
+    setErrors(prev => ({ ...prev, cost: '' }))
+
+    if (!defaultPriceList) {
+      setForm(prev => ({ ...prev, cost: value }))
+      return
+    }
+
+    const parsedCost = Number(value)
+    if (!value.trim() || !Number.isFinite(parsedCost) || parsedCost <= 0) {
+      setForm(prev => ({ ...prev, cost: value, price: '' }))
+      setIsPriceEdited(false)
+      return
+    }
+
+    const nextSuggestedPrice = (parsedCost * defaultPriceList.multiplier).toFixed(2)
+    setForm(prev => ({ ...prev, cost: value, price: nextSuggestedPrice }))
+    setIsPriceEdited(false)
+  }
+
+  function handlePriceChange(value: string) {
+    setErrors(prev => ({ ...prev, price: '' }))
+    setForm(prev => ({ ...prev, price: value }))
+
+    if (suggestedPrice === null) {
+      setIsPriceEdited(false)
+      return
+    }
+
+    const parsedPrice = Number(value)
+    if (!value.trim() || !Number.isFinite(parsedPrice)) {
+      setIsPriceEdited(false)
+      return
+    }
+
+    setIsPriceEdited(Math.abs(parsedPrice - suggestedPrice) > 0.01)
   }
 
   function validate() {
@@ -129,6 +190,7 @@ export default function NewProductModal({ open, onClose, businessId, categories,
       business_id: activeBusinessId,
       name: form.name.trim(),
       sku: form.sku.trim() || null,
+      brand_id: form.brand_id || null,
       barcode: form.barcode.trim() || null,
       category_id: form.category_id || null,
       price: Number(form.price),
@@ -141,7 +203,7 @@ export default function NewProductModal({ open, onClose, businessId, categories,
     const { data, error } = await supabase
       .from('products')
       .insert(payload)
-      .select('id, name, price, cost, stock, min_stock, is_active, category_id, sku, barcode, categories(name, icon)')
+      .select('id, name, price, cost, stock, min_stock, is_active, category_id, sku, brand_id, brands(id, name), barcode, categories(name, icon)')
       .single()
 
     setLoading(false)
@@ -150,10 +212,33 @@ export default function NewProductModal({ open, onClose, businessId, categories,
       return
     }
 
+    if (isPriceEdited && defaultPriceList && payload.cost > 0) {
+      const defaultPrice = payload.cost * defaultPriceList.multiplier
+      if (Math.abs(payload.price - defaultPrice) > 0.01) {
+        void (async () => {
+          const { error: overrideError } = await supabase
+            .from('price_list_overrides')
+            .insert({
+              price_list_id: defaultPriceList.id,
+              product_id: data.id,
+              brand_id: null,
+              multiplier: payload.price / payload.cost,
+            })
+
+          if (overrideError) {
+            console.error('Failed to create default price list override for new product:', overrideError.message)
+          }
+        })()
+      }
+    }
+
     const created: NewProduct = {
       ...data,
       price: Number(data.price),
       cost: Number(data.cost),
+      brand: Array.isArray(data.brands)
+        ? (data.brands[0] ?? null)
+        : (data.brands ?? null),
       categories: Array.isArray(data.categories)
         ? (data.categories[0] ?? null)
         : (data.categories ?? null),
@@ -161,13 +246,19 @@ export default function NewProductModal({ open, onClose, businessId, categories,
 
     onCreated(created)
     setForm(EMPTY_FORM)
+    setBrandInput('')
+    setShowBrandOptions(false)
     setErrors({})
+    setIsPriceEdited(false)
     onClose()
   }
 
   function handleClose() {
     setForm(EMPTY_FORM)
+    setBrandInput('')
+    setShowBrandOptions(false)
     setErrors({})
+    setIsPriceEdited(false)
     onClose()
   }
 
@@ -179,7 +270,7 @@ export default function NewProductModal({ open, onClose, businessId, categories,
     <Dialog open={open} onOpenChange={v => !v && handleClose()}>
       <DialogContent className="sm:max-w-[640px] p-0 gap-0 rounded-2xl overflow-hidden bg-app-bg" showCloseButton={false}>
         {/* Header */}
-        <div className="bg-emerald-700 px-6 py-3.5 flex items-center justify-between">
+        <div className="bg-primary px-6 py-3.5 flex items-center justify-between">
           <h2 className="text-base font-bold text-white">Nuevo producto</h2>
           <button
             onClick={handleClose}
@@ -194,7 +285,7 @@ export default function NewProductModal({ open, onClose, businessId, categories,
             <div className="grid grid-cols-2 gap-3.5">
 
               {errors._global && (
-                <p className="col-span-2 text-xs text-red-700 bg-red-50 border border-red-200 rounded-xl px-3 py-2">{errors._global}</p>
+                <p className="col-span-2 rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">{errors._global}</p>
               )}
 
               {/* Nombre */}
@@ -204,7 +295,7 @@ export default function NewProductModal({ open, onClose, businessId, categories,
                     value={form.name}
                     onChange={e => set('name', e.target.value)}
                     placeholder="Ej: Pan sin TACC x500g"
-                    className={`h-9 rounded-xl text-sm ${errors.name ? 'border-red-400 focus-visible:ring-red-200' : 'border-edge focus-visible:ring-emerald-200 focus-visible:border-emerald-400'}`}
+                    className={`h-9 rounded-xl text-sm bg-surface ${errors.name ? 'border-red-400 focus-visible:ring-red-200' : 'border-edge focus-visible:ring-ring/50 focus-visible:border-ring'}`}
                     autoFocus
                   />
                 </FieldGroup>
@@ -215,7 +306,7 @@ export default function NewProductModal({ open, onClose, businessId, categories,
                 <select
                   value={form.category_id}
                   onChange={e => set('category_id', e.target.value)}
-                  className="h-9 w-full rounded-xl border border-edge px-3 text-sm bg-surface text-body focus:outline-none focus:ring-2 focus:ring-emerald-200 focus:border-emerald-400 transition-colors appearance-none cursor-pointer"
+                  className="h-9 w-full rounded-xl border border-edge px-3 text-sm bg-surface text-body focus:outline-none focus:ring-2 focus:ring-ring/50 focus:border-ring transition-colors appearance-none cursor-pointer"
                   style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 10px center' }}
                 >
                   <option value="">Sin categoría</option>
@@ -232,7 +323,7 @@ export default function NewProductModal({ open, onClose, businessId, categories,
                   <button
                     type="button"
                     onClick={() => set('is_active', !form.is_active)}
-                    className={`relative w-9 h-5 rounded-full transition-colors cursor-pointer ${form.is_active ? 'bg-emerald-600' : 'bg-muted-foreground'}`}
+                    className={`relative w-9 h-5 rounded-full transition-colors cursor-pointer ${form.is_active ? 'bg-primary' : 'bg-muted-foreground'}`}
                     aria-label="Cambiar estado activo"
                   >
                     <span
@@ -242,7 +333,20 @@ export default function NewProductModal({ open, onClose, businessId, categories,
                 </label>
               </div>
 
-              <FieldGroup label="Precio venta" required error={errors.price}>
+              <FieldGroup
+                label={
+                  <span className="inline-flex items-center gap-1.5">
+                    Precio venta
+                    {isPriceEdited && (
+                      <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium normal-case tracking-normal text-amber-600">
+                        personalizado
+                      </span>
+                    )}
+                  </span>
+                }
+                required
+                error={errors.price}
+              >
                 <div className="relative">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-hint">$</span>
                   <Input
@@ -250,9 +354,9 @@ export default function NewProductModal({ open, onClose, businessId, categories,
                     min="0"
                     step="0.01"
                     value={form.price}
-                    onChange={e => set('price', e.target.value)}
+                    onChange={e => handlePriceChange(e.target.value)}
                     placeholder="0"
-                    className={`h-9 rounded-xl text-sm pl-7 ${errors.price ? 'border-red-400 focus-visible:ring-red-200' : 'border-edge focus-visible:ring-emerald-200 focus-visible:border-emerald-400'}`}
+                    className={`h-9 rounded-xl text-sm pl-7 bg-surface ${errors.price ? 'border-red-400 focus-visible:ring-red-200' : 'border-edge focus-visible:ring-ring/50 focus-visible:border-ring'}`}
                   />
                 </div>
               </FieldGroup>
@@ -264,9 +368,9 @@ export default function NewProductModal({ open, onClose, businessId, categories,
                     min="0"
                     step="0.01"
                     value={form.cost}
-                    onChange={e => set('cost', e.target.value)}
+                    onChange={e => handleCostChange(e.target.value)}
                     placeholder="0"
-                    className={`h-9 rounded-xl text-sm pl-7 ${errors.cost ? 'border-red-400 focus-visible:ring-red-200' : 'border-edge focus-visible:ring-emerald-200 focus-visible:border-emerald-400'}`}
+                    className={`h-9 rounded-xl text-sm pl-7 bg-surface ${errors.cost ? 'border-red-400 focus-visible:ring-red-200' : 'border-edge focus-visible:ring-ring/50 focus-visible:border-ring'}`}
                   />
                 </div>
               </FieldGroup>
@@ -279,7 +383,7 @@ export default function NewProductModal({ open, onClose, businessId, categories,
                   value={form.stock}
                   onChange={e => set('stock', e.target.value)}
                   placeholder="0"
-                  className={`h-9 rounded-xl text-sm ${errors.stock ? 'border-red-400 focus-visible:ring-red-200' : 'border-edge focus-visible:ring-emerald-200 focus-visible:border-emerald-400'}`}
+                  className={`h-9 rounded-xl text-sm bg-surface ${errors.stock ? 'border-red-400 focus-visible:ring-red-200' : 'border-edge focus-visible:ring-ring/50 focus-visible:border-ring'}`}
                 />
               </FieldGroup>
               <FieldGroup label="Stock mínimo" error={errors.min_stock}>
@@ -290,7 +394,7 @@ export default function NewProductModal({ open, onClose, businessId, categories,
                   value={form.min_stock}
                   onChange={e => set('min_stock', e.target.value)}
                   placeholder="0"
-                  className={`h-9 rounded-xl text-sm ${errors.min_stock ? 'border-red-400 focus-visible:ring-red-200' : 'border-edge focus-visible:ring-emerald-200 focus-visible:border-emerald-400'}`}
+                  className={`h-9 rounded-xl text-sm bg-surface ${errors.min_stock ? 'border-red-400 focus-visible:ring-red-200' : 'border-edge focus-visible:ring-ring/50 focus-visible:border-ring'}`}
                 />
               </FieldGroup>
 
@@ -299,15 +403,67 @@ export default function NewProductModal({ open, onClose, businessId, categories,
                   value={form.sku}
                   onChange={e => set('sku', e.target.value)}
                   placeholder="Ej: PSTACC-500"
-                  className="h-9 rounded-xl text-sm border-edge focus-visible:ring-emerald-200 focus-visible:border-emerald-400"
+                  className="h-9 rounded-xl text-sm bg-surface border-edge focus-visible:ring-ring/50 focus-visible:border-ring"
                 />
+              </FieldGroup>
+              <FieldGroup label="Marca">
+                <div className="relative">
+                  <Input
+                    value={brandInput}
+                    onFocus={() => setShowBrandOptions(true)}
+                    onBlur={() => {
+                      setTimeout(() => {
+                        setShowBrandOptions(false)
+                        if (!form.brand_id) {
+                          setBrandInput('')
+                        }
+                      }, 120)
+                    }}
+                    onChange={event => {
+                      const nextValue = event.target.value
+                      setBrandInput(nextValue)
+                      setShowBrandOptions(true)
+
+                      const exactBrand = brands.find(brand => brand.name.toLowerCase() === nextValue.trim().toLowerCase())
+                      set('brand_id', exactBrand ? exactBrand.id : '')
+                    }}
+                    placeholder="Seleccionar marca"
+                    className="h-9 rounded-xl text-sm bg-surface border-edge focus-visible:ring-ring/50 focus-visible:border-ring"
+                  />
+
+                  {showBrandOptions && (
+                    <div className="absolute z-20 mt-1 w-full rounded-xl border border-edge bg-surface shadow-sm max-h-52 overflow-y-auto">
+                      {filteredBrands.length === 0 ? (
+                        <div className="px-3 py-2 text-xs text-hint">
+                          No se encontró la marca. Creala desde el botón Marcas.
+                        </div>
+                      ) : (
+                        filteredBrands.map(brand => (
+                          <button
+                            key={brand.id}
+                            type="button"
+                            className="w-full px-3 py-2 text-left text-sm text-body hover:bg-hover-bg transition-colors"
+                            onMouseDown={event => {
+                              event.preventDefault()
+                              set('brand_id', brand.id)
+                              setBrandInput(brand.name)
+                              setShowBrandOptions(false)
+                            }}
+                          >
+                            {brand.name}
+                          </button>
+                        ))
+                      )}
+                    </div>
+                  )}
+                </div>
               </FieldGroup>
               <FieldGroup label="Código de barras">
                 <Input
                   value={form.barcode}
                   onChange={e => set('barcode', e.target.value)}
                   placeholder="Ej: 7790001234567"
-                  className="h-9 rounded-xl text-sm border-edge focus-visible:ring-emerald-200 focus-visible:border-emerald-400"
+                  className="h-9 rounded-xl text-sm bg-surface border-edge focus-visible:ring-ring/50 focus-visible:border-ring"
                 />
               </FieldGroup>
             </div>
@@ -327,7 +483,7 @@ export default function NewProductModal({ open, onClose, businessId, categories,
             <Button
               type="submit"
               disabled={loading}
-              className="h-9 px-5 rounded-xl text-sm bg-emerald-700 hover:bg-emerald-800 text-white"
+              className="h-9 px-5 rounded-xl text-sm bg-primary hover:bg-primary/90 text-primary-foreground"
             >
               {loading ? 'Guardando…' : 'Crear producto'}
             </Button>

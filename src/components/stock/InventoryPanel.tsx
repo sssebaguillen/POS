@@ -6,36 +6,22 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import PageHeader from '@/components/shared/PageHeader'
 import NewProductModal from '@/components/stock/NewProductModal'
-
-interface InventoryCategory {
-  id: string
-  name: string
-  icon: string
-}
-
-interface InventoryProduct {
-  id: string
-  name: string
-  price: number
-  cost: number
-  stock: number
-  min_stock: number
-  is_active: boolean
-  category_id: string | null
-  sku: string | null
-  barcode: string | null
-  categories?: {
-    name: string
-    icon: string
-  } | null
-}
+import EditProductModal from '@/components/stock/EditProductModal'
+import CategoryModal from '@/components/stock/CategoryModal'
+import BrandModal from './BrandModal'
+import type { PriceList, PriceListOverride } from '@/components/price-lists/types'
+import type { InventoryBrand, InventoryCategory, InventoryProduct } from '@/components/stock/types'
 
 type FilterStatus = 'all' | 'low' | 'out' | 'discontinued'
 
 interface Props {
   businessId: string | null
+  readOnly: boolean
   initialProducts: InventoryProduct[]
   categories: InventoryCategory[]
+  brands: InventoryBrand[]
+  defaultPriceList: PriceList | null
+  productOverrides: PriceListOverride[]
 }
 
 function getStatus(product: InventoryProduct): 'ok' | 'low' | 'out' | 'discontinued' {
@@ -72,13 +58,18 @@ const statusConfig = {
   },
 }
 
-export default function InventoryPanel({ businessId, initialProducts, categories }: Props) {
+export default function InventoryPanel({ businessId, readOnly, initialProducts, categories: initialCategories, brands: initialBrands, defaultPriceList, productOverrides }: Props) {
   const [products, setProducts] = useState(initialProducts)
+  const [categories, setCategories] = useState<InventoryCategory[]>(initialCategories)
+  const [brands, setBrands] = useState<InventoryBrand[]>(initialBrands)
   const [query, setQuery] = useState('')
   const [selectedCategory, setSelectedCategory] = useState<string>('all')
   const [statusFilter, setStatusFilter] = useState<FilterStatus>('all')
   const [loadingId, setLoadingId] = useState<string | null>(null)
   const [showNewProduct, setShowNewProduct] = useState(false)
+  const [showCategories, setShowCategories] = useState(false)
+  const [showBrands, setShowBrands] = useState(false)
+  const [editingProduct, setEditingProduct] = useState<InventoryProduct | null>(null)
   const [crudError, setCrudError] = useState<string | null>(null)
   const [resolvedBusinessId, setResolvedBusinessId] = useState<string | null>(businessId)
 
@@ -124,6 +115,14 @@ export default function InventoryPanel({ businessId, initialProducts, categories
     }
   }, [businessId, supabase])
 
+  useEffect(() => {
+    setCategories(initialCategories)
+  }, [initialCategories])
+
+  useEffect(() => {
+    setBrands(initialBrands)
+  }, [initialBrands])
+
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
     return products.filter(product => {
@@ -153,6 +152,11 @@ export default function InventoryPanel({ businessId, initialProducts, categories
   const categoryCount = new Set(products.map(p => p.category_id).filter(Boolean)).size
 
   async function updateProduct(productId: string, values: Partial<InventoryProduct>) {
+    if (readOnly) {
+      setCrudError('Tu rol tiene acceso de solo lectura para stock.')
+      return
+    }
+
     if (!effectiveBusinessId) {
       setCrudError('No se encontro el negocio activo para actualizar productos.')
       return
@@ -168,7 +172,25 @@ export default function InventoryPanel({ businessId, initialProducts, categories
       .eq('business_id', effectiveBusinessId)
 
     if (!error) {
-      setProducts(prev => prev.map(p => (p.id === productId ? { ...p, ...values } : p)))
+      setProducts(prev => prev.map(product => {
+        if (product.id !== productId) return product
+
+        if (!Object.prototype.hasOwnProperty.call(values, 'brand_id')) {
+          return { ...product, ...values }
+        }
+
+        const nextBrandId = (values.brand_id as string | null | undefined) ?? null
+        const nextBrand = nextBrandId
+          ? brands.find(brand => brand.id === nextBrandId) ?? null
+          : null
+
+        return {
+          ...product,
+          ...values,
+          brand_id: nextBrandId,
+          brand: nextBrand,
+        }
+      }))
     } else {
       setCrudError(error.message)
     }
@@ -176,30 +198,50 @@ export default function InventoryPanel({ businessId, initialProducts, categories
     setLoadingId(null)
   }
 
-  async function handleAdjustStock(product: InventoryProduct) {
-    const raw = prompt(`Nuevo stock para ${product.name}`, String(product.stock))
-    if (raw === null) return
-    const nextStock = Number(raw)
-    if (!Number.isFinite(nextStock) || nextStock < 0) return
-    await updateProduct(product.id, { stock: Math.trunc(nextStock) })
+  function handleEditProduct(product: InventoryProduct) {
+    if (readOnly) {
+      setCrudError('Tu rol tiene acceso de solo lectura para stock.')
+      return
+    }
+
+    setEditingProduct(product)
   }
 
-  async function handleEditProduct(product: InventoryProduct) {
-    const nextName = prompt('Nombre del producto', product.name)
-    if (!nextName) return
-    const nextPrice = prompt('Precio de venta', String(product.price))
-    if (!nextPrice) return
-    const nextCost = prompt('Precio de costo', String(product.cost))
-    if (!nextCost) return
+  function handleBrandsChanged(updatedBrands: InventoryBrand[]) {
+    setBrands(updatedBrands)
+    setProducts(prev => prev.map(product => {
+      if (!product.brand_id) {
+        return {
+          ...product,
+          brand: null,
+        }
+      }
 
-    await updateProduct(product.id, {
-      name: nextName.trim(),
-      price: Number(nextPrice) || product.price,
-      cost: Number(nextCost) || product.cost,
-    })
+      const nextBrand = updatedBrands.find(brand => brand.id === product.brand_id)
+      if (!nextBrand) {
+        return {
+          ...product,
+          brand_id: null,
+          brand: null,
+        }
+      }
+
+      return {
+        ...product,
+        brand: {
+          id: nextBrand.id,
+          name: nextBrand.name,
+        },
+      }
+    }))
   }
 
   async function handleDeleteProduct(product: InventoryProduct) {
+    if (readOnly) {
+      setCrudError('Tu rol tiene acceso de solo lectura para stock.')
+      return
+    }
+
     if (!effectiveBusinessId) {
       setCrudError('No se encontro el negocio activo para eliminar productos.')
       return
@@ -269,19 +311,31 @@ export default function InventoryPanel({ businessId, initialProducts, categories
         >
           Exportar
         </Button>
-        <Button variant="outline" size="sm" className="rounded-lg text-xs" disabled>
-          Categorias
-        </Button>
-        <Button variant="outline" size="sm" className="rounded-lg text-xs" disabled>
-          Marcas
+        <Button
+          variant="outline"
+          size="sm"
+          className="rounded-lg text-xs"
+          onClick={() => setShowCategories(true)}
+        >
+          Categorías
         </Button>
         <Button
+          variant="outline"
           size="sm"
-          className="rounded-lg text-xs bg-emerald-700 hover:bg-emerald-800 text-white"
-          onClick={() => setShowNewProduct(true)}
+          className="rounded-lg text-xs"
+          onClick={() => setShowBrands(true)}
         >
-          Nuevo producto
+          Marcas
         </Button>
+        {!readOnly && (
+          <Button
+            size="sm"
+            className="rounded-lg text-xs bg-primary hover:bg-primary/90 text-primary-foreground"
+            onClick={() => setShowNewProduct(true)}
+          >
+            Nuevo producto
+          </Button>
+        )}
       </PageHeader>
 
       <div className="bg-surface border-b border-edge/60 px-5 py-3">
@@ -327,8 +381,14 @@ export default function InventoryPanel({ businessId, initialProducts, categories
       </div>
 
       {crudError && (
-        <div className="mx-5 mt-4 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+        <div className="mx-5 mt-4 rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
           {crudError}
+        </div>
+      )}
+
+      {readOnly && (
+        <div className="mx-5 mt-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-700 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-700">
+          Acceso de solo lectura habilitado para stock.
         </div>
       )}
 
@@ -374,6 +434,21 @@ export default function InventoryPanel({ businessId, initialProducts, categories
                     )}
                   </div>
 
+                  <div className="grid grid-cols-3 gap-2 mb-3 rounded-lg bg-surface-alt px-2 py-1.5">
+                    <div className="min-w-0">
+                      <p className="text-[10px] uppercase tracking-wide text-hint">Categoría</p>
+                      <p className="truncate text-[11px] text-subtle">{product.categories?.name ?? '—'}</p>
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-[10px] uppercase tracking-wide text-hint">Marca</p>
+                      <p className="truncate text-[11px] text-subtle">{product.brand?.name ?? '—'}</p>
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-[10px] uppercase tracking-wide text-hint">SKU</p>
+                      <p className="truncate text-[11px] text-subtle">{product.sku ?? '—'}</p>
+                    </div>
+                  </div>
+
                   <div className="grid grid-cols-2 gap-2 mb-3">
                     <div className="rounded-lg bg-surface-alt px-2 py-1.5">
                       <p className="text-[10px] text-hint uppercase font-medium">Venta</p>
@@ -383,12 +458,19 @@ export default function InventoryPanel({ businessId, initialProducts, categories
                     </div>
                     <div className="rounded-lg bg-surface-alt px-2 py-1.5">
                       <p className="text-[10px] text-hint uppercase font-medium">Costo</p>
-                      <p className="text-sm font-bold text-heading">
-                        ${Number(product.cost).toLocaleString('es-AR')}{' '}
-                        <span className="text-[10px] font-normal text-hint">{margin}%</span>
+                      <p className="text-sm font-medium text-subtle">
+                        ${Number(product.cost).toLocaleString('es-AR')}
                       </p>
                     </div>
                   </div>
+
+                  {margin > 0 && (
+                    <div className="mb-2">
+                      <span className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">
+                        +{margin}% margen
+                      </span>
+                    </div>
+                  )}
 
                   <div className="mb-3">
                     <div className="flex items-baseline justify-between mb-1">
@@ -405,36 +487,33 @@ export default function InventoryPanel({ businessId, initialProducts, categories
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-1.5 mt-auto">
-                    <button
-                      onClick={() => handleEditProduct(product)}
-                      disabled={loadingId === product.id}
-                      className="text-xs py-1.5 rounded-lg border border-edge text-body hover:bg-hover-bg transition-colors disabled:opacity-50"
-                    >
-                      Editar
-                    </button>
-                    <button
-                      onClick={() => handleAdjustStock(product)}
-                      disabled={loadingId === product.id}
-                      className="text-xs py-1.5 rounded-lg border border-edge text-body hover:bg-hover-bg transition-colors disabled:opacity-50"
-                    >
-                      Ajustar
-                    </button>
-                    <button
-                      onClick={() => updateProduct(product.id, { is_active: !product.is_active })}
-                      disabled={loadingId === product.id}
-                      className="text-xs py-1.5 rounded-lg border border-edge text-body hover:bg-hover-bg transition-colors disabled:opacity-50"
-                    >
-                      {product.is_active ? 'Baja' : 'Activar'}
-                    </button>
-                    <button
-                      onClick={() => handleDeleteProduct(product)}
-                      disabled={loadingId === product.id}
-                      className="text-xs py-1.5 rounded-lg border border-red-200 text-red-600 hover:bg-red-50 transition-colors disabled:opacity-50"
-                    >
-                      Eliminar
-                    </button>
-                  </div>
+                  {!readOnly && (
+                    <div className="flex flex-col gap-1.5 mt-auto">
+                      <button
+                        onClick={() => handleEditProduct(product)}
+                        disabled={loadingId === product.id}
+                        className="w-full text-xs py-1.5 rounded-lg border border-edge text-body hover:bg-hover-bg transition-colors disabled:opacity-50"
+                      >
+                        Editar
+                      </button>
+                      <div className="grid grid-cols-2 gap-1.5">
+                        <button
+                          onClick={() => updateProduct(product.id, { is_active: !product.is_active })}
+                          disabled={loadingId === product.id}
+                          className="text-xs py-1.5 rounded-lg border border-edge text-body hover:bg-hover-bg transition-colors disabled:opacity-50"
+                        >
+                          {product.is_active ? 'Baja' : 'Activar'}
+                        </button>
+                        <button
+                          onClick={() => handleDeleteProduct(product)}
+                          disabled={loadingId === product.id}
+                          className="text-xs py-1.5 rounded-lg border border-red-200 text-red-600 hover:bg-red-50 transition-colors disabled:opacity-50"
+                        >
+                          Eliminar
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </article>
               )
             })}
@@ -442,13 +521,53 @@ export default function InventoryPanel({ businessId, initialProducts, categories
         )}
       </div>
 
-      <NewProductModal
-        open={showNewProduct}
-        onClose={() => setShowNewProduct(false)}
-        businessId={effectiveBusinessId}
-        categories={categories}
-        onCreated={product => setProducts(prev => [product, ...prev])}
-      />
+      {!readOnly && (
+        <NewProductModal
+          open={showNewProduct}
+          onClose={() => setShowNewProduct(false)}
+          businessId={effectiveBusinessId}
+          defaultPriceList={defaultPriceList}
+          categories={categories}
+          brands={brands}
+          onCreated={product => setProducts(prev => [product, ...prev])}
+        />
+      )}
+
+      {effectiveBusinessId && (
+        <CategoryModal
+          open={showCategories}
+          onClose={() => setShowCategories(false)}
+          businessId={effectiveBusinessId}
+          initialCategories={categories}
+          onCategoriesChanged={updated => setCategories(updated)}
+        />
+      )}
+
+      {editingProduct && (
+        <EditProductModal
+          open={Boolean(editingProduct)}
+          onClose={() => setEditingProduct(null)}
+          product={editingProduct}
+          categories={categories}
+          brands={brands}
+          defaultPriceList={defaultPriceList}
+          existingOverride={productOverrides.find(override => override.product_id === editingProduct.id) ?? null}
+          onSaved={values => {
+            void updateProduct(editingProduct.id, values)
+            setEditingProduct(null)
+          }}
+        />
+      )}
+
+      {effectiveBusinessId && (
+        <BrandModal
+          open={showBrands}
+          onClose={() => setShowBrands(false)}
+          businessId={effectiveBusinessId}
+          initialBrands={brands}
+          onBrandsChanged={handleBrandsChanged}
+        />
+      )}
 
       <div className="bg-surface border-t border-edge/60 px-5 py-2.5 flex items-center gap-6 text-xs text-subtle shrink-0 overflow-x-auto">
         <span className="flex items-center gap-1.5">

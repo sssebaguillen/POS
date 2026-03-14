@@ -169,7 +169,7 @@ export default function ProductsPanel({ businessId, initialProducts, categories 
         </Button>
         <Button
           size="sm"
-          className="rounded-lg text-xs bg-emerald-700 hover:bg-emerald-800 text-white"
+          className="rounded-lg text-xs bg-primary hover:bg-primary/90 text-primary-foreground"
           onClick={() => setShowNewProduct(true)}
         >
           Nuevo producto
@@ -196,7 +196,7 @@ export default function ProductsPanel({ businessId, initialProducts, categories 
           <button
             onClick={() => setStatusFilter('active')}
             className={`h-8 px-3 rounded-full text-xs font-medium transition-colors ${
-              statusFilter === 'active' ? 'bg-emerald-700 text-white' : 'bg-surface-alt text-body hover:bg-hover-bg'
+              statusFilter === 'active' ? 'bg-primary text-primary-foreground' : 'bg-surface-alt text-body hover:bg-hover-bg'
             }`}
           >
             Activos ({totals.active})
@@ -213,7 +213,7 @@ export default function ProductsPanel({ businessId, initialProducts, categories 
       </div>
 
       {crudError && (
-        <div className="mx-5 mt-4 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+        <div className="mx-5 mt-4 rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
           {crudError}
         </div>
       )}
@@ -264,7 +264,7 @@ export default function ProductsPanel({ businessId, initialProducts, categories 
                       <TableCell>
                         <span className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold ${
                           product.is_active
-                            ? 'bg-emerald-100 text-emerald-700'
+                            ? 'bg-primary/10 text-primary'
                             : 'bg-muted text-muted-foreground'
                         }`}>
                           {product.is_active ? 'Activo' : 'Inactivo'}

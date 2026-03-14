@@ -5,33 +5,7 @@ import { ShoppingCart } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import ProductGrid from '@/components/catalogo/ProductGrid'
 import CartPanel from '@/components/catalogo/CartPanel'
-
-interface CatalogBusiness {
-  id: string
-  name: string
-  description: string | null
-  logoUrl: string | null
-  whatsapp: string | null
-}
-
-interface CatalogProduct {
-  id: string
-  categoryId: string | null
-  name: string
-  price: number
-  stock: number
-  imageUrl: string | null
-}
-
-interface CatalogCategory {
-  id: string
-  name: string
-}
-
-interface CartItem {
-  product: CatalogProduct
-  quantity: number
-}
+import type { CatalogBusiness, CatalogCartItem, CatalogCategory, CatalogProduct } from '@/components/catalogo/types'
 
 interface CatalogViewProps {
   business: CatalogBusiness
@@ -42,7 +16,7 @@ interface CatalogViewProps {
 export default function CatalogView({ business, products, categories }: CatalogViewProps) {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
   const [isMobileCartOpen, setIsMobileCartOpen] = useState(false)
-  const [cartItems, setCartItems] = useState<CartItem[]>([])
+  const [cartItems, setCartItems] = useState<CatalogCartItem[]>([])
 
   const cartCount = useMemo(
     () => cartItems.reduce((acc, item) => acc + item.quantity, 0),

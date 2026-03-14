@@ -145,8 +145,8 @@ export default function PaymentModal({ total, businessId, onClose }: Props) {
                     onClick={() => setMethod(m.id)}
                     className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border text-sm font-medium transition-all ${
                       method === m.id
-                        ? 'border-emerald-700 bg-emerald-700 text-white'
-                        : 'border-edge text-body hover:border-emerald-300'
+                        ? 'border-primary bg-primary text-primary-foreground'
+                        : 'border-edge text-body hover:border-primary/40'
                     }`}
                   >
                     <span>{m.icon}</span>
@@ -189,7 +189,7 @@ export default function PaymentModal({ total, businessId, onClose }: Props) {
 
               {/* Confirm */}
               <Button
-                className="w-full h-11 font-semibold bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl"
+                className="w-full h-11 font-semibold bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl"
                 disabled={!canConfirm || loading}
                 onClick={handleConfirm}
               >

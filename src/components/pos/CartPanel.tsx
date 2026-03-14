@@ -161,7 +161,7 @@ export default function CartPanel({ businessId }: Props) {
               onClick={() => setActiveTab('current')}
               className={`h-11 text-sm font-medium border-b-2 transition-colors ${
                 activeTab === 'current'
-                  ? 'text-emerald-800 border-emerald-700'
+                  ? 'text-primary border-primary'
                   : 'text-hint border-transparent hover:text-body'
               }`}
             >
@@ -171,7 +171,7 @@ export default function CartPanel({ businessId }: Props) {
               onClick={() => setActiveTab('history')}
               className={`h-11 text-sm font-medium border-b-2 transition-colors ${
                 activeTab === 'history'
-                  ? 'text-emerald-800 border-emerald-700'
+                  ? 'text-primary border-primary'
                   : 'text-hint border-transparent hover:text-body'
               }`}
             >
@@ -185,7 +185,7 @@ export default function CartPanel({ businessId }: Props) {
             {/* Sub-header */}
             <div className="px-4 pt-3 pb-2 flex items-center justify-between">
               <h2 className="text-base font-semibold text-heading">Venta actual</h2>
-              <span className="rounded-full bg-emerald-50 text-emerald-700 text-xs px-2.5 py-1 font-medium">
+              <span className="rounded-full bg-primary/10 text-primary text-xs px-2.5 py-1 font-medium">
                 {items.length} items
               </span>
             </div>
@@ -274,7 +274,7 @@ export default function CartPanel({ businessId }: Props) {
                   <span className="tabular-nums">{items.length === 0 ? '—' : items.length}</span>
                 </div>
                 {discount > 0 && (
-                  <div className="flex justify-between text-green-600">
+                  <div className="flex justify-between text-primary">
                     <span>Descuento</span>
                     <span className="tabular-nums">-${discount.toLocaleString('es-AR')}</span>
                   </div>
@@ -295,7 +295,7 @@ export default function CartPanel({ businessId }: Props) {
                   Cancelar
                 </Button>
                 <Button
-                  className="h-10 rounded-xl text-sm font-semibold bg-emerald-700 hover:bg-emerald-800"
+                  className="h-10 rounded-xl text-sm font-semibold bg-primary hover:bg-primary/90 text-primary-foreground"
                   disabled={isEmpty}
                   onClick={() => setShowPayment(true)}
                 >

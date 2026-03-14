@@ -3,20 +3,7 @@
 import Image from 'next/image'
 import { ImageIcon, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-
-interface CatalogProduct {
-  id: string
-  categoryId: string | null
-  name: string
-  price: number
-  stock: number
-  imageUrl: string | null
-}
-
-interface CatalogCategory {
-  id: string
-  name: string
-}
+import type { CatalogCategory, CatalogProduct } from '@/components/catalogo/types'
 
 interface ProductGridProps {
   products: CatalogProduct[]

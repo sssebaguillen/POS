@@ -2,20 +2,10 @@
 
 import { useCartStore } from '@/lib/store/cart.store'
 import type { Product } from '@/lib/types'
-
-interface Category {
-  id: string
-  name: string
-  icon: string
-}
-
-interface ProductWithCategory extends Product {
-  categories?: { name: string; icon: string } | null
-}
+import type { ProductWithCategory } from '@/components/pos/types'
 
 interface Props {
   products: ProductWithCategory[]
-  categories: Category[]
   search: string
 }
 
@@ -100,7 +90,7 @@ function ProductCard({
     <button
       onClick={() => onAdd(product)}
       disabled={disabled}
-      className="group relative text-left p-4 rounded-2xl border border-edge/60 bg-surface hover:border-emerald-600 hover:shadow-md transition-all disabled:opacity-40 disabled:cursor-not-allowed min-w-[120px]"
+      className="group relative text-left p-4 rounded-2xl border border-edge/60 bg-surface hover:border-primary/50 hover:shadow-md transition-all disabled:opacity-40 disabled:cursor-not-allowed min-w-[120px]"
     >
       {/* Category marker */}
       <div className="text-3xl mb-3 leading-none">

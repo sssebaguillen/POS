@@ -6,13 +6,14 @@ import { X, ShoppingCart, Package, ClipboardList, BarChart2, LineChart, Settings
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
-import { useTheme } from '@/components/shared/ThemeProvider'
+import { useTheme } from '@/components/shared/theme'
+import OperatorSwitcher from '@/components/operator/OperatorSwitcher'
 
 const links = [
-  { href: '/', label: 'Vender', icon: ShoppingCart },
+  { href: '/ventas', label: 'Vender', icon: ShoppingCart },
   { href: '/dashboard', label: 'Dashboard', icon: BarChart2 },
   { href: '/stats', label: 'Estadísticas', icon: LineChart },
-  { href: '/products', label: 'Productos', icon: Package },
+  { href: '/price-lists', label: 'Listas de precios', icon: Package },
   { href: '/inventory', label: 'Stock', icon: ClipboardList },
   { href: '/settings', label: 'Configuración', icon: Settings },
 ]
@@ -20,9 +21,10 @@ const links = [
 interface Props {
   open: boolean
   onClose: () => void
+  activeOperatorName: string | null
 }
 
-export default function Sidebar({ open, onClose }: Props) {
+export default function Sidebar({ open, onClose, activeOperatorName }: Props) {
   const pathname = usePathname()
   const { theme, toggle } = useTheme()
   const router = useRouter()
@@ -69,7 +71,7 @@ export default function Sidebar({ open, onClose }: Props) {
               className={cn(
                 'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
                 pathname === href
-                  ? 'bg-emerald-700 text-white'
+                  ? 'bg-primary text-primary-foreground'
                   : 'text-body hover:bg-hover-bg hover:text-heading'
               )}
             >
@@ -80,6 +82,10 @@ export default function Sidebar({ open, onClose }: Props) {
         </nav>
 
         <div className="px-3 py-3 border-t border-edge-soft flex flex-col gap-2">
+          {activeOperatorName && (
+            <OperatorSwitcher operatorName={activeOperatorName} />
+          )}
+
           <div className="flex items-center justify-between mb-1">
             <button
               className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-body hover:bg-hover-bg transition-colors flex-1 text-left"
