@@ -169,6 +169,7 @@ export default function POSView({ products, categories, businessId, priceLists, 
             businessId={businessId}
             activePriceList={activePriceList}
             priceListOverrides={priceListOverrides}
+            operatorId={activeOperator?.role === 'owner' || !activeOperator ? null : activeOperator.profile_id ?? null}
           />
         </div>
       </div>

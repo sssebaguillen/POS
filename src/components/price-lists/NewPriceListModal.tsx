@@ -113,7 +113,7 @@ export default function NewPriceListModal({
           )}
 
           <div className="flex flex-col gap-1">
-            <label className="text-[11px] font-semibold text-subtle uppercase tracking-wide">
+            <label className="text-label text-subtle">
               Nombre<span className="text-red-400 ml-0.5">*</span>
             </label>
             <Input
@@ -130,7 +130,7 @@ export default function NewPriceListModal({
           </div>
 
           <div className="flex flex-col gap-1">
-            <label className="text-[11px] font-semibold text-subtle uppercase tracking-wide">Descripcion</label>
+            <label className="text-label text-subtle">Descripcion</label>
             <Input
               value={description}
               onChange={event => {
@@ -143,7 +143,7 @@ export default function NewPriceListModal({
           </div>
 
           <div className="flex flex-col gap-1">
-            <label className="text-[11px] font-semibold text-subtle uppercase tracking-wide">
+            <label className="text-label text-subtle">
               Margen de ganancia<span className="text-red-400 ml-0.5">*</span>
             </label>
             <div className="relative">
@@ -162,7 +162,7 @@ export default function NewPriceListModal({
               />
               <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-hint pointer-events-none">%</span>
             </div>
-            <p className="text-[11px] text-hint">10% = +10% sobre el costo · 60% = +60% sobre el costo</p>
+            <p className="text-caption text-hint">10% = +10% sobre el costo · 60% = +60% sobre el costo</p>
           </div>
 
           <div className="pt-1 flex items-center justify-end gap-2.5">

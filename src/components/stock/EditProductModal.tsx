@@ -36,14 +36,14 @@ function FieldGroup({
   return (
     <div className="flex flex-col gap-1">
       <div className="flex items-center justify-between gap-2">
-        <label className="text-[11px] font-semibold text-subtle uppercase tracking-wide">
+        <label className="text-label text-subtle">
           {label}
           {required && <span className="text-red-400 ml-0.5">*</span>}
         </label>
         {badge}
       </div>
       {children}
-      {error && <p className="text-[11px] text-red-500">{error}</p>}
+      {error && <p className="text-caption text-red-500">{error}</p>}
     </div>
   )
 }
@@ -373,7 +373,7 @@ export default function EditProductModal({
               <FieldGroup
                 label="Precio"
                 badge={isPriceEdited && (
-                  <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-md bg-amber-50 text-amber-600 border border-amber-200">
+                  <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-md bg-amber-50 text-amber-600 dark:text-amber-400 border border-amber-200">
                     personalizado
                   </span>
                 )}
@@ -407,7 +407,7 @@ export default function EditProductModal({
                     className={`h-9 rounded-xl text-sm pl-7 bg-surface ${errors.cost ? 'border-red-400 focus-visible:ring-red-200' : 'border-edge focus-visible:ring-ring/50 focus-visible:border-ring'}`}
                   />
                 </div>
-                {margin !== null && <p className="text-[11px] text-emerald-600 font-medium">{margin}% margen</p>}
+                {margin !== null && <p className="text-caption text-emerald-600 dark:text-emerald-400 font-medium">{margin}% margen</p>}
               </FieldGroup>
 
               <FieldGroup label="Stock actual" required error={errors.stock}>

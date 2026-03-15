@@ -21,3 +21,33 @@ export function startOfWeek(date: Date): Date {
 export function isCompletedSale(status: string | null): boolean {
   return status === null || status === 'completed'
 }
+
+export function getPreviousPeriodRange(
+  period: 'today' | 'week' | 'month' | 'custom',
+  currentRange: { from: Date; to: Date }
+): { from: Date; to: Date } {
+  const dayMs = 24 * 60 * 60 * 1000
+
+  if (period === 'month') {
+    const prevStart = new Date(currentRange.from)
+    prevStart.setMonth(prevStart.getMonth() - 1)
+    const prevEnd = new Date(currentRange.to)
+    prevEnd.setMonth(prevEnd.getMonth() - 1)
+    return { from: prevStart, to: prevEnd }
+  }
+
+  const fromDay = new Date(currentRange.from)
+  fromDay.setHours(0, 0, 0, 0)
+  const toDay = new Date(currentRange.to)
+  toDay.setHours(0, 0, 0, 0)
+  const numDays = Math.round((toDay.getTime() - fromDay.getTime()) / dayMs) + 1
+
+  return {
+    from: new Date(currentRange.from.getTime() - numDays * dayMs),
+    to: new Date(currentRange.to.getTime() - numDays * dayMs),
+  }
+}
+
+export function getDayLabel(dayIndex: number): string {
+  return ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'][dayIndex]
+}

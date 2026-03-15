@@ -22,13 +22,13 @@ function FieldGroup({ label, required, error, hint, children }: {
   return (
     <div className="flex flex-col gap-1">
       <div className="flex items-baseline justify-between">
-        <label className="text-[11px] font-semibold text-subtle uppercase tracking-wide">
+        <label className="text-label text-subtle">
           {label}{required && <span className="text-red-400 ml-0.5">*</span>}
         </label>
-        {hint && <span className="text-[11px] text-emerald-600 font-medium">{hint}</span>}
+        {hint && <span className="text-caption text-emerald-600 dark:text-emerald-400 font-medium">{hint}</span>}
       </div>
       {children}
-      {error && <p className="text-[11px] text-red-500">{error}</p>}
+      {error && <p className="text-caption text-red-500">{error}</p>}
     </div>
   )
 }
@@ -313,7 +313,7 @@ export default function NewProductModal({ open, onClose, businessId, defaultPric
                   <span className="inline-flex items-center gap-1.5">
                     Precio venta
                     {isPriceEdited && (
-                      <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium normal-case tracking-normal text-amber-600">
+                      <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium normal-case tracking-normal text-amber-600 dark:text-amber-400">
                         personalizado
                       </span>
                     )}

@@ -131,7 +131,7 @@ export default function NewOperatorModal({ open, onClose, businessId, onCreated 
 
         <form onSubmit={handleSubmit} className="space-y-5">
           <div className="space-y-1.5">
-            <label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+            <label className="text-label text-muted-foreground">
               Nombre <span className="text-destructive">*</span>
             </label>
             <Input
@@ -143,7 +143,7 @@ export default function NewOperatorModal({ open, onClose, businessId, onCreated 
           </div>
 
           <div className="space-y-1.5">
-            <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Rol base</p>
+            <p className="text-label text-muted-foreground">Rol base</p>
             <div className="flex gap-2">
               {(['cashier', 'manager'] as const).map(role => (
                 <button
@@ -163,7 +163,7 @@ export default function NewOperatorModal({ open, onClose, businessId, onCreated 
           </div>
 
           <div className="space-y-1.5">
-            <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Permisos</p>
+            <p className="text-label text-muted-foreground">Permisos</p>
             <div className="rounded-lg border border-border/60 divide-y divide-border/60">
               {PERMISSION_LABELS.map(({ key, label }) => (
                 <div key={key} className="flex items-center justify-between px-3 py-2.5">
@@ -185,7 +185,7 @@ export default function NewOperatorModal({ open, onClose, businessId, onCreated 
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+            <label className="text-label text-muted-foreground">
               PIN <span className="text-destructive">*</span>
             </label>
             <Input

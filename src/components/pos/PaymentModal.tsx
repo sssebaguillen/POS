@@ -21,10 +21,11 @@ interface Props {
   businessId: string | null
   priceListId: string | null
   saleItems: SaleItemInput[]
+  operatorId: string | null
   onClose: () => void
 }
 
-export default function PaymentModal({ total, businessId, priceListId, saleItems, onClose }: Props) {
+export default function PaymentModal({ total, businessId, priceListId, saleItems, operatorId, onClose }: Props) {
   const [method, setMethod] = useState<PaymentMethod>('cash')
   const [cashReceived, setCashReceived] = useState('')
   const [loading, setLoading] = useState(false)
@@ -58,6 +59,7 @@ export default function PaymentModal({ total, businessId, priceListId, saleItems
         total,
         status: 'completed',
         price_list_id: priceListId,
+        operator_id: operatorId ?? null,
       })
       .select('id')
       .single()

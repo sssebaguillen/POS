@@ -4,8 +4,14 @@ import { useMemo, useState } from 'react'
 import PageHeader from '@/components/shared/PageHeader'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
-import { endOfDay, isCompletedSale, startOfDay, startOfWeek } from '@/components/analytics/utils'
+import {
+  endOfDay, isCompletedSale, startOfDay, startOfWeek,
+  getPreviousPeriodRange, getDayLabel,
+} from '@/components/analytics/utils'
 import { PAYMENT_LABELS, PAYMENT_COLORS } from '@/lib/payments'
+import {
+  LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+} from 'recharts'
 
 type Period = 'today' | 'week' | 'month' | 'custom'
 type EvolutionMode = 'revenue' | 'units'
@@ -53,6 +59,29 @@ interface Props {
   categories: CategoryRecord[]
 }
 
+interface EvolutionPoint {
+  label: string
+  currentRevenue: number
+  currentUnits: number
+  previousRevenue: number
+  previousUnits: number
+}
+
+function DeltaBadge({ current, previous }: { current: number; previous: number }) {
+  if (previous === 0) return null
+  const delta = ((current - previous) / previous) * 100
+  const positive = delta >= 0
+  return (
+    <span
+      className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-md ${
+        positive ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-600'
+      }`}
+    >
+      {positive ? '+' : ''}{delta.toFixed(1)}%
+    </span>
+  )
+}
+
 export default function StatsView({ sales, payments, saleItems, products, categories }: Props) {
   const [period, setPeriod] = useState<Period>('today')
   const [fromDate, setFromDate] = useState('')
@@ -98,9 +127,32 @@ export default function StatsView({ sales, payments, saleItems, products, catego
     return saleItems.filter(item => filteredSaleIds.has(item.sale_id))
   }, [saleItems, filteredSaleIds])
 
+  const previousRange = useMemo(() => getPreviousPeriodRange(period, range), [period, range])
+
+  const previousSales = useMemo(
+    () => sales.filter(s => {
+      const d = new Date(s.created_at)
+      return d >= previousRange.from && d <= previousRange.to && isCompletedSale(s.status)
+    }),
+    [sales, previousRange]
+  )
+  const previousSaleIds = useMemo(() => new Set(previousSales.map(s => s.id)), [previousSales])
+  const previousSaleCreatedAtById = useMemo(
+    () => new Map(previousSales.map(s => [s.id, s.created_at])),
+    [previousSales]
+  )
+  const previousItems = useMemo(
+    () => saleItems.filter(i => previousSaleIds.has(i.sale_id)),
+    [saleItems, previousSaleIds]
+  )
+
   const totalRevenue = filteredSales.reduce((acc, sale) => acc + Number(sale.total), 0)
   const totalUnits = filteredItems.reduce((acc, item) => acc + Number(item.quantity), 0)
   const avgTicket = filteredSales.length > 0 ? totalRevenue / filteredSales.length : 0
+
+  const prevRevenue = previousSales.reduce((acc, s) => acc + Number(s.total), 0)
+  const prevUnits = previousItems.reduce((acc, i) => acc + Number(i.quantity), 0)
+  const prevAvgTicket = previousSales.length > 0 ? prevRevenue / previousSales.length : 0
 
   const peakDay = useMemo(() => {
     const byDay: Record<string, number> = {}
@@ -112,43 +164,67 @@ export default function StatsView({ sales, payments, saleItems, products, catego
     return winner ? winner[0] : '-'
   }, [filteredSales])
 
-  const evolution = useMemo(() => {
-    const grouped: Record<string, { label: string; revenue: number; units: number }> = {}
-    filteredSales.forEach(sale => {
-      const dayKey = sale.created_at.slice(0, 10)
-      if (!grouped[dayKey]) {
-        grouped[dayKey] = {
-          label: new Date(`${dayKey}T00:00:00`).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit' }),
-          revenue: 0,
-          units: 0,
-        }
-      }
-      grouped[dayKey].revenue += Number(sale.total)
+  const evolutionData = useMemo((): EvolutionPoint[] => {
+    const currentByDay: Record<string, { revenue: number; units: number }> = {}
+    filteredSales.forEach(s => {
+      const k = s.created_at.slice(0, 10)
+      if (!currentByDay[k]) currentByDay[k] = { revenue: 0, units: 0 }
+      currentByDay[k].revenue += Number(s.total)
     })
-
     filteredItems.forEach(item => {
-      const createdAt = saleCreatedAtById.get(item.sale_id)
-      if (!createdAt) return
-      const dayKey = createdAt.slice(0, 10)
-      if (!grouped[dayKey]) {
-        grouped[dayKey] = {
-          label: new Date(`${dayKey}T00:00:00`).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit' }),
-          revenue: 0,
-          units: 0,
-        }
-      }
-      grouped[dayKey].units += Number(item.quantity)
+      const ca = saleCreatedAtById.get(item.sale_id)
+      if (!ca) return
+      const k = ca.slice(0, 10)
+      if (!currentByDay[k]) currentByDay[k] = { revenue: 0, units: 0 }
+      currentByDay[k].units += Number(item.quantity)
     })
 
-    return Object.entries(grouped)
-      .sort(([a], [b]) => a.localeCompare(b))
-      .map(([, value]) => value)
-  }, [filteredSales, filteredItems, saleCreatedAtById])
+    const previousByDay: Record<string, { revenue: number; units: number }> = {}
+    previousSales.forEach(s => {
+      const k = s.created_at.slice(0, 10)
+      if (!previousByDay[k]) previousByDay[k] = { revenue: 0, units: 0 }
+      previousByDay[k].revenue += Number(s.total)
+    })
+    previousItems.forEach(item => {
+      const ca = previousSaleCreatedAtById.get(item.sale_id)
+      if (!ca) return
+      const k = ca.slice(0, 10)
+      if (!previousByDay[k]) previousByDay[k] = { revenue: 0, units: 0 }
+      previousByDay[k].units += Number(item.quantity)
+    })
 
-  const maxEvolution = Math.max(
-    ...evolution.map(point => (evolutionMode === 'revenue' ? point.revenue : point.units)),
-    1
-  )
+    const points: EvolutionPoint[] = []
+    const dayMs = 24 * 60 * 60 * 1000
+    const currentCursor = new Date(range.from)
+    currentCursor.setHours(0, 0, 0, 0)
+    const rangeEndDay = new Date(range.to)
+    rangeEndDay.setHours(0, 0, 0, 0)
+    const prevCursor = new Date(previousRange.from)
+    prevCursor.setHours(0, 0, 0, 0)
+
+    while (currentCursor <= rangeEndDay) {
+      const ck = currentCursor.toISOString().slice(0, 10)
+      const pk = prevCursor.toISOString().slice(0, 10)
+      points.push({
+        label: currentCursor.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit' }),
+        currentRevenue: currentByDay[ck]?.revenue ?? 0,
+        currentUnits: currentByDay[ck]?.units ?? 0,
+        previousRevenue: previousByDay[pk]?.revenue ?? 0,
+        previousUnits: previousByDay[pk]?.units ?? 0,
+      })
+      currentCursor.setTime(currentCursor.getTime() + dayMs)
+      prevCursor.setTime(prevCursor.getTime() + dayMs)
+    }
+    return points
+  }, [filteredSales, filteredItems, saleCreatedAtById, previousSales, previousItems, previousSaleCreatedAtById, range, previousRange])
+
+  const dayOfWeekData = useMemo(() => {
+    const byDay: Record<number, number> = { 0: 0, 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 }
+    filteredSales.forEach(s => {
+      byDay[new Date(s.created_at).getDay()] += Number(s.total)
+    })
+    return [1, 2, 3, 4, 5, 6, 0].map(idx => ({ day: getDayLabel(idx), revenue: byDay[idx] }))
+  }, [filteredSales])
 
   const paymentBreakdown = useMemo(() => {
     const map: Record<string, number> = {}
@@ -254,19 +330,22 @@ export default function StatsView({ sales, payments, saleItems, products, catego
           {/* KPI Cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
             <div className="rounded-2xl bg-surface border border-edge/60 p-4">
-              <p className="text-[10px] font-semibold text-hint uppercase tracking-wider">Ingresos totales</p>
+              <p className="text-label text-hint">Ingresos totales</p>
               <p className="text-xl font-bold text-heading mt-0.5">${totalRevenue.toLocaleString('es-AR')}</p>
+              <div className="mt-1.5"><DeltaBadge current={totalRevenue} previous={prevRevenue} /></div>
             </div>
             <div className="rounded-2xl bg-surface border border-edge/60 p-4">
-              <p className="text-[10px] font-semibold text-hint uppercase tracking-wider">Unidades vendidas</p>
+              <p className="text-label text-hint">Unidades vendidas</p>
               <p className="text-xl font-bold text-heading mt-0.5">{totalUnits}</p>
+              <div className="mt-1.5"><DeltaBadge current={totalUnits} previous={prevUnits} /></div>
             </div>
             <div className="rounded-2xl bg-surface border border-edge/60 p-4">
-              <p className="text-[10px] font-semibold text-hint uppercase tracking-wider">Ticket promedio</p>
+              <p className="text-label text-hint">Ticket promedio</p>
               <p className="text-xl font-bold text-heading mt-0.5">${avgTicket.toLocaleString('es-AR', { maximumFractionDigits: 0 })}</p>
+              <div className="mt-1.5"><DeltaBadge current={avgTicket} previous={prevAvgTicket} /></div>
             </div>
             <div className="rounded-2xl bg-surface border border-edge/60 p-4">
-              <p className="text-[10px] font-semibold text-hint uppercase tracking-wider">Día pico</p>
+              <p className="text-label text-hint">Día pico</p>
               <p className="text-xl font-bold text-heading mt-0.5">{peakDay}</p>
             </div>
           </div>
@@ -293,23 +372,81 @@ export default function StatsView({ sales, payments, saleItems, products, catego
                 </div>
               </div>
 
-              {evolution.length === 0 ? (
+              {evolutionData.length === 0 ? (
                 <p className="text-sm text-hint h-48 flex items-center justify-center">Sin datos</p>
               ) : (
-                <div className="space-y-2">
-                  {evolution.map(point => {
-                    const value = evolutionMode === 'revenue' ? point.revenue : point.units
-                    return (
-                      <div key={point.label} className="grid grid-cols-[70px_1fr_80px] items-center gap-2 text-xs">
-                        <span className="text-subtle">{point.label}</span>
-                        <div className="h-2 bg-surface-alt rounded-full overflow-hidden">
-                          <div className="h-2 bg-primary rounded-full" style={{ width: `${(value / maxEvolution) * 100}%` }} />
-                        </div>
-                        <span className="text-right text-body">{evolutionMode === 'revenue' ? `$${value.toLocaleString('es-AR')}` : value}</span>
-                      </div>
-                    )
-                  })}
-                </div>
+                <>
+                  <div className="flex items-center gap-5 text-xs text-hint">
+                    <span className="flex items-center gap-1.5">
+                      <svg width="16" height="3" viewBox="0 0 16 3"><line x1="0" y1="1.5" x2="16" y2="1.5" stroke="#1C4A3B" strokeWidth="2" /></svg>
+                      Período actual
+                    </span>
+                    <span className="flex items-center gap-1.5">
+                      <svg width="16" height="3" viewBox="0 0 16 3"><line x1="0" y1="1.5" x2="16" y2="1.5" stroke="#9ca3af" strokeWidth="2" strokeDasharray="4 4" /></svg>
+                      Período anterior
+                    </span>
+                  </div>
+                  <ResponsiveContainer width="100%" height={200}>
+                    <LineChart
+                      data={evolutionData}
+                      margin={{ top: 5, right: 10, left: 0, bottom: 5 }}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.06)" />
+                      <XAxis
+                        dataKey="label"
+                        tick={{ fontSize: 10, fill: '#6b7280' }}
+                        interval={evolutionData.length > 14 ? Math.floor(evolutionData.length / 7) : 0}
+                      />
+                      <YAxis
+                        tick={{ fontSize: 10, fill: '#6b7280' }}
+                        tickFormatter={v =>
+                          evolutionMode === 'revenue'
+                            ? v >= 1000 ? `$${(v / 1000).toFixed(0)}k` : `$${v}`
+                            : String(v)
+                        }
+                        width={52}
+                        tickCount={5}
+                      />
+                      <Tooltip
+                        content={({ active, payload, label }) => {
+                          if (!active || !payload?.length) return null
+                          const ck = evolutionMode === 'revenue' ? 'currentRevenue' : 'currentUnits'
+                          const pk = evolutionMode === 'revenue' ? 'previousRevenue' : 'previousUnits'
+                          const fmt = (v: number) =>
+                            evolutionMode === 'revenue'
+                              ? `$${v.toLocaleString('es-AR')}`
+                              : String(v)
+                          const cur = payload.find(p => p.dataKey === ck)
+                          const prev = payload.find(p => p.dataKey === pk)
+                          return (
+                            <div className="surface-elevated rounded-xl p-3 text-xs space-y-1 shadow-sm">
+                              <p className="font-semibold text-heading">{label}</p>
+                              {cur && <p className="text-body">Actual: <span className="font-medium">{fmt(Number(cur.value))}</span></p>}
+                              {prev && <p className="text-hint">Anterior: {fmt(Number(prev.value))}</p>}
+                            </div>
+                          )
+                        }}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey={evolutionMode === 'revenue' ? 'currentRevenue' : 'currentUnits'}
+                        stroke="#1C4A3B"
+                        strokeWidth={2}
+                        dot={false}
+                        name="Actual"
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey={evolutionMode === 'revenue' ? 'previousRevenue' : 'previousUnits'}
+                        stroke="#9ca3af"
+                        strokeWidth={1.5}
+                        strokeDasharray="5 5"
+                        dot={false}
+                        name="Anterior"
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </>
               )}
             </div>
 
@@ -405,6 +542,38 @@ export default function StatsView({ sales, payments, saleItems, products, catego
                 ))
               )}
             </div>
+          </div>
+          {/* Day of week distribution */}
+          <div className="rounded-2xl bg-surface border border-edge/60 p-5 space-y-3">
+            <p className="font-semibold text-heading">Ventas por día de la semana</p>
+            {filteredSales.length === 0 ? (
+              <p className="text-sm text-hint h-32 flex items-center justify-center">Sin datos para el período</p>
+            ) : (
+              <ResponsiveContainer width="100%" height={160}>
+                <BarChart data={dayOfWeekData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.06)" vertical={false} />
+                  <XAxis dataKey="day" tick={{ fontSize: 12, fill: '#6b7280' }} />
+                  <YAxis
+                    tick={{ fontSize: 10, fill: '#6b7280' }}
+                    tickFormatter={v => v >= 1000 ? `$${(v / 1000).toFixed(0)}k` : `$${v}`}
+                    width={50}
+                  />
+                  <Tooltip
+                    cursor={{ fill: 'rgba(28, 74, 59, 0.05)' }}
+                    content={({ active, payload, label }) => {
+                      if (!active || !payload?.length) return null
+                      return (
+                        <div className="surface-elevated rounded-xl p-2.5 text-xs shadow-sm">
+                          <p className="font-semibold text-heading">{label}</p>
+                          <p className="text-body">${Number(payload[0]?.value ?? 0).toLocaleString('es-AR')}</p>
+                        </div>
+                      )
+                    }}
+                  />
+                  <Bar dataKey="revenue" fill="#1C4A3B" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
           </div>
         </div>
       </div>

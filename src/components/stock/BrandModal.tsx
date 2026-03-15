@@ -166,14 +166,14 @@ export default function BrandModal({
           </div>
 
           <form onSubmit={handleCreate} className="rounded-xl border border-edge/70 bg-surface-alt p-3.5">
-            <p className="text-[11px] font-semibold text-subtle uppercase tracking-wide mb-2.5">Nueva marca</p>
+            <p className="text-label text-subtle mb-2.5">Nueva marca</p>
             {!stockWriteAllowed && (
-              <p className="mb-2.5 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-700">
+              <p className="mb-2.5 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-700 dark:text-amber-400">
                 Sin permiso de inventario
               </p>
             )}
             <div className="flex flex-col gap-1">
-              <label className="text-[11px] font-semibold text-subtle uppercase tracking-wide">
+              <label className="text-label text-subtle">
                 Nombre<span className="text-red-400 ml-0.5">*</span>
               </label>
               <Input

@@ -36,20 +36,20 @@ function getStatus(product: InventoryProduct): 'ok' | 'low' | 'out' | 'discontin
 const statusConfig = {
   ok: {
     label: 'EN STOCK',
-    border: 'border-emerald-300',
-    badge: 'bg-emerald-50 text-emerald-700',
+    border: 'border-emerald-300 dark:border-emerald-800/50',
+    badge: 'bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/50',
     bar: 'bg-emerald-500',
   },
   low: {
     label: 'STOCK BAJO',
-    border: 'border-amber-300',
-    badge: 'bg-amber-50 text-amber-700',
+    border: 'border-amber-300 dark:border-amber-800/50',
+    badge: 'bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800/50',
     bar: 'bg-amber-500',
   },
   out: {
     label: 'SIN STOCK',
-    border: 'border-red-300 border-dashed',
-    badge: 'bg-red-50 text-red-600',
+    border: 'border-red-300 dark:border-red-800/50 border-dashed',
+    badge: 'bg-red-50 dark:bg-red-950/30 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800/50',
     bar: 'bg-red-500',
   },
   discontinued: {
@@ -338,9 +338,9 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
 
           <div className="flex gap-1.5 ml-auto">
             {([
-              { key: 'all', label: 'Todos', style: 'bg-heading text-white', inactive: 'bg-surface-alt text-body hover:bg-hover-bg' },
-              { key: 'low', label: 'Stock bajo', style: 'bg-amber-500 text-white', inactive: 'bg-amber-50 text-amber-700 hover:bg-amber-100' },
-              { key: 'out', label: 'Sin stock', style: 'bg-red-500 text-white', inactive: 'bg-red-50 text-red-700 hover:bg-red-100' },
+              { key: 'all', label: 'Todos', style: 'bg-primary text-primary-foreground', inactive: 'bg-surface-alt text-body hover:bg-hover-bg' },
+              { key: 'low', label: 'Stock bajo', style: 'bg-amber-500 text-white', inactive: 'bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800/50 hover:bg-amber-100 dark:hover:bg-amber-900/40' },
+              { key: 'out', label: 'Sin stock', style: 'bg-red-500 text-white', inactive: 'bg-red-50 dark:bg-red-950/30 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-800/50 hover:bg-red-100 dark:hover:bg-red-900/40' },
               { key: 'discontinued', label: 'Discontinuados', style: 'bg-subtle text-white', inactive: 'bg-surface-alt text-body hover:bg-hover-bg' },
             ] as const).map(s => (
               <button
@@ -403,39 +403,28 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
                     {product.name}
                   </h3>
 
-                  <div className="flex flex-wrap gap-1 mb-3 min-h-5">
-                    {product.categories?.name && (
-                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-surface-alt text-subtle">
-                        {product.categories.name}
-                      </span>
-                    )}
-                  </div>
 
-                  <div className="grid grid-cols-3 gap-2 mb-3 rounded-lg bg-surface-alt px-2 py-1.5">
+                  <div className="grid grid-cols-2 gap-2 mb-3 rounded-lg bg-surface-alt px-2 py-1.5">
                     <div className="min-w-0">
-                      <p className="text-[10px] uppercase tracking-wide text-hint">Categoría</p>
-                      <p className="truncate text-[11px] text-subtle">{product.categories?.name ?? '—'}</p>
+                      <p className="text-label text-hint">Categoría</p>
+                      <p className="text-caption text-subtle truncate">{product.categories?.name ?? '—'}</p>
                     </div>
                     <div className="min-w-0">
-                      <p className="text-[10px] uppercase tracking-wide text-hint">Marca</p>
-                      <p className="truncate text-[11px] text-subtle">{product.brand?.name ?? '—'}</p>
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-[10px] uppercase tracking-wide text-hint">SKU</p>
-                      <p className="truncate text-[11px] text-subtle">{product.sku ?? '—'}</p>
+                      <p className="text-label text-hint">Marca</p>
+                      <p className="text-caption text-subtle truncate">{product.brand?.name ?? '—'}</p>
                     </div>
                   </div>
 
                   <div className="grid grid-cols-2 gap-2 mb-3">
                     <div className="rounded-lg bg-surface-alt px-2 py-1.5">
-                      <p className="text-[10px] text-hint uppercase font-medium">Venta</p>
-                      <p className="text-sm font-bold text-heading">
+                      <p className="text-label text-hint">Venta</p>
+                      <p className="text-emphasis text-heading">
                         ${Number(product.price).toLocaleString('es-AR')}
                       </p>
                     </div>
                     <div className="rounded-lg bg-surface-alt px-2 py-1.5">
-                      <p className="text-[10px] text-hint uppercase font-medium">Costo</p>
-                      <p className="text-sm font-medium text-subtle">
+                      <p className="text-label text-hint">Costo</p>
+                      <p className="text-body-sm text-subtle">
                         ${Number(product.cost).toLocaleString('es-AR')}
                       </p>
                     </div>
@@ -451,7 +440,7 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
 
                   <div className="mb-3">
                     <div className="flex items-baseline justify-between mb-1">
-                      <span className="text-lg font-bold text-heading">
+                      <span className="text-emphasis text-heading">
                         {product.stock} <span className="text-xs font-normal text-hint">uds</span>
                       </span>
                       <span className="text-[10px] text-hint">min. {product.min_stock}</span>
@@ -484,7 +473,7 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
                         <button
                           onClick={() => handleDeleteProduct(product)}
                           disabled={loadingId === product.id}
-                          className="text-xs py-1.5 rounded-lg border border-red-200 text-red-600 hover:bg-red-50 transition-colors disabled:opacity-50"
+                          className="text-xs py-1.5 rounded-lg bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800/50 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors disabled:opacity-50"
                         >
                           Eliminar
                         </button>
@@ -550,7 +539,7 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
         />
       )}
 
-      <div className="bg-surface border-t border-edge/60 px-5 py-2.5 flex items-center gap-6 text-xs text-subtle shrink-0 overflow-x-auto">
+      <div className="bg-surface border-t border-edge/60 px-5 py-2.5 flex items-center gap-6 text-caption text-subtle shrink-0 overflow-x-auto">
         <span className="flex items-center gap-1.5">
           <span className="w-2 h-2 rounded-full bg-emerald-500" />
           {activeProducts.length} productos activos

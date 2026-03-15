@@ -118,38 +118,58 @@ export default function Sidebar({ open, onClose, activeOperatorName }: Props) {
           </button>
         </div>
 
-        <nav className="flex-1 py-3 px-3 space-y-0.5">
-          {NAV_LINKS.map(({ href, label, icon: Icon, check }) => {
-            if (isRestricted(check)) {
-              return (
-                <span
-                  key={href}
-                  role="button"
-                  onClick={() => handleRestrictedClick(label)}
-                  className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium opacity-50 cursor-not-allowed select-none text-body"
-                >
-                  <Icon size={18} />
-                  {label}
-                </span>
-              )
-            }
-            return (
-              <Link
-                key={href}
-                href={href}
-                onClick={onClose}
-                className={cn(
-                  'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
-                  pathname === href
-                    ? 'bg-primary text-primary-foreground'
-                    : 'text-body hover:bg-hover-bg hover:text-heading'
-                )}
-              >
-                <Icon size={18} />
-                {label}
-              </Link>
-            )
-          })}
+        <nav className="flex-1 py-3 px-3 overflow-y-auto">
+          {[
+            {
+              label: 'Principal',
+              links: NAV_LINKS.filter(l => ['/ventas', '/dashboard', '/stats'].includes(l.href)),
+            },
+            {
+              label: 'Gestión',
+              links: NAV_LINKS.filter(l => ['/price-lists', '/inventory'].includes(l.href)),
+            },
+            {
+              label: 'Sistema',
+              links: NAV_LINKS.filter(l => ['/settings'].includes(l.href)),
+            },
+          ].map(section => (
+            <div key={section.label} className="mb-4">
+              <p className="text-label text-hint px-3 mb-1">{section.label}</p>
+              <div className="space-y-0.5">
+                {section.links.map(({ href, label, icon: Icon, check }) => {
+                  if (isRestricted(check)) {
+                    return (
+                      <span
+                        key={href}
+                        role="button"
+                        onClick={() => handleRestrictedClick(label)}
+                        className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium opacity-50 cursor-not-allowed select-none text-body"
+                      >
+                        <Icon size={18} />
+                        {label}
+                      </span>
+                    )
+                  }
+                  return (
+                    <Link
+                      key={href}
+                      href={href}
+                      onClick={onClose}
+                      className={cn(
+                        'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
+                        pathname === href
+                          ? 'bg-primary text-primary-foreground'
+                          : 'text-body hover:bg-hover-bg hover:text-heading'
+                      )}
+                    >
+                      <Icon size={18} />
+                      {label}
+                    </Link>
+                  )
+                })}
+              </div>
+            </div>
+          ))}
         </nav>
 
         <div className="px-3 py-3 border-t border-edge-soft flex flex-col gap-2">

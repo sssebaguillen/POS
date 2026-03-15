@@ -11,6 +11,18 @@ import { calculateProductPrice } from '@/lib/price-lists'
 import { normalizePayment } from '@/lib/payments'
 import type { PriceList, PriceListOverride } from '@/components/price-lists/types'
 
+function getStockIndicator(
+  quantity: number,
+  stock: number,
+  minStock: number
+): { type: 'low' | 'zero' | 'negative'; label?: string } | null {
+  const remaining = stock - quantity
+  if (remaining < 0) return { type: 'negative', label: String(remaining) }
+  if (remaining === 0) return { type: 'zero', label: '0' }
+  if (remaining > 0 && remaining <= minStock) return { type: 'low' }
+  return null
+}
+
 type RightTab = 'current' | 'history'
 
 interface SaleRow {
@@ -21,19 +33,48 @@ interface SaleRow {
   payment_method: string | null
 }
 
+interface SaleItem {
+  id: string
+  product_id: string
+  product_name: string
+  product_icon: string | null
+  quantity: number
+  unit_price: number
+}
+
+interface SaleDetail extends SaleRow {
+  items: SaleItem[]
+  operator_name: string | null
+}
+
+interface SaleItemQueryRow {
+  id: string
+  product_id: string
+  product_name: string
+  product_icon: string | null
+  quantity: number
+  unit_price: number
+}
+
 interface Props {
   businessId: string | null
   activePriceList: PriceList | null
   priceListOverrides: PriceListOverride[]
+  operatorId: string | null
 }
 
-export default function CartPanel({ businessId, activePriceList, priceListOverrides }: Props) {
+export default function CartPanel({ businessId, activePriceList, priceListOverrides, operatorId }: Props) {
   const { items, removeItem, updateQuantity, subtotal, total, discount, clearCart } = useCartStore()
   const [showPayment, setShowPayment] = useState(false)
   const [activeTab, setActiveTab] = useState<RightTab>('current')
   const [historyLoading, setHistoryLoading] = useState(false)
   const [history, setHistory] = useState<SaleRow[]>([])
   const [historyQuery, setHistoryQuery] = useState('')
+  const [expandedSaleId, setExpandedSaleId] = useState<string | null>(null)
+  const [saleDetails, setSaleDetails] = useState<Record<string, SaleDetail>>({})
+  const [loadingDetailId, setLoadingDetailId] = useState<string | null>(null)
+  const [editingSale, setEditingSale] = useState<SaleDetail | null>(null)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
   const supabase = useMemo(() => createClient(), [])
 
   const isEmpty = items.length === 0
@@ -68,6 +109,10 @@ export default function CartPanel({ businessId, activePriceList, priceListOverri
 
   const adjustedSubtotal = adjustedItems.reduce((sum, i) => sum + i.total, 0)
   const adjustedTotal = Math.max(0, adjustedSubtotal - discount)
+
+  const hasStockWarning = items.some(
+    item => item.quantity >= item.product.stock
+  )
 
   const filteredHistory = (() => {
     const q = historyQuery.trim().toLowerCase()
@@ -134,6 +179,102 @@ export default function CartPanel({ businessId, activePriceList, priceListOverri
     loadDailyHistory()
   }, [activeTab, businessId, supabase])
 
+  async function fetchSaleDetail(saleId: string) {
+    if (saleDetails[saleId]) {
+      setExpandedSaleId(prev => prev === saleId ? null : saleId)
+      return
+    }
+    setLoadingDetailId(saleId)
+    const { data, error } = await supabase.rpc('get_sale_detail', {
+      p_sale_id: saleId,
+      p_business_id: businessId,
+    })
+    if (error || !data?.success) {
+      setLoadingDetailId(null)
+      return
+    }
+    const sale = history.find(s => s.id === saleId)
+    if (!sale) { setLoadingDetailId(null); return }
+
+    const detail: SaleDetail = {
+      ...sale,
+      payment_method: data.payment_method ?? null,
+      operator_name: data.operator_name ?? null,
+      items: (data.items ?? []).map((row: SaleItemQueryRow) => ({
+        id: row.id,
+        product_id: row.product_id,
+        product_name: row.product_name,
+        product_icon: row.product_icon ?? null,
+        quantity: row.quantity,
+        unit_price: Number(row.unit_price),
+      })),
+    }
+    setSaleDetails(prev => ({ ...prev, [saleId]: detail }))
+    setExpandedSaleId(saleId)
+    setLoadingDetailId(null)
+  }
+
+  async function handleDeleteSale(saleId: string) {
+    if (!businessId) return
+    setDeletingId(saleId)
+    const { data, error } = await supabase.rpc('delete_sale', {
+      p_sale_id: saleId,
+      p_business_id: businessId,
+    })
+    if (!error && data?.success) {
+      setHistory(prev => prev.filter(s => s.id !== saleId))
+      setSaleDetails(prev => { const next = { ...prev }; delete next[saleId]; return next })
+      if (expandedSaleId === saleId) setExpandedSaleId(null)
+    }
+    setDeletingId(null)
+  }
+
+  async function handleUpdateSale(
+    saleId: string,
+    items: { product_id: string; quantity: number; unit_price: number }[],
+    paymentMethod: string
+  ) {
+    if (!businessId) return
+    const { data, error } = await supabase.rpc('update_sale', {
+      p_sale_id: saleId,
+      p_business_id: businessId,
+      p_items: items,
+      p_payment_method: paymentMethod,
+    })
+    if (!error && data?.success) {
+      const newTotal = Number(data.total)
+      setHistory(prev => prev.map(s =>
+        s.id === saleId
+          ? { ...s, total: newTotal, payment_method: paymentMethod }
+          : s
+      ))
+      setSaleDetails(prev => {
+        const existing = prev[saleId]
+        if (!existing) return prev
+        return {
+          ...prev,
+          [saleId]: {
+            ...existing,
+            total: newTotal,
+            payment_method: paymentMethod,
+            items: items.map(i => {
+              const found = existing.items.find(ei => ei.product_id === i.product_id)
+              return {
+                id: found?.id ?? '',
+                product_id: i.product_id,
+                product_name: found?.product_name ?? '',
+                product_icon: found?.product_icon ?? null,
+                quantity: i.quantity,
+                unit_price: i.unit_price,
+              }
+            }),
+          },
+        }
+      })
+      setEditingSale(null)
+    }
+  }
+
   function handleCancelSale() {
     clearCart()
   }
@@ -176,7 +317,7 @@ export default function CartPanel({ businessId, activePriceList, priceListOverri
 
   return (
     <>
-      <div className="flex flex-col h-full">
+      <div className="flex flex-col h-full relative">
         {/* Tabs */}
         <div className="border-b border-edge/60">
           <div className="grid grid-cols-2">
@@ -232,9 +373,24 @@ export default function CartPanel({ businessId, activePriceList, priceListOverri
                         <p className="text-sm font-medium text-heading leading-tight truncate">
                           {item.product.name}
                         </p>
-                        <p className="text-xs text-hint mt-0.5">
-                          ${(adjustedByProductId.get(item.product.id)?.unit_price ?? item.unit_price).toLocaleString('es-AR')} c/u
-                        </p>
+                        <div className="flex items-center gap-1.5 mt-0.5">
+                          <p className="text-xs text-hint">
+                            ${(adjustedByProductId.get(item.product.id)?.unit_price ?? item.unit_price).toLocaleString('es-AR')} c/u
+                          </p>
+                          {(() => {
+                            const indicator = getStockIndicator(item.quantity, item.product.stock, item.product.min_stock)
+                            if (!indicator) return null
+                            const isRed = indicator.type === 'zero' || indicator.type === 'negative'
+                            return (
+                              <span className={`inline-flex items-center gap-1 leading-none ${isRed ? 'text-red-500 dark:text-red-400' : 'text-amber-500 dark:text-amber-400'}`}>
+                                <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${isRed ? 'bg-red-500 dark:bg-red-400' : 'bg-amber-400 dark:bg-amber-400'}`} />
+                                {indicator.label && (
+                                  <span className="text-[10px] font-medium tabular-nums">{indicator.label}</span>
+                                )}
+                              </span>
+                            )
+                          })()}
+                        </div>
                       </div>
 
                       <div className="flex items-center gap-1.5 shrink-0">
@@ -305,7 +461,11 @@ export default function CartPanel({ businessId, activePriceList, priceListOverri
                   Cancelar
                 </Button>
                 <Button
-                  className="h-10 rounded-xl text-sm font-semibold bg-primary hover:bg-primary/90 text-primary-foreground"
+                  className={`h-10 rounded-xl text-sm font-semibold text-primary-foreground transition-colors ${
+                    hasStockWarning
+                      ? 'bg-orange-500 hover:bg-orange-600'
+                      : 'bg-primary hover:bg-primary/90'
+                  }`}
                   disabled={isEmpty}
                   onClick={() => setShowPayment(true)}
                 >
@@ -341,18 +501,123 @@ export default function CartPanel({ businessId, activePriceList, priceListOverri
               ) : filteredHistory.length === 0 ? (
                 <div className="h-full flex items-center justify-center text-sm text-hint">No hay ventas para mostrar</div>
               ) : (
-                <ul className="divide-y divide-edge-soft">
-                  {filteredHistory.map(sale => (
-                    <li key={sale.id} className="px-4 py-3">
-                      <div className="flex items-center justify-between gap-2">
-                        <div>
-                          <p className="text-sm font-medium text-heading">{formatTime(sale.created_at)}</p>
-                          <p className="text-xs text-subtle">{normalizePayment(sale.payment_method)} · {sale.status ?? 'completed'}</p>
-                        </div>
-                        <p className="text-sm font-semibold text-heading">${sale.total.toLocaleString('es-AR')}</p>
-                      </div>
-                    </li>
-                  ))}
+                <ul className="p-3 space-y-1.5">
+                  {filteredHistory.map((sale, index) => {
+                    const isExpanded = expandedSaleId === sale.id
+                    const detail = saleDetails[sale.id]
+                    const isLoadingDetail = loadingDetailId === sale.id
+                    const isDeleting = deletingId === sale.id
+                    const saleNumber = filteredHistory.length - index
+
+                    return (
+                      <li
+                        key={sale.id}
+                        className={`rounded-xl border transition-all overflow-hidden ${
+                          isExpanded
+                            ? 'bg-primary/5 border-primary/30 dark:bg-primary/10 dark:border-primary/20'
+                            : 'bg-surface border-edge hover:border-primary/30 hover:bg-surface-alt/40'
+                        }`}
+                      >
+                        {/* Clickable header — always visible */}
+                        <button
+                          className="w-full px-3.5 py-2.5 text-left"
+                          onClick={() => fetchSaleDetail(sale.id)}
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-1.5 min-w-0">
+                              <span className="text-sm font-semibold text-heading tabular-nums shrink-0">
+                                {formatTime(sale.created_at)}
+                              </span>
+                              <span className="text-xs text-hint shrink-0">· Venta #{saleNumber}</span>
+                            </div>
+                            <div className="flex items-center gap-2 shrink-0">
+                              <span className={`text-sm font-bold tabular-nums ${isExpanded ? 'text-primary' : 'text-heading'}`}>
+                                ${sale.total.toLocaleString('es-AR')}
+                              </span>
+                              {isLoadingDetail ? (
+                                <span className="w-3 h-3 border-2 border-hint border-t-transparent rounded-full animate-spin" />
+                              ) : (
+                                <span className={`text-[10px] text-hint transition-transform duration-150 inline-block ${isExpanded ? '-rotate-180' : ''}`}>
+                                  ▾
+                                </span>
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                            <span className={`inline-flex items-center text-[11px] px-2 py-0.5 rounded-full border font-medium ${
+                              isExpanded
+                                ? 'bg-primary/10 border-primary/20 text-primary dark:bg-primary/20 dark:border-primary/30'
+                                : 'bg-surface-alt border-edge text-body'
+                            }`}>
+                              {normalizePayment(sale.payment_method)}
+                            </span>
+                            {detail && (
+                              <>
+                                <span className="text-[11px] text-hint">
+                                  {detail.items.reduce((sum, i) => sum + i.quantity, 0)} item{detail.items.reduce((sum, i) => sum + i.quantity, 0) !== 1 ? 's' : ''}
+                                </span>
+                                {detail.items.slice(0, 4).map(item =>
+                                  item.product_icon ? (
+                                    <span key={item.product_id} className="text-xs leading-none">{item.product_icon}</span>
+                                  ) : null
+                                )}
+                              </>
+                            )}
+                          </div>
+                        </button>
+
+                        {/* Expanded detail — inside the same card */}
+                        {isExpanded && detail && (
+                          <div className="px-3.5 pb-3 border-t border-dashed border-primary/20 dark:border-primary/15">
+                            <ul className="space-y-1 pt-2.5 mb-2.5">
+                              {detail.items.map(item => (
+                                <li key={item.id} className="flex items-center justify-between text-sm">
+                                  <span className="flex items-center gap-1.5 text-body min-w-0">
+                                    {item.product_icon && (
+                                      <span className="text-sm leading-none shrink-0">{item.product_icon}</span>
+                                    )}
+                                    <span className="truncate text-xs">{item.product_name}</span>
+                                    <span className="text-hint shrink-0 text-xs">×{item.quantity}</span>
+                                  </span>
+                                  <span className="text-xs font-semibold text-heading tabular-nums shrink-0 ml-3">
+                                    ${(item.quantity * item.unit_price).toLocaleString('es-AR')}
+                                  </span>
+                                </li>
+                              ))}
+                            </ul>
+
+                            <div className="flex justify-between items-center border-t border-dashed border-primary/20 dark:border-primary/15 pt-2 mb-1">
+                              <span className="text-xs font-semibold text-heading">Total cobrado</span>
+                              <span className="text-xs font-bold text-primary tabular-nums">
+                                ${detail.total.toLocaleString('es-AR')}
+                              </span>
+                            </div>
+
+                            {detail.operator_name && (
+                              <p className="text-[11px] text-hint mb-2.5">Por: {detail.operator_name}</p>
+                            )}
+
+                            <div className="flex gap-1.5 mt-2.5">
+                              <button
+                                onClick={() => setEditingSale(detail)}
+                                className="text-[11px] px-2.5 py-1 rounded-lg border border-edge text-body bg-surface hover:bg-hover-bg transition-colors"
+                              >
+                                Editar
+                              </button>
+                              <button
+                                onClick={() => handleDeleteSale(sale.id)}
+                                disabled={isDeleting}
+                                className="text-[11px] px-2.5 py-1 rounded-lg border border-red-200 text-red-500 bg-surface hover:bg-red-50 dark:border-red-500/30 dark:text-red-400 dark:bg-transparent dark:hover:bg-red-500/10 transition-colors disabled:opacity-50"
+                              >
+                                {isDeleting ? '…' : 'Eliminar'}
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </li>
+                    )
+                  })}
                 </ul>
               )}
             </div>
@@ -360,15 +625,151 @@ export default function CartPanel({ businessId, activePriceList, priceListOverri
         )}
       </div>
 
+      {editingSale && (
+        <div className="absolute inset-0 z-40 bg-background flex flex-col">
+          <div className="flex items-center gap-3 px-4 h-12 border-b border-edge shrink-0">
+            <button
+              onClick={() => setEditingSale(null)}
+              className="text-hint hover:text-body transition-colors text-sm"
+            >
+              ← Volver
+            </button>
+            <span className="text-sm font-semibold text-heading">
+              Editar venta · {formatTime(editingSale.created_at)}
+            </span>
+          </div>
+          <EditSalePanel
+            sale={editingSale}
+            onSave={(items, paymentMethod) =>
+              handleUpdateSale(editingSale.id, items, paymentMethod)
+            }
+            onCancel={() => setEditingSale(null)}
+          />
+        </div>
+      )}
+
       {showPayment && (
         <PaymentModal
           total={adjustedTotal}
           businessId={businessId}
           priceListId={activePriceList?.id ?? null}
           saleItems={adjustedItems}
+          operatorId={operatorId}
           onClose={() => setShowPayment(false)}
         />
       )}
     </>
+  )
+}
+
+function EditSalePanel({
+  sale,
+  onSave,
+  onCancel,
+}: {
+  sale: SaleDetail
+  onSave: (items: { product_id: string; quantity: number; unit_price: number }[], paymentMethod: string) => void
+  onCancel: () => void
+}) {
+  const PAYMENT_OPTIONS = ['efectivo', 'tarjeta', 'mercadopago', 'transferencia', 'otro']
+  const [items, setItems] = useState(sale.items.map(i => ({ ...i })))
+  const [paymentMethod, setPaymentMethod] = useState(sale.payment_method ?? 'efectivo')
+
+  function updateQty(productId: string, qty: number) {
+    if (qty < 1) return
+    setItems(prev => prev.map(i => i.product_id === productId ? { ...i, quantity: qty } : i))
+  }
+
+  function removeItem(productId: string) {
+    setItems(prev => prev.filter(i => i.product_id !== productId))
+  }
+
+  const total = items.reduce((sum, i) => sum + i.quantity * i.unit_price, 0)
+
+  return (
+    <div className="flex flex-col flex-1 min-h-0">
+      <div className="flex-1 overflow-y-auto p-4 space-y-2">
+        {items.map(item => (
+          <div key={item.product_id} className="flex items-center gap-3 py-2 border-b border-edge-soft">
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-heading truncate">{item.product_name}</p>
+              <p className="text-xs text-hint">${item.unit_price.toLocaleString('es-AR')} c/u</p>
+            </div>
+            <div className="flex items-center gap-1.5 shrink-0">
+              <button
+                onClick={() => updateQty(item.product_id, item.quantity - 1)}
+                className="w-6 h-6 rounded-md bg-surface-alt hover:bg-hover-bg flex items-center justify-center transition-colors text-xs"
+              >
+                −
+              </button>
+              <span className="text-sm font-semibold w-6 text-center tabular-nums">{item.quantity}</span>
+              <button
+                onClick={() => updateQty(item.product_id, item.quantity + 1)}
+                className="w-6 h-6 rounded-md bg-surface-alt hover:bg-hover-bg flex items-center justify-center transition-colors text-xs"
+              >
+                +
+              </button>
+            </div>
+            <p className="text-sm font-semibold text-heading tabular-nums w-20 text-right shrink-0">
+              ${(item.quantity * item.unit_price).toLocaleString('es-AR')}
+            </p>
+            <button
+              onClick={() => removeItem(item.product_id)}
+              className="text-faint hover:text-red-400 transition-colors shrink-0"
+            >
+              <Trash2 size={14} />
+            </button>
+          </div>
+        ))}
+      </div>
+
+      <div className="p-4 border-t border-edge space-y-3 shrink-0">
+        <div>
+          <p className="text-xs text-hint mb-1.5">Método de pago</p>
+          <div className="flex flex-wrap gap-1.5">
+            {PAYMENT_OPTIONS.map(method => (
+              <button
+                key={method}
+                onClick={() => setPaymentMethod(method)}
+                className={`text-xs px-3 py-1.5 rounded-full border transition-colors capitalize ${
+                  paymentMethod === method
+                    ? 'bg-primary text-primary-foreground border-primary'
+                    : 'border-edge text-body hover:bg-hover-bg'
+                }`}
+              >
+                {method}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="flex justify-between items-baseline">
+          <span className="text-sm text-subtle">Total</span>
+          <span className="text-lg font-semibold text-heading tabular-nums">
+            ${total.toLocaleString('es-AR')}
+          </span>
+        </div>
+
+        <div className="grid grid-cols-2 gap-2">
+          <Button
+            variant="cancel"
+            className="h-10 rounded-xl text-sm"
+            onClick={onCancel}
+          >
+            Cancelar
+          </Button>
+          <Button
+            className="h-10 rounded-xl text-sm font-semibold bg-primary hover:bg-primary/90 text-primary-foreground"
+            disabled={items.length === 0}
+            onClick={() => onSave(
+              items.map(i => ({ product_id: i.product_id, quantity: i.quantity, unit_price: i.unit_price })),
+              paymentMethod
+            )}
+          >
+            Guardar cambios
+          </Button>
+        </div>
+      </div>
+    </div>
   )
 }

@@ -86,6 +86,7 @@ export default async function DashboardPage() {
         min_stock: Number(product.min_stock),
         is_active: Boolean(product.is_active),
       }))}
+      businessId={businessId}
     />
   )
 }

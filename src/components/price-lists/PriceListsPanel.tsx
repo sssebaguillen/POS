@@ -407,7 +407,7 @@ export default function PriceListsPanel({
                             )}
                           </TableCell>
                           <TableCell className="text-right tabular-nums">
-                            <span className={row.margin > 0 ? 'text-emerald-700 font-semibold' : 'text-red-600 font-semibold'}>
+                            <span className={row.margin > 0 ? 'text-emerald-700 dark:text-emerald-400 font-semibold' : 'text-red-600 dark:text-red-400 font-semibold'}>
                               {row.margin}%
                             </span>
                           </TableCell>
