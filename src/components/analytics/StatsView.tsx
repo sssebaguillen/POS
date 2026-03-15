@@ -179,24 +179,35 @@ export default function StatsView({ sales, payments, saleItems, products, catego
   }, [filteredItems, productsById, rankingMode])
 
   const breakdown = useMemo(() => {
-    const map: Record<string, number> = {}
+    if (breakdownMode === 'category') {
+      const map: Record<string, number> = {}
+      filteredItems.forEach(item => {
+        if (!item.product_id) return
+        const product = productsById.get(item.product_id)
+        if (!product) return
+        const key = categoriesById.get(product.category_id ?? '') ?? 'Sin categoría'
+        map[key] = (map[key] ?? 0) + Number(item.total)
+      })
+      const total = Object.values(map).reduce((acc, value) => acc + value, 0)
+      return Object.entries(map)
+        .map(([label, value]) => ({ label, value, percent: total > 0 ? (value / total) * 100 : 0 }))
+        .sort((a, b) => b.value - a.value)
+        .slice(0, 8)
+    }
 
+    const byBrandId: Record<string, { label: string; value: number }> = {}
     filteredItems.forEach(item => {
       if (!item.product_id) return
       const product = productsById.get(item.product_id)
       if (!product) return
-
-      const key = breakdownMode === 'category'
-        ? categoriesById.get(product.category_id ?? '') ?? 'Sin categoría'
-        : (product.brand_id ? (product.brand?.name ?? 'Sin marca') : 'Sin marca')
-
-      map[key] = (map[key] ?? 0) + Number(item.total)
+      const brandKey = product.brand_id ?? 'no-brand'
+      const brandLabel = product.brand?.name ?? 'Sin marca'
+      if (!byBrandId[brandKey]) byBrandId[brandKey] = { label: brandLabel, value: 0 }
+      byBrandId[brandKey].value += Number(item.total)
     })
-
-    const total = Object.values(map).reduce((acc, value) => acc + value, 0)
-
-    return Object.entries(map)
-      .map(([label, value]) => ({ label, value, percent: total > 0 ? (value / total) * 100 : 0 }))
+    const total = Object.values(byBrandId).reduce((acc, { value }) => acc + value, 0)
+    return Object.values(byBrandId)
+      .map(({ label, value }) => ({ label, value, percent: total > 0 ? (value / total) * 100 : 0 }))
       .sort((a, b) => b.value - a.value)
       .slice(0, 8)
   }, [filteredItems, productsById, categoriesById, breakdownMode])

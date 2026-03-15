@@ -40,12 +40,12 @@ export default async function POSPage() {
   ] = await Promise.all([
     supabase
       .from('products')
-      .select('id, business_id, category_id, brand_id, name, sku, barcode, price, cost, stock, min_stock, image_url, is_active, show_in_catalog, sales_count, created_at, categories(name, icon)')
+      .select('id, business_id, name, price, cost, stock, min_stock, is_active, show_in_catalog, category_id, sku, barcode, brand_id, image_url, sales_count, created_at, brands(id, name), categories(name, icon)')
       .eq('is_active', true)
       .order('sales_count', { ascending: false }),
     supabase
       .from('categories')
-      .select('id, name, icon')
+      .select('id, business_id, name, icon, position, is_active')
       .eq('is_active', true)
       .order('position'),
     supabase
@@ -94,6 +94,9 @@ export default async function POSPage() {
         min_stock: Number(product.min_stock),
         sales_count: Number(product.sales_count),
         brand_id: product.brand_id ?? null,
+        brand: Array.isArray(product.brands)
+          ? product.brands[0] ?? null
+          : product.brands ?? null,
         image_url: product.image_url ?? null,
         categories: Array.isArray(product.categories)
           ? product.categories[0] ?? null

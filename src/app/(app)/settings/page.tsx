@@ -38,17 +38,21 @@ export default async function SettingsPage() {
     )
   }
 
-  const { data: business, error: businessError } = await supabase
-    .from('businesses')
-    .select('id, name, description, whatsapp, logo_url, slug, settings')
-    .eq('id', businessId)
-    .single<SettingsBusiness>()
-
-  const { data: operators, error: operatorsError } = await supabase
-    .from('operators')
-    .select('id, name, role')
-    .eq('business_id', businessId)
-    .order('name')
+  const [
+    { data: business, error: businessError },
+    { data: operators, error: operatorsError },
+  ] = await Promise.all([
+    supabase
+      .from('businesses')
+      .select('id, name, description, whatsapp, logo_url, slug, settings')
+      .eq('id', businessId)
+      .single<SettingsBusiness>(),
+    supabase
+      .from('operators')
+      .select('id, name, role')
+      .eq('business_id', businessId)
+      .order('name'),
+  ])
 
   if (businessError || !business) {
     return (

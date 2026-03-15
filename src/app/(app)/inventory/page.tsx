@@ -23,31 +23,37 @@ export default async function InventoryPage() {
     profileBusinessId = profile?.business_id ?? null
   }
 
-  const { data: products } = await supabase
-    .from('products')
-    .select('id, business_id, name, price, cost, stock, min_stock, is_active, show_in_catalog, category_id, sku, barcode, brand_id, brands(id, name), categories(name, icon)')
-    .order('name')
+  const businessId = profileBusinessId
 
-  const { data: categories } = await supabase
-    .from('categories')
-    .select('id, business_id, name, icon')
-    .eq('is_active', true)
-    .order('position')
-
- const businessId = profileBusinessId
-
-  const { data: brands } = await supabase
-    .from('brands')
-    .select('id, name')
-    .eq('business_id', businessId)
-    .order('name')
-
-  const { data: defaultPriceList } = await supabase
-    .from('price_lists')
-    .select('id, business_id, name, description, multiplier, is_default, created_at')
-    .eq('business_id', businessId)
-    .eq('is_default', true)
-    .maybeSingle()
+  const [
+    { data: products },
+    { data: categories },
+    { data: brands },
+    { data: defaultPriceList },
+  ] = await Promise.all([
+    supabase
+      .from('products')
+      .select('id, business_id, name, price, cost, stock, min_stock, is_active, show_in_catalog, category_id, sku, barcode, brand_id, brands(id, name), categories(name, icon)')
+      .eq('business_id', businessId)
+      .order('name'),
+    supabase
+      .from('categories')
+      .select('id, business_id, name, icon')
+      .eq('business_id', businessId)
+      .eq('is_active', true)
+      .order('position'),
+    supabase
+      .from('brands')
+      .select('id, name')
+      .eq('business_id', businessId)
+      .order('name'),
+    supabase
+      .from('price_lists')
+      .select('id, business_id, name, description, multiplier, is_default, created_at')
+      .eq('business_id', businessId)
+      .eq('is_default', true)
+      .maybeSingle(),
+  ])
 
   const { data: productOverrides } = defaultPriceList
     ? await supabase

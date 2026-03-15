@@ -2,13 +2,10 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import OperatorSelectView from '@/components/operator/OperatorSelectView'
 
-interface SessionProfile {
-  business_id: string
-}
-
-interface OwnerProfile {
+interface Profile {
   id: string
   name: string
+  business_id: string
 }
 
 interface OperatorRow {
@@ -44,22 +41,12 @@ export default async function OperatorSelectPage() {
 
   const { data: profile, error: profileError } = await supabase
     .from('profiles')
-    .select('business_id')
+    .select('id, name, business_id')
     .eq('id', user.id)
-    .single<SessionProfile>()
-
-  const { data: ownerProfile, error: ownerProfileError } = await supabase
-    .from('profiles')
-    .select('id, name')
-    .eq('id', user.id)
-    .single<OwnerProfile>()
+    .single<Profile>()
 
   if (profileError || !profile?.business_id) {
     throw new Error(profileError?.message ?? 'No se pudo obtener el perfil del usuario autenticado.')
-  }
-
-  if (ownerProfileError || !ownerProfile) {
-    throw new Error(ownerProfileError?.message ?? 'No se pudo obtener el perfil del owner autenticado.')
   }
 
   const { data: operators, error: operatorsError } = await supabase
@@ -77,7 +64,7 @@ export default async function OperatorSelectPage() {
 
   return (
     <OperatorSelectView
-      ownerProfile={ownerProfile}
+      ownerProfile={profile}
       operators={visibleOperators}
       availableOperatorsCount={visibleOperators.length}
     />

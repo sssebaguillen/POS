@@ -7,5 +7,6 @@ export interface PosCategory {
 }
 
 export interface ProductWithCategory extends Product {
+  brand?: { id: string; name: string } | null
   categories?: { name: string; icon: string } | null
 }

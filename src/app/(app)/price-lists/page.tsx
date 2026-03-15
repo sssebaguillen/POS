@@ -25,17 +25,19 @@ export default async function PriceListsPage() {
 
   const businessId = profileBusinessId
 
-  const { data: lists } = await supabase
-    .from('price_lists')
-    .select('id, business_id, name, description, multiplier, is_default, created_at')
-    .eq('business_id', businessId)
-    .order('created_at')
-
-  const { data: products } = await supabase
-    .from('products')
-    .select('id, name, cost, brand_id, brands(id, name), category_id, categories(name, icon)')
-    .eq('is_active', true)
-    .order('name')
+  const [{ data: lists }, { data: products }] = await Promise.all([
+    supabase
+      .from('price_lists')
+      .select('id, business_id, name, description, multiplier, is_default, created_at')
+      .eq('business_id', businessId)
+      .order('created_at'),
+    supabase
+      .from('products')
+      .select('id, name, cost, brand_id, brands(id, name), category_id, categories(name, icon)')
+      .eq('business_id', businessId)
+      .eq('is_active', true)
+      .order('name'),
+  ])
 
   const priceListIds = (lists ?? []).map(list => list.id)
 
