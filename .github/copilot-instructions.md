@@ -271,7 +271,7 @@ Never hardcode a single-mode style — every visual decision must have both a li
 
 #### Dark mode
 - **Primary:** same green `#1C4A3B` or lightened to `#2D6A56` for better contrast on dark
-- **Background:** deep blue-gray gradient — `#0f2027 → #203a43 → #2c5364`
+- **Background:** CSS variable `--background` (`#141414`) — solid dark background, no gradient
 - **Surface:** CSS variable `--card` — solid surface with low-opacity tint in dark mode
 - **Border:** CSS variable `--border` — subtle low-opacity border
 - **Text primary:** `#ffffff`

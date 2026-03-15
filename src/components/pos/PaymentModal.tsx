@@ -119,7 +119,7 @@ export default function PaymentModal({ total, businessId, priceListId, saleItems
   ]
 
   return (
-    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
       <div className="bg-surface rounded-2xl shadow-xl w-full max-w-sm">
         {success ? (
           <div className="p-10 flex flex-col items-center justify-center text-center">
