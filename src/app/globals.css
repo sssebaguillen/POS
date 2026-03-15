@@ -171,3 +171,20 @@
     opacity: 0.88;
   }
 }
+
+@layer utilities {
+  /* Popover / dropdown panel — dropdowns, suggestion lists, inline menus
+     Light: solid white surface with shadow
+     Dark: frosted glass with depth — same appearance as modals but tighter blur */
+  .glass-popover {
+    @apply bg-surface border border-edge rounded-xl shadow-xl;
+  }
+
+  .dark .glass-popover {
+    background: rgba(15, 32, 39, 0.88);
+    backdrop-filter: blur(32px) saturate(160%);
+    -webkit-backdrop-filter: blur(32px) saturate(160%);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  }
+}

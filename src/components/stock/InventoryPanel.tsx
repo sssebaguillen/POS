@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import SelectDropdown from '@/components/ui/SelectDropdown'
 import PageHeader from '@/components/shared/PageHeader'
 import NewProductModal from '@/components/stock/NewProductModal'
 import EditProductModal from '@/components/stock/EditProductModal'
@@ -325,18 +326,15 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
             placeholder="Buscar producto, marca o codigo..."
             className="h-9 max-w-xs rounded-lg text-sm"
           />
-          <select
-            className="h-9 rounded-lg border border-edge px-3 text-sm bg-surface text-body"
+          <SelectDropdown
             value={selectedCategory}
-            onChange={e => setSelectedCategory(e.target.value)}
-          >
-            <option value="all">Todas las categorias</option>
-            {categories.map(category => (
-              <option key={category.id} value={category.id}>
-                {category.name}
-              </option>
-            ))}
-          </select>
+            onChange={setSelectedCategory}
+            options={[
+              { value: 'all', label: 'Todas las categorias' },
+              ...categories.map(c => ({ value: c.id, label: `${c.icon} ${c.name}` })),
+            ]}
+            className="h-9 w-44"
+          />
 
           <div className="flex gap-1.5 ml-auto">
             {([

@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import SelectDropdown from '@/components/ui/SelectDropdown'
 import { Dialog, DialogContent } from '@/components/ui/dialog'
 import type { PriceList, PriceListOverride } from '@/components/price-lists/types'
 import type { InventoryBrand, InventoryCategory, InventoryProduct } from '@/components/stock/types'
@@ -288,19 +289,14 @@ export default function EditProductModal({
               </div>
 
               <FieldGroup label="Categoría">
-                <select
+                <SelectDropdown
                   value={form.category_id}
-                  onChange={event => setField('category_id', event.target.value)}
-                  className="h-9 w-full rounded-xl border border-edge px-3 text-sm bg-surface text-body focus:outline-none focus:ring-2 focus:ring-ring/50 focus:border-ring transition-colors appearance-none cursor-pointer"
-                  style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 10px center' }}
-                >
-                  <option value="">Sin categoría</option>
-                  {categories.map(category => (
-                    <option key={category.id} value={category.id}>
-                      {category.icon} {category.name}
-                    </option>
-                  ))}
-                </select>
+                  onChange={value => setField('category_id', value)}
+                  options={[
+                    { value: '', label: 'Sin categoría' },
+                    ...categories.map(c => ({ value: c.id, label: `${c.icon} ${c.name}` })),
+                  ]}
+                />
               </FieldGroup>
 
               <FieldGroup label="SKU">
@@ -338,7 +334,7 @@ export default function EditProductModal({
                   />
 
                   {showBrandOptions && (
-                    <div className="absolute z-20 mt-1 w-full rounded-xl border border-edge bg-surface shadow-sm max-h-52 overflow-y-auto">
+                    <div className="absolute z-20 mt-1 w-full overflow-y-auto max-h-52 glass-popover">
                       {filteredBrands.length === 0 ? (
                         <div className="px-3 py-2 text-xs text-hint">
                           No se encontró la marca. Creala desde el botón Marcas.

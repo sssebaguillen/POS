@@ -332,6 +332,7 @@ Defined in `globals.css` under `@layer utilities`:
 | Totals / checkout panel | white card | `glass-frosted` |
 | Context menu / dropdown | white popover | `glass-frosted` |
 | Toasts / notifications | white card | `glass-frosted` |
+| Dropdowns, popovers, suggestion lists | white surface + shadow | `glass-popover` |
 | Primary CTA (confirm sale) | `bg-primary` green | `glass-btn-primary` |
 | Destructive action | red button | `glass-btn-danger` |
 
@@ -503,7 +504,8 @@ const [{ data: products }, { data: categories }] = await Promise.all([
 - Inline prop types instead of named interfaces
 - Adding emojis anywhere in the codebase
 - Writing `backdrop-filter` or `bg-white/10` inline — always use the `.glass-*` classes from globals.css
-- Applying `.glass-*` classes without the `dark:` prefix — glass only activates in dark mode
+- Applying `.glass-*` classes without the `dark:` prefix — glass only activates in dark mode — **exception: `glass-popover` is applied without a prefix because it defines both light and dark styles internally**
+- Inline `backdrop-filter` or `bg-white/[0.12]` on floating elements — always use `glass-popover` for dropdowns, popovers, and suggestion lists
 - Hardcoding a single-mode color without its `dark:` counterpart
 - Storing brand as a free-text field on products — always use `brand_id` FK to the `brands` table
 - Calculating product prices with any formula other than `cost × (product_override ?? brand_override ?? list.multiplier)`
