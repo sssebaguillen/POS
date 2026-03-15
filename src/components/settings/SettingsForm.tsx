@@ -4,8 +4,8 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { isSettingsOperator, type OperatorRole, type SettingsBusiness, type SettingsOperator } from '@/components/settings/types'
-import type { Permissions } from '@/lib/operator'
+import { type OperatorRole, type SettingsBusiness, type SettingsOperator } from '@/components/settings/types'
+import NewOperatorModal from '@/components/settings/NewOperatorModal'
 
 interface SettingsFormProps {
   business: SettingsBusiness
@@ -42,21 +42,9 @@ export default function SettingsForm({ business, operators }: SettingsFormProps)
   const [success, setSuccess] = useState('')
   const [logoPreviewError, setLogoPreviewError] = useState(false)
   const [operatorList, setOperatorList] = useState<SettingsOperator[]>(operators)
-  const [operatorName, setOperatorName] = useState('')
-  const [operatorRole, setOperatorRole] = useState<OperatorRole>('cashier')
-  const [operatorPin, setOperatorPin] = useState('')
-  const [customPermissions, setCustomPermissions] = useState<Permissions>({
-    sales: true,
-    stock: true,
-    stock_write: false,
-    stats: false,
-    price_lists: false,
-    price_lists_write: false,
-    settings: false,
-  })
+  const [showNewOperatorModal, setShowNewOperatorModal] = useState(false)
   const [operatorError, setOperatorError] = useState('')
   const [operatorSuccess, setOperatorSuccess] = useState('')
-  const [operatorLoading, setOperatorLoading] = useState(false)
   const [deletingOperatorId, setDeletingOperatorId] = useState<string | null>(null)
   const [copySuccess, setCopySuccess] = useState(false)
   const [copyError, setCopyError] = useState('')
@@ -94,80 +82,10 @@ export default function SettingsForm({ business, operators }: SettingsFormProps)
     }
   }
 
-  function normalizePin(value: string): string {
-    return value.replace(/\D/g, '').slice(0, 4)
-  }
-
   function roleLabel(role: OperatorRole): string {
     if (role === 'manager') return 'Manager'
     if (role === 'custom') return 'Custom'
     return 'Cashier'
-  }
-
-  async function refreshOperators() {
-    const { data, error: operatorsError } = await supabase
-      .from('operators')
-      .select('id, name, role')
-      .eq('business_id', business.id)
-      .order('name')
-
-    if (operatorsError) {
-      setOperatorError(operatorsError.message)
-      return
-    }
-
-    setOperatorList((data ?? []).filter(isSettingsOperator))
-  }
-
-  async function handleCreateOperator(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-
-    const trimmedName = operatorName.trim()
-    const normalizedPin = normalizePin(operatorPin)
-
-    if (!trimmedName) {
-      setOperatorError('El nombre del operador es obligatorio.')
-      return
-    }
-
-    if (normalizedPin.length !== 4) {
-      setOperatorError('El PIN debe contener 4 digitos numericos.')
-      return
-    }
-
-    setOperatorLoading(true)
-    setOperatorError('')
-    setOperatorSuccess('')
-
-    const { data: createData, error: createError } = await supabase.rpc('create_operator', {
-      p_business_id: business.id,
-      p_name: trimmedName,
-      p_role: operatorRole,
-      p_pin: normalizedPin,
-      ...(operatorRole === 'custom' ? { p_permissions: customPermissions } : {}),
-    })
-
-    setOperatorLoading(false)
-
-    if (createError || !createData?.success) {
-      setOperatorError(createData?.error ?? createError?.message ?? 'Error al crear el operador.')
-      return
-    }
-
-    setOperatorName('')
-    setOperatorRole('cashier')
-    setOperatorPin('')
-    setCustomPermissions({
-      sales: true,
-      stock: true,
-      stock_write: false,
-      stats: false,
-      price_lists: false,
-      price_lists_write: false,
-      settings: false,
-    })
-    setOperatorSuccess('Operador creado correctamente.')
-    await refreshOperators()
   }
 
   async function handleDeleteOperator(operator: SettingsOperator) {
@@ -402,10 +320,22 @@ export default function SettingsForm({ business, operators }: SettingsFormProps)
       </div>
 
       <div className="rounded-xl bg-card border border-border/60 p-6 shadow-sm">
-        <h2 className="text-base font-semibold text-foreground">Operadores</h2>
-        <p className="text-sm text-muted-foreground mt-1">
-          Crea subusuarios con PIN de 4 digitos para cambiar el operador activo durante el turno.
-        </p>
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h2 className="text-base font-semibold text-foreground">Operadores</h2>
+            <p className="text-sm text-muted-foreground mt-1">
+              Creá subusuarios con PIN para cambiar el operador activo durante el turno.
+            </p>
+          </div>
+          <Button
+            type="button"
+            size="sm"
+            className="shrink-0 rounded-lg text-xs bg-primary hover:bg-primary/90 text-primary-foreground"
+            onClick={() => setShowNewOperatorModal(true)}
+          >
+            + Nuevo operario
+          </Button>
+        </div>
 
         <div className="mt-5 space-y-2">
           {operatorList.map(operator => (
@@ -430,117 +360,28 @@ export default function SettingsForm({ business, operators }: SettingsFormProps)
           ))}
         </div>
 
-        <form onSubmit={handleCreateOperator} className="mt-6 space-y-4">
-          <div className="space-y-1.5">
-            <label htmlFor="operator-name" className="text-xs uppercase tracking-wide text-muted-foreground">
-              Nombre
-            </label>
-            <Input
-              id="operator-name"
-              value={operatorName}
-              onChange={event => {
-                setOperatorName(event.target.value)
-                setOperatorError('')
-                setOperatorSuccess('')
-              }}
-              placeholder="Nombre del operador"
-              required
-            />
-          </div>
+        {operatorError && (
+          <p className="mt-4 rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
+            {operatorError}
+          </p>
+        )}
 
-          <div className="space-y-1.5">
-            <label htmlFor="operator-role" className="text-xs uppercase tracking-wide text-muted-foreground">
-              Rol
-            </label>
-            <select
-              id="operator-role"
-              value={operatorRole}
-              onChange={event => {
-                setOperatorRole(event.target.value as OperatorRole)
-                setOperatorError('')
-                setOperatorSuccess('')
-              }}
-              className="h-10 w-full rounded-lg border border-input bg-transparent px-3 text-sm outline-none transition-colors focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
-            >
-              <option value="manager">Manager</option>
-              <option value="cashier">Cashier</option>
-              <option value="custom">Custom</option>
-            </select>
-          </div>
+        {operatorSuccess && (
+          <p className="mt-4 rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-700 dark:border-green-500/30 dark:bg-green-500/10 dark:text-green-400">
+            {operatorSuccess}
+          </p>
+        )}
 
-          {operatorRole === 'custom' && (
-            <div className="space-y-2">
-              <p className="text-xs uppercase tracking-wide text-muted-foreground">Permisos</p>
-              <div className="rounded-lg border border-border/60 divide-y divide-border/60">
-                {(
-                  [
-                    { key: 'sales', label: 'Ventas' },
-                    { key: 'stock', label: 'Ver inventario' },
-                    { key: 'stock_write', label: 'Modificar inventario' },
-                    { key: 'stats', label: 'Estadísticas' },
-                    { key: 'price_lists', label: 'Ver listas de precios' },
-                    { key: 'price_lists_write', label: 'Modificar listas de precios' },
-                    { key: 'settings', label: 'Configuración' },
-                  ] as { key: keyof Permissions; label: string }[]
-                ).map(({ key, label }) => (
-                  <label
-                    key={key}
-                    className="flex items-center justify-between px-3 py-2.5 cursor-pointer hover:bg-muted/40 transition-colors"
-                  >
-                    <span className="text-sm text-foreground">{label}</span>
-                    <input
-                      type="checkbox"
-                      checked={customPermissions[key]}
-                      onChange={e =>
-                        setCustomPermissions(prev => ({ ...prev, [key]: e.target.checked }))
-                      }
-                      className="h-4 w-4 accent-primary"
-                    />
-                  </label>
-                ))}
-              </div>
-            </div>
-          )}
-
-          <div className="space-y-1.5">
-            <label htmlFor="operator-pin" className="text-xs uppercase tracking-wide text-muted-foreground">
-              PIN
-            </label>
-            <Input
-              id="operator-pin"
-              type="password"
-              inputMode="numeric"
-              autoComplete="off"
-              maxLength={4}
-              value={operatorPin}
-              onChange={event => {
-                setOperatorPin(normalizePin(event.target.value))
-                setOperatorError('')
-                setOperatorSuccess('')
-              }}
-              placeholder="4 digitos"
-              required
-            />
-          </div>
-
-          {operatorError && (
-            <p className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
-              {operatorError}
-            </p>
-          )}
-
-          {operatorSuccess && (
-            <p className="rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-700 dark:border-green-500/30 dark:bg-green-500/10 dark:text-green-400">
-              {operatorSuccess}
-            </p>
-          )}
-
-          <div className="flex justify-end">
-            <Button type="submit" className="h-9 px-4" disabled={operatorLoading}>
-              {operatorLoading ? 'Creando...' : 'Agregar operador'}
-            </Button>
-          </div>
-        </form>
+        <NewOperatorModal
+          open={showNewOperatorModal}
+          onClose={() => setShowNewOperatorModal(false)}
+          businessId={business.id}
+          onCreated={operator => {
+            setOperatorList(prev =>
+              [...prev, operator].sort((a, b) => a.name.localeCompare(b.name))
+            )
+          }}
+        />
       </div>
     </div>
   )

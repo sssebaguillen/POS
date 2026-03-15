@@ -14,7 +14,7 @@ interface OwnerProfile {
 interface OperatorRow {
   id: string
   name: string
-  role: 'manager' | 'cashier'
+  role: 'manager' | 'cashier' | 'custom'
 }
 
 function isOperatorRow(value: unknown): value is OperatorRow {
@@ -26,7 +26,7 @@ function isOperatorRow(value: unknown): value is OperatorRow {
   return (
     typeof operator.id === 'string' &&
     typeof operator.name === 'string' &&
-    (operator.role === 'manager' || operator.role === 'cashier')
+    (operator.role === 'manager' || operator.role === 'cashier' || operator.role === 'custom')
   )
 }
 
