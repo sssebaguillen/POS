@@ -28,7 +28,7 @@ export default async function ProductsPage() {
     throw new Error('No se encontro business_id en el perfil del usuario autenticado')
   }
 
-  const [{ data: products, error: productsError }, { data: categories, error: categoriesError }] = await Promise.all([
+  const [{ data: products, error: productsError }, { data: categories, error: categoriesError }, { data: brands, error: brandsError }, { data: priceLists, error: priceListsError }] = await Promise.all([
     supabase
       .from('products')
       .select('id, name, sku, barcode, price, cost, stock, min_stock, is_active, category_id, categories(name, icon)')
@@ -38,6 +38,17 @@ export default async function ProductsPage() {
       .select('id, name, icon')
       .eq('is_active', true)
       .order('position'),
+    supabase
+      .from('brands')
+      .select('id, name')
+      .eq('business_id', profileBusinessId)
+      .order('name'),
+    supabase
+      .from('price_lists')
+      .select('id, business_id, name, description, multiplier, is_default, created_at')
+      .eq('business_id', profileBusinessId)
+      .eq('is_default', true)
+      .maybeSingle(),
   ])
 
   if (productsError) {
@@ -46,6 +57,14 @@ export default async function ProductsPage() {
 
   if (categoriesError) {
     throw new Error(categoriesError.message)
+  }
+
+  if (brandsError) {
+    throw new Error(brandsError.message)
+  }
+
+  if (priceListsError) {
+    throw new Error(priceListsError.message)
   }
 
   return (
@@ -62,6 +81,8 @@ export default async function ProductsPage() {
           : product.categories ?? null,
       }))}
       categories={categories ?? []}
+      brands={brands ?? []}
+      defaultPriceList={priceLists ?? null}
     />
   )
 }

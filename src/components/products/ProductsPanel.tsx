@@ -6,6 +6,8 @@ import { createClient } from '@/lib/supabase/client'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import NewProductModal from '@/components/stock/NewProductModal'
+import type { PriceList } from '@/components/price-lists/types'
+import type { InventoryBrand } from '@/components/stock/types'
 import {
   Table,
   TableBody,
@@ -39,11 +41,13 @@ interface Props {
   businessId: string
   initialProducts: ProductRow[]
   categories: Category[]
+  brands: InventoryBrand[]
+  defaultPriceList: PriceList | null
 }
 
 type StatusFilter = 'all' | 'active' | 'inactive'
 
-export default function ProductsPanel({ businessId, initialProducts, categories }: Props) {
+export default function ProductsPanel({ businessId, initialProducts, categories, brands, defaultPriceList }: Props) {
   const supabase = createClient()
   const [products, setProducts] = useState(initialProducts)
   const [query, setQuery] = useState('')
@@ -306,6 +310,8 @@ export default function ProductsPanel({ businessId, initialProducts, categories 
         onClose={() => setShowNewProduct(false)}
         businessId={businessId}
         categories={categories}
+        brands={brands}
+        defaultPriceList={defaultPriceList}
         onCreated={product => setProducts(prev => [product, ...prev])}
       />
     </div>
