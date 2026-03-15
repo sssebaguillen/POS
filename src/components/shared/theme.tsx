@@ -68,8 +68,8 @@ export function ThemeToggle() {
       className="
         flex items-center justify-center w-9 h-9 rounded-xl
         bg-zinc-100 hover:bg-zinc-200 text-zinc-600
-        dark:bg-white/[0.08] dark:hover:bg-white/[0.14] dark:text-white/70 dark:hover:text-white
-        border border-zinc-200 dark:border-white/[0.10]
+        dark:bg-accent dark:hover:bg-accent/80 dark:text-white/70 dark:hover:text-white
+        border border-zinc-200 dark:border-edge
         transition-colors duration-200
       "
     >
