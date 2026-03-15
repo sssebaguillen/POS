@@ -272,8 +272,8 @@ Never hardcode a single-mode style — every visual decision must have both a li
 #### Dark mode
 - **Primary:** same green `#1C4A3B` or lightened to `#2D6A56` for better contrast on dark
 - **Background:** deep blue-gray gradient — `#0f2027 → #203a43 → #2c5364`
-- **Surface:** `rgba(255,255,255,0.06)` — glass cards replace solid white surfaces
-- **Border:** `rgba(255,255,255,0.10)` — subtle light border
+- **Surface:** CSS variable `--card` — solid surface with low-opacity tint in dark mode
+- **Border:** CSS variable `--border` — subtle low-opacity border
 - **Text primary:** `#ffffff`
 - **Text secondary:** `rgba(255,255,255,0.50)`
 
@@ -283,72 +283,49 @@ Semantic status colors are the same in both modes:
 - Red → out of stock / error / destructive actions
 - Gray → discontinued / inactive
 
-### Glass utility classes (dark mode only)
+### Utility classes
 
 Defined in `globals.css` under `@layer utilities`:
 
 ```css
-.glass-clear {
-  @apply bg-white/[0.06] border border-white/[0.10] rounded-2xl;
-  backdrop-filter: blur(20px) saturate(140%);
-  -webkit-backdrop-filter: blur(20px) saturate(140%);
+/* Elevated surface — modals, dropdowns, popovers */
+.surface-elevated {
+  @apply bg-surface border border-edge rounded-xl shadow-md;
 }
 
-.glass-frosted {
-  @apply bg-white/[0.12] border border-white/[0.18] rounded-2xl;
-  backdrop-filter: blur(32px) saturate(160%);
-  -webkit-backdrop-filter: blur(32px) saturate(160%);
+/* Sidebar panel */
+.surface-sidebar {
+  @apply bg-surface border-r border-edge;
 }
 
-.glass-pill-active {
-  @apply bg-white/[0.15] rounded-xl px-3 py-2 transition-colors;
+/* Primary CTA button */
+.btn-primary-gradient {
+  @apply bg-primary text-primary-foreground rounded-2xl py-4 px-6 font-bold text-base transition-colors hover:opacity-90;
 }
 
-.glass-btn-primary {
-  @apply rounded-2xl py-4 px-6 text-white font-bold text-base border border-white/20 transition-colors;
-  background: linear-gradient(135deg, rgba(255,200,80,0.9), rgba(255,140,40,0.9));
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+/* Destructive button */
+.btn-danger {
+  @apply bg-destructive text-destructive-foreground rounded-2xl py-4 px-6 font-bold text-base transition-colors hover:opacity-90;
 }
 
-.glass-btn-danger {
-  @apply rounded-2xl py-4 px-6 text-white font-bold text-base border border-white/20 transition-colors;
-  background: rgba(255,69,58,0.75);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+.dark .surface-elevated {
+  @apply bg-surface border-edge shadow-lg;
+}
+
+.dark .surface-sidebar {
+  @apply bg-surface border-edge;
 }
 ```
 
 #### When to use each class
 
-| Component | Light mode | Dark mode |
-|---|---|---|
-| Product card | white surface + border | `glass-clear` |
-| Page header / topbar | white surface | `glass-clear` |
-| Item list in cart | white surface | `glass-clear` |
-| Nav sidebar | white surface | `glass-frosted` |
-| Active nav item | green pill | `glass-pill-active` |
-| Action modal (edit, delete) | white modal | `glass-frosted` |
-| Totals / checkout panel | white card | `glass-frosted` |
-| Context menu / dropdown | white popover | `glass-frosted` |
-| Toasts / notifications | white card | `glass-frosted` |
-| Dropdowns, popovers, suggestion lists | white surface + shadow | `glass-popover` |
-| Primary CTA (confirm sale) | `bg-primary` green | `glass-btn-primary` |
-| Destructive action | red button | `glass-btn-danger` |
-
-#### Applying glass conditionally per theme
-
-```tsx
-<div className="bg-white border border-zinc-200 rounded-2xl dark:glass-clear dark:border-transparent">
-<div className="bg-white border border-zinc-200 rounded-2xl shadow-sm dark:glass-frosted dark:border-transparent dark:shadow-none">
-<nav className="bg-white border-r border-zinc-100 dark:glass-frosted dark:border-transparent">
-```
-
-#### Dark mode background
-```tsx
-// app/layout.tsx
-<body className="bg-[#F5F4F0] dark:bg-gradient-to-br dark:from-[#0f2027] dark:via-[#203a43] dark:to-[#2c5364] min-h-screen">
-```
+| Component | Style |
+|---|---|
+| Modals, dropdowns, popovers | `surface-elevated` |
+| Sidebar | `surface-sidebar` |
+| Primary CTA | `btn-primary-gradient` |
+| Destructive action | `btn-danger` |
+| Active nav item | `bg-primary/10 rounded-xl px-3 py-2` |
 
 ---
 
@@ -365,22 +342,19 @@ Defined in `globals.css` under `@layer utilities`:
 ### Components
 
 #### Cards
-- Light: `bg-white border border-zinc-200 rounded-2xl`
-- Dark: `dark:glass-clear dark:border-transparent`
+- `bg-surface border border-edge rounded-2xl`
 
 #### Buttons
-- Primary: `bg-[#1C4A3B] text-white dark:glass-btn-primary`
-- Secondary: `bg-white border border-zinc-200 text-zinc-900 dark:bg-white/10 dark:border-white/15 dark:text-white`
-- Destructive: `bg-red-500 text-white dark:glass-btn-danger`
+- Primary: `btn-primary-gradient`
+- Secondary: `bg-surface border border-edge text-foreground`
+- Destructive: `btn-danger`
 - Never use icon-only buttons without a tooltip
 
 #### Inputs
-- Light: `bg-white border border-zinc-200 text-zinc-900 placeholder:text-zinc-400`
-- Dark: `dark:bg-white/[0.08] dark:border-white/[0.12] dark:text-white dark:placeholder:text-white/30`
+- `bg-input border border-edge text-foreground placeholder:text-hint`
 
 #### Modals
-- Light: white card, centered, `shadow-xl`
-- Dark: `dark:glass-frosted dark:shadow-none`
+- `surface-elevated` container, centered, `shadow-xl`
 - Action buttons always bottom right
 
 ---
@@ -503,9 +477,8 @@ const [{ data: products }, { data: categories }] = await Promise.all([
 - Sequential `await` calls for independent Supabase queries
 - Inline prop types instead of named interfaces
 - Adding emojis anywhere in the codebase
-- Writing `backdrop-filter` or `bg-white/10` inline — always use the `.glass-*` classes from globals.css
-- Applying `.glass-*` classes without the `dark:` prefix — glass only activates in dark mode — **exception: `glass-popover` is applied without a prefix because it defines both light and dark styles internally**
-- Inline `backdrop-filter` or `bg-white/[0.12]` on floating elements — always use `glass-popover` for dropdowns, popovers, and suggestion lists
+- Using `backdrop-filter` or `backdrop-blur` anywhere in the project
+- Inline background opacity values like `bg-white/[0.12]` — always use CSS variables via utility classes
 - Hardcoding a single-mode color without its `dark:` counterpart
 - Storing brand as a free-text field on products — always use `brand_id` FK to the `brands` table
 - Calculating product prices with any formula other than `cost × (product_override ?? brand_override ?? list.multiplier)`

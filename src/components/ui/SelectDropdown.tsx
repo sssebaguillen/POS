@@ -47,7 +47,7 @@ export default function SelectDropdown({ value, onChange, options, placeholder, 
       </button>
 
       {open && (
-        <div className="absolute z-50 w-full mt-1 overflow-hidden glass-popover">
+        <div className="absolute z-50 w-full mt-1 overflow-hidden surface-elevated">
           {options.map(option => {
             const isActive = option.value === value
             return (

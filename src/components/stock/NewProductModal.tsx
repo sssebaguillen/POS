@@ -407,7 +407,7 @@ export default function NewProductModal({ open, onClose, businessId, defaultPric
                   />
 
                   {showBrandOptions && (
-                    <div className="absolute z-20 mt-1 w-full overflow-y-auto max-h-52 glass-popover">
+                    <div className="absolute z-20 mt-1 w-full overflow-y-auto max-h-52 surface-elevated">
                       {filteredBrands.length === 0 ? (
                         <div className="px-3 py-2 text-xs text-hint">
                           No se encontró la marca. Creala desde el botón Marcas.
