@@ -62,7 +62,10 @@ export default function RegisterPage() {
       return
     }
 
-    router.push('/dashboard')
+    // Clear any stale operator cookies from a previous session
+    await fetch('/api/operator/logout', { method: 'POST' })
+
+    router.push('/operator-select')
   }
 
   return (

@@ -11,5 +11,13 @@ export async function POST() {
     maxAge: 0,
   })
 
+  response.cookies.set('op_perms', '', {
+    httpOnly: false,
+    sameSite: 'lax',
+    path: '/',
+    secure: process.env.NODE_ENV === 'production',
+    maxAge: 0,
+  })
+
   return response
 }
