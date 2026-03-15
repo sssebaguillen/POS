@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { OWNER_PERMISSIONS, type ActiveOperator } from '@/lib/operator'
+import { OWNER_PERMISSIONS, type ActiveOperator, type UserRole } from '@/lib/operator'
 
 interface OperatorSwitchPayload {
   isOwner: false
@@ -61,6 +61,10 @@ function isOperatorSwitchPayload(payload: SwitchPayload): payload is OperatorSwi
   return payload.isOwner === false
 }
 
+function isUserRole(value: unknown): value is UserRole {
+  return value === 'owner' || value === 'manager' || value === 'cashier' || value === 'custom'
+}
+
 function parseVerifyResult(value: unknown): ActiveOperator | null {
   const record = Array.isArray(value) ? value[0] : value
 
@@ -79,7 +83,7 @@ function parseVerifyResult(value: unknown): ActiveOperator | null {
   if (
     typeof operator.profile_id !== 'string' ||
     typeof operator.name !== 'string' ||
-    typeof operator.role !== 'string' ||
+    !isUserRole(operator.role) ||
     typeof permissionRecord.sales !== 'boolean' ||
     typeof permissionRecord.stock !== 'boolean' ||
     typeof permissionRecord.stock_write !== 'boolean' ||

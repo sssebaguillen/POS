@@ -4,9 +4,27 @@ import StatsView from '@/components/analytics/StatsView'
 export default async function StatsPage() {
   const supabase = await createClient()
 
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  let profileBusinessId: string | null = null
+  if (user) {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('business_id')
+      .eq('id', user.id)
+      .single()
+
+    profileBusinessId = profile?.business_id ?? null
+  }
+
+  const businessId = profileBusinessId
+
   const { data: sales } = await supabase
     .from('sales')
     .select('id, total, created_at, status')
+    .eq('business_id', businessId)
     .order('created_at', { ascending: false })
     .limit(3000)
 
@@ -47,10 +65,12 @@ export default async function StatsPage() {
     supabase
       .from('products')
       .select('id, name, category_id, brand_id, brands(id, name)')
+      .eq('business_id', businessId)
       .limit(5000),
     supabase
       .from('categories')
       .select('id, name')
+      .eq('business_id', businessId)
       .limit(500),
   ])
 

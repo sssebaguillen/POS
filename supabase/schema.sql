@@ -1,7 +1,9 @@
 -- ============================================================
 -- POS LATAM — Schema completo
--- Generado desde el estado actual de la DB en Supabase
--- Proyecto: zrnthcznbrplzpmxmkwk (sa-east-1)
+-- Proyecto Supabase: zrnthcznbrplzpmxmkwk (sa-east-1)
+-- Vercel: pulsarpos
+-- Última actualización: refleja estado actual de producción
+-- NOTA: Este es un snapshot — no aplicar como migración incremental
 -- ============================================================
 
 -- ============================================================
@@ -31,7 +33,7 @@ create table businesses (
 create table profiles (
   id          uuid        primary key references auth.users(id) on delete cascade,
   business_id uuid        references businesses(id) on delete cascade,
-  role        text        not null default 'cashier',
+  role        text        not null default 'owner',
   name        text        not null,
   pin         text,
   permissions jsonb       not null default '{
@@ -48,6 +50,7 @@ create table profiles (
 
 -- ============================================================
 -- OPERATORS (sub-usuarios con PIN — N por business)
+-- Roles válidos: 'manager', 'cashier', 'custom'
 -- ============================================================
 create table operators (
   id          uuid        primary key default gen_random_uuid(),
@@ -116,6 +119,8 @@ create table products (
 
 -- ============================================================
 -- PRICE LISTS
+-- UI muestra porcentaje (40%), DB guarda multiplier (1.40)
+-- Conversión: multiplier = 1 + percentage / 100
 -- ============================================================
 create table price_lists (
   id          uuid          primary key default gen_random_uuid(),
@@ -134,6 +139,7 @@ create unique index unique_default_price_list_per_business
 
 -- ============================================================
 -- PRICE LIST OVERRIDES
+-- Runtime: precio_final = cost × (product_override ?? brand_override ?? list.multiplier)
 -- ============================================================
 create table price_list_overrides (
   id            uuid          primary key default gen_random_uuid(),
@@ -142,12 +148,11 @@ create table price_list_overrides (
   brand_id      uuid          references brands(id) on delete cascade,
   multiplier    numeric(6,4)  not null,
   created_at    timestamptz   not null default now(),
-  -- Override es por producto O por marca, nunca ambos ni ninguno
   constraint override_target check (
     (product_id is not null and brand_id is null) or
     (product_id is null and brand_id is not null)
   ),
-  constraint unique_override_per_list_product unique (price_list_id, product_id),
+  constraint unique_override_per_list_product  unique (price_list_id, product_id),
   constraint unique_override_per_list_brand_id unique (price_list_id, brand_id)
 );
 
@@ -184,6 +189,7 @@ create table cash_sessions (
 
 -- ============================================================
 -- SALES
+-- price_list_id registra qué lista se usó en la venta
 -- ============================================================
 create table sales (
   id            uuid          primary key default gen_random_uuid(),
@@ -243,113 +249,139 @@ create table inventory_movements (
 -- ============================================================
 -- RLS — habilitar en todas las tablas
 -- ============================================================
-alter table businesses         enable row level security;
-alter table profiles           enable row level security;
-alter table operators          enable row level security;
-alter table brands             enable row level security;
-alter table categories         enable row level security;
-alter table products           enable row level security;
-alter table price_lists        enable row level security;
+alter table businesses           enable row level security;
+alter table profiles             enable row level security;
+alter table operators            enable row level security;
+alter table brands               enable row level security;
+alter table categories           enable row level security;
+alter table products             enable row level security;
+alter table price_lists          enable row level security;
 alter table price_list_overrides enable row level security;
-alter table customers          enable row level security;
-alter table cash_sessions      enable row level security;
-alter table sales              enable row level security;
-alter table sale_items         enable row level security;
-alter table payments           enable row level security;
-alter table inventory_movements enable row level security;
+alter table customers            enable row level security;
+alter table cash_sessions        enable row level security;
+alter table sales                enable row level security;
+alter table sale_items           enable row level security;
+alter table payments             enable row level security;
+alter table inventory_movements  enable row level security;
 
 -- ============================================================
 -- HELPER FUNCTION
 -- ============================================================
 create or replace function get_business_id()
-returns uuid as $$
+returns uuid
+language sql
+security definer
+stable
+set search_path = public
+as $$
   select business_id from profiles where id = auth.uid()
-$$ language sql security definer stable set search_path = public;
+$$;
 
 -- ============================================================
 -- RLS POLICIES
+-- CRÍTICO: public_read_* solo para auth.role() = 'anon'
+-- Usuarios autenticados ven solo sus propios datos via tenant_isolation
 -- ============================================================
 
 -- businesses
-create policy "public_read_businesses" on businesses for select using (true);
-create policy "tenant_isolation"       on businesses for all   using (id = get_business_id());
+create policy "public_read_businesses" on businesses
+  for select using (auth.role() = 'anon');
+create policy "tenant_isolation" on businesses
+  for all using (id = get_business_id());
 
 -- profiles
-create policy "own_profile"            on profiles for all    using (id = auth.uid());
-create policy "insert_own_profile"     on profiles for insert with check (id = auth.uid());
-create policy "tenant_select_profiles" on profiles for select using (business_id = get_business_id());
+create policy "own_profile" on profiles
+  for all using (id = auth.uid());
+create policy "insert_own_profile" on profiles
+  for insert with check (id = auth.uid());
+create policy "tenant_select_profiles" on profiles
+  for select using (business_id = get_business_id());
 
 -- operators
-create policy "tenant_isolation" on operators for all using (business_id = get_business_id());
+create policy "tenant_isolation" on operators
+  for all using (business_id = get_business_id());
 
 -- brands
-create policy "tenant_isolation" on brands for all using (business_id = get_business_id());
+create policy "tenant_isolation" on brands
+  for all using (business_id = get_business_id());
 
 -- categories
-create policy "public_read_categories" on categories for select using (is_active = true);
-create policy "tenant_isolation"       on categories for all   using (business_id = get_business_id());
+create policy "public_read_categories" on categories
+  for select using (auth.role() = 'anon' and is_active = true);
+create policy "tenant_isolation" on categories
+  for all using (business_id = get_business_id());
 
 -- products
-create policy "public_read_products" on products for select using (is_active = true and show_in_catalog = true);
-create policy "tenant_isolation"     on products for all   using (business_id = get_business_id());
+create policy "public_read_products" on products
+  for select using (auth.role() = 'anon' and is_active = true and show_in_catalog = true);
+create policy "tenant_isolation" on products
+  for all using (business_id = get_business_id());
 
 -- price_lists
-create policy "tenant_isolation" on price_lists for all using (business_id = get_business_id());
+create policy "tenant_isolation" on price_lists
+  for all using (business_id = get_business_id());
 
 -- price_list_overrides
-create policy "tenant_isolation" on price_list_overrides for all using (
-  price_list_id in (select id from price_lists where business_id = get_business_id())
-);
+create policy "tenant_isolation" on price_list_overrides
+  for all using (
+    price_list_id in (select id from price_lists where business_id = get_business_id())
+  );
 
 -- customers
-create policy "tenant_isolation" on customers for all using (business_id = get_business_id());
+create policy "tenant_isolation" on customers
+  for all using (business_id = get_business_id());
 
 -- cash_sessions
-create policy "tenant_isolation" on cash_sessions for all using (business_id = get_business_id());
+create policy "tenant_isolation" on cash_sessions
+  for all using (business_id = get_business_id());
 
 -- sales
-create policy "tenant_isolation" on sales for all using (business_id = get_business_id());
+create policy "tenant_isolation" on sales
+  for all using (business_id = get_business_id());
 
 -- sale_items
-create policy "tenant_isolation" on sale_items for all using (
-  sale_id in (select id from sales where business_id = get_business_id())
-);
+create policy "tenant_isolation" on sale_items
+  for all using (
+    sale_id in (select id from sales where business_id = get_business_id())
+  );
 
 -- payments
-create policy "tenant_isolation" on payments for all using (
-  sale_id in (select id from sales where business_id = get_business_id())
-);
+create policy "tenant_isolation" on payments
+  for all using (
+    sale_id in (select id from sales where business_id = get_business_id())
+  );
 
 -- inventory_movements
-create policy "tenant_isolation" on inventory_movements for all using (business_id = get_business_id());
+create policy "tenant_isolation" on inventory_movements
+  for all using (business_id = get_business_id());
 
 -- ============================================================
 -- INDEXES
 -- ============================================================
-create index idx_brands_business_id                    on brands             (business_id);
-create index idx_categories_business_id                on categories         (business_id);
-create index idx_products_business_id                  on products           (business_id);
-create index idx_products_business_active              on products           (business_id, is_active);
-create index idx_products_category_id                  on products           (category_id);
-create index idx_products_brand_id                     on products           (brand_id) where brand_id is not null;
-create index idx_products_sku                          on products           (sku)      where sku is not null;
-create index idx_products_barcode                      on products           (barcode)  where barcode is not null;
-create index idx_price_lists_business_id               on price_lists        (business_id);
-create index idx_price_list_overrides_price_list_id    on price_list_overrides (price_list_id);
-create index idx_customers_business_id                 on customers          (business_id);
-create index idx_cash_sessions_business_id             on cash_sessions      (business_id);
-create index idx_sales_business_id                     on sales              (business_id);
-create index idx_sales_business_created                on sales              (business_id, created_at desc);
-create index idx_sales_session_id                      on sales              (session_id);
-create index idx_sales_customer_id                     on sales              (customer_id) where customer_id is not null;
-create index idx_sale_items_sale_id                    on sale_items         (sale_id);
-create index idx_sale_items_product_id                 on sale_items         (product_id);
-create index idx_payments_sale_id                      on payments           (sale_id);
-create index idx_inventory_movements_business_id       on inventory_movements (business_id);
-create index idx_inventory_movements_business_created  on inventory_movements (business_id, created_at desc);
-create index idx_inventory_movements_product_id        on inventory_movements (product_id);
-create index idx_operators_business_id                 on operators          (business_id);
-create index idx_profiles_business_id                  on profiles           (business_id);
+create index idx_brands_business_id                   on brands              (business_id);
+create index idx_categories_business_id               on categories          (business_id);
+create index idx_products_business_id                 on products            (business_id);
+create index idx_products_business_active             on products            (business_id, is_active);
+create index idx_products_category_id                 on products            (category_id);
+create index idx_products_brand_id                    on products            (brand_id) where brand_id is not null;
+create index idx_products_sku                         on products            (sku)      where sku is not null;
+create index idx_products_barcode                     on products            (barcode)  where barcode is not null;
+create index idx_price_lists_business_id              on price_lists         (business_id);
+create index idx_price_list_overrides_price_list_id   on price_list_overrides(price_list_id);
+create index idx_customers_business_id                on customers           (business_id);
+create index idx_cash_sessions_business_id            on cash_sessions       (business_id);
+create index idx_sales_business_id                    on sales               (business_id);
+create index idx_sales_business_created               on sales               (business_id, created_at desc);
+create index idx_sales_session_id                     on sales               (session_id);
+create index idx_sales_customer_id                    on sales               (customer_id) where customer_id is not null;
+create index idx_sale_items_sale_id                   on sale_items          (sale_id);
+create index idx_sale_items_product_id                on sale_items          (product_id);
+create index idx_payments_sale_id                     on payments            (sale_id);
+create index idx_inventory_movements_business_id      on inventory_movements (business_id);
+create index idx_inventory_movements_business_created on inventory_movements (business_id, created_at desc);
+create index idx_inventory_movements_product_id       on inventory_movements (product_id);
+create index idx_operators_business_id                on operators           (business_id);
+create index idx_profiles_business_id                 on profiles            (business_id);
 
 -- ============================================================
 -- FUNCTIONS
@@ -357,9 +389,9 @@ create index idx_profiles_business_id                  on profiles           (bu
 
 -- Registra un nuevo negocio y su owner al hacer signup
 create or replace function bootstrap_new_user(
-  p_user_id     uuid,
+  p_user_id       uuid,
   p_business_name text,
-  p_user_name   text
+  p_user_name     text
 )
 returns jsonb
 language plpgsql
@@ -401,17 +433,6 @@ exception
   when others then
     return jsonb_build_object('success', false, 'error', sqlerrm);
 end;
-$$;
-
--- Retorna el business_id del usuario autenticado (usado en RLS)
-create or replace function get_business_id()
-returns uuid
-language sql
-security definer
-stable
-set search_path = public
-as $$
-  select business_id from profiles where id = auth.uid()
 $$;
 
 -- Crea un operador con PIN hasheado y permisos según rol
@@ -523,7 +544,7 @@ exception
 end;
 $$;
 
--- Swap atómico de lista de precios default (evita quedarse sin default)
+-- Swap atómico de lista de precios default
 create or replace function swap_default_price_list(
   p_price_list_id uuid,
   p_business_id   uuid
@@ -569,10 +590,11 @@ create trigger on_sale_item_inserted
   for each row execute function update_stock_on_sale();
 
 -- ============================================================
--- GUARDED FUNCTIONS (verifican permisos antes de insertar)
+-- GUARDED FUNCTIONS
+-- Verifican stock_write antes de insertar
+-- Owners (en profiles) siempre tienen acceso completo
 -- ============================================================
 
--- Crea una categoría verificando permiso stock_write del operador
 create or replace function create_category_guarded(
   p_operator_id uuid,
   p_business_id uuid,
@@ -612,8 +634,10 @@ begin
       return jsonb_build_object('success', false, 'error', '403: Permisos de inventario insuficientes');
     end if;
   else
-    -- No es operador — verificar que sea el owner del negocio
-    if not exists (select 1 from profiles where id = p_operator_id and business_id = v_caller_business_id) then
+    if not exists (
+      select 1 from profiles
+      where id = p_operator_id and business_id = v_caller_business_id
+    ) then
       return jsonb_build_object('success', false, 'error', '403: Sesión inválida');
     end if;
   end if;
@@ -626,7 +650,6 @@ begin
 end;
 $$;
 
--- Crea una marca verificando permiso stock_write del operador
 create or replace function create_brand_guarded(
   p_operator_id uuid,
   p_business_id uuid,
@@ -665,7 +688,10 @@ begin
       return jsonb_build_object('success', false, 'error', '403: Permisos de inventario insuficientes');
     end if;
   else
-    if not exists (select 1 from profiles where id = p_operator_id and business_id = v_caller_business_id) then
+    if not exists (
+      select 1 from profiles
+      where id = p_operator_id and business_id = v_caller_business_id
+    ) then
       return jsonb_build_object('success', false, 'error', '403: Sesión inválida');
     end if;
   end if;

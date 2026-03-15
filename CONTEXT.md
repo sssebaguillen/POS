@@ -3,8 +3,8 @@
 ## Stack
 
 - **Frontend:** Next.js 16+ (App Router), TypeScript (strict), Tailwind CSS, shadcn/ui
-- **Backend:** Supabase (PostgreSQL + Auth + RLS), project ID: `zrnthycznbrplzpmxmkwk` (sa-east-1)
-- **Deploy:** Vercel, team ID: `team_oHHmom6iEMv4RqPBq0HWbJxm`, repo: `github.com/sssebaguillen/POS` (master)
+- **Backend:** Supabase (PostgreSQL + Auth + RLS), project ID: `zrnthcznbrplzpmxmkwk` (sa-east-1)
+- **Deploy:** Vercel, proyecto: `pulsarpos`, repo: `github.com/sssebaguillen/POS` (master)
 - **IMPORTANTE:** Next.js 16+ usa `proxy.ts` en la raíz, NO `middleware.ts`
 
 ---
@@ -14,23 +14,26 @@
 ### Multi-tenancy
 - Cada negocio tiene su propio `business_id`
 - Toda tabla de datos tiene `business_id` con RLS via `get_business_id()`
+- Queries en Server Components siempre incluyen `.eq('business_id', businessId)` como defensa adicional además de RLS
 - `profiles.id` tiene FK a `auth.users(id)` — solo el owner tiene entrada en `profiles`
 - Sub-operadores viven en la tabla `operators` (sin entrada en `auth.users`)
 
 ### Autenticación de operadores
 - El owner autentica con Supabase Auth (email + contraseña)
-- Los operadores autentican con PIN de 4 dígitos hasheado con bcrypt (`pgcrypto`)
+- Los operadores autentican con PIN de 4 o 6 dígitos hasheado con bcrypt (`pgcrypto`)
 - La sesión activa se guarda en cookie httpOnly `operator_session`:
   ```json
-  { "profile_id": "uuid", "name": "string", "role": "string", "permissions": {...} }
+  { "profile_id": "uuid", "name": "string", "role": "UserRole", "permissions": {...} }
   ```
+- Cookie `op_perms` (non-httpOnly) — copia de permissions para lectura client-side en sidebar
 - `proxy.ts` protege rutas según permisos del operador activo
-- Si no hay cookie y el user de Supabase es `owner`, el proxy auto-setea la cookie con permisos completos
+- Owner identificado por `operator?.role === 'owner'` o ausencia de cookie — nunca por DB lookup en proxy
+- Al registrar un nuevo usuario, el flujo llama a `/api/operator/logout` para limpiar cookies previas
 
 ### Pantalla de selección de operador (`/operator-select`)
 - Muestra tarjeta "Administrador" (owner) al tope — autentica con contraseña de Supabase
-- Muestra tarjetas de operadores PIN debajo
-- Al cambiar de operador: botón en sidebar → logout route borra cookie → proxy redirige según rol
+- Muestra tarjetas de operadores PIN debajo — incluye rol `'custom'`
+- Al cambiar de operador: botón en sidebar → logout route borra cookies y restaura sesión owner → redirige a `/operator-select`
 
 ---
 
@@ -55,9 +58,9 @@
 | id | uuid PK | FK → auth.users(id) |
 | business_id | uuid | FK → businesses(id) |
 | name | text | |
-| role | text | default 'cashier', el owner tiene 'owner' |
+| role | text | siempre `'owner'` |
 | pin | text nullable | no usado para owner |
-| permissions | jsonb | |
+| permissions | jsonb | todos los permisos en true |
 | created_at | timestamptz | |
 
 ### `operators`
@@ -66,18 +69,24 @@
 | id | uuid PK | gen_random_uuid() |
 | business_id | uuid | FK → businesses(id) |
 | name | text | |
-| role | text | 'manager' o 'cashier' |
+| role | text | `'manager'`, `'cashier'`, o `'custom'` |
 | pin | text | bcrypt hasheado via extensions.crypt() |
-| permissions | jsonb | asignado por rol al crear |
+| permissions | jsonb | 7 campos — ver modelo de permisos |
 | is_active | bool | default true |
 | created_at | timestamptz | |
 
-**Permisos por rol:**
-| rol | sales | stock | stats | settings |
-|-----|-------|-------|-------|----------|
-| owner | true | true | true | true |
-| manager | true | true | true | false |
-| cashier | true | "readonly" | false | false |
+**Modelo de permisos expandido:**
+| permiso | descripción | owner | manager | cashier |
+|---------|-------------|-------|---------|---------|
+| `sales` | Terminal de ventas | true | true | true |
+| `stock` | Ver inventario | true | true | true |
+| `stock_write` | Modificar inventario | true | true | false |
+| `stats` | Dashboard y estadísticas | true | true | false |
+| `price_lists` | Ver listas de precios | true | true | false |
+| `price_lists_write` | Modificar listas de precios | true | true | false |
+| `settings` | Configuración | true | false | false |
+
+Rol `'custom'`: cualquier combinación definida por el owner via toggles en Settings.
 
 ### `brands`
 | columna | tipo | notas |
@@ -87,9 +96,9 @@
 | name | text | |
 | created_at | timestamptz | |
 
-**Constraints:** `UNIQUE (business_id, name)` — no pueden existir dos marcas con el mismo nombre en el mismo negocio.
+**Constraints:** `UNIQUE (business_id, name)`
 
-**Regla:** la marca es siempre una entidad propia — nunca texto libre en productos. El usuario crea marcas desde el modal de Marcas en Stock, y luego las asigna a productos mediante un combobox de búsqueda. Esto garantiza consistencia y evita duplicados por diferencias tipográficas.
+**Regla:** la marca es siempre una entidad propia — nunca texto libre en productos. El usuario crea marcas desde el modal de Marcas en Stock y las asigna a productos mediante combobox de búsqueda.
 
 ### `products`
 | columna | tipo | notas |
@@ -126,11 +135,11 @@
 | business_id | uuid | FK → businesses(id) ON DELETE CASCADE |
 | name | text | |
 | description | text nullable | |
-| multiplier | numeric(6,4) | 1.0 = base, 0.85 = −15%, 1.20 = +20% |
+| multiplier | numeric(6,4) | representa margen: 1.40 = 40% sobre costo |
 | is_default | boolean | default false — único por negocio (índice único parcial WHERE is_default = true) |
 | created_at | timestamptz | |
 
-**Regla:** siempre debe existir exactamente una lista con `is_default = true` por negocio una vez que se crea la primera lista. La primera lista creada se convierte en default automáticamente. La DB garantiza esta unicidad vía índice único parcial.
+**UI:** el usuario ingresa porcentaje (ej: 40%) — se guarda como multiplier (1.40). Conversión solo en UI, nunca en DB.
 
 ### `price_list_overrides`
 | columna | tipo | notas |
@@ -139,24 +148,27 @@
 | price_list_id | uuid | FK → price_lists(id) ON DELETE CASCADE |
 | product_id | uuid nullable | FK → products(id) ON DELETE CASCADE |
 | brand_id | uuid nullable | FK → brands(id) ON DELETE CASCADE |
-| multiplier | numeric(6,4) | multiplicador específico para este override |
+| multiplier | numeric(6,4) | |
 | created_at | timestamptz | |
 
 **Constraints:**
-- `CHECK`: `(product_id IS NOT NULL AND brand_id IS NULL) OR (product_id IS NULL AND brand_id IS NOT NULL)` — cada override es por producto O por marca, nunca ambos ni ninguno
-- `UNIQUE (price_list_id, product_id)` — un override por producto por lista
-- `UNIQUE (price_list_id, brand_id)` — un override por marca por lista
+- `CHECK`: override por producto O por marca, nunca ambos ni ninguno
+- `UNIQUE (price_list_id, product_id)`
+- `UNIQUE (price_list_id, brand_id)`
 
 **Lógica de precio en runtime:**
 ```
 precio_final = cost × (override_producto ?? override_marca ?? lista.multiplier)
 ```
 
-### `sales` / `sale_items` / `payments`
-Estructura estándar. `sales` tiene `business_id`, `session_id`, `customer_id`, `subtotal`, `discount`, `total`, `status`, `notes`.
+### `sales`
+Estructura estándar + `price_list_id uuid nullable` FK → price_lists(id) ON DELETE SET NULL.
+
+### `sale_items` / `payments`
+Estructura estándar.
 
 ### `inventory_movements`
-Tiene `created_by_operator` (FK → operators.id) y `created_by` (legacy, sin FK activa).
+Tiene `created_by_operator` (FK → operators.id) y `created_by` (legacy).
 
 ### `cash_sessions`
 `opened_by` / `closed_by` → FK → profiles(id).
@@ -172,11 +184,14 @@ Todas tienen `security definer` y `set search_path = public, extensions`.
 
 | función | descripción |
 |---------|-------------|
-| `bootstrap_new_user(p_user_id, p_business_name, p_user_name)` | Crea businesses + profiles para nuevo registro |
+| `bootstrap_new_user(p_user_id, p_business_name, p_user_name)` | Crea businesses + profiles con permisos completos de owner |
 | `get_business_id()` | Retorna business_id del usuario actual, usada en RLS |
-| `create_operator(p_business_id, p_name, p_role, p_pin)` | Inserta operador con PIN bcrypt. Retorna `{ success, operator_id?, error? }` |
+| `create_operator(p_business_id, p_name, p_role, p_pin, p_permissions?)` | Inserta operador con PIN bcrypt. Retorna `{ success, operator_id?, error? }`. `p_permissions` solo para rol `'custom'` |
 | `verify_operator_pin(p_business_id, p_operator_id, p_pin)` | Verifica PIN. Retorna `{ success, profile_id?, name?, role?, permissions?, error? }` |
+| `swap_default_price_list(p_price_list_id, p_business_id)` | Swap atómico de lista default |
 | `update_stock_on_sale()` | Trigger que descuenta stock al crear venta |
+| `create_category_guarded(p_operator_id, p_business_id, p_name, p_icon)` | Crea categoría verificando `stock_write` |
+| `create_brand_guarded(p_operator_id, p_business_id, p_name)` | Crea marca verificando `stock_write` |
 
 **IMPORTANTE:** `create_operator` retorna JSON — siempre chequear `data.success`, no solo `error`.
 
@@ -188,13 +203,15 @@ Todas tienen `security definer` y `set search_path = public, extensions`.
 |------|-------------|------------|
 | `/login` | Login | pública |
 | `/register` | Registro | pública |
-| `/catalogo/[slug]` | Catálogo público | pública |
+| `/catalogo/[slug]` | Catálogo público | pública (solo anon) |
 | `/operator-select` | Selección de operador | requiere Supabase session |
 | `/ventas` | Terminal de ventas | cualquier operador activo |
-| `/stock` | Inventario | permissions.stock !== false |
-| `/price-lists` | Listas de precios | permissions.stock !== false |
-| `/dashboard`, `/stats` | KPIs y estadísticas | permissions.stats === true |
-| `/settings` | Configuración | permissions.settings === true |
+| `/stock` | Inventario | `permissions.stock === true` |
+| `/price-lists` | Listas de precios | `permissions.price_lists === true` |
+| `/dashboard`, `/stats` | KPIs y estadísticas | `permissions.stats === true` |
+| `/settings` | Configuración | `permissions.settings === true` |
+
+**Acceso denegado:** proxy redirige a `/ventas` + cookie flash `flash_toast=no-access` → `FlashToast` en layout muestra notificación. Sidebar muestra links restringidos como disabled con toast al click.
 
 ---
 
@@ -204,56 +221,67 @@ Todas tienen `security definer` y `set search_path = public, extensions`.
 src/
 ├── proxy.ts                          # Protección de rutas (NO middleware.ts)
 ├── lib/
-│   ├── operator.ts                   # getActiveOperator(), hasPermission()
+│   ├── operator.ts                   # UserRole, OWNER_PERMISSIONS, getActiveOperator()
+│   ├── payments.ts                   # normalizePayment, PAYMENT_LABELS, PAYMENT_COLORS
+│   ├── price-lists.ts                # calculateProductPrice — única fuente de verdad
 │   └── supabase/
 │       ├── client.ts
 │       └── server.ts
 ├── app/
 │   ├── (auth)/
 │   │   ├── login/page.tsx
-│   │   └── register/page.tsx         # signUp → rpc('bootstrap_new_user') → signInWithPassword
+│   │   └── register/page.tsx         # signUp → logout cookies → rpc('bootstrap_new_user') → signInWithPassword
 │   ├── (app)/
-│   │   ├── operator-select/page.tsx  # Fetch operators + ownerProfile → OperatorSelectView
-│   │   ├── settings/page.tsx         # Fetch business + operators → SettingsForm
-│   │   ├── inventory/page.tsx        # businessId SIEMPRE desde profiles.business_id
-│   │   └── price-lists/page.tsx      # Fetch price_lists + products + overrides → PriceListsPanel
-│   ├── (dashboard)/
-│   │   ├── ventas/page.tsx
-│   │   ├── stock/page.tsx
-│   │   └── dashboard/page.tsx
+│   │   ├── layout.tsx                # Monta FlashToast — lee flash_toast cookie server-side
+│   │   ├── operator-select/page.tsx
+│   │   ├── settings/page.tsx         # Promise.all: business + operators
+│   │   ├── inventory/page.tsx        # Promise.all: products + categories + brands + defaultPriceList
+│   │   ├── price-lists/page.tsx      # Promise.all: lists + products + brands
+│   │   ├── dashboard/page.tsx        # Promise.all + explicit business_id filters
+│   │   ├── stats/page.tsx            # Promise.all + explicit business_id filters
+│   │   └── ventas/page.tsx           # POS — Promise.all: products + categories + price_lists
 │   ├── api/operator/
 │   │   ├── switch/route.ts           # POST: verifica PIN o contraseña owner, setea cookie
-│   │   └── logout/route.ts           # POST: borra cookie operator_session
-│   └── catalogo/[slug]/page.tsx      # Catálogo público
+│   │   └── logout/route.ts           # POST: borra cookies + restaura sesión owner
+│   └── catalogo/[slug]/page.tsx
 └── components/
+    ├── shared/
+    │   └── FlashToast.tsx            # Toast para acceso denegado (lee prop del layout)
+    ├── ui/
+    │   └── SelectDropdown.tsx        # Dropdown reutilizable con surface-elevated
     ├── operator/
     │   ├── OperatorSelectView.tsx
     │   └── OperatorSwitcher.tsx
     ├── settings/
-    │   └── SettingsForm.tsx
+    │   ├── SettingsForm.tsx
+    │   ├── OperatorList.tsx          # Lista + delete + NewOperatorModal
+    │   ├── NewOperatorModal.tsx      # nombre + rol preset + 7 toggles de permisos + PIN
+    │   └── types.ts
     ├── stock/
     │   ├── types.ts                  # InventoryProduct, InventoryCategory, InventoryBrand
-    │   ├── InventoryPanel.tsx        # Panel principal — botón Marcas habilitado
-    │   ├── NewProductModal.tsx       # Combobox de marca + integración lista default
-    │   ├── EditProductModal.tsx      # Combobox de marca + gestión override lista default
-    │   ├── CategoryModal.tsx         # CRUD de categorías
-    │   └── BrandModal.tsx            # CRUD de marcas (crear / eliminar)
+    │   ├── InventoryPanel.tsx
+    │   ├── NewProductModal.tsx
+    │   ├── EditProductModal.tsx
+    │   ├── CategoryModal.tsx
+    │   └── BrandModal.tsx
+    ├── dashboard/
+    │   └── SalesHistoryTable.tsx     # Extraído de DashboardView
     └── price-lists/
-        ├── types.ts                  # PriceList, PriceListOverride, PriceListProduct
-        ├── PriceListsPanel.tsx       # Panel principal con tabs y agrupación por marca
+        ├── types.ts
+        ├── PriceListsPanel.tsx
         ├── NewPriceListModal.tsx
         ├── EditPriceListModal.tsx
-        ├── ProductOverrideModal.tsx  # Override por producto
-        └── BrandOverrideModal.tsx    # Override por marca (usa brand_id)
+        ├── ProductOverrideModal.tsx
+        └── BrandOverrideModal.tsx
 ```
 
 ---
 
 ## Catálogo público
 
-- URL: `/catalogo/[slug]` (en español, intencional para LATAM)
+- URL: `/catalogo/[slug]`
+- Políticas RLS `public_read_*` restringidas a `auth.role() = 'anon'` — usuarios autenticados no pueden leer datos de otros negocios
 - Solo productos con `is_active = true` AND `show_in_catalog = true`
-- Filtro por categorías, carrito, pedido por WhatsApp
 
 ---
 
@@ -267,19 +295,18 @@ src/
 | P3 | Catálogo público + WhatsApp + Settings | ✅ Done |
 | P4 | Switch de operadores por PIN + permisos | ✅ Done |
 | P5 | Listas de precios + marcas (tabla propia) | ✅ Done |
-| P6 | Selector de lista activa en módulo de ventas | 🔄 Next |
-
-### P6 — Pendiente
-- Selector de lista de precios al iniciar una venta (elegido manualmente por el vendedor)
-- Los precios del carrito se recalculan según la lista seleccionada usando `cost × (override_producto ?? override_marca ?? lista.multiplier)`
-- Link + botón copiar al catálogo público en `/settings`
+| P6 | Auditoría de código + seguridad + performance | ✅ Done |
+| P7 | Pruebas automatizadas + mejoras UX | 🔄 Next |
 
 ---
 
 ## Design system
 
-- **Background:** `#F5F4F0` (off-white), **Surface:** white, **Primary:** `#1C4A3B` (dark green)
+- **Background:** CSS var `--background`, **Surface:** CSS var `--surface`, **Primary:** `#1C4A3B` (dark green)
 - Cards: `rounded-xl` / `rounded-2xl`, border sutil
+- Dropdowns/popovers: clase `surface-elevated` definida en `globals.css`
+- Sidebar: clase `surface-sidebar` definida en `globals.css`
+- Sin `backdrop-filter` ni `backdrop-blur` en ningún lugar del proyecto
 - Iconos: lucide-react únicamente · Charts: recharts únicamente
 - Sin emojis en código · Sin valores hardcodeados · Sin tipos `any`
 - Named interfaces para todas las props
@@ -290,13 +317,20 @@ src/
 
 1. Usar `proxy.ts` en la raíz, NUNCA `middleware.ts`
 2. El `business_id` siempre viene de `profiles.business_id`, nunca se infiere de otros datos
-3. Las funciones SQL con bcrypt deben tener `set search_path = public, extensions` y usar `extensions.crypt()` / `extensions.gen_salt()`
-4. El RPC `create_operator` retorna JSON — chequear `data.success`, no solo `error`
-5. Operadores sub-usuarios viven en `operators`, el owner solo en `profiles`
-6. El owner NUNCA tiene entrada en `operators`
-7. Cookie `operator_session`: httpOnly, sameSite: lax, secure en producción
-8. El precio final siempre se calcula como `cost × (override_producto ?? override_marca ?? lista.multiplier)` — nunca hardcodear precios ni calcular de otra forma
-9. La lista default se obtiene siempre desde `price_lists` donde `is_default = true` y `business_id` coincide — nunca inferirla de otro lugar
-10. Nunca crear más de una lista con `is_default = true` por negocio — la DB lo garantiza vía índice único parcial, pero el código también debe respetarlo
-11. La marca es siempre una entidad de la tabla `brands` — nunca texto libre en productos ni en overrides. `products.brand_id` y `price_list_overrides.brand_id` son FK a `brands.id`
-12. Los overrides de precio se upsertean con `onConflict: 'price_list_id,product_id'` para overrides por producto y `onConflict: 'price_list_id,brand_id'` para overrides por marca
+3. Queries en Server Components siempre incluyen `.eq('business_id', businessId)` además de confiar en RLS
+4. Las funciones SQL con bcrypt deben tener `set search_path = public, extensions` y usar `extensions.crypt()` / `extensions.gen_salt()`
+5. El RPC `create_operator` retorna JSON — chequear `data.success`, no solo `error`
+6. Operadores sub-usuarios viven en `operators`, el owner solo en `profiles`
+7. El owner NUNCA tiene entrada en `operators`
+8. Cookie `operator_session`: httpOnly, sameSite: lax, secure en producción
+9. Owner identificado en proxy por `operator?.role === 'owner'` o ausencia de cookie — nunca por DB lookup
+10. `OWNER_PERMISSIONS` definido en `lib/operator.ts` — importado en todas partes, nunca duplicado
+11. `UserRole = 'owner' | 'manager' | 'cashier' | 'custom'` — exportado de `lib/operator.ts`, usado en `ActiveOperator.role`
+12. El precio final siempre se calcula con `calculateProductPrice` de `lib/price-lists.ts` — nunca inline ni duplicado
+13. La lista default se obtiene siempre desde `price_lists` donde `is_default = true` y `business_id` coincide
+14. La marca es siempre una entidad de `brands` — nunca texto libre. `products.brand_id` y `price_list_overrides.brand_id` son FK a `brands.id`
+15. Overrides: upsert con `onConflict: 'price_list_id,product_id'` (producto) o `onConflict: 'price_list_id,brand_id'` (marca)
+16. Políticas `public_read_*` solo aplican a `auth.role() = 'anon'` — nunca exponer datos de otros negocios a usuarios autenticados
+17. `normalizePayment`, `PAYMENT_LABELS`, `PAYMENT_COLORS` viven en `lib/payments.ts` — nunca duplicados
+18. `createClient()` siempre dentro de `useMemo(() => createClient(), [])` en Client Components
+19. Queries independientes en Server Components siempre con `Promise.all` — nunca `await` secuenciales

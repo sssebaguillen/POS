@@ -6,8 +6,8 @@ import { createClient } from '@/lib/supabase/client'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import NewProductModal from '@/components/stock/NewProductModal'
+import type { InventoryProduct, InventoryBrand } from '@/components/stock/types'
 import type { PriceList } from '@/components/price-lists/types'
-import type { InventoryBrand } from '@/components/stock/types'
 import {
   Table,
   TableBody,
@@ -23,23 +23,9 @@ interface Category {
   icon: string
 }
 
-interface ProductRow {
-  id: string
-  name: string
-  sku: string | null
-  barcode: string | null
-  price: number
-  cost: number
-  stock: number
-  min_stock: number
-  is_active: boolean
-  category_id: string | null
-  categories?: { name: string; icon: string } | null
-}
-
 interface Props {
   businessId: string
-  initialProducts: ProductRow[]
+  initialProducts: InventoryProduct[]
   categories: Category[]
   brands: InventoryBrand[]
   defaultPriceList: PriceList | null
@@ -48,7 +34,7 @@ interface Props {
 type StatusFilter = 'all' | 'active' | 'inactive'
 
 export default function ProductsPanel({ businessId, initialProducts, categories, brands, defaultPriceList }: Props) {
-  const supabase = createClient()
+  const supabase = useMemo(() => createClient(), [])
   const [products, setProducts] = useState(initialProducts)
   const [query, setQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
@@ -86,7 +72,7 @@ export default function ProductsPanel({ businessId, initialProducts, categories,
     }
   }, [products])
 
-  async function toggleStatus(product: ProductRow) {
+  async function toggleStatus(product: InventoryProduct) {
     setCrudError(null)
     setLoadingId(product.id)
 
@@ -108,7 +94,7 @@ export default function ProductsPanel({ businessId, initialProducts, categories,
     setLoadingId(null)
   }
 
-  async function deleteProduct(product: ProductRow) {
+  async function deleteProduct(product: InventoryProduct) {
     const confirmed = window.confirm(`Eliminar "${product.name}"? Esta accion no se puede deshacer.`)
     if (!confirmed) return
 

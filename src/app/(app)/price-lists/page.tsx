@@ -25,6 +25,10 @@ export default async function PriceListsPage() {
 
   const businessId = profileBusinessId
 
+  if (!businessId) {
+    throw new Error('No se encontró el negocio asociado al usuario autenticado.')
+  }
+
   const [{ data: lists }, { data: products }] = await Promise.all([
     supabase
       .from('price_lists')

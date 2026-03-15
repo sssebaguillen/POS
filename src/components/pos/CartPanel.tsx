@@ -1,13 +1,14 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { Trash2, Plus, Minus, Barcode, ShoppingCart } from 'lucide-react'
+import { Trash2, Plus, Minus, ShoppingCart } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { useCartStore } from '@/lib/store/cart.store'
 import PaymentModal from '@/components/pos/PaymentModal'
 import { createClient } from '@/lib/supabase/client'
 import { calculateProductPrice } from '@/lib/price-lists'
+import { normalizePayment } from '@/lib/payments'
 import type { PriceList, PriceListOverride } from '@/components/price-lists/types'
 
 type RightTab = 'current' | 'history'
@@ -33,8 +34,7 @@ export default function CartPanel({ businessId, activePriceList, priceListOverri
   const [historyLoading, setHistoryLoading] = useState(false)
   const [history, setHistory] = useState<SaleRow[]>([])
   const [historyQuery, setHistoryQuery] = useState('')
-  const [barcodeInput, setBarcodeInput] = useState('')
-  const supabase = createClient()
+  const supabase = useMemo(() => createClient(), [])
 
   const isEmpty = items.length === 0
 
@@ -145,18 +145,6 @@ export default function CartPanel({ businessId, activePriceList, priceListOverri
     })
   }
 
-  function normalizePayment(method: string | null) {
-    if (!method) return 'sin dato'
-    const map: Record<string, string> = {
-      cash: 'Efectivo',
-      card: 'Tarjeta',
-      transfer: 'Transferencia',
-      mercadopago: 'MercadoPago',
-      credit: 'Credito',
-    }
-    return map[method] ?? method
-  }
-
   function exportHistoryCsv() {
     const headers = ['id', 'fecha', 'hora', 'total', 'metodo_pago', 'estado']
     const rows = filteredHistory.map(sale => {
@@ -223,19 +211,6 @@ export default function CartPanel({ businessId, activePriceList, priceListOverri
               <span className="rounded-full bg-primary/10 text-primary text-xs px-2.5 py-1 font-medium">
                 {items.length} items
               </span>
-            </div>
-
-            {/* Barcode scanner */}
-            <div className="px-4 pb-3">
-              <div className="relative">
-                <Barcode size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-faint" />
-                <Input
-                  value={barcodeInput}
-                  onChange={e => setBarcodeInput(e.target.value)}
-                  placeholder="Escanear código de barras..."
-                  className="h-9 pl-10 rounded-xl border-edge bg-surface-alt text-sm"
-                />
-              </div>
             </div>
 
             {/* Items */}

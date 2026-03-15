@@ -21,7 +21,7 @@ import type { PriceList, PriceListOverride, PriceListProduct } from '@/component
 import { calculateProductPrice } from '@/lib/price-lists'
 
 interface PriceListsPanelProps {
-  businessId: string | null
+  businessId: string
   readOnly: boolean
   initialLists: PriceList[]
   products: PriceListProduct[]

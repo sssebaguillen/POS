@@ -1,3 +1,5 @@
+export type UserRole = 'owner' | 'manager' | 'cashier' | 'custom'
+
 export interface Permissions {
   sales: boolean
   stock: boolean
@@ -21,7 +23,7 @@ export const OWNER_PERMISSIONS: Permissions = {
 export interface ActiveOperator {
   profile_id: string
   name: string
-  role: string
+  role: UserRole
   permissions: Permissions
 }
 
@@ -50,6 +52,10 @@ function isPermissions(value: unknown): value is Permissions {
   )
 }
 
+function isUserRole(value: unknown): value is UserRole {
+  return value === 'owner' || value === 'manager' || value === 'cashier' || value === 'custom'
+}
+
 function parseOperator(value: unknown): ActiveOperator | null {
   if (!value || typeof value !== 'object') {
     return null
@@ -60,7 +66,7 @@ function parseOperator(value: unknown): ActiveOperator | null {
   if (
     typeof record.profile_id !== 'string' ||
     typeof record.name !== 'string' ||
-    typeof record.role !== 'string' ||
+    !isUserRole(record.role) ||
     !isPermissions(record.permissions)
   ) {
     return null

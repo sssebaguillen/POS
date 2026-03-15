@@ -85,7 +85,7 @@ export default function NewProductModal({ open, onClose, businessId, defaultPric
   const [isPriceEdited, setIsPriceEdited] = useState(false)
   const [brandInput, setBrandInput] = useState('')
   const [showBrandOptions, setShowBrandOptions] = useState(false)
-  const supabase = createClient()
+  const supabase = useMemo(() => createClient(), [])
 
   const filteredBrands = useMemo(() => {
     const query = brandInput.trim().toLowerCase()

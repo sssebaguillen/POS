@@ -6,6 +6,8 @@ import { Input } from '@/components/ui/input'
 import PageHeader from '@/components/shared/PageHeader'
 import Link from 'next/link'
 import { endOfDay, isCompletedSale, startOfDay, startOfWeek } from '@/components/analytics/utils'
+import { normalizePayment, PAYMENT_LABELS, PAYMENT_COLORS } from '@/lib/payments'
+import SalesHistoryTable from '@/components/dashboard/SalesHistoryTable'
 
 type Period = 'today' | 'week' | 'month' | 'custom' | 'history'
 
@@ -44,20 +46,6 @@ interface Props {
   payments: PaymentRecord[]
   saleItems: SaleItemRecord[]
   products: ProductRecord[]
-}
-
-const paymentColors: Record<string, string> = {
-  cash: 'bg-emerald-600',
-  card: 'bg-indigo-500',
-  transfer: 'bg-amber-500',
-  mercadopago: 'bg-sky-500',
-}
-
-const paymentLabels: Record<string, string> = {
-  cash: 'Efectivo',
-  card: 'Tarjeta',
-  transfer: 'Transferencia',
-  mercadopago: 'MercadoPago',
 }
 
 export default function DashboardView({ sales, payments, saleItems, products }: Props) {
@@ -176,24 +164,6 @@ export default function DashboardView({ sales, payments, saleItems, products }: 
     filteredSales.map(s => ({ ...s, method: paymentsBySaleId.get(s.id) ?? 'sin dato' })),
     [filteredSales, paymentsBySaleId])
 
-  function exportHistoryCsv() {
-    const headers = ['id', 'fecha', 'hora', 'total', 'metodo', 'estado']
-    const rows = historyRows.map(s => {
-      const d = new Date(s.created_at)
-      return [s.id, d.toLocaleDateString('es-AR'), d.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' }), Number(s.total).toFixed(2), s.method, s.status ?? 'completed']
-    })
-    const csv = [headers, ...rows].map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n')
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.href = url
-    link.download = `dashboard-${new Date().toISOString().slice(0, 10)}.csv`
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-    URL.revokeObjectURL(url)
-  }
-
   // Y-axis labels for chart
   const yLabels = Array.from({ length: 5 }, (_, i) => {
     const val = maxChartValue * (1 - i / 4)
@@ -270,7 +240,7 @@ export default function DashboardView({ sales, payments, saleItems, products }: 
               iconBg="bg-emerald-100"
               iconColor="text-emerald-700"
               label="PAGO MÁS USADO"
-              value={mostUsedPayment ? (paymentLabels[mostUsedPayment.method] ?? mostUsedPayment.method) : '—'}
+              value={mostUsedPayment ? normalizePayment(mostUsedPayment.method) : '—'}
               subtitle={mostUsedPayment ? `${mostUsedPayment.count} de ${transactions} transacciones` : undefined}
             />
           </div>
@@ -319,7 +289,7 @@ export default function DashboardView({ sales, payments, saleItems, products }: 
                     <div key={row.method} className="space-y-1.5">
                       <div className="flex items-center justify-between text-sm">
                         <span className="text-body font-medium">
-                          {paymentLabels[row.method] ?? row.method}
+                          {normalizePayment(row.method)}
                         </span>
                         <span className="text-heading font-semibold">
                           ${row.amount.toLocaleString('es-AR')}{' '}
@@ -328,7 +298,7 @@ export default function DashboardView({ sales, payments, saleItems, products }: 
                       </div>
                       <div className="h-2 rounded-full bg-surface-alt">
                         <div
-                          className={`h-2 rounded-full ${paymentColors[row.method] ?? 'bg-muted-foreground'}`}
+                          className={`h-2 rounded-full ${PAYMENT_COLORS[row.method] ?? 'bg-muted-foreground'}`}
                           style={{ width: `${row.percent}%` }}
                         />
                       </div>
@@ -395,39 +365,7 @@ export default function DashboardView({ sales, payments, saleItems, products }: 
             </div>
           </div>
 
-          {/* History table (only shown in history mode) */}
-          {period === 'history' && (
-            <div className="rounded-2xl bg-surface border border-edge/60 p-5 space-y-3">
-              <div className="flex items-center justify-between">
-                <p className="font-semibold text-heading">Historial detallado</p>
-                <Button variant="outline" size="sm" className="rounded-lg text-xs" onClick={exportHistoryCsv} disabled={historyRows.length === 0}>
-                  Exportar CSV
-                </Button>
-              </div>
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="text-left text-subtle border-b">
-                      <th className="py-2 font-medium">Fecha</th>
-                      <th className="py-2 font-medium">Método</th>
-                      <th className="py-2 font-medium">Estado</th>
-                      <th className="py-2 text-right font-medium">Total</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {historyRows.slice(0, 25).map(sale => (
-                      <tr key={sale.id} className="border-b last:border-b-0">
-                        <td className="py-2 text-body">{new Date(sale.created_at).toLocaleString('es-AR')}</td>
-                        <td className="py-2 text-body">{paymentLabels[sale.method] ?? sale.method}</td>
-                        <td className="py-2 text-body">{sale.status ?? 'completed'}</td>
-                        <td className="py-2 text-right font-medium">${Number(sale.total).toLocaleString('es-AR')}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
+          {period === 'history' && <SalesHistoryTable rows={historyRows} />}
         </div>
       </div>
     </div>

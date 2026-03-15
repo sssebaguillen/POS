@@ -5,6 +5,7 @@ import PageHeader from '@/components/shared/PageHeader'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { endOfDay, isCompletedSale, startOfDay, startOfWeek } from '@/components/analytics/utils'
+import { PAYMENT_LABELS, PAYMENT_COLORS } from '@/lib/payments'
 
 type Period = 'today' | 'week' | 'month' | 'custom'
 type EvolutionMode = 'revenue' | 'units'
@@ -212,20 +213,6 @@ export default function StatsView({ sales, payments, saleItems, products, catego
       .slice(0, 8)
   }, [filteredItems, productsById, categoriesById, breakdownMode])
 
-  const paymentColors: Record<string, string> = {
-    cash: 'bg-emerald-600',
-    card: 'bg-indigo-500',
-    transfer: 'bg-amber-500',
-    mercadopago: 'bg-sky-500',
-  }
-
-  const paymentLabels: Record<string, string> = {
-    cash: 'Efectivo',
-    card: 'Tarjeta',
-    transfer: 'Transferencia',
-    mercadopago: 'MercadoPago',
-  }
-
   return (
     <div className="flex flex-col h-screen overflow-hidden">
       <PageHeader title="Estadísticas" />
@@ -335,11 +322,11 @@ export default function StatsView({ sales, payments, saleItems, products, catego
                 paymentBreakdown.map(row => (
                   <div key={row.method} className="space-y-1.5">
                     <div className="flex justify-between text-sm">
-                      <span className="text-body font-medium">{paymentLabels[row.method] ?? row.method}</span>
+                      <span className="text-body font-medium">{PAYMENT_LABELS[row.method] ?? row.method}</span>
                       <span className="text-subtle text-xs">{row.percent.toFixed(0)}%</span>
                     </div>
                     <div className="h-2 rounded-full bg-surface-alt">
-                      <div className={`h-2 rounded-full ${paymentColors[row.method] ?? 'bg-hint'}`} style={{ width: `${row.percent}%` }} />
+                      <div className={`h-2 rounded-full ${PAYMENT_COLORS[row.method] ?? 'bg-hint'}`} style={{ width: `${row.percent}%` }} />
                     </div>
                   </div>
                 ))

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -31,7 +31,7 @@ export default function PaymentModal({ total, businessId, priceListId, saleItems
   const [success, setSuccess] = useState(false)
   const [error, setError] = useState('')
   const { clearCart } = useCartStore()
-  const supabase = createClient()
+  const supabase = useMemo(() => createClient(), [])
 
   const change = method === 'cash' && cashReceived
     ? Math.max(0, parseFloat(cashReceived) - total)
@@ -59,7 +59,7 @@ export default function PaymentModal({ total, businessId, priceListId, saleItems
         status: 'completed',
         price_list_id: priceListId,
       })
-      .select()
+      .select('id')
       .single()
 
     if (saleError || !sale) {

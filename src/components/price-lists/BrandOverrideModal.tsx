@@ -36,6 +36,7 @@ export default function BrandOverrideModal({
       : ((defaultPriceList.multiplier - 1) * 100).toFixed(2)
   )
   const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   const supabase = useMemo(() => createClient(), [])
 
@@ -46,6 +47,7 @@ export default function BrandOverrideModal({
         ? ((existingOverride.multiplier - 1) * 100).toFixed(2)
         : ((defaultPriceList.multiplier - 1) * 100).toFixed(2)
     )
+    setError(null)
   }, [open, existingOverride, defaultPriceList])
 
   function handleClose() {
@@ -78,9 +80,8 @@ export default function BrandOverrideModal({
       .single()
 
     if (error || !data) {
-      console.error('Failed to save brand override:', error?.message ?? 'Unknown error')
+      setError(error?.message ?? 'Error al guardar el override de marca')
       setSaving(false)
-      onClose()
       return
     }
 
@@ -107,9 +108,8 @@ export default function BrandOverrideModal({
       .eq('id', existingOverride.id)
 
     if (error) {
-      console.error('Failed to delete brand override:', error.message)
+      setError(error.message)
       setSaving(false)
-      onClose()
       return
     }
 
@@ -134,6 +134,12 @@ export default function BrandOverrideModal({
         </div>
 
         <form onSubmit={handleSubmit} className="px-6 py-4 flex flex-col gap-3.5">
+          {error && (
+            <p className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
+              {error}
+            </p>
+          )}
+
           <div className="rounded-xl border border-edge/70 bg-surface-alt px-3 py-2.5">
             <p className="text-xs text-subtle uppercase tracking-wide">Marca</p>
             <p className="text-sm font-semibold text-heading">{brandName}</p>

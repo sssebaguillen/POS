@@ -33,17 +33,7 @@ function formatTime(dateString: string) {
   })
 }
 
-function normalizePayment(method: string | null) {
-  if (!method) return 'sin dato'
-  const map: Record<string, string> = {
-    cash: 'Efectivo',
-    card: 'Tarjeta',
-    transfer: 'Transferencia',
-    mercadopago: 'MercadoPago',
-    credit: 'Crédito',
-  }
-  return map[method] ?? method
-}
+import { normalizePayment } from '@/lib/payments'
 
 export default function SalesHistoryPanel({ sales }: Props) {
   const [query, setQuery] = useState('')

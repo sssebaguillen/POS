@@ -4,7 +4,7 @@ import { usePathname } from 'next/navigation'
 import Link from 'next/link'
 import { X, ShoppingCart, Package, ClipboardList, BarChart2, LineChart, Settings, Sun, Moon, User, LogOut } from 'lucide-react'
 import { useRouter } from 'next/navigation'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
 import { useTheme } from '@/components/shared/theme'
@@ -56,7 +56,7 @@ export default function Sidebar({ open, onClose, activeOperatorName }: Props) {
   const pathname = usePathname()
   const { theme, toggle } = useTheme()
   const router = useRouter()
-  const supabase = createClient()
+  const supabase = useMemo(() => createClient(), [])
   // null = no cookie present (owner browsing) → never restrict
   const [permissions, setPermissions] = useState<Permissions | null>(null)
   const [toast, setToast] = useState<string | null>(null)
