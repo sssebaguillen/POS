@@ -16,6 +16,7 @@ type FilterStatus = 'all' | 'low' | 'out' | 'discontinued'
 
 interface Props {
   businessId: string | null
+  operatorId: string | null
   readOnly: boolean
   initialProducts: InventoryProduct[]
   categories: InventoryCategory[]
@@ -58,7 +59,7 @@ const statusConfig = {
   },
 }
 
-export default function InventoryPanel({ businessId, readOnly, initialProducts, categories: initialCategories, brands: initialBrands, defaultPriceList, productOverrides }: Props) {
+export default function InventoryPanel({ businessId, operatorId, readOnly, initialProducts, categories: initialCategories, brands: initialBrands, defaultPriceList, productOverrides }: Props) {
   const [products, setProducts] = useState(initialProducts)
   const [categories, setCategories] = useState<InventoryCategory[]>(initialCategories)
   const [brands, setBrands] = useState<InventoryBrand[]>(initialBrands)
@@ -71,49 +72,8 @@ export default function InventoryPanel({ businessId, readOnly, initialProducts, 
   const [showBrands, setShowBrands] = useState(false)
   const [editingProduct, setEditingProduct] = useState<InventoryProduct | null>(null)
   const [crudError, setCrudError] = useState<string | null>(null)
-  const [resolvedBusinessId, setResolvedBusinessId] = useState<string | null>(businessId)
 
   const supabase = useMemo(() => createClient(), [])
-  const effectiveBusinessId = businessId ?? resolvedBusinessId
-
-  useEffect(() => {
-    let cancelled = false
-
-    async function resolveBusinessId() {
-      if (businessId) {
-        setResolvedBusinessId(businessId)
-        return
-      }
-
-      const { data: rpcBusinessId } = await supabase.rpc('get_business_id')
-      if (!cancelled && typeof rpcBusinessId === 'string' && rpcBusinessId.length > 0) {
-        setResolvedBusinessId(rpcBusinessId)
-        return
-      }
-
-      const {
-        data: { user },
-      } = await supabase.auth.getUser()
-
-      if (!user) return
-
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('business_id')
-        .eq('id', user.id)
-        .maybeSingle()
-
-      if (!cancelled && profile?.business_id) {
-        setResolvedBusinessId(profile.business_id)
-      }
-    }
-
-    void resolveBusinessId()
-
-    return () => {
-      cancelled = true
-    }
-  }, [businessId, supabase])
 
   useEffect(() => {
     setCategories(initialCategories)
@@ -157,7 +117,7 @@ export default function InventoryPanel({ businessId, readOnly, initialProducts, 
       return
     }
 
-    if (!effectiveBusinessId) {
+    if (!businessId) {
       setCrudError('No se encontro el negocio activo para actualizar productos.')
       return
     }
@@ -169,7 +129,7 @@ export default function InventoryPanel({ businessId, readOnly, initialProducts, 
       .from('products')
       .update(values)
       .eq('id', productId)
-      .eq('business_id', effectiveBusinessId)
+      .eq('business_id', businessId)
 
     if (!error) {
       setProducts(prev => prev.map(product => {
@@ -242,7 +202,7 @@ export default function InventoryPanel({ businessId, readOnly, initialProducts, 
       return
     }
 
-    if (!effectiveBusinessId) {
+    if (!businessId) {
       setCrudError('No se encontro el negocio activo para eliminar productos.')
       return
     }
@@ -257,7 +217,7 @@ export default function InventoryPanel({ businessId, readOnly, initialProducts, 
       .from('products')
       .delete()
       .eq('id', product.id)
-      .eq('business_id', effectiveBusinessId)
+      .eq('business_id', businessId)
 
     if (!error) {
       setProducts(prev => prev.filter(p => p.id !== product.id))
@@ -296,6 +256,21 @@ export default function InventoryPanel({ businessId, readOnly, initialProducts, 
     URL.revokeObjectURL(url)
   }
 
+  if (!businessId) {
+    return (
+      <div className="flex flex-col h-screen overflow-hidden">
+        <PageHeader title="Stock" />
+        <div className="flex-1 overflow-y-auto p-6">
+          <div className="rounded-xl bg-card border border-border/60 p-6">
+            <p className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
+              No se pudo obtener el negocio asociado al usuario actual.
+            </p>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="flex flex-col h-screen overflow-hidden">
       <PageHeader title="Stock">
@@ -316,6 +291,8 @@ export default function InventoryPanel({ businessId, readOnly, initialProducts, 
           size="sm"
           className="rounded-lg text-xs"
           onClick={() => setShowCategories(true)}
+          disabled={readOnly}
+          title={readOnly ? 'Sin permiso de inventario' : undefined}
         >
           Categorías
         </Button>
@@ -324,6 +301,8 @@ export default function InventoryPanel({ businessId, readOnly, initialProducts, 
           size="sm"
           className="rounded-lg text-xs"
           onClick={() => setShowBrands(true)}
+          disabled={readOnly}
+          title={readOnly ? 'Sin permiso de inventario' : undefined}
         >
           Marcas
         </Button>
@@ -525,7 +504,7 @@ export default function InventoryPanel({ businessId, readOnly, initialProducts, 
         <NewProductModal
           open={showNewProduct}
           onClose={() => setShowNewProduct(false)}
-          businessId={effectiveBusinessId}
+          businessId={businessId}
           defaultPriceList={defaultPriceList}
           categories={categories}
           brands={brands}
@@ -533,11 +512,13 @@ export default function InventoryPanel({ businessId, readOnly, initialProducts, 
         />
       )}
 
-      {effectiveBusinessId && (
+      {businessId && (
         <CategoryModal
           open={showCategories}
           onClose={() => setShowCategories(false)}
-          businessId={effectiveBusinessId}
+          businessId={businessId}
+          operatorId={operatorId}
+          stockWriteAllowed={!readOnly}
           initialCategories={categories}
           onCategoriesChanged={updated => setCategories(updated)}
         />
@@ -559,11 +540,13 @@ export default function InventoryPanel({ businessId, readOnly, initialProducts, 
         />
       )}
 
-      {effectiveBusinessId && (
+      {businessId && (
         <BrandModal
           open={showBrands}
           onClose={() => setShowBrands(false)}
-          businessId={effectiveBusinessId}
+          businessId={businessId}
+          operatorId={operatorId}
+          stockWriteAllowed={!readOnly}
           initialBrands={brands}
           onBrandsChanged={handleBrandsChanged}
         />

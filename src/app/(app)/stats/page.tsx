@@ -46,7 +46,7 @@ export default async function StatsPage() {
   const [{ data: products }, { data: categories }] = await Promise.all([
     supabase
       .from('products')
-      .select('id, name, category_id, sku')
+      .select('id, name, category_id, brand_id, brands(id, name)')
       .limit(5000),
     supabase
       .from('categories')
@@ -68,7 +68,10 @@ export default async function StatsPage() {
         id: product.id,
         name: product.name,
         category_id: product.category_id,
-        sku: product.sku,
+        brand_id: product.brand_id ?? null,
+        brand: Array.isArray(product.brands)
+          ? product.brands[0] ?? null
+          : product.brands ?? null,
       }))}
       categories={(categories ?? []).map(category => ({
         id: category.id,

@@ -2,16 +2,7 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import PageHeader from '@/components/shared/PageHeader'
 import SettingsForm from '@/components/settings/SettingsForm'
-import { isSettingsOperator, type SettingsOperator } from '@/components/settings/types'
-
-interface SettingsBusiness {
-  id: string
-  name: string
-  description: string | null
-  whatsapp: string | null
-  logo_url: string | null
-  slug: string
-}
+import { isSettingsOperator, type SettingsBusiness, type SettingsOperator } from '@/components/settings/types'
 
 export default async function SettingsPage() {
   const supabase = await createClient()
@@ -49,7 +40,7 @@ export default async function SettingsPage() {
 
   const { data: business, error: businessError } = await supabase
     .from('businesses')
-    .select('id, name, description, whatsapp, logo_url, slug')
+    .select('id, name, description, whatsapp, logo_url, slug, settings')
     .eq('id', businessId)
     .single<SettingsBusiness>()
 

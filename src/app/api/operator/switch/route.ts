@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import type { ActiveOperator } from '@/lib/operator'
+import { OWNER_PERMISSIONS, type ActiveOperator } from '@/lib/operator'
 
 interface OperatorSwitchPayload {
   isOwner: false
@@ -76,15 +76,16 @@ function parseVerifyResult(value: unknown): ActiveOperator | null {
   }
 
   const permissionRecord = permissions as Record<string, unknown>
-  const stockPermission = permissionRecord.stock
-
   if (
     typeof operator.profile_id !== 'string' ||
     typeof operator.name !== 'string' ||
     typeof operator.role !== 'string' ||
     typeof permissionRecord.sales !== 'boolean' ||
-    (typeof stockPermission !== 'boolean' && stockPermission !== 'readonly') ||
+    typeof permissionRecord.stock !== 'boolean' ||
+    typeof permissionRecord.stock_write !== 'boolean' ||
     typeof permissionRecord.stats !== 'boolean' ||
+    typeof permissionRecord.price_lists !== 'boolean' ||
+    typeof permissionRecord.price_lists_write !== 'boolean' ||
     typeof permissionRecord.settings !== 'boolean'
   ) {
     return null
@@ -96,8 +97,11 @@ function parseVerifyResult(value: unknown): ActiveOperator | null {
     role: operator.role,
     permissions: {
       sales: permissionRecord.sales,
-      stock: stockPermission,
+      stock: permissionRecord.stock,
+      stock_write: permissionRecord.stock_write,
       stats: permissionRecord.stats,
+      price_lists: permissionRecord.price_lists,
+      price_lists_write: permissionRecord.price_lists_write,
       settings: permissionRecord.settings,
     },
   }
@@ -154,12 +158,7 @@ export async function POST(request: Request) {
       profile_id: ownerProfile.id,
       name: ownerProfile.name,
       role: 'owner',
-      permissions: {
-        sales: true,
-        stock: true,
-        stats: true,
-        settings: true,
-      },
+      permissions: OWNER_PERMISSIONS,
     }
 
     const response = NextResponse.json({ success: true })

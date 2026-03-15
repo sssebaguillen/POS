@@ -160,6 +160,8 @@ export default function POSView({ products, categories, businessId, priceLists, 
           <ProductPanel
             products={products}
             search={search}
+            activePriceList={activePriceList}
+            priceListOverrides={priceListOverrides}
           />
         </div>
         <div className="w-[380px] shrink-0 bg-surface border-l border-edge/60 flex flex-col">

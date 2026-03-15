@@ -1,8 +1,21 @@
 export interface Permissions {
   sales: boolean
-  stock: boolean | 'readonly'
+  stock: boolean
+  stock_write: boolean
   stats: boolean
+  price_lists: boolean
+  price_lists_write: boolean
   settings: boolean
+}
+
+export const OWNER_PERMISSIONS: Permissions = {
+  sales: true,
+  stock: true,
+  stock_write: true,
+  stats: true,
+  price_lists: true,
+  price_lists_write: true,
+  settings: true,
 }
 
 export interface ActiveOperator {
@@ -25,12 +38,15 @@ function isPermissions(value: unknown): value is Permissions {
     return false
   }
 
-  const permissionRecord = value as Record<string, unknown>
+  const p = value as Record<string, unknown>
   return (
-    typeof permissionRecord.sales === 'boolean' &&
-    (typeof permissionRecord.stock === 'boolean' || permissionRecord.stock === 'readonly') &&
-    typeof permissionRecord.stats === 'boolean' &&
-    typeof permissionRecord.settings === 'boolean'
+    typeof p.sales === 'boolean' &&
+    typeof p.stock === 'boolean' &&
+    typeof p.stock_write === 'boolean' &&
+    typeof p.stats === 'boolean' &&
+    typeof p.price_lists === 'boolean' &&
+    typeof p.price_lists_write === 'boolean' &&
+    typeof p.settings === 'boolean'
   )
 }
 
@@ -74,9 +90,5 @@ export function getActiveOperator(cookieStore: CookieStoreLike): ActiveOperator 
 }
 
 export function hasPermission(operator: ActiveOperator, permission: keyof Permissions): boolean {
-  if (permission === 'stock') {
-    return operator.permissions.stock !== false
-  }
-
   return operator.permissions[permission] === true
 }

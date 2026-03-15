@@ -7,7 +7,6 @@ export default async function InventoryPage() {
   const supabase = await createClient()
   const cookieStore = await cookies()
   const activeOperator = getActiveOperator(cookieStore)
-  const stockPermission = activeOperator?.permissions.stock ?? true
 
   const {
     data: { user },
@@ -61,7 +60,8 @@ export default async function InventoryPage() {
   return (
     <InventoryPanel
       businessId={businessId}
-      readOnly={stockPermission === 'readonly'}
+      operatorId={activeOperator?.profile_id ?? null}
+      readOnly={activeOperator?.permissions.stock_write !== true}
       initialProducts={(products ?? []).map(product => ({
         ...product,
         price: Number(product.price),

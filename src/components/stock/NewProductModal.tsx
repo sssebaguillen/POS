@@ -157,37 +157,14 @@ export default function NewProductModal({ open, onClose, businessId, defaultPric
     const errs = validate()
     if (Object.keys(errs).length > 0) { setErrors(errs); return }
 
-    let activeBusinessId = businessId
-    if (!activeBusinessId) {
-      const { data: rpcBusinessId } = await supabase.rpc('get_business_id')
-      if (typeof rpcBusinessId === 'string' && rpcBusinessId.length > 0) {
-        activeBusinessId = rpcBusinessId
-      }
-    }
-
-    if (!activeBusinessId) {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser()
-
-      if (user) {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('business_id')
-          .eq('id', user.id)
-          .maybeSingle()
-        activeBusinessId = profile?.business_id ?? null
-      }
-    }
-
-    if (!activeBusinessId) {
-      setErrors({ _global: 'No se encontró el negocio activo para crear productos.' })
+    if (!businessId) {
+      setErrors({ _global: 'No se encontró el negocio activo.' })
       return
     }
 
     setLoading(true)
     const payload = {
-      business_id: activeBusinessId,
+      business_id: businessId,
       name: form.name.trim(),
       sku: form.sku.trim() || null,
       brand_id: form.brand_id || null,

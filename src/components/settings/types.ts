@@ -4,9 +4,11 @@ export interface SettingsBusiness {
   description: string | null
   whatsapp: string | null
   logo_url: string | null
+  slug: string
+  settings: { primary_color?: string } | null
 }
 
-export type OperatorRole = 'manager' | 'cashier'
+export type OperatorRole = 'manager' | 'cashier' | 'custom'
 
 export interface SettingsOperator {
   id: string
@@ -24,6 +26,6 @@ export function isSettingsOperator(value: unknown): value is SettingsOperator {
   return (
     typeof operator.id === 'string' &&
     typeof operator.name === 'string' &&
-    (operator.role === 'manager' || operator.role === 'cashier')
+    (operator.role === 'manager' || operator.role === 'cashier' || operator.role === 'custom')
   )
 }

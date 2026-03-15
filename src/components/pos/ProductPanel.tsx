@@ -1,15 +1,19 @@
 'use client'
 
 import { useCartStore } from '@/lib/store/cart.store'
+import { calculateProductPrice } from '@/lib/price-lists'
 import type { Product } from '@/lib/types'
 import type { ProductWithCategory } from '@/components/pos/types'
+import type { PriceList, PriceListOverride } from '@/components/price-lists/types'
 
 interface Props {
   products: ProductWithCategory[]
   search: string
+  activePriceList: PriceList | null
+  priceListOverrides: PriceListOverride[]
 }
 
-export default function ProductPanel({ products, search }: Props) {
+export default function ProductPanel({ products, search, activePriceList, priceListOverrides }: Props) {
   const addItem = useCartStore(s => s.addItem)
 
   const filtered = products.filter(p => {
@@ -42,6 +46,8 @@ export default function ProductPanel({ products, search }: Props) {
               <ProductCard
                 key={product.id}
                 product={product}
+                activePriceList={activePriceList}
+                priceListOverrides={priceListOverrides}
                 onAdd={handleAdd}
               />
             ))}
@@ -67,6 +73,8 @@ export default function ProductPanel({ products, search }: Props) {
               <ProductCard
                 key={product.id}
                 product={product}
+                activePriceList={activePriceList}
+                priceListOverrides={priceListOverrides}
                 onAdd={handleAdd}
               />
             ))}
@@ -79,12 +87,20 @@ export default function ProductPanel({ products, search }: Props) {
 
 function ProductCard({
   product,
+  activePriceList,
+  priceListOverrides,
   onAdd,
 }: {
   product: ProductWithCategory
+  activePriceList: PriceList | null
+  priceListOverrides: PriceListOverride[]
   onAdd: (p: Product) => void
 }) {
   const disabled = product.stock === 0
+
+  const displayPrice = activePriceList
+    ? calculateProductPrice(product.cost, product.id, product.brand_id, activePriceList, priceListOverrides)
+    : product.price
 
   return (
     <button
@@ -104,7 +120,7 @@ function ProductCard({
 
       {/* Price */}
       <p className="text-sm font-bold text-heading">
-        ${product.price.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
+        ${displayPrice.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
       </p>
 
       {/* Stock badge */}

@@ -35,7 +35,8 @@ interface ProductRecord {
   id: string
   name: string
   category_id: string | null
-  sku: string | null
+  brand_id: string | null
+  brand: { id: string; name: string } | null
 }
 
 interface CategoryRecord {
@@ -49,12 +50,6 @@ interface Props {
   saleItems: SaleItemRecord[]
   products: ProductRecord[]
   categories: CategoryRecord[]
-}
-
-function inferBrandFromSku(sku: string | null) {
-  if (!sku) return 'Sin marca'
-  const token = sku.split('-')[0].trim()
-  return token.length > 0 ? token : 'Sin marca'
 }
 
 export default function StatsView({ sales, payments, saleItems, products, categories }: Props) {
@@ -193,7 +188,7 @@ export default function StatsView({ sales, payments, saleItems, products, catego
 
       const key = breakdownMode === 'category'
         ? categoriesById.get(product.category_id ?? '') ?? 'Sin categoría'
-        : inferBrandFromSku(product.sku)
+        : (product.brand_id ? (product.brand?.name ?? 'Sin marca') : 'Sin marca')
 
       map[key] = (map[key] ?? 0) + Number(item.total)
     })

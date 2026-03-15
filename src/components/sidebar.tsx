@@ -4,19 +4,47 @@ import { usePathname } from 'next/navigation'
 import Link from 'next/link'
 import { X, ShoppingCart, Package, ClipboardList, BarChart2, LineChart, Settings, Sun, Moon, User, LogOut } from 'lucide-react'
 import { useRouter } from 'next/navigation'
+import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
 import { useTheme } from '@/components/shared/theme'
 import OperatorSwitcher from '@/components/operator/OperatorSwitcher'
+import type { Permissions } from '@/lib/operator'
 
-const links = [
-  { href: '/ventas', label: 'Vender', icon: ShoppingCart },
-  { href: '/dashboard', label: 'Dashboard', icon: BarChart2 },
-  { href: '/stats', label: 'Estadísticas', icon: LineChart },
-  { href: '/price-lists', label: 'Listas de precios', icon: Package },
-  { href: '/inventory', label: 'Stock', icon: ClipboardList },
-  { href: '/settings', label: 'Configuración', icon: Settings },
+interface NavLink {
+  href: string
+  label: string
+  icon: React.ElementType
+  check: (p: Permissions) => boolean
+}
+
+const NAV_LINKS: NavLink[] = [
+  { href: '/ventas',      label: 'Vender',            icon: ShoppingCart, check: () => true },
+  { href: '/dashboard',   label: 'Dashboard',         icon: BarChart2,    check: (p) => p.stats === true },
+  { href: '/stats',       label: 'Estadísticas',      icon: LineChart,    check: (p) => p.stats === true },
+  { href: '/price-lists', label: 'Listas de precios', icon: Package,      check: (p) => p.price_lists === true },
+  { href: '/inventory',   label: 'Stock',             icon: ClipboardList,check: (p) => p.stock === true },
+  { href: '/settings',    label: 'Configuración',     icon: Settings,     check: (p) => p.settings === true },
 ]
+
+function parseOpPerms(raw: string): Permissions | null {
+  try {
+    const parsed = JSON.parse(decodeURIComponent(raw)) as unknown
+    if (!parsed || typeof parsed !== 'object') return null
+    const p = parsed as Record<string, unknown>
+    return {
+      sales:              typeof p.sales === 'boolean'              ? p.sales              : false,
+      stock:              typeof p.stock === 'boolean'              ? p.stock              : false,
+      stock_write:        typeof p.stock_write === 'boolean'        ? p.stock_write        : false,
+      stats:              typeof p.stats === 'boolean'              ? p.stats              : false,
+      price_lists:        typeof p.price_lists === 'boolean'        ? p.price_lists        : false,
+      price_lists_write:  typeof p.price_lists_write === 'boolean'  ? p.price_lists_write  : false,
+      settings:           typeof p.settings === 'boolean'           ? p.settings           : false,
+    }
+  } catch {
+    return null
+  }
+}
 
 interface Props {
   open: boolean
@@ -29,6 +57,34 @@ export default function Sidebar({ open, onClose, activeOperatorName }: Props) {
   const { theme, toggle } = useTheme()
   const router = useRouter()
   const supabase = createClient()
+  // null = no cookie present (owner browsing) → never restrict
+  const [permissions, setPermissions] = useState<Permissions | null>(null)
+  const [toast, setToast] = useState<string | null>(null)
+
+  useEffect(() => {
+    const match = document.cookie.match(/(?:^|;)\s*op_perms=([^;]+)/)
+    if (match) {
+      setPermissions(parseOpPerms(match[1]))
+    } else {
+      setPermissions(null)
+    }
+  }, [pathname])
+
+  useEffect(() => {
+    if (!toast) return
+    const timer = setTimeout(() => setToast(null), 3000)
+    return () => clearTimeout(timer)
+  }, [toast])
+
+  // Only restrict when an operator cookie is present AND the check fails.
+  // When permissions is null (owner without operator session), never restrict.
+  const isRestricted = (check: (p: Permissions) => boolean): boolean =>
+    permissions !== null && !check(permissions)
+
+  function handleRestrictedClick(label: string) {
+    setToast(`No tenés permisos para acceder a ${label}`)
+    onClose()
+  }
 
   async function handleLogout() {
     await supabase.auth.signOut()
@@ -63,22 +119,37 @@ export default function Sidebar({ open, onClose, activeOperatorName }: Props) {
         </div>
 
         <nav className="flex-1 py-3 px-3 space-y-0.5">
-          {links.map(({ href, label, icon: Icon }) => (
-            <Link
-              key={href}
-              href={href}
-              onClick={onClose}
-              className={cn(
-                'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
-                pathname === href
-                  ? 'bg-primary text-primary-foreground'
-                  : 'text-body hover:bg-hover-bg hover:text-heading'
-              )}
-            >
-              <Icon size={18} />
-              {label}
-            </Link>
-          ))}
+          {NAV_LINKS.map(({ href, label, icon: Icon, check }) => {
+            if (isRestricted(check)) {
+              return (
+                <span
+                  key={href}
+                  role="button"
+                  onClick={() => handleRestrictedClick(label)}
+                  className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium opacity-50 cursor-not-allowed select-none text-body"
+                >
+                  <Icon size={18} />
+                  {label}
+                </span>
+              )
+            }
+            return (
+              <Link
+                key={href}
+                href={href}
+                onClick={onClose}
+                className={cn(
+                  'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
+                  pathname === href
+                    ? 'bg-primary text-primary-foreground'
+                    : 'text-body hover:bg-hover-bg hover:text-heading'
+                )}
+              >
+                <Icon size={18} />
+                {label}
+              </Link>
+            )
+          })}
         </nav>
 
         <div className="px-3 py-3 border-t border-edge-soft flex flex-col gap-2">
@@ -118,6 +189,15 @@ export default function Sidebar({ open, onClose, activeOperatorName }: Props) {
           </div>
         </div>
       </aside>
+
+      {toast && (
+        <div
+          role="alert"
+          className="fixed bottom-4 left-4 z-[60] rounded-lg border border-amber-200 bg-white px-4 py-2.5 shadow-lg text-sm text-amber-800 dark:border-amber-500/30 dark:bg-amber-950/80 dark:text-amber-200"
+        >
+          {toast}
+        </div>
+      )}
     </>
   )
 }

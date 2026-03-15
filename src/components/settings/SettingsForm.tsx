@@ -4,17 +4,8 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { isSettingsOperator, type OperatorRole, type SettingsOperator } from '@/components/settings/types'
-
-interface SettingsBusiness {
-  id: string
-  name: string
-  description: string | null
-  whatsapp: string | null
-  logo_url: string | null
-  slug: string
-  settings: { primary_color?: string } | null
-}
+import { isSettingsOperator, type OperatorRole, type SettingsBusiness, type SettingsOperator } from '@/components/settings/types'
+import type { Permissions } from '@/lib/operator'
 
 interface SettingsFormProps {
   business: SettingsBusiness
@@ -54,6 +45,15 @@ export default function SettingsForm({ business, operators }: SettingsFormProps)
   const [operatorName, setOperatorName] = useState('')
   const [operatorRole, setOperatorRole] = useState<OperatorRole>('cashier')
   const [operatorPin, setOperatorPin] = useState('')
+  const [customPermissions, setCustomPermissions] = useState<Permissions>({
+    sales: true,
+    stock: true,
+    stock_write: false,
+    stats: false,
+    price_lists: false,
+    price_lists_write: false,
+    settings: false,
+  })
   const [operatorError, setOperatorError] = useState('')
   const [operatorSuccess, setOperatorSuccess] = useState('')
   const [operatorLoading, setOperatorLoading] = useState(false)
@@ -100,6 +100,7 @@ export default function SettingsForm({ business, operators }: SettingsFormProps)
 
   function roleLabel(role: OperatorRole): string {
     if (role === 'manager') return 'Manager'
+    if (role === 'custom') return 'Custom'
     return 'Cashier'
   }
 
@@ -143,6 +144,7 @@ export default function SettingsForm({ business, operators }: SettingsFormProps)
       p_name: trimmedName,
       p_role: operatorRole,
       p_pin: normalizedPin,
+      ...(operatorRole === 'custom' ? { p_permissions: customPermissions } : {}),
     })
 
     setOperatorLoading(false)
@@ -155,6 +157,15 @@ export default function SettingsForm({ business, operators }: SettingsFormProps)
     setOperatorName('')
     setOperatorRole('cashier')
     setOperatorPin('')
+    setCustomPermissions({
+      sales: true,
+      stock: true,
+      stock_write: false,
+      stats: false,
+      price_lists: false,
+      price_lists_write: false,
+      settings: false,
+    })
     setOperatorSuccess('Operador creado correctamente.')
     await refreshOperators()
   }
@@ -453,8 +464,43 @@ export default function SettingsForm({ business, operators }: SettingsFormProps)
             >
               <option value="manager">Manager</option>
               <option value="cashier">Cashier</option>
+              <option value="custom">Custom</option>
             </select>
           </div>
+
+          {operatorRole === 'custom' && (
+            <div className="space-y-2">
+              <p className="text-xs uppercase tracking-wide text-muted-foreground">Permisos</p>
+              <div className="rounded-lg border border-border/60 divide-y divide-border/60">
+                {(
+                  [
+                    { key: 'sales', label: 'Ventas' },
+                    { key: 'stock', label: 'Ver inventario' },
+                    { key: 'stock_write', label: 'Modificar inventario' },
+                    { key: 'stats', label: 'Estadísticas' },
+                    { key: 'price_lists', label: 'Ver listas de precios' },
+                    { key: 'price_lists_write', label: 'Modificar listas de precios' },
+                    { key: 'settings', label: 'Configuración' },
+                  ] as { key: keyof Permissions; label: string }[]
+                ).map(({ key, label }) => (
+                  <label
+                    key={key}
+                    className="flex items-center justify-between px-3 py-2.5 cursor-pointer hover:bg-muted/40 transition-colors"
+                  >
+                    <span className="text-sm text-foreground">{label}</span>
+                    <input
+                      type="checkbox"
+                      checked={customPermissions[key]}
+                      onChange={e =>
+                        setCustomPermissions(prev => ({ ...prev, [key]: e.target.checked }))
+                      }
+                      className="h-4 w-4 accent-primary"
+                    />
+                  </label>
+                ))}
+              </div>
+            </div>
+          )}
 
           <div className="space-y-1.5">
             <label htmlFor="operator-pin" className="text-xs uppercase tracking-wide text-muted-foreground">

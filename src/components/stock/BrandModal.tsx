@@ -11,6 +11,8 @@ interface BrandModalProps {
   open: boolean
   onClose: () => void
   businessId: string
+  operatorId: string | null
+  stockWriteAllowed: boolean
   initialBrands: InventoryBrand[]
   onBrandsChanged: (brands: InventoryBrand[]) => void
 }
@@ -19,6 +21,8 @@ export default function BrandModal({
   open,
   onClose,
   businessId,
+  operatorId,
+  stockWriteAllowed,
   initialBrands,
   onBrandsChanged,
 }: BrandModalProps) {
@@ -56,6 +60,11 @@ export default function BrandModal({
   async function handleCreate(event: React.FormEvent) {
     event.preventDefault()
 
+    if (!stockWriteAllowed) {
+      setError('Acceso denegado: Permisos de inventario insuficientes')
+      return
+    }
+
     if (!name.trim()) {
       setError('El nombre es obligatorio')
       return
@@ -64,15 +73,16 @@ export default function BrandModal({
     setCreating(true)
     setError(null)
 
-    const { error: insertError } = await supabase
-      .from('brands')
-      .insert({
-        business_id: businessId,
-        name: name.trim(),
-      })
+    const { data: rpcResult, error: rpcError } = await supabase.rpc('create_brand_guarded', {
+      p_operator_id: operatorId,
+      p_business_id: businessId,
+      p_name: name.trim(),
+    })
 
-    if (insertError) {
-      setError(insertError.message)
+    const result = rpcResult as { success: boolean; error?: string } | null
+
+    if (rpcError || !result?.success) {
+      setError(result?.error ?? rpcError?.message ?? 'Error al crear la marca')
       setCreating(false)
       return
     }
@@ -145,7 +155,7 @@ export default function BrandModal({
                       size="sm"
                       variant="destructive"
                       onClick={() => void handleDelete(brand)}
-                      disabled={creating || deletingId !== null}
+                      disabled={creating || deletingId !== null || !stockWriteAllowed}
                     >
                       {deletingId === brand.id ? 'Eliminando...' : 'Eliminar'}
                     </Button>
@@ -157,6 +167,11 @@ export default function BrandModal({
 
           <form onSubmit={handleCreate} className="rounded-xl border border-edge/70 bg-surface-alt p-3.5">
             <p className="text-[11px] font-semibold text-subtle uppercase tracking-wide mb-2.5">Nueva marca</p>
+            {!stockWriteAllowed && (
+              <p className="mb-2.5 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-700">
+                Sin permiso de inventario
+              </p>
+            )}
             <div className="flex flex-col gap-1">
               <label className="text-[11px] font-semibold text-subtle uppercase tracking-wide">
                 Nombre<span className="text-red-400 ml-0.5">*</span>
@@ -188,7 +203,7 @@ export default function BrandModal({
                 type="submit"
                 size="sm"
                 className="rounded-lg text-xs bg-primary hover:bg-primary/90 text-primary-foreground"
-                disabled={creating || deletingId !== null}
+                disabled={creating || deletingId !== null || !stockWriteAllowed}
               >
                 {creating ? 'Creando...' : 'Crear marca'}
               </Button>

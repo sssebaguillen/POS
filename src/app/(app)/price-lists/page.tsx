@@ -1,8 +1,12 @@
 import { createClient } from '@/lib/supabase/server'
 import PriceListsPanel from '@/components/price-lists/PriceListsPanel'
+import { cookies } from 'next/headers'
+import { getActiveOperator } from '@/lib/operator'
 
 export default async function PriceListsPage() {
   const supabase = await createClient()
+  const cookieStore = await cookies()
+  const activeOperator = getActiveOperator(cookieStore)
 
   const {
     data: { user },
@@ -45,6 +49,7 @@ export default async function PriceListsPage() {
   return (
     <PriceListsPanel
       businessId={businessId}
+      readOnly={activeOperator?.permissions.price_lists_write !== true}
       initialLists={(lists ?? []).map(list => ({
         id: list.id,
         business_id: list.business_id,

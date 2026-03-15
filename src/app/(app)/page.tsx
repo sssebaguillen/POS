@@ -40,17 +40,17 @@ export default async function POSPage() {
   ] = await Promise.all([
     supabase
       .from('products')
-      .select('*, categories(name, icon)')
+      .select('id, business_id, category_id, brand_id, name, sku, barcode, price, cost, stock, min_stock, image_url, is_active, show_in_catalog, sales_count, created_at, categories(name, icon)')
       .eq('is_active', true)
       .order('sales_count', { ascending: false }),
     supabase
       .from('categories')
-      .select('*')
+      .select('id, name, icon')
       .eq('is_active', true)
       .order('position'),
     supabase
       .from('price_lists')
-      .select('*')
+      .select('id, business_id, name, description, multiplier, is_default, created_at')
       .eq('business_id', profileBusinessId)
       .order('is_default', { ascending: false })
       .order('name', { ascending: true }),
@@ -73,17 +73,47 @@ export default async function POSPage() {
   if (priceListIds.length > 0) {
     const { data: overridesData } = await supabase
       .from('price_list_overrides')
-      .select('*')
+      .select('id, price_list_id, product_id, brand_id, multiplier')
       .in('price_list_id', priceListIds)
-    priceListOverrides = (overridesData ?? []) as PriceListOverride[]
+    priceListOverrides = (overridesData ?? []).map(o => ({
+      id: o.id,
+      price_list_id: o.price_list_id,
+      product_id: o.product_id,
+      brand_id: o.brand_id,
+      multiplier: Number(o.multiplier),
+    }))
   }
 
   return (
     <POSView
-      products={products ?? []}
-      categories={categories ?? []}
+      products={(products ?? []).map(product => ({
+        ...product,
+        price: Number(product.price),
+        cost: Number(product.cost),
+        stock: Number(product.stock),
+        min_stock: Number(product.min_stock),
+        sales_count: Number(product.sales_count),
+        brand_id: product.brand_id ?? null,
+        image_url: product.image_url ?? null,
+        categories: Array.isArray(product.categories)
+          ? product.categories[0] ?? null
+          : product.categories ?? null,
+      }))}
+      categories={(categories ?? []).map(c => ({
+        id: c.id,
+        name: c.name,
+        icon: c.icon,
+      }))}
       businessId={profileBusinessId}
-      priceLists={(priceLists ?? []) as import('@/components/price-lists/types').PriceList[]}
+      priceLists={(priceLists ?? []).map(pl => ({
+        id: pl.id,
+        business_id: pl.business_id,
+        name: pl.name,
+        description: pl.description,
+        multiplier: Number(pl.multiplier),
+        is_default: pl.is_default,
+        created_at: pl.created_at,
+      }))}
       priceListOverrides={priceListOverrides}
       activeOperator={activeOperator}
     />

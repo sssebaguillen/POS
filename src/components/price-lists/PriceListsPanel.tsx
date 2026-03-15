@@ -22,6 +22,7 @@ import { calculateProductPrice } from '@/lib/price-lists'
 
 interface PriceListsPanelProps {
   businessId: string | null
+  readOnly: boolean
   initialLists: PriceList[]
   products: PriceListProduct[]
   initialOverrides: PriceListOverride[]
@@ -33,6 +34,7 @@ function getMarginPercent(multiplier: number): number {
 
 export default function PriceListsPanel({
   businessId,
+  readOnly,
   initialLists,
   products,
   initialOverrides,
@@ -246,14 +248,16 @@ export default function PriceListsPanel({
   return (
     <div className="flex flex-col h-screen overflow-hidden">
       <PageHeader title="Listas de precios">
-        <Button
-          size="sm"
-          className="rounded-lg text-xs bg-primary hover:bg-primary/90 text-primary-foreground"
-          onClick={() => setShowNewListModal(true)}
-          disabled={!businessId}
-        >
-          Nueva lista
-        </Button>
+        {!readOnly && (
+          <Button
+            size="sm"
+            className="rounded-lg text-xs bg-primary hover:bg-primary/90 text-primary-foreground"
+            onClick={() => setShowNewListModal(true)}
+            disabled={!businessId}
+          >
+            Nueva lista
+          </Button>
+        )}
       </PageHeader>
 
       <div className="bg-surface border-b border-edge/60 px-5 py-3">
@@ -286,15 +290,17 @@ export default function PriceListsPanel({
                 </button>
               )
             })}
-            <button
-              type="button"
-              onClick={() => setShowNewListModal(true)}
-              className="inline-flex items-center justify-center h-8 w-8 rounded-full bg-surface-alt text-body hover:bg-hover-bg transition-colors"
-              aria-label="Crear lista"
-              title="Crear lista"
-            >
-              <Plus size={14} />
-            </button>
+            {!readOnly && (
+              <button
+                type="button"
+                onClick={() => setShowNewListModal(true)}
+                className="inline-flex items-center justify-center h-8 w-8 rounded-full bg-surface-alt text-body hover:bg-hover-bg transition-colors"
+                aria-label="Crear lista"
+                title="Crear lista"
+              >
+                <Plus size={14} />
+              </button>
+            )}
           </div>
         )}
       </div>
@@ -321,6 +327,7 @@ export default function PriceListsPanel({
                 size="sm"
                 className="rounded-lg text-xs"
                 onClick={() => setEditingListId(activeList.id)}
+                disabled={readOnly}
               >
                 Editar lista
               </Button>
@@ -330,7 +337,7 @@ export default function PriceListsPanel({
                   size="sm"
                   className="rounded-lg text-xs"
                   onClick={() => void makeDefault(activeList.id)}
-                  disabled={savingDefaultId === activeList.id || !businessId}
+                  disabled={readOnly || savingDefaultId === activeList.id || !businessId}
                 >
                   {savingDefaultId === activeList.id ? 'Guardando...' : 'Marcar default'}
                 </Button>
@@ -375,7 +382,7 @@ export default function PriceListsPanel({
                               onClick={() => group.brandId && setOverrideBrandId(group.brandId)}
                               aria-label={`Editar override de marca ${group.label}`}
                               title="Editar override de marca"
-                              disabled={!group.brandId}
+                              disabled={readOnly || !group.brandId}
                             >
                               <Pencil size={14} />
                             </Button>
@@ -412,6 +419,7 @@ export default function PriceListsPanel({
                                 onClick={() => setOverrideProductId(row.product.id)}
                                 aria-label={`Editar override de ${row.product.name}`}
                                 title="Editar override"
+                                disabled={readOnly}
                               >
                                 <Pencil size={14} />
                               </Button>

@@ -1,18 +1,16 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
-import { getActiveOperator, hasPermission } from '@/lib/operator'
+import { getActiveOperator, hasPermission, OWNER_PERMISSIONS } from '@/lib/operator'
 
-const OWNER_PERMISSIONS = {
-  sales: true,
-  stock: true,
-  stats: true,
-  settings: true,
-} as const
-
-interface AuthProfile {
-  id: string
-  name: string
-  role: string
+function flashRedirect(destination: URL): NextResponse {
+  const response = NextResponse.redirect(destination)
+  response.cookies.set('flash_toast', 'no-access', {
+    maxAge: 5,
+    httpOnly: false,
+    sameSite: 'lax',
+    path: '/',
+  })
+  return response
 }
 
 export async function proxy(request: NextRequest) {
@@ -60,41 +58,31 @@ export async function proxy(request: NextRequest) {
     return supabaseResponse
   }
 
-  let operator = getActiveOperator(request.cookies)
+  const operator = getActiveOperator(request.cookies)
+
+  // Owner identification — only the role: 'owner' cookie value identifies the owner.
+  // null (no cookie) means no operator selected yet → send to /operator-select.
+  const isOwner = operator?.role === 'owner'
+
+  if (isOwner) {
+    supabaseResponse.cookies.set('op_perms', JSON.stringify(OWNER_PERMISSIONS), {
+      httpOnly: false,
+      sameSite: 'lax',
+      path: '/',
+      secure: process.env.NODE_ENV === 'production',
+    })
+    return supabaseResponse
+  }
 
   if (!operator) {
-    // Allow the operator selection screen to render when session is intentionally cleared.
+    // No operator session — allow operator-select to render, redirect everything else.
     if (isOperatorSelectRoute) {
       return supabaseResponse
     }
-
-    const { data: profile, error: profileError } = await supabase
-      .from('profiles')
-      .select('id, name, role')
-      .eq('id', user.id)
-      .single<AuthProfile>()
-
-    if (!profileError && profile?.role === 'owner') {
-      operator = {
-        profile_id: profile.id,
-        name: profile.name,
-        role: profile.role,
-        permissions: {
-          ...OWNER_PERMISSIONS,
-        },
-      }
-
-      supabaseResponse.cookies.set('operator_session', JSON.stringify(operator), {
-        httpOnly: true,
-        sameSite: 'lax',
-        path: '/',
-        secure: process.env.NODE_ENV === 'production',
-      })
-    } else {
-      return NextResponse.redirect(new URL('/operator-select', request.url))
-    }
+    return NextResponse.redirect(new URL('/operator-select', request.url))
   }
 
+  // Non-owner operator with active session — redirect away from operator-select
   if (isOperatorSelectRoute) {
     return NextResponse.redirect(new URL('/ventas', request.url))
   }
@@ -106,7 +94,7 @@ export async function proxy(request: NextRequest) {
     pathname.startsWith('/stats/')
 
   if (isStatsRoute && !hasPermission(operator, 'stats')) {
-    return NextResponse.redirect(new URL('/ventas', request.url))
+    return flashRedirect(new URL('/ventas', request.url))
   }
 
   const isStockRoute =
@@ -115,17 +103,23 @@ export async function proxy(request: NextRequest) {
     pathname === '/inventory' ||
     pathname.startsWith('/inventory/') ||
     pathname === '/products' ||
-    pathname.startsWith('/products/') ||
+    pathname.startsWith('/products/')
+
+  if (isStockRoute && !hasPermission(operator, 'stock')) {
+    return flashRedirect(new URL('/ventas', request.url))
+  }
+
+  const isPriceListsRoute =
     pathname === '/price-lists' ||
     pathname.startsWith('/price-lists/')
 
-  if (isStockRoute && !hasPermission(operator, 'stock')) {
-    return NextResponse.redirect(new URL('/ventas', request.url))
+  if (isPriceListsRoute && !hasPermission(operator, 'price_lists')) {
+    return flashRedirect(new URL('/ventas', request.url))
   }
 
   if (
     (pathname === '/products' || pathname.startsWith('/products/')) &&
-    operator.permissions.stock === 'readonly'
+    !hasPermission(operator, 'stock_write')
   ) {
     return NextResponse.redirect(new URL('/inventory', request.url))
   }
@@ -133,7 +127,36 @@ export async function proxy(request: NextRequest) {
   const isSettingsRoute = pathname === '/settings' || pathname.startsWith('/settings/')
 
   if (isSettingsRoute && !hasPermission(operator, 'settings')) {
-    return NextResponse.redirect(new URL('/ventas', request.url))
+    return flashRedirect(new URL('/ventas', request.url))
+  }
+
+  const normalizedPerms = {
+    sales:             operator.permissions.sales             ?? false,
+    stock:             operator.permissions.stock             ?? false,
+    stock_write:       operator.permissions.stock_write       ?? false,
+    stats:             operator.permissions.stats             ?? false,
+    price_lists:       operator.permissions.price_lists       ?? false,
+    price_lists_write: operator.permissions.price_lists_write ?? false,
+    settings:          operator.permissions.settings          ?? false,
+  }
+
+  supabaseResponse.cookies.set('op_perms', JSON.stringify(normalizedPerms), {
+    httpOnly: false,
+    sameSite: 'lax',
+    path: '/',
+    secure: process.env.NODE_ENV === 'production',
+  })
+
+  // Forward flash_toast onto supabaseResponse so the Supabase SSR response
+  // pipeline does not drop it before the layout reads it server-side.
+  const flashCookie = request.cookies.get('flash_toast')
+  if (flashCookie) {
+    supabaseResponse.cookies.set('flash_toast', flashCookie.value, {
+      maxAge: 5,
+      httpOnly: false,
+      sameSite: 'lax',
+      path: '/',
+    })
   }
 
   return supabaseResponse
