@@ -272,4 +272,27 @@
   .pill-tab-active {
     @apply bg-surface text-heading font-semibold shadow-sm;
   }
+
+  /* Skeleton loading shimmer */
+  @keyframes skeleton-shimmer {
+    0%   { background-position: -200% 0; }
+    100% { background-position:  200% 0; }
+  }
+
+  .skeleton-pulse {
+    background: linear-gradient(90deg, var(--muted) 25%, var(--accent) 50%, var(--muted) 75%);
+    background-size: 200% 100%;
+    animation: skeleton-shimmer 1.5s ease-in-out infinite;
+    border-radius: 8px;
+  }
+
+  /* Fade-in on initial render */
+  @keyframes fade-in {
+    from { opacity: 0; transform: translateY(5px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .animate-fade-in {
+    animation: fade-in 0.25s ease-out both;
+  }
 }

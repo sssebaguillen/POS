@@ -1,3 +1,4 @@
+import { memo } from 'react'
 import { TrendingDown, TrendingUp } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -17,7 +18,7 @@ interface Props {
   subtitle?: string
 }
 
-export default function KPICard({ label, value, icon, iconBg, iconColor, trend, subtitle }: Props) {
+function KPICard({ label, value, icon, iconBg, iconColor, trend, subtitle }: Props) {
   return (
     <div className="surface-card p-5 flex flex-col gap-3">
       <div className="flex items-start justify-between">
@@ -51,3 +52,5 @@ export default function KPICard({ label, value, icon, iconBg, iconColor, trend, 
     </div>
   )
 }
+
+export default memo(KPICard)

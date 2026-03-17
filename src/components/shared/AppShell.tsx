@@ -69,7 +69,7 @@ export default function AppShell({ children, activeOperatorName }: AppShellProps
         />
         {/* Desktop: static offset matching sidebar width. Mobile: no offset (drawer overlay). */}
         <main
-          className="flex-1 min-h-0 transition-[margin] duration-200 lg:ml-[var(--sidebar-width)]"
+          className="flex-1 min-h-0 transition-[margin] duration-200 ease-in-out lg:ml-[var(--sidebar-width)]"
           style={{
             ['--sidebar-width' as string]: collapsed ? 'var(--sidebar-collapsed-width)' : '256px',
           }}

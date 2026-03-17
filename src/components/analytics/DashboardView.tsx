@@ -50,6 +50,31 @@ interface Props {
   businessId: string | null
 }
 
+const PERIOD_TABS = [
+  { key: 'today',   label: 'Hoy' },
+  { key: 'week',    label: 'Esta semana' },
+  { key: 'month',   label: 'Este mes' },
+  { key: 'custom',  label: 'Personalizado' },
+  { key: 'history', label: 'Historial' },
+] as const
+
+function computeTrend(
+  current: number,
+  previous: number,
+  trendLabel: string,
+  hasPrevRange: boolean
+): { percent: number; direction: 'up' | 'down' | 'neutral'; label: string } {
+  if (!hasPrevRange || previous === 0) {
+    return { percent: 0, direction: 'neutral', label: trendLabel }
+  }
+  const pct = ((current - previous) / previous) * 100
+  return {
+    percent: Math.abs(pct),
+    direction: pct > 0 ? 'up' : pct < 0 ? 'down' : 'neutral',
+    label: trendLabel,
+  }
+}
+
 export default function DashboardView({ sales, payments, saleItems, products, businessId }: Props) {
   const [period, setPeriod] = useState<Period>('today')
   const [fromDate, setFromDate] = useState('')
@@ -92,11 +117,17 @@ export default function DashboardView({ sales, payments, saleItems, products, bu
   const filteredSaleIds = useMemo(() => new Set(completedSales.map(s => s.id)), [completedSales])
   const filteredItems = useMemo(() => saleItems.filter(i => filteredSaleIds.has(i.sale_id)), [saleItems, filteredSaleIds])
 
-  const totalSold = completedSales.reduce((acc, s) => acc + Number(s.total), 0)
+  const totalSold = useMemo(
+    () => completedSales.reduce((acc, s) => acc + Number(s.total), 0),
+    [completedSales]
+  )
   const transactions = completedSales.length
-  const lowStockProducts = products.filter(p => p.is_active && p.stock <= p.min_stock)
-  const outOfStockCount = lowStockProducts.filter(p => p.stock <= 0).length
-  const lowStockCount = lowStockProducts.filter(p => p.stock > 0).length
+  const lowStockProducts = useMemo(
+    () => products.filter(p => p.is_active && p.stock <= p.min_stock),
+    [products]
+  )
+  const outOfStockCount = useMemo(() => lowStockProducts.filter(p => p.stock <= 0).length, [lowStockProducts])
+  const lowStockCount = useMemo(() => lowStockProducts.filter(p => p.stock > 0).length, [lowStockProducts])
 
   const mostUsedPayment = useMemo(() => {
     const counts: Record<string, number> = {}
@@ -132,7 +163,7 @@ export default function DashboardView({ sales, payments, saleItems, products, bu
       }))
   }, [completedSales, period])
 
-  const maxChartValue = Math.max(...chartData.map(d => d.value), 1)
+  const maxChartValue = useMemo(() => Math.max(...chartData.map(d => d.value), 1), [chartData])
 
   const topProducts = useMemo(() => {
     const map: Record<string, { name: string; qty: number; amount: number; icon: string }> = {}
@@ -148,8 +179,14 @@ export default function DashboardView({ sales, payments, saleItems, products, bu
     return Object.values(map).sort((a, b) => b.qty - a.qty).slice(0, 5)
   }, [filteredItems, productsById])
 
-  const outOfStock = lowStockProducts.filter(p => p.stock <= 0).sort((a, b) => a.stock - b.stock)
-  const lowStock = lowStockProducts.filter(p => p.stock > 0).sort((a, b) => a.stock - b.stock)
+  const outOfStock = useMemo(
+    () => lowStockProducts.filter(p => p.stock <= 0).sort((a, b) => a.stock - b.stock),
+    [lowStockProducts]
+  )
+  const lowStock = useMemo(
+    () => lowStockProducts.filter(p => p.stock > 0).sort((a, b) => a.stock - b.stock),
+    [lowStockProducts]
+  )
 
   // Trend: previous period range for comparison
   const prevPeriodRange = useMemo(() => {
@@ -180,51 +217,34 @@ export default function DashboardView({ sales, payments, saleItems, products, bu
     })
   }, [sales, prevPeriodRange])
 
-  function computeTrend(
-    current: number,
-    previous: number,
-    trendLabel: string
-  ): { percent: number; direction: 'up' | 'down' | 'neutral'; label: string } {
-    if (!prevPeriodRange || previous === 0) {
-      return { percent: 0, direction: 'neutral', label: trendLabel }
-    }
-    const pct = ((current - previous) / previous) * 100
-    return {
-      percent: Math.abs(pct),
-      direction: pct > 0 ? 'up' : pct < 0 ? 'down' : 'neutral',
-      label: trendLabel,
-    }
-  }
-
-  const trendLabel =
+  const trendLabel = useMemo(() =>
     period === 'today' ? 'vs ayer'
     : period === 'week' ? 'vs semana anterior'
     : period === 'month' ? 'vs mes anterior'
-    : ''
+    : '',
+    [period]
+  )
 
-  const prevTotalSold = prevCompletedSales.reduce((acc, s) => acc + Number(s.total), 0)
-  const kpiTrends = {
-    total: computeTrend(totalSold, prevTotalSold, trendLabel),
-    transactions: computeTrend(transactions, prevCompletedSales.length, trendLabel),
-  }
+  const prevTotalSold = useMemo(
+    () => prevCompletedSales.reduce((acc, s) => acc + Number(s.total), 0),
+    [prevCompletedSales]
+  )
+  const kpiTrends = useMemo(() => ({
+    total: computeTrend(totalSold, prevTotalSold, trendLabel, prevPeriodRange !== null),
+    transactions: computeTrend(transactions, prevCompletedSales.length, trendLabel, prevPeriodRange !== null),
+  }), [totalSold, prevTotalSold, trendLabel, transactions, prevCompletedSales, prevPeriodRange])
 
   const historyRows = useMemo(() =>
     filteredSales.map(s => ({ ...s, method: paymentsBySaleId.get(s.id) ?? 'sin dato' })),
     [filteredSales, paymentsBySaleId])
 
-  // Y-axis labels for chart
-  const yLabels = Array.from({ length: 5 }, (_, i) => {
-    const val = maxChartValue * (1 - i / 4)
-    return val >= 1000 ? `$${(val / 1000).toFixed(0)}k` : `$${Math.round(val)}`
-  })
-
-  const periodTabs = [
-    { key: 'today', label: 'Hoy' },
-    { key: 'week', label: 'Esta semana' },
-    { key: 'month', label: 'Este mes' },
-    { key: 'custom', label: 'Personalizado' },
-    { key: 'history', label: 'Historial' },
-  ] as const
+  const yLabels = useMemo(() =>
+    Array.from({ length: 5 }, (_, i) => {
+      const val = maxChartValue * (1 - i / 4)
+      return val >= 1000 ? `$${(val / 1000).toFixed(0)}k` : `$${Math.round(val)}`
+    }),
+    [maxChartValue]
+  )
 
   return (
     <div className="flex flex-col h-screen overflow-hidden">
@@ -241,7 +261,7 @@ export default function DashboardView({ sales, payments, saleItems, products, bu
         <div className="px-6 pt-4 pb-6 space-y-5">
           {/* Period tabs — pill style */}
           <div className="pill-tabs">
-            {periodTabs.map(tab => (
+            {PERIOD_TABS.map(tab => (
               <button
                 key={tab.key}
                 onClick={() => setPeriod(tab.key)}
@@ -263,7 +283,7 @@ export default function DashboardView({ sales, payments, saleItems, products, bu
           )}
 
           {/* KPI Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 animate-fade-in">
             <KPICard
               icon="$"
               iconBg="bg-emerald-100 dark:bg-emerald-950/50"
@@ -299,7 +319,7 @@ export default function DashboardView({ sales, payments, saleItems, products, bu
           </div>
 
           {/* Charts row */}
-          <div className="surface-card p-6">
+          <div className="surface-card p-6 animate-fade-in" style={{ animationDelay: '80ms' }}>
             <p className="font-semibold text-heading mb-4">
               Ventas por {period === 'today' ? 'hora' : 'día'} — {period === 'today' ? 'hoy' : period === 'week' ? 'esta semana' : 'período'}
             </p>

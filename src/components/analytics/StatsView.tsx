@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useMemo, useState, memo } from 'react'
 import { TrendingDown, TrendingUp } from 'lucide-react'
 import PageHeader from '@/components/shared/PageHeader'
 import { Input } from '@/components/ui/input'
@@ -68,7 +68,7 @@ interface EvolutionPoint {
   previousUnits: number
 }
 
-function DeltaBadge({ current, previous }: { current: number; previous: number }) {
+const DeltaBadge = memo(function DeltaBadge({ current, previous }: { current: number; previous: number }) {
   if (previous === 0) return null
   const delta = ((current - previous) / previous) * 100
   const positive = delta >= 0
@@ -84,7 +84,7 @@ function DeltaBadge({ current, previous }: { current: number; previous: number }
       {positive ? '+' : ''}{delta.toFixed(1)}%
     </div>
   )
-}
+})
 
 export default function StatsView({ sales, payments, saleItems, products, categories }: Props) {
   const [period, setPeriod] = useState<Period>('today')
@@ -150,13 +150,31 @@ export default function StatsView({ sales, payments, saleItems, products, catego
     [saleItems, previousSaleIds]
   )
 
-  const totalRevenue = filteredSales.reduce((acc, sale) => acc + Number(sale.total), 0)
-  const totalUnits = filteredItems.reduce((acc, item) => acc + Number(item.quantity), 0)
-  const avgTicket = filteredSales.length > 0 ? totalRevenue / filteredSales.length : 0
+  const totalRevenue = useMemo(
+    () => filteredSales.reduce((acc, sale) => acc + Number(sale.total), 0),
+    [filteredSales]
+  )
+  const totalUnits = useMemo(
+    () => filteredItems.reduce((acc, item) => acc + Number(item.quantity), 0),
+    [filteredItems]
+  )
+  const avgTicket = useMemo(
+    () => filteredSales.length > 0 ? totalRevenue / filteredSales.length : 0,
+    [filteredSales, totalRevenue]
+  )
 
-  const prevRevenue = previousSales.reduce((acc, s) => acc + Number(s.total), 0)
-  const prevUnits = previousItems.reduce((acc, i) => acc + Number(i.quantity), 0)
-  const prevAvgTicket = previousSales.length > 0 ? prevRevenue / previousSales.length : 0
+  const prevRevenue = useMemo(
+    () => previousSales.reduce((acc, s) => acc + Number(s.total), 0),
+    [previousSales]
+  )
+  const prevUnits = useMemo(
+    () => previousItems.reduce((acc, i) => acc + Number(i.quantity), 0),
+    [previousItems]
+  )
+  const prevAvgTicket = useMemo(
+    () => previousSales.length > 0 ? prevRevenue / previousSales.length : 0,
+    [previousSales, prevRevenue]
+  )
 
   const peakDay = useMemo(() => {
     const byDay: Record<string, number> = {}
@@ -330,8 +348,8 @@ export default function StatsView({ sales, payments, saleItems, products, catego
           {/* KPI Cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
             <div className="surface-card p-5 flex flex-col gap-3">
-              <div className="flex items-start justify-between min-h-[24px]">
-                <span />
+              <div className="flex items-start justify-between">
+                <span className="h-10 w-10 rounded-xl flex items-center justify-center text-xs font-bold shrink-0 bg-emerald-100 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-400">$</span>
                 <DeltaBadge current={totalRevenue} previous={prevRevenue} />
               </div>
               <div>
@@ -340,8 +358,8 @@ export default function StatsView({ sales, payments, saleItems, products, catego
               </div>
             </div>
             <div className="surface-card p-5 flex flex-col gap-3">
-              <div className="flex items-start justify-between min-h-[24px]">
-                <span />
+              <div className="flex items-start justify-between">
+                <span className="h-10 w-10 rounded-xl flex items-center justify-center text-xs font-bold shrink-0 bg-blue-100 dark:bg-blue-950/50 text-blue-700 dark:text-blue-400">U</span>
                 <DeltaBadge current={totalUnits} previous={prevUnits} />
               </div>
               <div>
@@ -350,8 +368,8 @@ export default function StatsView({ sales, payments, saleItems, products, catego
               </div>
             </div>
             <div className="surface-card p-5 flex flex-col gap-3">
-              <div className="flex items-start justify-between min-h-[24px]">
-                <span />
+              <div className="flex items-start justify-between">
+                <span className="h-10 w-10 rounded-xl flex items-center justify-center text-xs font-bold shrink-0 bg-violet-100 dark:bg-violet-950/50 text-violet-700 dark:text-violet-400">T</span>
                 <DeltaBadge current={avgTicket} previous={prevAvgTicket} />
               </div>
               <div>
@@ -360,7 +378,9 @@ export default function StatsView({ sales, payments, saleItems, products, catego
               </div>
             </div>
             <div className="surface-card p-5 flex flex-col gap-3">
-              <div className="min-h-[24px]" />
+              <div className="flex items-start justify-between">
+                <span className="h-10 w-10 rounded-xl flex items-center justify-center text-xs font-bold shrink-0 bg-amber-100 dark:bg-amber-950/50 text-amber-700 dark:text-amber-400">D</span>
+              </div>
               <div>
                 <p className="text-label text-hint mb-1">Día pico</p>
                 <p className="text-2xl font-bold text-heading leading-none">{peakDay}</p>

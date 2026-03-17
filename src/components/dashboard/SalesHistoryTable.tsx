@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, memo } from 'react'
 import { Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -43,7 +43,7 @@ interface Props {
   businessId: string | null
 }
 
-export default function SalesHistoryTable({ rows, businessId }: Props) {
+function SalesHistoryTable({ rows, businessId }: Props) {
   const [localRows, setLocalRows] = useState<SaleRow[]>(rows)
   const [expandedSaleId, setExpandedSaleId] = useState<string | null>(null)
   const [saleDetails, setSaleDetails] = useState<Record<string, SaleDetail>>({})
@@ -387,6 +387,8 @@ export default function SalesHistoryTable({ rows, businessId }: Props) {
     </div>
   )
 }
+
+export default memo(SalesHistoryTable)
 
 const STATUS_OPTIONS: { value: string; label: string }[] = [
   { value: 'completed', label: 'Completada' },
