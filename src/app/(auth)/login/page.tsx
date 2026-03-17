@@ -30,7 +30,7 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-background">
       <div className="bg-card p-8 rounded-xl shadow-sm border border-border w-full max-w-md">
-        <h1 className="text-2xl font-bold text-foreground mb-1">POS LATAM</h1>
+        <h1 className="text-2xl font-bold text-foreground mb-1">Pulsar POS</h1>
         <p className="text-muted-foreground mb-6 text-sm">Ingresá a tu negocio</p>
 
         <div className="space-y-3">

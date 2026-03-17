@@ -10,7 +10,7 @@ const dmSans = DM_Sans({
 })
 
 export const metadata: Metadata = {
-  title: 'POS LATAM',
+  title: 'Pulsar POS',
   description: 'Sistema de punto de venta para PyMEs',
 }
 

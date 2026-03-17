@@ -1,5 +1,5 @@
 -- ============================================================
--- POS LATAM — Schema completo
+-- Pulsar POS — Schema completo
 -- Proyecto Supabase: zrnthcznbrplzpmxmkwk (sa-east-1)
 -- Vercel: pulsarpos
 -- Última actualización: refleja estado actual de producción

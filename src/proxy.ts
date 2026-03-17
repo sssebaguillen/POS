@@ -51,7 +51,7 @@ export async function proxy(request: NextRequest) {
   }
 
   if (user && isAuthRoute) {
-    return NextResponse.redirect(new URL('/ventas', request.url))
+    return NextResponse.redirect(new URL('/pos', request.url))
   }
 
   if (!user || isCatalogRoute) {
@@ -84,7 +84,7 @@ export async function proxy(request: NextRequest) {
 
   // Non-owner operator with active session — redirect away from operator-select
   if (isOperatorSelectRoute) {
-    return NextResponse.redirect(new URL('/ventas', request.url))
+    return NextResponse.redirect(new URL('/pos', request.url))
   }
 
   const isStatsRoute =
@@ -94,7 +94,7 @@ export async function proxy(request: NextRequest) {
     pathname.startsWith('/stats/')
 
   if (isStatsRoute && !hasPermission(operator, 'stats')) {
-    return flashRedirect(new URL('/ventas', request.url))
+    return flashRedirect(new URL('/pos', request.url))
   }
 
   const isStockRoute =
@@ -106,7 +106,7 @@ export async function proxy(request: NextRequest) {
     pathname.startsWith('/products/')
 
   if (isStockRoute && !hasPermission(operator, 'stock')) {
-    return flashRedirect(new URL('/ventas', request.url))
+    return flashRedirect(new URL('/pos', request.url))
   }
 
   const isPriceListsRoute =
@@ -114,7 +114,7 @@ export async function proxy(request: NextRequest) {
     pathname.startsWith('/price-lists/')
 
   if (isPriceListsRoute && !hasPermission(operator, 'price_lists')) {
-    return flashRedirect(new URL('/ventas', request.url))
+    return flashRedirect(new URL('/pos', request.url))
   }
 
   if (
@@ -127,7 +127,7 @@ export async function proxy(request: NextRequest) {
   const isSettingsRoute = pathname === '/settings' || pathname.startsWith('/settings/')
 
   if (isSettingsRoute && !hasPermission(operator, 'settings')) {
-    return flashRedirect(new URL('/ventas', request.url))
+    return flashRedirect(new URL('/pos', request.url))
   }
 
   const normalizedPerms = {

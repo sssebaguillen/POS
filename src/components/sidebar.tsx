@@ -19,7 +19,7 @@ interface NavLink {
 }
 
 const NAV_LINKS: NavLink[] = [
-  { href: '/ventas',      label: 'Vender',            icon: ShoppingCart, check: () => true },
+  { href: '/pos',         label: 'Vender',            icon: ShoppingCart, check: () => true },
   { href: '/dashboard',   label: 'Dashboard',         icon: BarChart2,    check: (p) => p.stats === true },
   { href: '/stats',       label: 'Estadísticas',      icon: LineChart,    check: (p) => p.stats === true },
   { href: '/price-lists', label: 'Listas de precios', icon: Package,      check: (p) => p.price_lists === true },
@@ -30,7 +30,7 @@ const NAV_LINKS: NavLink[] = [
 const NAV_SECTIONS = [
   {
     label: 'Principal',
-    hrefs: ['/ventas', '/dashboard', '/stats'],
+    hrefs: ['/pos', '/dashboard', '/stats'],
   },
   {
     label: 'Gestión',
@@ -115,7 +115,7 @@ export default function Sidebar({ open, onClose, activeOperatorName, collapsed, 
         )}
       >
         {(!collapsed || isMobileDrawer) && (
-          <span className="font-bold text-base text-heading tracking-tight">POS LATAM</span>
+          <span className="font-bold text-base text-heading tracking-tight">Pulsar POS</span>
         )}
         {isMobileDrawer ? (
           <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-hover-bg transition-colors ml-auto">
@@ -257,7 +257,7 @@ export default function Sidebar({ open, onClose, activeOperatorName, collapsed, 
         </button>
 
         {(!collapsed || isMobileDrawer) && (
-          <span className="text-xs text-hint px-2 pt-1">© 2026 POS LATAM</span>
+          <span className="text-xs text-hint px-2 pt-1">© 2026 Pulsar POS</span>
         )}
       </div>
     </div>

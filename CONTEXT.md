@@ -1,4 +1,4 @@
-# POS LATAM — Contexto técnico del proyecto
+# Pulsar POS — Contexto técnico del proyecto
 
 ## Stack
 
@@ -205,13 +205,13 @@ Todas tienen `security definer` y `set search_path = public, extensions`.
 | `/register` | Registro | pública |
 | `/catalogo/[slug]` | Catálogo público | pública (solo anon) |
 | `/operator-select` | Selección de operador | requiere Supabase session |
-| `/ventas` | Terminal de ventas | cualquier operador activo |
+| `/pos` | Terminal de ventas | cualquier operador activo |
 | `/stock` | Inventario | `permissions.stock === true` |
 | `/price-lists` | Listas de precios | `permissions.price_lists === true` |
 | `/dashboard`, `/stats` | KPIs y estadísticas | `permissions.stats === true` |
 | `/settings` | Configuración | `permissions.settings === true` |
 
-**Acceso denegado:** proxy redirige a `/ventas` + cookie flash `flash_toast=no-access` → `FlashToast` en layout muestra notificación. Sidebar muestra links restringidos como disabled con toast al click.
+**Acceso denegado:** proxy redirige a `/pos` + cookie flash `flash_toast=no-access` → `FlashToast` en layout muestra notificación. Sidebar muestra links restringidos como disabled con toast al click.
 
 ---
 
@@ -239,7 +239,7 @@ src/
 │   │   ├── price-lists/page.tsx      # Promise.all: lists + products + brands
 │   │   ├── dashboard/page.tsx        # Promise.all + explicit business_id filters
 │   │   ├── stats/page.tsx            # Promise.all + explicit business_id filters
-│   │   └── ventas/page.tsx           # POS — Promise.all: products + categories + price_lists
+│   │   └── pos/page.tsx               # POS — Promise.all: products + categories + price_lists
 │   ├── api/operator/
 │   │   ├── switch/route.ts           # POST: verifica PIN o contraseña owner, setea cookie
 │   │   └── logout/route.ts           # POST: borra cookies + restaura sesión owner
