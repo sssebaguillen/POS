@@ -207,6 +207,7 @@ create table sales (
   session_id    uuid          references cash_sessions(id),
   customer_id   uuid          references customers(id) on delete set null,
   price_list_id uuid          references price_lists(id) on delete set null,
+  operator_id   uuid          references operators(id) on delete set null,
   subtotal      numeric(12,2) not null default 0,
   discount      numeric(12,2) default 0,
   total         numeric(12,2) not null default 0,
@@ -711,5 +712,145 @@ begin
   returning id into v_new_id;
 
   return jsonb_build_object('success', true, 'id', v_new_id);
+end;
+$$;
+
+-- ============================================================
+-- get_sale_detail
+-- Returns items, payment method, operator name and status for a sale
+-- ============================================================
+create or replace function get_sale_detail(
+  p_sale_id      uuid,
+  p_business_id  uuid
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_status          text;
+  v_operator_name   text;
+  v_payment_method  text;
+  v_items           jsonb;
+begin
+  select s.status, o.name
+  into v_status, v_operator_name
+  from sales s
+  left join operators o on o.id = s.operator_id
+  where s.id = p_sale_id and s.business_id = p_business_id;
+
+  if not found then
+    return jsonb_build_object('success', false);
+  end if;
+
+  select method into v_payment_method
+  from payments
+  where sale_id = p_sale_id
+  order by created_at asc
+  limit 1;
+
+  select jsonb_agg(
+    jsonb_build_object(
+      'id',           si.id,
+      'product_id',   coalesce(si.product_id::text, ''),
+      'product_name', coalesce(p.name, 'Producto eliminado'),
+      'product_icon', p.icon,
+      'quantity',     si.quantity,
+      'unit_price',   si.unit_price
+    ) order by si.id
+  )
+  into v_items
+  from sale_items si
+  left join products p on p.id = si.product_id
+  where si.sale_id = p_sale_id;
+
+  return jsonb_build_object(
+    'success',        true,
+    'status',         v_status,
+    'payment_method', coalesce(v_payment_method, ''),
+    'operator_name',  v_operator_name,
+    'items',          coalesce(v_items, '[]'::jsonb)
+  );
+end;
+$$;
+
+-- ============================================================
+-- update_sale
+-- Replaces items, updates payment method and optionally status
+-- ============================================================
+create or replace function update_sale(
+  p_sale_id        uuid,
+  p_business_id    uuid,
+  p_items          jsonb,
+  p_payment_method text,
+  p_status         text default null
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_total numeric(12,2);
+begin
+  if not exists (
+    select 1 from sales where id = p_sale_id and business_id = p_business_id
+  ) then
+    return jsonb_build_object('success', false);
+  end if;
+
+  delete from sale_items where sale_id = p_sale_id;
+
+  insert into sale_items (sale_id, product_id, quantity, unit_price, total)
+  select
+    p_sale_id,
+    (item->>'product_id')::uuid,
+    (item->>'quantity')::int,
+    (item->>'unit_price')::numeric(12,2),
+    (item->>'quantity')::int * (item->>'unit_price')::numeric(12,2)
+  from jsonb_array_elements(p_items) as item;
+
+  select coalesce(sum(total), 0) into v_total
+  from sale_items
+  where sale_id = p_sale_id;
+
+  update sales
+  set
+    total    = v_total,
+    subtotal = v_total,
+    status   = coalesce(p_status, status)
+  where id = p_sale_id and business_id = p_business_id;
+
+  update payments
+  set method = p_payment_method
+  where sale_id = p_sale_id;
+
+  return jsonb_build_object('success', true, 'total', v_total);
+end;
+$$;
+
+-- ============================================================
+-- delete_sale
+-- Hard-deletes a sale; cascade removes sale_items and payments
+-- ============================================================
+create or replace function delete_sale(
+  p_sale_id     uuid,
+  p_business_id uuid
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  delete from sales
+  where id = p_sale_id and business_id = p_business_id;
+
+  if not found then
+    return jsonb_build_object('success', false);
+  end if;
+
+  return jsonb_build_object('success', true);
 end;
 $$;

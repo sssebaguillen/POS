@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import SelectDropdown from '@/components/ui/SelectDropdown'
+import { X } from 'lucide-react'
 import {
   Dialog,
   DialogContent,
@@ -248,13 +249,13 @@ export default function NewProductModal({ open, onClose, businessId, defaultPric
     <Dialog open={open} onOpenChange={v => !v && handleClose()}>
       <DialogContent className="sm:max-w-[640px] p-0 gap-0 rounded-2xl overflow-hidden bg-app-bg" showCloseButton={false}>
         {/* Header */}
-        <div className="bg-primary px-6 py-3.5 flex items-center justify-between">
-          <h2 className="text-base font-bold text-white">Nuevo producto</h2>
+        <div className="modal-header px-6 py-4 flex items-center justify-between">
+          <h2 className="text-base font-semibold text-foreground">Nuevo producto</h2>
           <button
             onClick={handleClose}
-            className="w-7 h-7 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center transition-colors"
+            className="text-muted-foreground hover:text-foreground transition-colors p-0.5"
           >
-            <span className="text-white text-sm">X</span>
+            <X className="w-4 h-4" />
           </button>
         </div>
 

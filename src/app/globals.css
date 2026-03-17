@@ -214,6 +214,16 @@
     @apply bg-destructive text-destructive-foreground rounded-2xl py-4 px-6 font-bold text-base transition-colors hover:opacity-90;
   }
 
+  /*
+   * modal-header — clean diagonal gradient, no noise texture.
+   * Light: card (#fff) → accent (#EAE5DF) = visible warm tint.
+   * Dark:  card (#1f1f1f) → accent (#252525) = subtle lift.
+   */
+  .modal-header {
+    background: linear-gradient(150deg, var(--card) 0%, var(--accent) 100%);
+    border-bottom: 1px solid var(--border);
+  }
+
   /* Dark mode -- increase shadow strength for dark backgrounds */
   .dark .surface-elevated {
     background-image: var(--noise), linear-gradient(145deg, var(--card) 0%, var(--surface-tint) 100%);

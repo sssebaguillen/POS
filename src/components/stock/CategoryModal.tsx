@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { X } from 'lucide-react'
 import { Dialog, DialogContent } from '@/components/ui/dialog'
 import type { InventoryCategory } from '@/components/stock/types'
 
@@ -133,15 +134,15 @@ export default function CategoryModal({
   return (
     <Dialog open={open} onOpenChange={nextOpen => !nextOpen && handleClose()}>
       <DialogContent className="sm:max-w-[560px] p-0 gap-0 rounded-2xl overflow-hidden bg-app-bg" showCloseButton={false}>
-        <div className="bg-primary px-6 py-3.5 flex items-center justify-between">
-          <h2 className="text-base font-bold text-white">Categorías</h2>
+        <div className="modal-header px-6 py-4 flex items-center justify-between">
+          <h2 className="text-base font-semibold text-foreground">Categorías</h2>
           <button
             type="button"
             onClick={handleClose}
-            className="w-7 h-7 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center transition-colors"
+            className="text-muted-foreground hover:text-foreground transition-colors p-0.5"
             aria-label="Cerrar modal"
           >
-            <span className="text-white text-sm">X</span>
+            <X className="w-4 h-4" />
           </button>
         </div>
 

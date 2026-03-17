@@ -104,6 +104,7 @@ export default function SalesHistoryTable({ rows, businessId }: Props) {
     if (!row) { setLoadingDetailId(null); return }
     const detail: SaleDetail = {
       ...row,
+      status: data.status ?? row.status,
       method: data.payment_method ?? row.method,
       operator_name: data.operator_name ?? null,
       items: (data.items ?? []).map((item: SaleItemQueryRow) => ({
@@ -138,7 +139,8 @@ export default function SalesHistoryTable({ rows, businessId }: Props) {
   async function handleUpdateSale(
     saleId: string,
     updatedItems: { product_id: string; quantity: number; unit_price: number }[],
-    paymentMethod: string
+    paymentMethod: string,
+    status: string
   ) {
     if (!businessId) return
     const { data, error } = await supabase.rpc('update_sale', {
@@ -146,12 +148,13 @@ export default function SalesHistoryTable({ rows, businessId }: Props) {
       p_business_id: businessId,
       p_items: updatedItems,
       p_payment_method: paymentMethod,
+      p_status: status,
     })
     if (!error && data?.success) {
       const newTotal = Number(data.total)
       setLocalRows(prev =>
         prev.map(s =>
-          s.id === saleId ? { ...s, total: newTotal, method: paymentMethod } : s
+          s.id === saleId ? { ...s, total: newTotal, method: paymentMethod, status } : s
         )
       )
       setSaleDetails(prev => {
@@ -163,6 +166,7 @@ export default function SalesHistoryTable({ rows, businessId }: Props) {
             ...existing,
             total: newTotal,
             method: paymentMethod,
+            status,
             items: updatedItems.map(i => {
               const found = existing.items.find(ei => ei.product_id === i.product_id)
               return {
@@ -280,6 +284,16 @@ export default function SalesHistoryTable({ rows, businessId }: Props) {
                     }`}>
                       {normalizePayment(sale.method)}
                     </span>
+                    {sale.status === 'cancelled' && (
+                      <span className="inline-flex items-center text-[11px] px-2 py-0.5 rounded-full border font-medium bg-amber-50 border-amber-200 text-amber-700 dark:bg-amber-500/10 dark:border-amber-500/30 dark:text-amber-400">
+                        Cancelada
+                      </span>
+                    )}
+                    {sale.status === 'refunded' && (
+                      <span className="inline-flex items-center text-[11px] px-2 py-0.5 rounded-full border font-medium bg-red-50 border-red-200 text-red-600 dark:bg-red-500/10 dark:border-red-500/30 dark:text-red-400">
+                        Reembolsada
+                      </span>
+                    )}
                     {detail && (
                       <>
                         <span className="text-[11px] text-hint">
@@ -363,8 +377,8 @@ export default function SalesHistoryTable({ rows, businessId }: Props) {
           </div>
           <EditSalePanel
             sale={editingSale}
-            onSave={(updatedItems, paymentMethod) =>
-              handleUpdateSale(editingSale.id, updatedItems, paymentMethod)
+            onSave={(updatedItems, paymentMethod, status) =>
+              handleUpdateSale(editingSale.id, updatedItems, paymentMethod, status)
             }
             onCancel={() => setEditingSale(null)}
           />
@@ -374,18 +388,25 @@ export default function SalesHistoryTable({ rows, businessId }: Props) {
   )
 }
 
+const STATUS_OPTIONS: { value: string; label: string }[] = [
+  { value: 'completed', label: 'Completada' },
+  { value: 'cancelled', label: 'Cancelada' },
+  { value: 'refunded', label: 'Reembolsada' },
+]
+
 function EditSalePanel({
   sale,
   onSave,
   onCancel,
 }: {
   sale: SaleDetail
-  onSave: (items: { product_id: string; quantity: number; unit_price: number }[], paymentMethod: string) => void
+  onSave: (items: { product_id: string; quantity: number; unit_price: number }[], paymentMethod: string, status: string) => void
   onCancel: () => void
 }) {
   const PAYMENT_OPTIONS = ['efectivo', 'tarjeta', 'mercadopago', 'transferencia', 'otro']
   const [items, setItems] = useState(sale.items.map(i => ({ ...i })))
   const [paymentMethod, setPaymentMethod] = useState(sale.method)
+  const [saleStatus, setSaleStatus] = useState(sale.status ?? 'completed')
 
   function updateQty(productId: string, qty: number) {
     if (qty < 1) return
@@ -455,6 +476,29 @@ function EditSalePanel({
           </div>
         </div>
 
+        <div>
+          <p className="text-xs text-hint mb-1.5">Estado</p>
+          <div className="flex flex-wrap gap-1.5">
+            {STATUS_OPTIONS.map(opt => (
+              <button
+                key={opt.value}
+                onClick={() => setSaleStatus(opt.value)}
+                className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${
+                  saleStatus === opt.value
+                    ? opt.value === 'completed'
+                      ? 'bg-primary text-primary-foreground border-primary'
+                      : opt.value === 'cancelled'
+                        ? 'bg-amber-500 text-white border-amber-500'
+                        : 'bg-red-500 text-white border-red-500'
+                    : 'border-edge text-body hover:bg-hover-bg'
+                }`}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
         <div className="flex justify-between items-baseline">
           <span className="text-sm text-subtle">Total</span>
           <span className="text-lg font-semibold text-heading tabular-nums">
@@ -476,7 +520,8 @@ function EditSalePanel({
             onClick={() =>
               onSave(
                 items.map(i => ({ product_id: i.product_id, quantity: i.quantity, unit_price: i.unit_price })),
-                paymentMethod
+                paymentMethod,
+                saleStatus
               )
             }
           >

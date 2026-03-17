@@ -228,7 +228,14 @@ export default function DashboardView({ sales, payments, saleItems, products, bu
 
   return (
     <div className="flex flex-col h-screen overflow-hidden">
-      <PageHeader title="Dashboard" />
+      <PageHeader title="Dashboard">
+        <Link
+          href="/sales"
+          className="text-sm text-primary hover:underline font-medium"
+        >
+          Historial de ventas →
+        </Link>
+      </PageHeader>
 
       <div className="flex-1 overflow-y-auto">
         <div className="px-6 pt-4 pb-6 space-y-5">
