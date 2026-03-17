@@ -112,7 +112,7 @@ export default function OperatorSelectView({ ownerProfile, operators, availableO
       return
     }
 
-    router.push('/ventas')
+    router.push('/pos')
     router.refresh()
   }
 

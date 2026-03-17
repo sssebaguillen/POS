@@ -1,6 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
+import { TrendingDown, TrendingUp } from 'lucide-react'
 import PageHeader from '@/components/shared/PageHeader'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
@@ -72,13 +73,16 @@ function DeltaBadge({ current, previous }: { current: number; previous: number }
   const delta = ((current - previous) / previous) * 100
   const positive = delta >= 0
   return (
-    <span
-      className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-md ${
-        positive ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-600'
+    <div
+      className={`flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full ${
+        positive
+          ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400'
+          : 'bg-red-50 text-red-600 dark:bg-red-950/40 dark:text-red-400'
       }`}
     >
+      {positive ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
       {positive ? '+' : ''}{delta.toFixed(1)}%
-    </span>
+    </div>
   )
 }
 
@@ -325,24 +329,42 @@ export default function StatsView({ sales, payments, saleItems, products, catego
 
           {/* KPI Cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
-            <div className="surface-card p-5">
-              <p className="text-label text-hint">Ingresos totales</p>
-              <p className="text-xl font-bold text-heading mt-0.5">${totalRevenue.toLocaleString('es-AR')}</p>
-              <div className="mt-1.5"><DeltaBadge current={totalRevenue} previous={prevRevenue} /></div>
+            <div className="surface-card p-5 flex flex-col gap-3">
+              <div className="flex items-start justify-between min-h-[24px]">
+                <span />
+                <DeltaBadge current={totalRevenue} previous={prevRevenue} />
+              </div>
+              <div>
+                <p className="text-label text-hint mb-1">Ingresos totales</p>
+                <p className="text-2xl font-bold text-heading leading-none">${totalRevenue.toLocaleString('es-AR')}</p>
+              </div>
             </div>
-            <div className="surface-card p-5">
-              <p className="text-label text-hint">Unidades vendidas</p>
-              <p className="text-xl font-bold text-heading mt-0.5">{totalUnits}</p>
-              <div className="mt-1.5"><DeltaBadge current={totalUnits} previous={prevUnits} /></div>
+            <div className="surface-card p-5 flex flex-col gap-3">
+              <div className="flex items-start justify-between min-h-[24px]">
+                <span />
+                <DeltaBadge current={totalUnits} previous={prevUnits} />
+              </div>
+              <div>
+                <p className="text-label text-hint mb-1">Unidades vendidas</p>
+                <p className="text-2xl font-bold text-heading leading-none">{totalUnits}</p>
+              </div>
             </div>
-            <div className="surface-card p-5">
-              <p className="text-label text-hint">Ticket promedio</p>
-              <p className="text-xl font-bold text-heading mt-0.5">${avgTicket.toLocaleString('es-AR', { maximumFractionDigits: 0 })}</p>
-              <div className="mt-1.5"><DeltaBadge current={avgTicket} previous={prevAvgTicket} /></div>
+            <div className="surface-card p-5 flex flex-col gap-3">
+              <div className="flex items-start justify-between min-h-[24px]">
+                <span />
+                <DeltaBadge current={avgTicket} previous={prevAvgTicket} />
+              </div>
+              <div>
+                <p className="text-label text-hint mb-1">Ticket promedio</p>
+                <p className="text-2xl font-bold text-heading leading-none">${avgTicket.toLocaleString('es-AR', { maximumFractionDigits: 0 })}</p>
+              </div>
             </div>
-            <div className="surface-card p-5">
-              <p className="text-label text-hint">Día pico</p>
-              <p className="text-xl font-bold text-heading mt-0.5">{peakDay}</p>
+            <div className="surface-card p-5 flex flex-col gap-3">
+              <div className="min-h-[24px]" />
+              <div>
+                <p className="text-label text-hint mb-1">Día pico</p>
+                <p className="text-2xl font-bold text-heading leading-none">{peakDay}</p>
+              </div>
             </div>
           </div>
 

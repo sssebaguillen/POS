@@ -65,12 +65,44 @@ export default function POSView({ products, categories, businessId, priceLists, 
     searchRef.current?.focus()
   }
 
+  // Global barcode scanner listener — redirects keystrokes to the search input
+  // when no text input is currently focused, so scanning works regardless of
+  // where the user last clicked.
+  useEffect(() => {
+    function handleGlobalKeyDown(e: KeyboardEvent) {
+      if (e.ctrlKey || e.altKey || e.metaKey) return
+      if (!searchRef.current) return
+
+      const active = document.activeElement
+      const isTextInputActive =
+        active instanceof HTMLInputElement ||
+        active instanceof HTMLTextAreaElement ||
+        active instanceof HTMLSelectElement
+
+      if (isTextInputActive) return
+
+      if (e.key.length === 1) {
+        // Printable character — prevent double-insert and route to search
+        e.preventDefault()
+        searchRef.current.focus()
+        setSearch(prev => prev + e.key)
+      } else if (e.key === 'Enter') {
+        e.preventDefault()
+        searchRef.current.focus()
+      }
+    }
+
+    document.addEventListener('keydown', handleGlobalKeyDown)
+    return () => document.removeEventListener('keydown', handleGlobalKeyDown)
+  }, [])
+
   function handleSearchKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
     if (e.key === 'Enter') {
       const barcodeMatch = products.find(p => p.barcode === search)
       if (barcodeMatch) {
         addItem(barcodeMatch)
         setSearch('')
+        searchRef.current?.focus()
         return
       }
       const filtered = products.filter(p =>
@@ -80,6 +112,7 @@ export default function POSView({ products, categories, businessId, priceLists, 
       if (filtered.length === 1) {
         addItem(filtered[0])
         setSearch('')
+        searchRef.current?.focus()
       }
     }
   }
