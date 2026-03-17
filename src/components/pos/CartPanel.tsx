@@ -84,6 +84,7 @@ export default function CartPanel({ businessId, activePriceList, priceListOverri
       const unitPrice = activePriceList
         ? calculateProductPrice(
             item.product.cost,
+            item.product.price,
             item.product.id,
             item.product.brand_id,
             activePriceList,
@@ -325,7 +326,7 @@ export default function CartPanel({ businessId, activePriceList, priceListOverri
               onClick={() => setActiveTab('current')}
               className={`h-11 text-sm font-medium border-b-2 transition-colors ${
                 activeTab === 'current'
-                  ? 'text-primary border-primary'
+                  ? 'text-[var(--primary-active-text)] border-primary'
                   : 'text-hint border-transparent hover:text-body'
               }`}
             >
@@ -335,7 +336,7 @@ export default function CartPanel({ businessId, activePriceList, priceListOverri
               onClick={() => setActiveTab('history')}
               className={`h-11 text-sm font-medium border-b-2 transition-colors ${
                 activeTab === 'history'
-                  ? 'text-primary border-primary'
+                  ? 'text-[var(--primary-active-text)] border-primary'
                   : 'text-hint border-transparent hover:text-body'
               }`}
             >
@@ -349,7 +350,7 @@ export default function CartPanel({ businessId, activePriceList, priceListOverri
             {/* Sub-header */}
             <div className="px-4 pt-3 pb-2 flex items-center justify-between">
               <h2 className="text-base font-semibold text-heading">Venta actual</h2>
-              <span className="rounded-full bg-primary/10 text-primary text-xs px-2.5 py-1 font-medium">
+              <span className="rounded-full bg-primary/10 text-[var(--primary-active-text)] text-xs px-2.5 py-1 font-medium">
                 {items.length} items
               </span>
             </div>
@@ -440,7 +441,7 @@ export default function CartPanel({ businessId, activePriceList, priceListOverri
                   <span className="tabular-nums">{items.length === 0 ? '—' : items.length}</span>
                 </div>
                 {discount > 0 && (
-                  <div className="flex justify-between text-primary">
+                  <div className="flex justify-between text-[var(--primary-active-text)]">
                     <span>Descuento</span>
                     <span className="tabular-nums">-${discount.toLocaleString('es-AR')}</span>
                   </div>
@@ -531,7 +532,7 @@ export default function CartPanel({ businessId, activePriceList, priceListOverri
                               <span className="text-xs text-hint shrink-0">· Venta #{saleNumber}</span>
                             </div>
                             <div className="flex items-center gap-2 shrink-0">
-                              <span className={`text-sm font-bold tabular-nums ${isExpanded ? 'text-primary' : 'text-heading'}`}>
+                              <span className={`text-sm font-bold tabular-nums ${isExpanded ? 'text-[var(--primary-active-text)]' : 'text-heading'}`}>
                                 ${sale.total.toLocaleString('es-AR')}
                               </span>
                               {isLoadingDetail ? (
@@ -547,7 +548,7 @@ export default function CartPanel({ businessId, activePriceList, priceListOverri
                           <div className="flex items-center gap-1.5 mt-1 flex-wrap">
                             <span className={`inline-flex items-center text-[11px] px-2 py-0.5 rounded-full border font-medium ${
                               isExpanded
-                                ? 'bg-primary/10 border-primary/20 text-primary dark:bg-primary/20 dark:border-primary/30'
+                                ? 'bg-primary/10 border-primary/20 text-[var(--primary-active-text)] dark:bg-primary/20 dark:border-primary/30'
                                 : 'bg-surface-alt border-edge text-body'
                             }`}>
                               {normalizePayment(sale.payment_method)}
@@ -589,7 +590,7 @@ export default function CartPanel({ businessId, activePriceList, priceListOverri
 
                             <div className="flex justify-between items-center border-t border-dashed border-primary/20 dark:border-primary/15 pt-2 mb-1">
                               <span className="text-xs font-semibold text-heading">Total cobrado</span>
-                              <span className="text-xs font-bold text-primary tabular-nums">
+                              <span className="text-xs font-bold text-[var(--primary-active-text)] tabular-nums">
                                 ${detail.total.toLocaleString('es-AR')}
                               </span>
                             </div>
@@ -621,32 +622,54 @@ export default function CartPanel({ businessId, activePriceList, priceListOverri
                 </ul>
               )}
             </div>
+
+            {/* History footer summary */}
+            {!historyLoading && filteredHistory.length > 0 && (
+              <div className="border-t border-edge-soft px-4 py-3 grid grid-cols-3 gap-2 text-center shrink-0">
+                <div>
+                  <p className="text-xs text-hint">Ventas hoy</p>
+                  <p className="text-sm font-semibold text-heading tabular-nums">{filteredHistory.length}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-hint">Ticket promedio</p>
+                  <p className="text-sm font-semibold text-heading tabular-nums">
+                    ${Math.round(historyTotal / filteredHistory.length).toLocaleString('es-AR')}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-hint">Total del día</p>
+                  <p className="text-sm font-semibold text-heading tabular-nums">
+                    ${historyTotal.toLocaleString('es-AR')}
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {editingSale && (
+          <div className="absolute inset-0 z-40 bg-background flex flex-col">
+            <div className="flex items-center gap-3 px-4 h-12 border-b border-edge shrink-0">
+              <button
+                onClick={() => setEditingSale(null)}
+                className="text-hint hover:text-body transition-colors text-sm"
+              >
+                ← Volver
+              </button>
+              <span className="text-sm font-semibold text-heading">
+                Editar venta · {formatTime(editingSale.created_at)}
+              </span>
+            </div>
+            <EditSalePanel
+              sale={editingSale}
+              onSave={(items, paymentMethod) =>
+                handleUpdateSale(editingSale.id, items, paymentMethod)
+              }
+              onCancel={() => setEditingSale(null)}
+            />
           </div>
         )}
       </div>
-
-      {editingSale && (
-        <div className="absolute inset-0 z-40 bg-background flex flex-col">
-          <div className="flex items-center gap-3 px-4 h-12 border-b border-edge shrink-0">
-            <button
-              onClick={() => setEditingSale(null)}
-              className="text-hint hover:text-body transition-colors text-sm"
-            >
-              ← Volver
-            </button>
-            <span className="text-sm font-semibold text-heading">
-              Editar venta · {formatTime(editingSale.created_at)}
-            </span>
-          </div>
-          <EditSalePanel
-            sale={editingSale}
-            onSave={(items, paymentMethod) =>
-              handleUpdateSale(editingSale.id, items, paymentMethod)
-            }
-            onCancel={() => setEditingSale(null)}
-          />
-        </div>
-      )}
 
       {showPayment && (
         <PaymentModal

@@ -2,7 +2,7 @@
 
 import { usePathname } from 'next/navigation'
 import Link from 'next/link'
-import { X, ShoppingCart, Package, ClipboardList, BarChart2, LineChart, Settings, Sun, Moon, User, LogOut } from 'lucide-react'
+import { X, ShoppingCart, Package, ClipboardList, BarChart2, LineChart, Settings, Sun, Moon, User, LogOut, PanelLeftClose, PanelLeftOpen } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useState, useEffect, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
@@ -25,6 +25,21 @@ const NAV_LINKS: NavLink[] = [
   { href: '/price-lists', label: 'Listas de precios', icon: Package,      check: (p) => p.price_lists === true },
   { href: '/inventory',   label: 'Stock',             icon: ClipboardList,check: (p) => p.stock === true },
   { href: '/settings',    label: 'Configuración',     icon: Settings,     check: (p) => p.settings === true },
+]
+
+const NAV_SECTIONS = [
+  {
+    label: 'Principal',
+    hrefs: ['/ventas', '/dashboard', '/stats'],
+  },
+  {
+    label: 'Gestión',
+    hrefs: ['/price-lists', '/inventory'],
+  },
+  {
+    label: 'Sistema',
+    hrefs: ['/settings'],
+  },
 ]
 
 function parseOpPerms(raw: string): Permissions | null {
@@ -50,14 +65,15 @@ interface Props {
   open: boolean
   onClose: () => void
   activeOperatorName: string | null
+  collapsed: boolean
+  onToggleCollapse: () => void
 }
 
-export default function Sidebar({ open, onClose, activeOperatorName }: Props) {
+export default function Sidebar({ open, onClose, activeOperatorName, collapsed, onToggleCollapse }: Props) {
   const pathname = usePathname()
   const { theme, toggle } = useTheme()
   const router = useRouter()
   const supabase = useMemo(() => createClient(), [])
-  // null = no cookie present (owner browsing) → never restrict
   const [permissions, setPermissions] = useState<Permissions | null>(null)
   const [toast, setToast] = useState<string | null>(null)
 
@@ -76,8 +92,6 @@ export default function Sidebar({ open, onClose, activeOperatorName }: Props) {
     return () => clearTimeout(timer)
   }, [toast])
 
-  // Only restrict when an operator cookie is present AND the check fails.
-  // When permissions is null (owner without operator session), never restrict.
   const isRestricted = (check: (p: Permissions) => boolean): boolean =>
     permissions !== null && !check(permissions)
 
@@ -91,123 +105,190 @@ export default function Sidebar({ open, onClose, activeOperatorName }: Props) {
     router.push('/login')
   }
 
-  return (
-    <>
-      {/* Backdrop */}
-      {open && (
-        <div
-          className="fixed inset-0 bg-black/25 z-40 transition-opacity"
-          onClick={onClose}
-        />
-      )}
-
-      {/* Drawer */}
-      <aside
+  const sidebarContent = (isMobileDrawer: boolean) => (
+    <div className="flex flex-col h-full">
+      {/* Header */}
+      <div
         className={cn(
-          'fixed top-0 left-0 h-full w-64 bg-surface shadow-xl z-50 flex flex-col transition-transform duration-200 ease-in-out',
-          open ? 'translate-x-0' : '-translate-x-full'
+          'h-14 border-b border-edge/60 flex items-center shrink-0',
+          collapsed && !isMobileDrawer ? 'justify-center px-2' : 'justify-between px-4'
         )}
       >
-        <div className="px-5 h-14 border-b border-edge/60 flex items-center justify-between">
-          <span className="font-bold text-lg text-heading">POS LATAM</span>
-          <button
-            onClick={onClose}
-            className="p-1 rounded-lg hover:bg-hover-bg transition-colors"
-          >
+        {(!collapsed || isMobileDrawer) && (
+          <span className="font-bold text-base text-heading tracking-tight">POS LATAM</span>
+        )}
+        {isMobileDrawer ? (
+          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-hover-bg transition-colors ml-auto">
             <X size={18} className="text-hint" />
           </button>
-        </div>
+        ) : (
+          <button
+            onClick={onToggleCollapse}
+            className={cn(
+              'p-1.5 rounded-lg hover:bg-hover-bg transition-colors text-hint',
+              collapsed && 'mx-auto'
+            )}
+            title={collapsed ? 'Expandir sidebar' : 'Colapsar sidebar'}
+          >
+            {collapsed ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}
+          </button>
+        )}
+      </div>
 
-        <nav className="flex-1 py-3 px-3 overflow-y-auto">
-          {[
-            {
-              label: 'Principal',
-              links: NAV_LINKS.filter(l => ['/ventas', '/dashboard', '/stats'].includes(l.href)),
-            },
-            {
-              label: 'Gestión',
-              links: NAV_LINKS.filter(l => ['/price-lists', '/inventory'].includes(l.href)),
-            },
-            {
-              label: 'Sistema',
-              links: NAV_LINKS.filter(l => ['/settings'].includes(l.href)),
-            },
-          ].map(section => (
+      {/* Nav */}
+      <nav className={cn('flex-1 py-3 overflow-y-auto', collapsed && !isMobileDrawer ? 'px-2' : 'px-3')}>
+        {NAV_SECTIONS.map(section => {
+          const links = NAV_LINKS.filter(l => section.hrefs.includes(l.href))
+          return (
             <div key={section.label} className="mb-4">
-              <p className="text-label text-hint px-3 mb-1">{section.label}</p>
+              {(!collapsed || isMobileDrawer) && (
+                <p className="text-label text-hint px-3 mb-1">{section.label}</p>
+              )}
               <div className="space-y-0.5">
-                {section.links.map(({ href, label, icon: Icon, check }) => {
-                  if (isRestricted(check)) {
+                {links.map(({ href, label, icon: Icon, check }) => {
+                  const restricted = isRestricted(check)
+                  const isActive = pathname === href
+
+                  if (restricted) {
                     return (
                       <span
                         key={href}
                         role="button"
-                        onClick={() => handleRestrictedClick(label)}
-                        className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium opacity-50 cursor-not-allowed select-none text-body"
+                        onClick={() => { handleRestrictedClick(label); }}
+                        title={collapsed && !isMobileDrawer ? label : undefined}
+                        className={cn(
+                          'flex items-center rounded-lg text-sm font-medium opacity-50 cursor-not-allowed select-none text-body',
+                          collapsed && !isMobileDrawer
+                            ? 'justify-center p-2.5'
+                            : 'gap-3 px-3 py-2.5'
+                        )}
                       >
                         <Icon size={18} />
-                        {label}
+                        {(!collapsed || isMobileDrawer) && label}
                       </span>
                     )
                   }
+
                   return (
                     <Link
                       key={href}
                       href={href}
-                      onClick={onClose}
+                      onClick={isMobileDrawer ? onClose : undefined}
+                      title={collapsed && !isMobileDrawer ? label : undefined}
                       className={cn(
-                        'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
-                        pathname === href
-                          ? 'bg-primary text-primary-foreground'
+                        'flex items-center rounded-xl text-sm font-medium transition-colors',
+                        collapsed && !isMobileDrawer
+                          ? 'justify-center p-2.5'
+                          : 'gap-3 px-3 py-2.5',
+                        isActive
+                          ? 'bg-primary/10 text-[var(--primary-active-text)] font-semibold'
                           : 'text-body hover:bg-hover-bg hover:text-heading'
                       )}
                     >
                       <Icon size={18} />
-                      {label}
+                      {(!collapsed || isMobileDrawer) && label}
                     </Link>
                   )
                 })}
               </div>
             </div>
-          ))}
-        </nav>
+          )
+        })}
+      </nav>
 
-        <div className="px-3 py-3 border-t border-edge-soft flex flex-col gap-2">
-          {activeOperatorName && (
-            <OperatorSwitcher operatorName={activeOperatorName} />
+      {/* Footer */}
+      <div
+        className={cn(
+          'border-t border-edge-soft flex flex-col gap-1.5',
+          collapsed && !isMobileDrawer ? 'px-2 py-3 items-center' : 'px-3 py-3'
+        )}
+      >
+        {activeOperatorName && (!collapsed || isMobileDrawer) && (
+          <OperatorSwitcher operatorName={activeOperatorName} />
+        )}
+
+        {/* Profile */}
+        <button
+          title={collapsed && !isMobileDrawer ? 'Perfil' : undefined}
+          className={cn(
+            'rounded-lg text-sm text-body hover:bg-hover-bg transition-colors',
+            collapsed && !isMobileDrawer
+              ? 'p-2.5 flex items-center justify-center w-full'
+              : 'flex items-center gap-2 px-3 py-2 text-left w-full'
           )}
+          onClick={() => { router.push('/settings'); if (isMobileDrawer) onClose() }}
+        >
+          <User size={18} />
+          {(!collapsed || isMobileDrawer) && 'Perfil'}
+        </button>
 
-          <div className="flex items-center justify-between mb-1">
-            <button
-              className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-body hover:bg-hover-bg transition-colors flex-1 text-left"
-              onClick={() => router.push('/settings')}
-            >
-              <span className="flex items-center gap-2">
-                <User size={18} />
-                Perfil
-              </span>
-            </button>
-            <button
-              type="button"
-              onClick={handleLogout}
-              className="p-2 rounded-lg text-red-500 hover:bg-red-50 hover:text-red-700 transition-colors"
-              title="Cerrar sesion"
-              aria-label="Cerrar sesion"
-            >
-              <LogOut size={18} />
-            </button>
-          </div>
-          <div className="flex items-center justify-between mt-2">
-            <span className="text-xs text-hint px-2">© 2026 POS LATAM</span>
-            <button
-              onClick={toggle}
-              className="p-2 rounded-lg hover:bg-hover-bg transition-colors text-subtle"
-              title={theme === 'dark' ? 'Modo claro' : 'Modo oscuro'}
-            >
-              {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
-            </button>
-          </div>
-        </div>
+        {/* Logout */}
+        <button
+          type="button"
+          onClick={handleLogout}
+          title={collapsed && !isMobileDrawer ? 'Cerrar sesion' : undefined}
+          className={cn(
+            'rounded-lg text-red-500 hover:bg-red-50 hover:text-red-700 transition-colors',
+            collapsed && !isMobileDrawer
+              ? 'p-2.5 flex items-center justify-center w-full'
+              : 'flex items-center gap-2 px-3 py-2 text-left w-full text-sm'
+          )}
+          aria-label="Cerrar sesion"
+        >
+          <LogOut size={18} />
+          {(!collapsed || isMobileDrawer) && 'Cerrar sesion'}
+        </button>
+
+        {/* Theme toggle */}
+        <button
+          onClick={toggle}
+          title={collapsed && !isMobileDrawer
+            ? (theme === 'dark' ? 'Modo claro' : 'Modo oscuro')
+            : undefined}
+          className={cn(
+            'rounded-lg hover:bg-hover-bg transition-colors text-subtle',
+            collapsed && !isMobileDrawer
+              ? 'p-2.5 flex items-center justify-center w-full'
+              : 'flex items-center gap-2 px-3 py-2 text-sm w-full'
+          )}
+        >
+          {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+          {(!collapsed || isMobileDrawer) && (theme === 'dark' ? 'Modo claro' : 'Modo oscuro')}
+        </button>
+
+        {(!collapsed || isMobileDrawer) && (
+          <span className="text-xs text-hint px-2 pt-1">© 2026 POS LATAM</span>
+        )}
+      </div>
+    </div>
+  )
+
+  return (
+    <>
+      {/* ── Mobile: full-screen drawer overlay (all screen sizes when open) ── */}
+      {open && (
+        <div
+          className="fixed inset-0 bg-black/25 z-40 transition-opacity lg:hidden"
+          onClick={onClose}
+        />
+      )}
+      <aside
+        className={cn(
+          'fixed top-0 left-0 h-full surface-sidebar shadow-xl z-50 flex flex-col transition-transform duration-200 ease-in-out w-64 lg:hidden',
+          open ? 'translate-x-0' : '-translate-x-full'
+        )}
+      >
+        {sidebarContent(true)}
+      </aside>
+
+      {/* ── Desktop: always-visible, collapsible ── */}
+      <aside
+        className={cn(
+          'hidden lg:flex flex-col fixed top-0 left-0 h-full surface-sidebar z-30 transition-[width] duration-200 ease-in-out overflow-hidden',
+          collapsed ? 'w-[72px]' : 'w-64'
+        )}
+      >
+        {sidebarContent(false)}
       </aside>
 
       {toast && (

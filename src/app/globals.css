@@ -41,31 +41,47 @@
 }
 
 :root {
-  --app-bg: #F9F5F0;
-  --background: #F9F5F0;
-  --foreground: #111827;
+  /* Layout background — warm linen */
+  --app-bg: #F0ECE7;
+  --background: #F0ECE7;
+
+  /* Typography — deep slate hierarchy */
+  --foreground: #0F172A;
   --card: #ffffff;
-  --card-foreground: #111827;
+  --card-foreground: #0F172A;
   --popover: #ffffff;
-  --popover-foreground: #111827;
-  --primary: #4f46e5;
+  --popover-foreground: #0F172A;
+
+  /* Brand primary — dark green */
+  --primary: #1C4A3B;
   --primary-foreground: #ffffff;
-  --secondary: #f5f5f4;
-  --secondary-foreground: #1c1917;
-  --muted: #f5f5f4;
-  --muted-foreground: #6b7280;
-  --accent: #e7e5e4;
-  --accent-foreground: #1c1917;
+
+  /* Neutral surfaces — warm sand tones */
+  --secondary: #E8E3DD;
+  --secondary-foreground: #0F172A;
+  --muted: #E8E3DD;
+  --muted-foreground: #6B6460;
+  --accent: #EAE5DF;
+  --accent-foreground: #0F172A;
+
+  /* Semantic */
   --destructive: #ef4444;
   --destructive-foreground: #ffffff;
-  --border: #e5e7eb;
-  --input: #e5e7eb;
-  --ring: #4f46e5;
 
-  --body-color: #4b5563;
-  --hint: #9ca3af;
-  --faint: #d1d5db;
-  --edge-soft: #f3f4f6;
+  /* Borders & inputs — warm slate */
+  --border: #DDD7CF;
+  --input: #DDD7CF;
+  --ring: #1C4A3B;
+
+  /* Extended palette */
+  --body-color: #5C5550;
+  --hint: #9A918A;
+  --faint: #C8C1B9;
+  --edge-soft: #E8E3DD;
+
+  /* Sidebar dimensions */
+  --sidebar-width: 256px;
+  --sidebar-collapsed-width: 72px;
 }
 
 .dark {
@@ -76,8 +92,8 @@
   --card-foreground: #ededed;
   --popover: #252525;
   --popover-foreground: #ededed;
-  --primary: #6366f1;
-  --primary-foreground: #ffffff;
+  --primary: #34D399;
+  --primary-foreground: #022c22;
   --secondary: #1c1c1c;
   --secondary-foreground: #ededed;
   --muted: #1c1c1c;
@@ -88,7 +104,7 @@
   --destructive-foreground: #ffffff;
   --border: #303030;
   --input: #1f1f1f;
-  --ring: #6366f1;
+  --ring: #34D399;
 
   --body-color: #c4c4c4;
   --hint: #737373;
@@ -108,12 +124,57 @@
     background-color: var(--color-background);
     color: var(--color-foreground);
   }
+
+  /* Thin styled scrollbars */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--faint) transparent;
+  }
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background-color: var(--faint);
+    border-radius: 100px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background-color: var(--hint);
+  }
+
+  /* Hide number input spin buttons */
+  input[type=number]::-webkit-outer-spin-button,
+  input[type=number]::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  input[type=number] {
+    -moz-appearance: textfield;
+  }
 }
 
 @layer utilities {
-  /* Elevated surface — modals, dropdowns, popovers */
+  /*
+   * surface-elevated -- modals, dropdowns, tooltips, popovers
+   * Shadow-only elevation, no solid border.
+   */
   .surface-elevated {
-    @apply bg-surface border border-edge rounded-xl shadow-md;
+    @apply bg-surface;
+    border-radius: 16px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.04), 0 20px 40px rgba(0, 0, 0, 0.08);
+  }
+
+  /*
+   * surface-card -- main page content panels (KPI cards, chart containers, tables)
+   * Card bg, generous radius, diffused shadow, subtle border for warm bg contrast.
+   */
+  .surface-card {
+    @apply bg-surface border border-edge/50;
+    border-radius: 20px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03), 0 8px 24px rgba(0, 0, 0, 0.03);
   }
 
   /* Sidebar panel */
@@ -131,8 +192,14 @@
     @apply bg-destructive text-destructive-foreground rounded-2xl py-4 px-6 font-bold text-base transition-colors hover:opacity-90;
   }
 
+  /* Dark mode -- increase shadow strength for dark backgrounds */
   .dark .surface-elevated {
-    @apply bg-surface border-edge shadow-lg;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2), 0 20px 40px rgba(0, 0, 0, 0.3);
+  }
+
+  .dark .surface-card {
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15), 0 10px 30px rgba(0, 0, 0, 0.2);
+    border-color: transparent;
   }
 
   .dark .surface-sidebar {
@@ -143,4 +210,15 @@
   .text-caption  { font-size: 11px; font-weight: 400; }
   .text-body-sm  { font-size: 13px; font-weight: 400; }
   .text-emphasis { font-size: 15px; font-weight: 600; }
+
+  /* Pill-style tab/filter container */
+  .pill-tabs {
+    @apply inline-flex items-center bg-surface-alt rounded-full p-1 gap-0.5;
+  }
+  .pill-tab {
+    @apply px-4 py-1.5 text-sm font-medium rounded-full transition-all duration-150 text-body hover:text-heading;
+  }
+  .pill-tab-active {
+    @apply bg-surface text-heading font-semibold shadow-sm;
+  }
 }

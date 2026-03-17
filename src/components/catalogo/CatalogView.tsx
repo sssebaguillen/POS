@@ -1,11 +1,15 @@
 'use client'
 
-import { useMemo, useState } from 'react'
-import { ShoppingCart } from 'lucide-react'
-import { Button } from '@/components/ui/button'
+import { useEffect, useMemo, useState } from 'react'
 import ProductGrid from '@/components/catalogo/ProductGrid'
 import CartPanel from '@/components/catalogo/CartPanel'
+import CatalogHeader from '@/components/catalogo/CatalogHeader'
 import type { CatalogBusiness, CatalogCartItem, CatalogCategory, CatalogProduct } from '@/components/catalogo/types'
+
+type ViewMode = 'grid' | 'list'
+type SortBy = 'name-asc' | 'name-desc' | 'price-asc' | 'price-desc'
+
+const VIEW_MODE_KEY = 'catalog-view-mode'
 
 interface CatalogViewProps {
   business: CatalogBusiness
@@ -17,6 +21,37 @@ export default function CatalogView({ business, products, categories }: CatalogV
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
   const [isMobileCartOpen, setIsMobileCartOpen] = useState(false)
   const [cartItems, setCartItems] = useState<CatalogCartItem[]>([])
+  const [viewMode, setViewMode] = useState<ViewMode>('grid')
+  const [searchQuery, setSearchQuery] = useState('')
+  const [sortBy, setSortBy] = useState<SortBy>('name-asc')
+
+  const cartKey = `catalog-cart-${business.id}`
+
+  useEffect(() => {
+    const storedViewMode = localStorage.getItem(VIEW_MODE_KEY) as ViewMode | null
+    if (storedViewMode === 'grid' || storedViewMode === 'list') {
+      setViewMode(storedViewMode)
+    }
+
+    const storedCart = localStorage.getItem(cartKey)
+    if (storedCart) {
+      try {
+        const parsed: CatalogCartItem[] = JSON.parse(storedCart)
+        const productIds = new Set(products.map(p => p.id))
+        setCartItems(parsed.filter(item => productIds.has(item.product.id)))
+      } catch {
+        // ignore malformed data
+      }
+    }
+  }, [cartKey, products])
+
+  useEffect(() => {
+    localStorage.setItem(cartKey, JSON.stringify(cartItems))
+  }, [cartItems, cartKey])
+
+  useEffect(() => {
+    localStorage.setItem(VIEW_MODE_KEY, viewMode)
+  }, [viewMode])
 
   const cartCount = useMemo(
     () => cartItems.reduce((acc, item) => acc + item.quantity, 0),
@@ -69,28 +104,18 @@ export default function CatalogView({ business, products, categories }: CatalogV
     setCartItems(prev => prev.filter(item => item.product.id !== productId))
   }
 
+  function clearCart() {
+    setCartItems([])
+    localStorage.removeItem(cartKey)
+  }
+
   return (
     <div className="mx-auto w-full max-w-6xl space-y-4 md:space-y-6">
-      <section className="rounded-xl border border-border/70 bg-card p-4 md:p-6">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <h1 className="text-2xl font-bold text-foreground">{business.name}</h1>
-            {business.description && (
-              <p className="mt-2 text-sm text-muted-foreground">{business.description}</p>
-            )}
-          </div>
-
-          <Button
-            type="button"
-            variant="outline"
-            className="lg:hidden"
-            onClick={() => setIsMobileCartOpen(prev => !prev)}
-          >
-            <ShoppingCart className="mr-1 h-4 w-4" />
-            Carrito ({cartCount})
-          </Button>
-        </div>
-      </section>
+      <CatalogHeader
+        business={business}
+        cartCount={cartCount}
+        onToggleMobileCart={() => setIsMobileCartOpen(prev => !prev)}
+      />
 
       <section className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_360px] lg:gap-6">
         <ProductGrid
@@ -99,6 +124,12 @@ export default function CatalogView({ business, products, categories }: CatalogV
           selectedCategory={selectedCategory}
           onSelectCategory={setSelectedCategory}
           onAddToCart={addToCart}
+          viewMode={viewMode}
+          onViewModeChange={setViewMode}
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
+          sortBy={sortBy}
+          onSortChange={setSortBy}
         />
 
         <div className={`${isMobileCartOpen ? 'block' : 'hidden'} lg:block`}>
@@ -109,6 +140,7 @@ export default function CatalogView({ business, products, categories }: CatalogV
             onIncreaseQuantity={increaseQuantity}
             onDecreaseQuantity={decreaseQuantity}
             onRemoveItem={removeItem}
+            onClearCart={clearCart}
           />
         </div>
       </section>

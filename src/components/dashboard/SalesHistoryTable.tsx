@@ -189,7 +189,7 @@ export default function SalesHistoryTable({ rows, businessId }: Props) {
   }
 
   return (
-    <div className="relative rounded-2xl bg-surface border border-edge/60 overflow-hidden">
+    <div className="relative surface-card overflow-hidden">
       {/* Filters + summary */}
       <div className="p-4 border-b border-edge-soft space-y-3">
         <p className="font-semibold text-heading">Historial detallado</p>

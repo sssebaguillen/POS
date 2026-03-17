@@ -35,7 +35,7 @@ export default function SettingsForm({ business, operators }: SettingsFormProps)
     description: business.description ?? '',
     whatsapp: business.whatsapp ?? '',
     logoUrl: business.logo_url ?? '',
-    primaryColor: business.settings?.primary_color ?? '#4f46e5',
+    primaryColor: business.settings?.primary_color ?? '#1C4A3B',
   })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -141,7 +141,7 @@ export default function SettingsForm({ business, operators }: SettingsFormProps)
 
   return (
     <div className="grid gap-6 lg:grid-cols-2">
-      <div className="rounded-xl bg-card border border-border/60 p-6 shadow-sm">
+      <div className="surface-card p-6">
         <h2 className="text-base font-semibold text-foreground">Negocio</h2>
         <p className="text-sm text-muted-foreground mt-1">Actualizá los datos visibles en el sistema y el catálogo público.</p>
 
@@ -250,7 +250,7 @@ export default function SettingsForm({ business, operators }: SettingsFormProps)
             </span>
             <button
               type="button"
-              onClick={() => setField('primaryColor', '#4f46e5')}
+              onClick={() => setField('primaryColor', '#1C4A3B')}
               className="text-xs text-muted-foreground hover:text-foreground transition-colors ml-auto"
             >
               Restablecer

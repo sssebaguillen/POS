@@ -295,8 +295,8 @@ export default function StatsView({ sales, payments, saleItems, products, catego
 
       <div className="flex-1 overflow-y-auto">
         <div className="px-6 pt-4 pb-6 space-y-5">
-          {/* Period tabs (underline) */}
-          <div className="flex gap-6 border-b border-edge/60">
+          {/* Period tabs — pill style */}
+          <div className="pill-tabs">
             {([
               { key: 'today', label: 'Hoy' },
               { key: 'week', label: 'Esta semana' },
@@ -306,11 +306,7 @@ export default function StatsView({ sales, payments, saleItems, products, catego
               <button
                 key={tab.key}
                 onClick={() => setPeriod(tab.key)}
-                className={`pb-2.5 text-sm font-medium border-b-2 transition-colors ${
-                  period === tab.key
-                    ? 'text-heading border-heading'
-                    : 'text-hint border-transparent hover:text-body'
-                }`}
+                className={`pill-tab${period === tab.key ? ' pill-tab-active' : ''}`}
               >
                 {tab.label}
               </button>
@@ -329,22 +325,22 @@ export default function StatsView({ sales, payments, saleItems, products, catego
 
           {/* KPI Cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
-            <div className="rounded-2xl bg-surface border border-edge/60 p-4">
+            <div className="surface-card p-5">
               <p className="text-label text-hint">Ingresos totales</p>
               <p className="text-xl font-bold text-heading mt-0.5">${totalRevenue.toLocaleString('es-AR')}</p>
               <div className="mt-1.5"><DeltaBadge current={totalRevenue} previous={prevRevenue} /></div>
             </div>
-            <div className="rounded-2xl bg-surface border border-edge/60 p-4">
+            <div className="surface-card p-5">
               <p className="text-label text-hint">Unidades vendidas</p>
               <p className="text-xl font-bold text-heading mt-0.5">{totalUnits}</p>
               <div className="mt-1.5"><DeltaBadge current={totalUnits} previous={prevUnits} /></div>
             </div>
-            <div className="rounded-2xl bg-surface border border-edge/60 p-4">
+            <div className="surface-card p-5">
               <p className="text-label text-hint">Ticket promedio</p>
               <p className="text-xl font-bold text-heading mt-0.5">${avgTicket.toLocaleString('es-AR', { maximumFractionDigits: 0 })}</p>
               <div className="mt-1.5"><DeltaBadge current={avgTicket} previous={prevAvgTicket} /></div>
             </div>
-            <div className="rounded-2xl bg-surface border border-edge/60 p-4">
+            <div className="surface-card p-5">
               <p className="text-label text-hint">Día pico</p>
               <p className="text-xl font-bold text-heading mt-0.5">{peakDay}</p>
             </div>
@@ -353,7 +349,7 @@ export default function StatsView({ sales, payments, saleItems, products, catego
           {/* Charts row */}
           <div className="grid grid-cols-1 xl:grid-cols-[2fr_1fr] gap-4">
             {/* Evolution chart */}
-            <div className="rounded-2xl bg-surface border border-edge/60 p-5 space-y-3">
+            <div className="surface-card p-6 space-y-3">
               <div className="flex items-center justify-between">
                 <p className="font-semibold text-heading">Evolución</p>
                 <div className="flex gap-1.5">
@@ -451,7 +447,7 @@ export default function StatsView({ sales, payments, saleItems, products, catego
             </div>
 
             {/* Payment methods */}
-            <div className="rounded-2xl bg-surface border border-edge/60 p-5 space-y-4">
+            <div className="surface-card p-6 space-y-4">
               <p className="font-semibold text-heading">Métodos de pago</p>
               {paymentBreakdown.length === 0 ? (
                 <p className="text-sm text-hint">Sin datos</p>
@@ -474,7 +470,7 @@ export default function StatsView({ sales, payments, saleItems, products, catego
           {/* Bottom row */}
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
             {/* Ranking */}
-            <div className="rounded-2xl bg-surface border border-edge/60 p-5 space-y-3">
+            <div className="surface-card p-6 space-y-3">
               <div className="flex items-center justify-between">
                 <p className="font-semibold text-heading">Ranking de productos</p>
                 <div className="flex gap-1.5">
@@ -508,7 +504,7 @@ export default function StatsView({ sales, payments, saleItems, products, catego
             </div>
 
             {/* Breakdown */}
-            <div className="rounded-2xl bg-surface border border-edge/60 p-5 space-y-3">
+            <div className="surface-card p-6 space-y-3">
               <div className="flex items-center justify-between">
                 <p className="font-semibold text-heading">Breakdown</p>
                 <div className="flex gap-1.5">
@@ -544,7 +540,7 @@ export default function StatsView({ sales, payments, saleItems, products, catego
             </div>
           </div>
           {/* Day of week distribution */}
-          <div className="rounded-2xl bg-surface border border-edge/60 p-5 space-y-3">
+          <div className="surface-card p-6 space-y-3">
             <p className="font-semibold text-heading">Ventas por día de la semana</p>
             {filteredSales.length === 0 ? (
               <p className="text-sm text-hint h-32 flex items-center justify-center">Sin datos para el período</p>

@@ -9,6 +9,25 @@
             "approve": true,
             "matchCommandLine": true
         },
-        "Get-Process": true
+        "Get-Process": true,
+        "Set-ExecutionPolicy": true,
+        "/^Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass ; node \"c:\\\\Users\\\\maria\\\\OneDrive\\\\Escritorio\\\\seba\\\\Claude Projects\\\\POS\\\\node_modules\\\\typescript\\\\bin\\\\tsc\" --noEmit --project \"c:\\\\Users\\\\maria\\\\OneDrive\\\\Escritorio\\\\seba\\\\Claude Projects\\\\POS\\\\tsconfig\\.json\" 2>&1 \\| Select-Object -First 50$/": {
+            "approve": true,
+            "matchCommandLine": true
+        },
+        "/^node \"c:\\\\Users\\\\maria\\\\OneDrive\\\\Escritorio\\\\seba\\\\Claude Projects\\\\POS\\\\node_modules\\\\typescript\\\\bin\\\\tsc\" --noEmit --project \"c:\\\\Users\\\\maria\\\\OneDrive\\\\Escritorio\\\\seba\\\\Claude Projects\\\\POS\\\\tsconfig\\.json\" 2>&1 \\| Select-Object -First 30$/": {
+            "approve": true,
+            "matchCommandLine": true
+        },
+        "/^node \"c:\\\\Users\\\\maria\\\\OneDrive\\\\Escritorio\\\\seba\\\\Claude Projects\\\\POS\\\\node_modules\\\\typescript\\\\bin\\\\tsc\" --noEmit --project \"c:\\\\Users\\\\maria\\\\OneDrive\\\\Escritorio\\\\seba\\\\Claude Projects\\\\POS\\\\tsconfig\\.json\" 2>&1$/": {
+            "approve": true,
+            "matchCommandLine": true
+        },
+        "npx next": true,
+        "/^cd \"c:\\\\Users\\\\maria\\\\OneDrive\\\\Escritorio\\\\seba\\\\Claude Projects\\\\POS\" ; node node_modules/next/dist/bin/next build 2>&1 \\| Select-Object -Last 60$/": {
+            "approve": true,
+            "matchCommandLine": true
+        },
+        "npx tsc": true
     }
 }

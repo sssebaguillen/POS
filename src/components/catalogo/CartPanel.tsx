@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { Minus, Plus, Trash2 } from 'lucide-react'
+import { CheckCircle2, Minus, Plus, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import type { CatalogCartItem } from '@/components/catalogo/types'
@@ -13,6 +13,7 @@ interface CartPanelProps {
   onIncreaseQuantity: (productId: string) => void
   onDecreaseQuantity: (productId: string) => void
   onRemoveItem: (productId: string) => void
+  onClearCart: () => void
 }
 
 type DeliveryType = 'take-away' | 'delivery'
@@ -26,8 +27,10 @@ export default function CartPanel({
   onIncreaseQuantity,
   onDecreaseQuantity,
   onRemoveItem,
+  onClearCart,
 }: CartPanelProps) {
   const [customerName, setCustomerName] = useState('')
+  const [orderSent, setOrderSent] = useState(false)
   const [customerPhone, setCustomerPhone] = useState('')
   const [deliveryType, setDeliveryType] = useState<DeliveryType>('take-away')
   const [address, setAddress] = useState('')
@@ -94,6 +97,34 @@ export default function CartPanel({
     const url = `https://wa.me/${normalizedWhatsapp}?text=${encodedMessage}`
 
     window.open(url, '_blank', 'noopener,noreferrer')
+    setOrderSent(true)
+  }
+
+  function handleNewOrder() {
+    setCustomerName('')
+    setCustomerPhone('')
+    setDeliveryType('take-away')
+    setAddress('')
+    setNotes('')
+    setOrderSent(false)
+    onClearCart()
+  }
+
+  if (orderSent) {
+    return (
+      <aside className="rounded-xl border border-border/70 bg-card p-4 md:p-5 lg:sticky lg:top-6">
+        <div className="flex flex-col items-center gap-4 py-6 text-center">
+          <CheckCircle2 className="h-12 w-12 text-green-500" />
+          <div>
+            <p className="text-base font-semibold text-foreground">Pedido enviado</p>
+            <p className="mt-1 text-sm text-muted-foreground">Revisa tu WhatsApp para continuar con el pedido.</p>
+          </div>
+          <Button type="button" className="w-full" onClick={handleNewOrder}>
+            Nuevo pedido
+          </Button>
+        </div>
+      </aside>
+    )
   }
 
   return (

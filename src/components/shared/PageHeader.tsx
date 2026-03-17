@@ -13,9 +13,11 @@ export default function PageHeader({ title, children }: Props) {
 
   return (
     <header className="h-14 border-b border-edge/60 bg-surface flex items-center px-5 gap-4 shrink-0">
+      {/* Mobile: opens the drawer overlay */}
       <button
         onClick={toggle}
-        className="p-1.5 -ml-1 rounded-lg hover:bg-hover-bg transition-colors"
+        className="p-1.5 -ml-1 rounded-lg hover:bg-hover-bg transition-colors lg:hidden"
+        aria-label="Abrir menu"
       >
         <Menu size={20} className="text-body" />
       </button>

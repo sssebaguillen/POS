@@ -2,6 +2,7 @@
 
 import { Fragment, useMemo, useState } from 'react'
 import PageHeader from '@/components/shared/PageHeader'
+import KPICard from '@/components/shared/KPICard'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
@@ -105,18 +106,27 @@ export default function SalesHistoryPanel({ sales }: Props) {
 
       <div className="flex-1 overflow-y-auto p-6 space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-          <div className="rounded-xl border border-edge/60 bg-surface p-4">
-            <p className="text-xs uppercase tracking-wide text-hint">Transacciones</p>
-            <p className="text-2xl font-bold text-heading mt-1">{summary.count}</p>
-          </div>
-          <div className="rounded-xl border border-edge/60 bg-surface p-4">
-            <p className="text-xs uppercase tracking-wide text-hint">Total vendido</p>
-            <p className="text-2xl font-bold text-heading mt-1">${summary.total.toLocaleString('es-AR')}</p>
-          </div>
-          <div className="rounded-xl border border-edge/60 bg-surface p-4">
-            <p className="text-xs uppercase tracking-wide text-hint">Unidades vendidas</p>
-            <p className="text-2xl font-bold text-heading mt-1">{summary.items}</p>
-          </div>
+          <KPICard
+            icon="T"
+            iconBg="bg-primary/10"
+            iconColor="text-primary"
+            label="TRANSACCIONES"
+            value={String(summary.count)}
+          />
+          <KPICard
+            icon="$"
+            iconBg="bg-emerald-100 dark:bg-emerald-950/50"
+            iconColor="text-emerald-700 dark:text-emerald-400"
+            label="TOTAL VENDIDO"
+            value={`$${summary.total.toLocaleString('es-AR')}`}
+          />
+          <KPICard
+            icon="U"
+            iconBg="bg-amber-100 dark:bg-amber-950/50"
+            iconColor="text-amber-700 dark:text-amber-400"
+            label="UNIDADES VENDIDAS"
+            value={String(summary.items)}
+          />
         </div>
 
         <Input

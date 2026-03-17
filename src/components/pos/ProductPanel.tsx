@@ -41,7 +41,7 @@ export default function ProductPanel({ products, search, activePriceList, priceL
           <p className="text-xs font-semibold text-hint uppercase tracking-wider mb-3">
             Más vendidos — últimos 30 días
           </p>
-          <div className="flex gap-3 overflow-x-auto pb-1">
+          <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))' }}>
             {topSellers.map(product => (
               <ProductCard
                 key={product.id}
@@ -61,14 +61,14 @@ export default function ProductPanel({ products, search, activePriceList, priceL
           {isSearching ? `Resultados para "${search}"` : 'Todos los productos'}
         </p>
         {filtered.length === 0 ? (
-          <div className="rounded-2xl bg-surface border border-edge/60 p-12 text-center text-hint">
+          <div className="surface-card p-12 text-center text-hint">
             <p className="text-sm">No se encontraron productos</p>
             {search && (
               <p className="text-xs mt-1">Intentá con otro término o código</p>
             )}
           </div>
         ) : (
-          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 gap-3">
+          <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))' }}>
             {filtered.map(product => (
               <ProductCard
                 key={product.id}
@@ -99,22 +99,22 @@ function ProductCard({
   const disabled = product.stock === 0
 
   const displayPrice = activePriceList
-    ? calculateProductPrice(product.cost, product.id, product.brand_id, activePriceList, priceListOverrides)
+    ? calculateProductPrice(product.cost, product.price, product.id, product.brand_id, activePriceList, priceListOverrides)
     : product.price
 
   return (
     <button
       onClick={() => onAdd(product)}
       disabled={disabled}
-      className="group relative text-left p-4 rounded-2xl border border-edge/60 bg-surface hover:border-primary/50 hover:shadow-md transition-all disabled:opacity-40 disabled:cursor-not-allowed min-w-[120px]"
+      className="group relative text-left p-4 rounded-2xl border border-edge/60 bg-surface hover:border-primary/50 hover:shadow-md transition-all disabled:opacity-40 disabled:cursor-not-allowed flex flex-col"
     >
       {/* Category marker */}
-      <div className="text-3xl mb-3 leading-none">
+      <div className="h-10 mb-3 flex items-center text-3xl leading-none">
         {product.categories?.icon ?? 'CAT'}
       </div>
 
       {/* Name */}
-      <p className="text-sm font-medium text-heading leading-tight line-clamp-2 mb-1">
+      <p className="text-sm font-medium text-heading leading-tight line-clamp-2 mb-1 flex-1">
         {product.name}
       </p>
 

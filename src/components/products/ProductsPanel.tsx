@@ -209,7 +209,7 @@ export default function ProductsPanel({ businessId, initialProducts, categories,
       )}
 
       <div className="flex-1 overflow-y-auto p-5">
-        <div className="rounded-2xl bg-surface border border-edge/60 p-2">
+        <div className="surface-card p-2">
           <Table>
             <TableHeader>
               <TableRow>

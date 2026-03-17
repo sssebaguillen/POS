@@ -20,6 +20,7 @@ export interface PriceListProduct {
   id: string
   name: string
   cost: number
+  price: number
   brand_id: string | null
   brand?: {
     id: string

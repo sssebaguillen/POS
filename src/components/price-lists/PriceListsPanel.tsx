@@ -97,6 +97,7 @@ export default function PriceListsPanel({
 
       const finalPrice = calculateProductPrice(
         product.cost,
+        product.price,
         product.id,
         product.brand_id ?? null,
         activeList,
@@ -313,11 +314,11 @@ export default function PriceListsPanel({
 
       <div className="flex-1 overflow-y-auto p-5">
         {!activeList ? (
-          <div className="rounded-2xl bg-surface border border-edge/60 p-12 text-center text-hint">
+          <div className="surface-card p-12 text-center text-hint">
             Selecciona una lista de precios para ver los productos.
           </div>
         ) : (
-          <div className="rounded-2xl bg-surface border border-edge/60 p-2">
+          <div className="surface-card p-2">
             <div className="px-2 pb-2 flex flex-wrap items-center gap-2">
               <h2 className="text-sm font-semibold text-heading">{activeList.name}</h2>
               {activeList.description && <span className="text-xs text-hint">{activeList.description}</span>}

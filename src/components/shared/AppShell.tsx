@@ -1,12 +1,14 @@
 'use client'
 
-import { createContext, useContext, useMemo, useState } from 'react'
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import Sidebar from '@/components/sidebar'
 
 interface SidebarContextValue {
   open: boolean
   toggle: () => void
   close: () => void
+  collapsed: boolean
+  toggleCollapse: () => void
 }
 
 interface AppShellProps {
@@ -24,15 +26,35 @@ export function useSidebar() {
   return context
 }
 
+const STORAGE_KEY = 'pos-sidebar-collapsed'
+
 export default function AppShell({ children, activeOperatorName }: AppShellProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [collapsed, setCollapsed] = useState(false)
+
+  // Restore collapse preference from localStorage on mount
+  useEffect(() => {
+    const stored = localStorage.getItem(STORAGE_KEY)
+    if (stored === 'true') setCollapsed(true)
+  }, [])
+
+  const toggleCollapse = useCallback(() => {
+    setCollapsed(prev => {
+      const next = !prev
+      localStorage.setItem(STORAGE_KEY, String(next))
+      return next
+    })
+  }, [])
+
   const value = useMemo(
     () => ({
       open: sidebarOpen,
       toggle: () => setSidebarOpen(prev => !prev),
       close: () => setSidebarOpen(false),
+      collapsed,
+      toggleCollapse,
     }),
-    [sidebarOpen]
+    [sidebarOpen, collapsed, toggleCollapse]
   )
 
   return (
@@ -42,8 +64,18 @@ export default function AppShell({ children, activeOperatorName }: AppShellProps
           open={sidebarOpen}
           onClose={() => setSidebarOpen(false)}
           activeOperatorName={activeOperatorName}
+          collapsed={collapsed}
+          onToggleCollapse={toggleCollapse}
         />
-        <main className="flex-1 min-h-0">{children}</main>
+        {/* Desktop: static offset matching sidebar width. Mobile: no offset (drawer overlay). */}
+        <main
+          className="flex-1 min-h-0 transition-[margin] duration-200 lg:ml-[var(--sidebar-width)]"
+          style={{
+            ['--sidebar-width' as string]: collapsed ? 'var(--sidebar-collapsed-width)' : '256px',
+          }}
+        >
+          {children}
+        </main>
       </div>
     </SidebarContext.Provider>
   )

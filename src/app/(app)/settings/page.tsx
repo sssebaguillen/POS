@@ -28,7 +28,7 @@ export default async function SettingsPage() {
       <div className="flex flex-col h-screen overflow-hidden">
         <PageHeader title="Configuración" />
         <div className="flex-1 overflow-y-auto p-6">
-          <div className="rounded-xl bg-card border border-border/60 p-6">
+          <div className="surface-card p-6">
             <p className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
               {profileError?.message ?? 'No se pudo obtener el negocio asociado al usuario actual.'}
             </p>
@@ -59,7 +59,7 @@ export default async function SettingsPage() {
       <div className="flex flex-col h-screen overflow-hidden">
         <PageHeader title="Configuración" />
         <div className="flex-1 overflow-y-auto p-6">
-          <div className="rounded-xl bg-card border border-border/60 p-6">
+          <div className="surface-card p-6">
             <p className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
               {businessError?.message ?? 'No se pudo cargar la configuración del negocio.'}
             </p>
@@ -74,7 +74,7 @@ export default async function SettingsPage() {
       <div className="flex flex-col h-screen overflow-hidden">
         <PageHeader title="Configuración" />
         <div className="flex-1 overflow-y-auto p-6">
-          <div className="rounded-xl bg-card border border-border/60 p-6">
+          <div className="surface-card p-6">
             <p className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">{operatorsError.message}</p>
           </div>
         </div>

@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import PageHeader from '@/components/shared/PageHeader'
+import KPICard from '@/components/shared/KPICard'
 import Link from 'next/link'
 import { endOfDay, isCompletedSale, startOfDay, startOfWeek } from '@/components/analytics/utils'
 import { normalizePayment } from '@/lib/payments'
@@ -150,6 +151,63 @@ export default function DashboardView({ sales, payments, saleItems, products, bu
   const outOfStock = lowStockProducts.filter(p => p.stock <= 0).sort((a, b) => a.stock - b.stock)
   const lowStock = lowStockProducts.filter(p => p.stock > 0).sort((a, b) => a.stock - b.stock)
 
+  // Trend: previous period range for comparison
+  const prevPeriodRange = useMemo(() => {
+    const now = new Date()
+    if (period === 'today') {
+      const yesterday = new Date(now)
+      yesterday.setDate(yesterday.getDate() - 1)
+      return { from: startOfDay(yesterday), to: endOfDay(yesterday) }
+    }
+    if (period === 'week') {
+      const prevWeekStart = startOfWeek(new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000))
+      const prevWeekEnd = new Date(startOfWeek(now).getTime() - 1)
+      return { from: prevWeekStart, to: endOfDay(prevWeekEnd) }
+    }
+    if (period === 'month') {
+      const firstOfPrevMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1)
+      const lastOfPrevMonth = new Date(now.getFullYear(), now.getMonth(), 0)
+      return { from: startOfDay(firstOfPrevMonth), to: endOfDay(lastOfPrevMonth) }
+    }
+    return null
+  }, [period])
+
+  const prevCompletedSales = useMemo(() => {
+    if (!prevPeriodRange) return []
+    return sales.filter(s => {
+      const d = new Date(s.created_at)
+      return d >= prevPeriodRange.from && d <= prevPeriodRange.to && isCompletedSale(s.status)
+    })
+  }, [sales, prevPeriodRange])
+
+  function computeTrend(
+    current: number,
+    previous: number,
+    trendLabel: string
+  ): { percent: number; direction: 'up' | 'down' | 'neutral'; label: string } {
+    if (!prevPeriodRange || previous === 0) {
+      return { percent: 0, direction: 'neutral', label: trendLabel }
+    }
+    const pct = ((current - previous) / previous) * 100
+    return {
+      percent: Math.abs(pct),
+      direction: pct > 0 ? 'up' : pct < 0 ? 'down' : 'neutral',
+      label: trendLabel,
+    }
+  }
+
+  const trendLabel =
+    period === 'today' ? 'vs ayer'
+    : period === 'week' ? 'vs semana anterior'
+    : period === 'month' ? 'vs mes anterior'
+    : ''
+
+  const prevTotalSold = prevCompletedSales.reduce((acc, s) => acc + Number(s.total), 0)
+  const kpiTrends = {
+    total: computeTrend(totalSold, prevTotalSold, trendLabel),
+    transactions: computeTrend(transactions, prevCompletedSales.length, trendLabel),
+  }
+
   const historyRows = useMemo(() =>
     filteredSales.map(s => ({ ...s, method: paymentsBySaleId.get(s.id) ?? 'sin dato' })),
     [filteredSales, paymentsBySaleId])
@@ -174,17 +232,13 @@ export default function DashboardView({ sales, payments, saleItems, products, bu
 
       <div className="flex-1 overflow-y-auto">
         <div className="px-6 pt-4 pb-6 space-y-5">
-          {/* Period tabs (underline style) */}
-          <div className="flex gap-6 border-b border-edge/60">
+          {/* Period tabs — pill style */}
+          <div className="pill-tabs">
             {periodTabs.map(tab => (
               <button
                 key={tab.key}
                 onClick={() => setPeriod(tab.key)}
-                className={`pb-2.5 text-sm font-medium border-b-2 transition-colors ${
-                  period === tab.key
-                    ? 'text-heading border-heading'
-                    : 'text-hint border-transparent hover:text-body'
-                }`}
+                className={`pill-tab${period === tab.key ? ' pill-tab-active' : ''}`}
               >
                 {tab.label}
               </button>
@@ -205,21 +259,23 @@ export default function DashboardView({ sales, payments, saleItems, products, bu
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
             <KPICard
               icon="$"
-              iconBg="bg-emerald-100"
+              iconBg="bg-emerald-100 dark:bg-emerald-950/50"
               iconColor="text-emerald-700 dark:text-emerald-400"
               label="TOTAL VENDIDO"
               value={`$${totalSold.toLocaleString('es-AR')}`}
+              trend={trendLabel ? kpiTrends.total : undefined}
             />
             <KPICard
               icon="T"
-              iconBg="bg-amber-100"
+              iconBg="bg-amber-100 dark:bg-amber-950/50"
               iconColor="text-amber-700 dark:text-amber-400"
               label="TRANSACCIONES"
               value={String(transactions)}
+              trend={trendLabel ? kpiTrends.transactions : undefined}
             />
             <KPICard
               icon="!"
-              iconBg="bg-red-100"
+              iconBg="bg-red-100 dark:bg-red-950/50"
               iconColor="text-red-600 dark:text-red-400"
               label="STOCK BAJO / SIN STOCK"
               value={String(lowStockProducts.length)}
@@ -227,7 +283,7 @@ export default function DashboardView({ sales, payments, saleItems, products, bu
             />
             <KPICard
               icon="PM"
-              iconBg="bg-emerald-100"
+              iconBg="bg-emerald-100 dark:bg-emerald-950/50"
               iconColor="text-emerald-700 dark:text-emerald-400"
               label="PAGO MÁS USADO"
               value={mostUsedPayment ? normalizePayment(mostUsedPayment.method) : '—'}
@@ -236,7 +292,7 @@ export default function DashboardView({ sales, payments, saleItems, products, bu
           </div>
 
           {/* Charts row */}
-          <div className="rounded-2xl bg-surface border border-edge/60 p-5">
+          <div className="surface-card p-6">
             <p className="font-semibold text-heading mb-4">
               Ventas por {period === 'today' ? 'hora' : 'día'} — {period === 'today' ? 'hoy' : period === 'week' ? 'esta semana' : 'período'}
             </p>
@@ -245,18 +301,18 @@ export default function DashboardView({ sales, payments, saleItems, products, bu
             ) : (
               <div className="flex h-56">
                 {/* Y axis */}
-                <div className="flex flex-col justify-between pr-2 text-[10px] text-hint py-1">
+                <div className="flex flex-col justify-between pr-3 text-xs text-hint py-1 shrink-0">
                   {yLabels.map(l => <span key={l}>{l}</span>)}
                 </div>
                 {/* Bars */}
-                <div className="flex-1 flex items-end gap-1 border-l border-b border-edge-soft pl-1 pb-1">
+                <div className="flex-1 flex items-end gap-1.5 pl-2 pb-1">
                   {chartData.map(bar => (
                     <div key={bar.label} className="flex-1 flex flex-col items-center justify-end h-full">
                       <div
-                        className="w-full max-w-[28px] bg-primary rounded-t transition-all mx-auto"
+                        className="w-full max-w-[32px] bg-primary/80 hover:bg-primary rounded-t-lg transition-all mx-auto"
                         style={{ height: `${maxChartValue > 0 ? (bar.value / maxChartValue) * 100 : 0}%`, minHeight: bar.value > 0 ? 4 : 0 }}
                       />
-                      <span className="text-[9px] text-hint mt-1 truncate w-full text-center">
+                      <span className="text-[11px] text-hint mt-1.5 truncate w-full text-center">
                         {bar.label}
                       </span>
                     </div>
@@ -268,7 +324,7 @@ export default function DashboardView({ sales, payments, saleItems, products, bu
 
           {/* Bottom row: top products + stock alerts */}
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-            <div className="rounded-2xl bg-surface border border-edge/60 p-5">
+            <div className="surface-card p-6">
               <p className="font-semibold text-heading mb-4">Productos más vendidos</p>
               <div className="space-y-3">
                 {topProducts.length === 0 ? (
@@ -288,7 +344,7 @@ export default function DashboardView({ sales, payments, saleItems, products, bu
               </div>
             </div>
 
-            <div className="rounded-2xl bg-surface border border-edge/60 p-5">
+            <div className="surface-card p-6">
               <div className="flex items-center justify-between mb-4">
                 <p className="font-semibold text-heading">Alertas de stock</p>
                 <Link href="/inventory" className="text-xs text-primary font-medium hover:underline">
@@ -332,35 +388,6 @@ export default function DashboardView({ sales, payments, saleItems, products, bu
 
           {period === 'history' && <SalesHistoryTable rows={historyRows} businessId={businessId} />}
         </div>
-      </div>
-    </div>
-  )
-}
-
-function KPICard({
-  icon,
-  iconBg,
-  iconColor,
-  label,
-  value,
-  subtitle,
-}: {
-  icon: string
-  iconBg: string
-  iconColor: string
-  label: string
-  value: string
-  subtitle?: string
-}) {
-  return (
-    <div className="rounded-2xl bg-surface border border-edge/60 p-4 flex items-start gap-3">
-      <div className={`w-10 h-10 rounded-full ${iconBg} flex items-center justify-center text-lg shrink-0`}>
-        <span className={iconColor}>{icon}</span>
-      </div>
-      <div className="min-w-0">
-        <p className="text-label text-hint">{label}</p>
-        <p className="text-xl font-bold text-heading leading-tight mt-0.5">{value}</p>
-        {subtitle && <p className="text-caption text-hint mt-0.5">{subtitle}</p>}
       </div>
     </div>
   )

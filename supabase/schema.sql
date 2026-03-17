@@ -117,6 +117,16 @@ create table products (
   created_at      timestamptz   default now()
 );
 
+-- Upsert por SKU (importacion masiva)
+create unique index unique_sku_per_business
+  on products (business_id, sku)
+  where sku is not null;
+
+-- Upsert por barcode (importacion masiva)
+create unique index unique_barcode_per_business
+  on products (business_id, barcode)
+  where barcode is not null;
+
 -- ============================================================
 -- PRICE LISTS
 -- UI muestra porcentaje (40%), DB guarda multiplier (1.40)

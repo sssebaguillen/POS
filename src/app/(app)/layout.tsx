@@ -5,6 +5,29 @@ import FlashToast from '@/components/shared/FlashToast'
 import { cookies } from 'next/headers'
 import { getActiveOperator } from '@/lib/operator'
 
+function luminance(hex: string): number {
+  const r = parseInt(hex.slice(1, 3), 16) / 255
+  const g = parseInt(hex.slice(3, 5), 16) / 255
+  const b = parseInt(hex.slice(5, 7), 16) / 255
+  const toLinear = (c: number) => c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4)
+  return 0.2126 * toLinear(r) + 0.7152 * toLinear(g) + 0.0722 * toLinear(b)
+}
+
+function computeForeground(hex: string): string {
+  return luminance(hex) > 0.45 ? '#0F172A' : '#ffffff'
+}
+
+// Returns the best text color for active nav states (primary-colored text on a tinted surface).
+// Light mode: primary is displayed on a near-white surface — if primary is too light, fall back to dark.
+// Dark mode:  primary is displayed on a near-black surface — if primary is too dark, fall back to light.
+function computeActiveText(hex: string): { light: string; dark: string } {
+  const L = luminance(hex)
+  return {
+    light: L > 0.45 ? '#0F172A' : hex,
+    dark:  L < 0.12 ? '#ededed' : hex,
+  }
+}
+
 export default async function AppLayout({
   children,
 }: {
@@ -31,7 +54,7 @@ export default async function AppLayout({
     .eq('id', user.id)
     .maybeSingle()
 
-  let primaryColor = '#4f46e5'
+  let primaryColor = '#1C4A3B'
 
   if (profile?.business_id) {
     const { data: business } = await supabase
@@ -48,7 +71,17 @@ export default async function AppLayout({
 
   return (
     <>
-      <style>{`:root { --primary: ${primaryColor}; --ring: ${primaryColor}; }`}</style>
+      <style>{`
+        :root {
+          --primary: ${primaryColor};
+          --ring: ${primaryColor};
+          --primary-foreground: ${computeForeground(primaryColor)};
+          --primary-active-text: ${computeActiveText(primaryColor).light};
+        }
+        .dark {
+          --primary-active-text: ${computeActiveText(primaryColor).dark};
+        }
+      `}</style>
       <AppShell activeOperatorName={activeOperator?.name ?? null}>
         {children}
       </AppShell>

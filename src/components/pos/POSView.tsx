@@ -90,7 +90,8 @@ export default function POSView({ products, categories, businessId, priceLists, 
       <header className="h-14 bg-surface border-b border-edge/60 flex items-center px-5 gap-4 shrink-0">
         <button
           onClick={toggle}
-          className="p-1.5 -ml-1 rounded-lg hover:bg-hover-bg transition-colors"
+          className="p-1.5 -ml-1 rounded-lg hover:bg-hover-bg transition-colors lg:hidden"
+          aria-label="Abrir menu"
         >
           <Menu size={20} className="text-body" />
         </button>

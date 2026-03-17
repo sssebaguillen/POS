@@ -53,7 +53,7 @@ export default function OperatorList({ businessId, initialOperators }: Props) {
   }
 
   return (
-    <div className="rounded-xl bg-card border border-border/60 p-6 shadow-sm">
+    <div className="surface-card p-6 self-start">
       <div className="flex items-start justify-between gap-4">
         <div>
           <h2 className="text-base font-semibold text-foreground">Operadores</h2>

@@ -37,7 +37,7 @@ export default async function PriceListsPage() {
       .order('created_at'),
     supabase
       .from('products')
-      .select('id, name, cost, brand_id, brands(id, name), category_id, categories(name, icon)')
+      .select('id, name, cost, price, brand_id, brands(id, name), category_id, categories(name, icon)')
       .eq('business_id', businessId)
       .eq('is_active', true)
       .order('name'),
@@ -69,6 +69,7 @@ export default async function PriceListsPage() {
         id: product.id,
         name: product.name,
         cost: Number(product.cost),
+        price: Number(product.price),
         brand_id: product.brand_id ?? null,
         brand: Array.isArray(product.brands)
           ? product.brands[0] ?? null

@@ -10,6 +10,7 @@ import NewProductModal from '@/components/stock/NewProductModal'
 import EditProductModal from '@/components/stock/EditProductModal'
 import CategoryModal from '@/components/stock/CategoryModal'
 import BrandModal from './BrandModal'
+import ImportProductsModal from '@/components/stock/ImportProductsModal'
 import type { PriceList, PriceListOverride } from '@/components/price-lists/types'
 import type { InventoryBrand, InventoryCategory, InventoryProduct } from '@/components/stock/types'
 
@@ -69,6 +70,7 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
   const [statusFilter, setStatusFilter] = useState<FilterStatus>('all')
   const [loadingId, setLoadingId] = useState<string | null>(null)
   const [showNewProduct, setShowNewProduct] = useState(false)
+  const [showImport, setShowImport] = useState(false)
   const [showCategories, setShowCategories] = useState(false)
   const [showBrands, setShowBrands] = useState(false)
   const [editingProduct, setEditingProduct] = useState<InventoryProduct | null>(null)
@@ -262,7 +264,7 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
       <div className="flex flex-col h-screen overflow-hidden">
         <PageHeader title="Stock" />
         <div className="flex-1 overflow-y-auto p-6">
-          <div className="rounded-xl bg-card border border-border/60 p-6">
+          <div className="surface-card p-6">
             <p className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
               No se pudo obtener el negocio asociado al usuario actual.
             </p>
@@ -275,7 +277,14 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
   return (
     <div className="flex flex-col h-screen overflow-hidden">
       <PageHeader title="Stock">
-        <Button variant="outline" size="sm" className="rounded-lg text-xs" disabled>
+        <Button
+          variant="outline"
+          size="sm"
+          className="rounded-lg text-xs"
+          onClick={() => setShowImport(true)}
+          disabled={readOnly || !businessId}
+          title={readOnly ? 'Sin permiso de inventario' : undefined}
+        >
           Importar
         </Button>
         <Button
@@ -371,7 +380,7 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
 
       <div className="flex-1 overflow-y-auto p-5">
         {filtered.length === 0 ? (
-          <div className="rounded-2xl bg-surface border border-edge/60 p-12 text-center text-hint">
+          <div className="surface-card p-12 text-center text-hint">
             No hay productos con los filtros actuales
           </div>
         ) : (
@@ -389,7 +398,7 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
               return (
                 <article
                   key={product.id}
-                  className={`rounded-2xl border-2 bg-surface p-4 flex flex-col relative transition-shadow hover:shadow-md ${config.border}`}
+                  className={`rounded-[20px] border-2 bg-surface p-5 flex flex-col relative transition-shadow hover:shadow-md ${config.border}`}
                 >
                   <span className={`absolute top-3 right-3 text-[10px] font-bold px-2 py-0.5 rounded-full ${config.badge}`}>
                     {config.label}
@@ -536,6 +545,48 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
           stockWriteAllowed={!readOnly}
           initialBrands={brands}
           onBrandsChanged={handleBrandsChanged}
+        />
+      )}
+
+      {showImport && businessId && (
+        <ImportProductsModal
+          businessId={businessId}
+          categories={categories}
+          brands={brands}
+          onClose={() => setShowImport(false)}
+          onImported={async () => {
+            setShowImport(false)
+            const [{ data: updatedProducts }, { data: updatedCategories }, { data: updatedBrands }] = await Promise.all([
+              supabase
+                .from('products')
+                .select('id, business_id, name, price, cost, stock, min_stock, is_active, show_in_catalog, category_id, sku, barcode, brand_id, brands(id, name), categories(name, icon)')
+                .eq('business_id', businessId)
+                .order('name'),
+              supabase
+                .from('categories')
+                .select('id, name, icon')
+                .eq('business_id', businessId)
+                .eq('is_active', true)
+                .order('position'),
+              supabase
+                .from('brands')
+                .select('id, name')
+                .eq('business_id', businessId)
+                .order('name'),
+            ])
+            if (updatedProducts) {
+              setProducts(updatedProducts.map(p => ({
+                ...p,
+                price: Number(p.price),
+                cost: Number(p.cost),
+                brand_id: p.brand_id ?? null,
+                brand: Array.isArray(p.brands) ? p.brands[0] ?? null : (p.brands as { id: string; name: string } | null) ?? null,
+                categories: Array.isArray(p.categories) ? p.categories[0] ?? null : (p.categories as { name: string; icon: string } | null) ?? null,
+              })))
+            }
+            if (updatedCategories) setCategories(updatedCategories)
+            if (updatedBrands) setBrands(updatedBrands)
+          }}
         />
       )}
 
