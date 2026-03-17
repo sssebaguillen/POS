@@ -22,8 +22,8 @@ const NAV_LINKS: NavLink[] = [
   { href: '/pos',         label: 'Vender',            icon: ShoppingCart, check: () => true },
   { href: '/dashboard',   label: 'Dashboard',         icon: BarChart2,    check: (p) => p.stats === true },
   { href: '/stats',       label: 'Estadísticas',      icon: LineChart,    check: (p) => p.stats === true },
-  { href: '/price-lists', label: 'Listas de precios', icon: Package,      check: (p) => p.price_lists === true },
-  { href: '/inventory',   label: 'Stock',             icon: ClipboardList,check: (p) => p.stock === true },
+  { href: '/price-lists', label: 'Listas de precios', icon: ClipboardList, check: (p) => p.price_lists === true },
+  { href: '/inventory',   label: 'Stock',             icon: Package,       check: (p) => p.stock === true },
   { href: '/settings',    label: 'Configuración',     icon: Settings,     check: (p) => p.settings === true },
 ]
 

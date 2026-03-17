@@ -82,6 +82,10 @@
   /* Sidebar dimensions */
   --sidebar-width: 256px;
   --sidebar-collapsed-width: 72px;
+
+  /* Frosted surface — noise grain + tint for depth */
+  --surface-tint: #f5f2ee;
+  --noise: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)'/%3E%3C/svg%3E");
 }
 
 .dark {
@@ -110,6 +114,9 @@
   --hint: #737373;
   --faint: #404040;
   --edge-soft: #1c1c1c;
+
+  /* Frosted surface */
+  --surface-tint: #181818;
 }
 
 @layer base {
@@ -162,9 +169,14 @@
    * Shadow-only elevation, no solid border.
    */
   .surface-elevated {
-    @apply bg-surface;
     border-radius: 16px;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.04), 0 20px 40px rgba(0, 0, 0, 0.08);
+    background-color: var(--card);
+    background-image: var(--noise), linear-gradient(145deg, var(--card) 0%, var(--surface-tint) 100%);
+    background-blend-mode: soft-light, normal;
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.85),
+      0 4px 6px rgba(0, 0, 0, 0.04),
+      0 20px 40px rgba(0, 0, 0, 0.10);
   }
 
   /*
@@ -172,14 +184,24 @@
    * Card bg, generous radius, diffused shadow, subtle border for warm bg contrast.
    */
   .surface-card {
-    @apply bg-surface border border-edge/50;
+    @apply border border-edge/50;
     border-radius: 20px;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03), 0 8px 24px rgba(0, 0, 0, 0.03);
+    background-color: var(--card);
+    background-image: var(--noise), linear-gradient(145deg, var(--card) 0%, var(--surface-tint) 100%);
+    background-blend-mode: soft-light, normal;
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.85),
+      0 1px 3px rgba(0, 0, 0, 0.03),
+      0 8px 24px rgba(0, 0, 0, 0.05);
   }
 
   /* Sidebar panel */
   .surface-sidebar {
-    @apply bg-surface border-r border-edge;
+    @apply border-r border-edge;
+    background-color: var(--card);
+    background-image: var(--noise), linear-gradient(180deg, var(--card) 0%, var(--surface-tint) 100%);
+    background-blend-mode: soft-light, normal;
+    box-shadow: 4px 0 32px rgba(0, 0, 0, 0.06);
   }
 
   /* Primary CTA button */
@@ -194,16 +216,26 @@
 
   /* Dark mode -- increase shadow strength for dark backgrounds */
   .dark .surface-elevated {
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2), 0 20px 40px rgba(0, 0, 0, 0.3);
+    background-image: var(--noise), linear-gradient(145deg, var(--card) 0%, var(--surface-tint) 100%);
+    background-blend-mode: overlay, normal;
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.05),
+      0 4px 6px rgba(0, 0, 0, 0.2),
+      0 20px 40px rgba(0, 0, 0, 0.3);
   }
 
   .dark .surface-card {
+    background-image: var(--noise), linear-gradient(145deg, var(--card) 0%, var(--surface-tint) 100%);
+    background-blend-mode: overlay, normal;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15), 0 10px 30px rgba(0, 0, 0, 0.2);
     border-color: transparent;
   }
 
   .dark .surface-sidebar {
-    @apply bg-surface border-edge;
+    @apply border-edge;
+    background-image: var(--noise), linear-gradient(180deg, var(--card) 0%, var(--surface-tint) 100%);
+    background-blend-mode: overlay, normal;
+    box-shadow: 4px 0 32px rgba(0, 0, 0, 0.3);
   }
 
   .text-label    { font-size: 10px; font-weight: 500; letter-spacing: 0.06em; text-transform: uppercase; }
