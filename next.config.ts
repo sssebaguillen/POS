@@ -17,8 +17,17 @@ const securityHeaders = [
   },
 ];
 
+const supabaseHostname = (process.env.NEXT_PUBLIC_SUPABASE_URL ?? '')
+  .replace(/^https?:\/\//, '')
+  .split('/')[0]
+
 const nextConfig: NextConfig = {
   reactCompiler: true,
+  images: {
+    remotePatterns: supabaseHostname
+      ? [{ protocol: 'https', hostname: supabaseHostname }]
+      : [],
+  },
   async headers() {
     return [
       {

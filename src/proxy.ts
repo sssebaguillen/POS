@@ -29,7 +29,9 @@ export async function proxy(request: NextRequest) {
     // style-src-attr covers inline style="" attributes used by recharts and
     // other component libraries. This is lower risk than script 'unsafe-inline'.
     "style-src-attr 'unsafe-inline'",
-    "img-src 'self' data: https:",
+    // next/image serves all images through /_next/image (self).
+    // The Supabase host is needed for the raw <img> logo preview in SettingsForm.
+    `img-src 'self' data: ${supabaseUrl}`,
     "font-src 'self'",
     `connect-src 'self' ${supabaseUrl} ${supabaseWs}`,
     "frame-ancestors 'none'",
