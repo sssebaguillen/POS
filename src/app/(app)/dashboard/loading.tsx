@@ -1,6 +1,6 @@
 export default function DashboardLoading() {
   return (
-    <div className="flex flex-col h-screen overflow-hidden">
+    <div className="flex flex-col h-full overflow-hidden">
       {/* Header */}
       <div className="h-14 border-b border-edge/60 bg-surface flex items-center px-5 gap-4 shrink-0">
         <div className="skeleton-pulse h-6 w-36 rounded-lg" />

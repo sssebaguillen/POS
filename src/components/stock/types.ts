@@ -9,6 +9,13 @@ export interface InventoryBrand {
   name: string
 }
 
+export type SortField = 'name' | 'price' | 'cost' | 'stock' | 'margin'
+export type SortDir = 'asc' | 'desc'
+export interface SortOption {
+  field: SortField
+  dir: SortDir
+}
+
 export interface InventoryProduct {
   id: string
   name: string

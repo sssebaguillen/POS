@@ -23,6 +23,9 @@ const supabaseHostname = (process.env.NEXT_PUBLIC_SUPABASE_URL ?? '')
 
 const nextConfig: NextConfig = {
   reactCompiler: true,
+  devIndicators: {
+    position: 'bottom-right',
+  },
   images: {
     remotePatterns: supabaseHostname
       ? [{ protocol: 'https', hostname: supabaseHostname }]
