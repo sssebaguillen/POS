@@ -1,7 +1,7 @@
 'use client'
 
-import { Fragment, useMemo, useState } from 'react'
-import { Pencil, Plus } from 'lucide-react'
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
+import { Pencil, Plus, Search } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import PageHeader from '@/components/shared/PageHeader'
 import { Button } from '@/components/ui/button'
@@ -48,6 +48,29 @@ export default function PriceListsPanel({
   const [overrideBrandId, setOverrideBrandId] = useState<string | null>(null)
   const [savingDefaultId, setSavingDefaultId] = useState<string | null>(null)
   const [crudError, setCrudError] = useState<string | null>(null)
+  const [search, setSearch] = useState('')
+  const [visibleGroupCount, setVisibleGroupCount] = useState(20)
+  const sentinelRef = useRef<HTMLDivElement>(null)
+  const prevKeyRef = useRef(`${activeListId}|${search}`)
+
+  const resetKey = `${activeListId}|${search}`
+  if (prevKeyRef.current !== resetKey) {
+    prevKeyRef.current = resetKey
+    setVisibleGroupCount(20)
+  }
+
+  useEffect(() => {
+    const sentinel = sentinelRef.current
+    if (!sentinel) return
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) setVisibleGroupCount(prev => prev + 20)
+      },
+      { rootMargin: '300px' }
+    )
+    observer.observe(sentinel)
+    return () => observer.disconnect()
+  }, [])
 
   const supabase = useMemo(() => createClient(), [])
 
@@ -116,6 +139,15 @@ export default function PriceListsPanel({
     })
   }, [products, activeList, activeListOverrides])
 
+  const filteredRows = useMemo(() => {
+    if (!search.trim()) return productRows
+    const q = search.trim().toLowerCase()
+    return productRows.filter(row =>
+      row.product.name.toLowerCase().includes(q) ||
+      (row.product.brand?.name ?? '').toLowerCase().includes(q)
+    )
+  }, [productRows, search])
+
   const groupedRows = useMemo(() => {
     const groups = new Map<string, {
       key: string
@@ -126,7 +158,7 @@ export default function PriceListsPanel({
       rows: typeof productRows
     }>()
 
-    for (const row of productRows) {
+    for (const row of filteredRows) {
       const brandId = row.product.brand_id ?? null
       const brandName = row.product.brand?.name ?? null
       const brandKey = brandId ?? '__sin_marca__'
@@ -150,7 +182,12 @@ export default function PriceListsPanel({
     }
 
     return Array.from(groups.values())
-  }, [productRows, activeListOverrides])
+  }, [filteredRows, activeListOverrides])
+
+  const visibleGroups = useMemo(
+    () => groupedRows.slice(0, visibleGroupCount),
+    [groupedRows, visibleGroupCount]
+  )
 
   function handleCreated(list: PriceList) {
     setLists(prev => [...prev, list])
@@ -248,7 +285,7 @@ export default function PriceListsPanel({
   }
 
   return (
-    <div className="flex flex-col h-screen overflow-hidden">
+    <div className="flex flex-col h-full overflow-hidden">
       <PageHeader title="Listas de precios">
         {!readOnly && (
           <Button
@@ -323,7 +360,17 @@ export default function PriceListsPanel({
             <div className="px-2 pb-2 flex flex-wrap items-center gap-2">
               <h2 className="text-sm font-semibold text-heading">{activeList.name}</h2>
               {activeList.description && <span className="text-xs text-hint">{activeList.description}</span>}
-              <span className="ml-auto text-xs text-subtle">Global: x{activeList.multiplier.toFixed(4)}</span>
+              <div className="relative ml-auto">
+                <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-hint pointer-events-none" />
+                <input
+                  type="text"
+                  value={search}
+                  onChange={e => setSearch(e.target.value)}
+                  placeholder="Buscar producto o marca..."
+                  className="pl-8 pr-3 py-1.5 text-xs rounded-lg border border-edge bg-surface-alt text-body placeholder:text-hint focus:outline-none focus:ring-1 focus:ring-primary/40 w-56"
+                />
+              </div>
+              <span className="text-xs text-subtle">Global: x{activeList.multiplier.toFixed(4)}</span>
               <Button
                 variant="outline"
                 size="sm"
@@ -365,7 +412,7 @@ export default function PriceListsPanel({
                     </TableCell>
                   </TableRow>
                 ) : (
-                  groupedRows.map(group => (
+                  visibleGroups.map(group => (
                     <Fragment key={`brand-${group.key}`}>
                       <TableRow className="bg-surface-alt/70">
                         <TableCell colSpan={6}>
@@ -434,6 +481,12 @@ export default function PriceListsPanel({
                 )}
               </TableBody>
             </Table>
+            <div ref={sentinelRef} />
+            {visibleGroupCount < groupedRows.length && (
+              <p className="py-3 text-center text-xs text-subtle">
+                Mostrando {visibleGroups.reduce((n, g) => n + g.rows.length, 0)} de {filteredRows.length} productos — seguí scrolleando para ver más
+              </p>
+            )}
           </div>
         )}
       </div>

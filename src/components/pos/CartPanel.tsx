@@ -648,7 +648,7 @@ export default function CartPanel({ businessId, activePriceList, priceListOverri
         )}
 
         {editingSale && (
-          <div className="absolute inset-0 z-40 bg-background flex flex-col">
+          <div className="absolute inset-0 z-40 bg-card flex flex-col">
             <div className="flex items-center gap-3 px-4 h-12 border-b border-edge shrink-0">
               <button
                 onClick={() => setEditingSale(null)}

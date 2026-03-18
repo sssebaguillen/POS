@@ -10,3 +10,8 @@ export interface ProductWithCategory extends Product {
   brand?: { id: string; name: string } | null
   categories?: { name: string; icon: string } | null
 }
+
+export type ActiveFilter =
+  | { type: 'category'; id: string }
+  | { type: 'brand'; id: string }
+  | null

@@ -1,37 +1,79 @@
 'use client'
 
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useCartStore } from '@/lib/store/cart.store'
 import { calculateProductPrice } from '@/lib/price-lists'
 import type { Product } from '@/lib/types'
-import type { ProductWithCategory } from '@/components/pos/types'
+import type { ProductWithCategory, ActiveFilter } from '@/components/pos/types'
 import type { PriceList, PriceListOverride } from '@/components/price-lists/types'
+
+const PAGE_SIZE = 80
 
 interface Props {
   products: ProductWithCategory[]
   search: string
+  activeFilter: ActiveFilter
   activePriceList: PriceList | null
   priceListOverrides: PriceListOverride[]
 }
 
-export default function ProductPanel({ products, search, activePriceList, priceListOverrides }: Props) {
+export default function ProductPanel({ products, search, activeFilter, activePriceList, priceListOverrides }: Props) {
   const addItem = useCartStore(s => s.addItem)
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
+  const sentinelRef = useRef<HTMLDivElement>(null)
+  const prevSearchRef = useRef(search)
+  const prevFilterRef = useRef<ActiveFilter>(activeFilter)
 
-  const filtered = products.filter(p => {
-    if (search === '') return true
+  // Reset pagination whenever search or active filter changes
+  if (prevSearchRef.current !== search || prevFilterRef.current !== activeFilter) {
+    prevSearchRef.current = search
+    prevFilterRef.current = activeFilter
+    setVisibleCount(PAGE_SIZE)
+  }
+
+  // IntersectionObserver — load more when sentinel comes into view
+  useEffect(() => {
+    const sentinel = sentinelRef.current
+    if (!sentinel) return
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setVisibleCount(prev => prev + PAGE_SIZE)
+        }
+      },
+      { rootMargin: '300px' }
+    )
+    observer.observe(sentinel)
+    return () => observer.disconnect()
+  }, [])
+
+  const filtered = useMemo(() => {
+    let result = products
+    if (activeFilter?.type === 'category') {
+      result = result.filter(p => p.category_id === activeFilter.id)
+    } else if (activeFilter?.type === 'brand') {
+      result = result.filter(p => p.brand_id === activeFilter.id)
+    }
+    if (!search) return result
     const q = search.toLowerCase()
-    return (
+    return result.filter(p =>
       p.name.toLowerCase().includes(q) ||
       p.barcode === search ||
       p.sku?.toLowerCase().includes(q)
     )
-  })
+  }, [products, search, activeFilter])
 
-  const topSellers = filtered.filter(p => p.sales_count > 0).slice(0, 8)
+  const topSellers = useMemo(
+    () => filtered.filter(p => p.sales_count > 0).slice(0, 8),
+    [filtered]
+  )
+
   const isSearching = search.trim().length > 0
+  const visible = useMemo(() => filtered.slice(0, visibleCount), [filtered, visibleCount])
 
-  function handleAdd(product: Product) {
+  const handleAdd = useCallback((product: Product) => {
     addItem(product)
-  }
+  }, [addItem])
 
   return (
     <div className="p-6 space-y-6">
@@ -69,7 +111,7 @@ export default function ProductPanel({ products, search, activePriceList, priceL
           </div>
         ) : (
           <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))' }}>
-            {filtered.map(product => (
+            {visible.map(product => (
               <ProductCard
                 key={product.id}
                 product={product}
@@ -80,12 +122,19 @@ export default function ProductPanel({ products, search, activePriceList, priceL
             ))}
           </div>
         )}
+        {/* Infinite scroll sentinel */}
+        <div ref={sentinelRef} />
+        {visibleCount < filtered.length && (
+          <p className="py-4 text-center text-xs text-subtle">
+            Mostrando {visibleCount} de {filtered.length} — seguí scrolleando para ver más
+          </p>
+        )}
       </section>
     </div>
   )
 }
 
-function ProductCard({
+const ProductCard = memo(function ProductCard({
   product,
   activePriceList,
   priceListOverrides,
@@ -134,4 +183,4 @@ function ProductCard({
       )}
     </button>
   )
-}
+})

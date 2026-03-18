@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useMemo, useCallback } from 'react'
 import { Search, Menu, ChevronDown, Check } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
@@ -8,7 +8,7 @@ import { useSidebar } from '@/components/shared/AppShell'
 import { useCartStore } from '@/lib/store/cart.store'
 import ProductPanel from '@/components/pos/ProductPanel'
 import CartPanel from '@/components/pos/CartPanel'
-import type { PosCategory, ProductWithCategory } from '@/components/pos/types'
+import type { PosCategory, ProductWithCategory, ActiveFilter } from '@/components/pos/types'
 import type { PriceList, PriceListOverride } from '@/components/price-lists/types'
 import type { ActiveOperator } from '@/lib/operator'
 
@@ -32,9 +32,68 @@ function formatDate(date: Date) {
 export default function POSView({ products, categories, businessId, priceLists, priceListOverrides, activeOperator }: Props) {
   const { toggle } = useSidebar()
   const [search, setSearch] = useState('')
+  const [activeFilter, setActiveFilter] = useState<ActiveFilter>(null)
   const searchRef = useRef<HTMLInputElement>(null)
   const clearCart = useCartStore(s => s.clearCart)
   const addItem = useCartStore(s => s.addItem)
+
+  const filterScrollRef = useRef<HTMLDivElement>(null)
+
+  const handleFilterWheel = useCallback((e: WheelEvent) => {
+    const el = filterScrollRef.current
+    if (!el) return
+    e.preventDefault()
+    el.scrollLeft += e.deltaY + e.deltaX
+  }, [])
+
+  useEffect(() => {
+    const el = filterScrollRef.current
+    if (!el) return
+    el.addEventListener('wheel', handleFilterWheel, { passive: false })
+    return () => el.removeEventListener('wheel', handleFilterWheel)
+  }, [handleFilterWheel])
+
+  const TOP_FILTER_LIMIT = 8
+
+  const topCategories = useMemo(() => {
+    const salesByCategory = new Map<string, { id: string; name: string; total: number }>()
+    for (const p of products) {
+      if (!p.category_id || !p.categories) continue
+      const existing = salesByCategory.get(p.category_id)
+      if (existing) {
+        existing.total += p.sales_count
+      } else {
+        salesByCategory.set(p.category_id, {
+          id: p.category_id,
+          name: p.categories.name,
+          total: p.sales_count,
+        })
+      }
+    }
+    return [...salesByCategory.values()]
+      .sort((a, b) => b.total - a.total)
+      .slice(0, TOP_FILTER_LIMIT)
+  }, [products])
+
+  const topBrands = useMemo(() => {
+    const salesByBrand = new Map<string, { id: string; name: string; total: number }>()
+    for (const p of products) {
+      if (!p.brand_id || !p.brand) continue
+      const existing = salesByBrand.get(p.brand_id)
+      if (existing) {
+        existing.total += p.sales_count
+      } else {
+        salesByBrand.set(p.brand_id, {
+          id: p.brand_id,
+          name: p.brand.name,
+          total: p.sales_count,
+        })
+      }
+    }
+    return [...salesByBrand.values()]
+      .sort((a, b) => b.total - a.total)
+      .slice(0, TOP_FILTER_LIMIT)
+  }, [products])
 
   const defaultList = priceLists.find(pl => pl.is_default) ?? priceLists[0] ?? null
   const [activePriceListId, setActivePriceListId] = useState<string | null>(defaultList?.id ?? null)
@@ -62,6 +121,7 @@ export default function POSView({ products, categories, businessId, priceLists, 
   function handleNewSale() {
     clearCart()
     setSearch('')
+    setActiveFilter(null)
     searchRef.current?.focus()
   }
 
@@ -118,7 +178,7 @@ export default function POSView({ products, categories, businessId, priceLists, 
   }
 
   return (
-    <div className="flex flex-col h-screen overflow-hidden">
+    <div className="flex flex-col h-full overflow-hidden">
       {/* Top bar */}
       <header className="h-14 bg-surface border-b border-edge/60 flex items-center px-5 gap-4 shrink-0">
         <button
@@ -190,13 +250,80 @@ export default function POSView({ products, categories, businessId, priceLists, 
 
       {/* Content: products + cart */}
       <div className="flex flex-1 min-h-0">
-        <div className="flex-1 min-w-0 overflow-y-auto">
-          <ProductPanel
-            products={products}
-            search={search}
-            activePriceList={activePriceList}
-            priceListOverrides={priceListOverrides}
-          />
+        <div className="flex-1 min-w-0 flex flex-col min-h-0">
+          {/* Filter chips strip — scoped to product column only */}
+          {(topCategories.length > 0 || topBrands.length > 0) && (
+            <div className="border-b border-edge/60 bg-surface shrink-0 overflow-hidden">
+              <div
+                ref={filterScrollRef}
+                className="flex items-center gap-1.5 overflow-x-auto no-scrollbar px-4 py-2"
+              >
+                <button
+                  onClick={() => setActiveFilter(null)}
+                  className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs transition-colors ${
+                    activeFilter === null
+                      ? 'bg-primary text-white font-semibold'
+                      : 'border border-edge text-body hover:border-primary/50'
+                  }`}
+                >
+                  Todos
+                </button>
+                {topCategories.length > 0 && (
+                  <span className="shrink-0 w-px h-3.5 bg-edge/60 mx-0.5" />
+                )}
+                {topCategories.map(cat => (
+                  <button
+                    key={cat.id}
+                    onClick={() =>
+                      setActiveFilter(
+                        activeFilter?.type === 'category' && activeFilter.id === cat.id
+                          ? null
+                          : { type: 'category', id: cat.id }
+                      )
+                    }
+                    className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs transition-colors ${
+                      activeFilter?.type === 'category' && activeFilter.id === cat.id
+                        ? 'bg-primary text-white font-semibold'
+                        : 'border border-edge text-body hover:border-primary/50'
+                    }`}
+                  >
+                    {cat.name}
+                  </button>
+                ))}
+                {topBrands.length > 0 && (
+                  <span className="shrink-0 w-px h-3.5 bg-edge/60 mx-0.5" />
+                )}
+                {topBrands.map(brand => (
+                  <button
+                    key={brand.id}
+                    onClick={() =>
+                      setActiveFilter(
+                        activeFilter?.type === 'brand' && activeFilter.id === brand.id
+                          ? null
+                          : { type: 'brand', id: brand.id }
+                      )
+                    }
+                    className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs transition-colors ${
+                      activeFilter?.type === 'brand' && activeFilter.id === brand.id
+                        ? 'bg-primary text-white font-semibold'
+                        : 'border border-edge text-body hover:border-primary/50'
+                    }`}
+                  >
+                    {brand.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+          <div className="flex-1 overflow-y-auto">
+            <ProductPanel
+              products={products}
+              search={search}
+              activeFilter={activeFilter}
+              activePriceList={activePriceList}
+              priceListOverrides={priceListOverrides}
+            />
+          </div>
         </div>
         <div className="w-[380px] shrink-0 bg-surface border-l border-edge/60 flex flex-col">
           <CartPanel
