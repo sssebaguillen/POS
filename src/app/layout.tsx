@@ -2,6 +2,8 @@ import type { Metadata } from 'next'
 import { DM_Sans } from 'next/font/google'
 import './globals.css'
 import { ThemeProvider } from '@/components/shared/theme'
+import { SpeedInsights } from "@vercel/speed-insights/next";
+
 
 const dmSans = DM_Sans({
   subsets: ['latin'],
@@ -23,6 +25,7 @@ export default function RootLayout({
     <html lang="es" className={dmSans.variable} suppressHydrationWarning>
       <body className="font-sans antialiased">
         <ThemeProvider>{children}</ThemeProvider>
+        <SpeedInsights />
       </body>
     </html>
   )
