@@ -3,7 +3,7 @@
 import { useRouter, usePathname } from 'next/navigation'
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
+import { DatePicker } from '@/components/ui/DatePicker'
 import PageHeader from '@/components/shared/PageHeader'
 import SalesHistoryTable from '@/components/dashboard/SalesHistoryTable'
 
@@ -74,18 +74,16 @@ export default function SalesHistoryView({ rows, businessId, period, from, to }:
         {/* Custom date range inputs */}
         {period === 'personalizado' && (
           <div className="flex flex-wrap items-center gap-2">
-            <Input
-              type="date"
+            <DatePicker
               value={localFrom}
-              onChange={e => setLocalFrom(e.target.value)}
-              className="h-9 w-40 rounded-lg text-sm"
+              onChange={setLocalFrom}
+              className="w-40"
             />
             <span className="text-sm text-hint">—</span>
-            <Input
-              type="date"
+            <DatePicker
               value={localTo}
-              onChange={e => setLocalTo(e.target.value)}
-              className="h-9 w-40 rounded-lg text-sm"
+              onChange={setLocalTo}
+              className="w-40"
             />
             <Button
               size="sm"

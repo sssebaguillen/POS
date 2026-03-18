@@ -6,7 +6,10 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { X } from 'lucide-react'
 import { Dialog, DialogContent } from '@/components/ui/dialog'
+import ConfirmModal from '@/components/shared/ConfirmModal'
 import type { PriceList } from '@/components/price-lists/types'
+
+type ConfirmState = { title: string; message: string; onConfirm: () => void } | null
 
 interface EditPriceListModalProps {
   open: boolean
@@ -29,6 +32,7 @@ export default function EditPriceListModal({
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [pendingConfirm, setPendingConfirm] = useState<ConfirmState>(null)
 
   const supabase = useMemo(() => createClient(), [])
 
@@ -94,30 +98,34 @@ export default function EditPriceListModal({
     onClose()
   }
 
-  async function handleDelete() {
-    const confirmed = window.confirm(`Eliminar lista \"${list.name}\"? Esta accion no se puede deshacer.`)
-    if (!confirmed) return
+  function handleDelete() {
+    setPendingConfirm({
+      title: `Eliminar lista "${list.name}"`,
+      message: 'Esta accion no se puede deshacer.',
+      onConfirm: async () => {
+        setDeleting(true)
+        setError(null)
 
-    setDeleting(true)
-    setError(null)
+        const { error: deleteError } = await supabase
+          .from('price_lists')
+          .delete()
+          .eq('id', list.id)
 
-    const { error: deleteError } = await supabase
-      .from('price_lists')
-      .delete()
-      .eq('id', list.id)
+        setDeleting(false)
 
-    setDeleting(false)
+        if (deleteError) {
+          setError(deleteError.message)
+          return
+        }
 
-    if (deleteError) {
-      setError(deleteError.message)
-      return
-    }
-
-    onDeleted(list.id)
-    onClose()
+        onDeleted(list.id)
+        onClose()
+      },
+    })
   }
 
   return (
+    <>
     <Dialog open={open} onOpenChange={nextOpen => !nextOpen && handleClose()}>
       <DialogContent className="sm:max-w-[560px] p-0 gap-0 rounded-2xl overflow-hidden bg-app-bg" showCloseButton={false}>
         <div className="modal-header px-6 py-4 flex items-center justify-between">
@@ -226,5 +234,14 @@ export default function EditPriceListModal({
         </form>
       </DialogContent>
     </Dialog>
+
+    <ConfirmModal
+      open={pendingConfirm !== null}
+      title={pendingConfirm?.title ?? ''}
+      message={pendingConfirm?.message ?? ''}
+      onConfirm={() => { pendingConfirm?.onConfirm(); setPendingConfirm(null) }}
+      onCancel={() => setPendingConfirm(null)}
+    />
+  </>
   )
 }

@@ -14,6 +14,8 @@ interface ProductOverrideModalProps {
   priceListId: string
   product: PriceListProduct
   currentOverride: PriceListOverride | null
+  brandOverride: PriceListOverride | null
+  listMultiplier: number
   effectiveMultiplier: number
   onSaved: (override: PriceListOverride | null) => void
 }
@@ -24,6 +26,8 @@ export default function ProductOverrideModal({
   priceListId,
   product,
   currentOverride,
+  brandOverride,
+  listMultiplier,
   effectiveMultiplier,
   onSaved,
 }: ProductOverrideModalProps) {
@@ -42,6 +46,58 @@ export default function ProductOverrideModal({
   function handleClose() {
     if (saving) return
     setError(null)
+    onClose()
+  }
+
+  async function handleReset() {
+    if (!currentOverride && !brandOverride) return
+    setSaving(true)
+    setError(null)
+
+    if (currentOverride) {
+      const { error: deleteError } = await supabase
+        .from('price_list_overrides')
+        .delete()
+        .eq('id', currentOverride.id)
+
+      setSaving(false)
+
+      if (deleteError) {
+        setError(deleteError.message)
+        return
+      }
+
+      onSaved(null)
+      onClose()
+      return
+    }
+
+    // brand override only: pin product to list base multiplier to bypass brand override
+    const { data, error: insertError } = await supabase
+      .from('price_list_overrides')
+      .insert({
+        price_list_id: priceListId,
+        product_id: product.id,
+        brand_id: null,
+        multiplier: listMultiplier,
+      })
+      .select('id, price_list_id, product_id, brand_id, multiplier')
+      .single()
+
+    setSaving(false)
+
+    if (insertError || !data) {
+      setError(insertError?.message ?? 'Error al restablecer el override')
+      return
+    }
+
+    onSaved({
+      id: data.id,
+      price_list_id: data.price_list_id,
+      product_id: data.product_id,
+      brand_id: data.brand_id,
+      multiplier: Number(data.multiplier),
+    })
     onClose()
   }
 
@@ -190,25 +246,41 @@ export default function ProductOverrideModal({
             <p className="text-caption text-hint">10% = +10% sobre el costo · 60% = +60% sobre el costo</p>
           </div>
 
-          <div className="pt-1 flex items-center justify-end gap-2.5">
-            <Button
-              type="button"
-              variant="cancel"
-              size="sm"
-              className="rounded-lg text-xs"
-              onClick={handleClose}
-              disabled={saving}
-            >
-              Cancelar
-            </Button>
-            <Button
-              type="submit"
-              size="sm"
-              className="rounded-lg text-xs bg-primary hover:bg-primary/90 text-primary-foreground"
-              disabled={saving}
-            >
-              {saving ? 'Guardando...' : 'Guardar'}
-            </Button>
+          <div className="pt-1 flex items-center justify-between gap-2.5">
+            {(currentOverride ?? brandOverride) ? (
+              <Button
+                type="button"
+                variant="destructive"
+                size="sm"
+                className="rounded-lg text-xs"
+                onClick={() => void handleReset()}
+                disabled={saving}
+              >
+                Restablecer
+              </Button>
+            ) : (
+              <div />
+            )}
+            <div className="flex items-center gap-2.5">
+              <Button
+                type="button"
+                variant="cancel"
+                size="sm"
+                className="rounded-lg text-xs"
+                onClick={handleClose}
+                disabled={saving}
+              >
+                Cancelar
+              </Button>
+              <Button
+                type="submit"
+                size="sm"
+                className="rounded-lg text-xs bg-primary hover:bg-primary/90 text-primary-foreground"
+                disabled={saving}
+              >
+                {saving ? 'Guardando...' : 'Guardar'}
+              </Button>
+            </div>
           </div>
         </form>
       </DialogContent>

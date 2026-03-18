@@ -108,6 +108,7 @@ export default function PriceListsPanel({
       return {
         product,
         productOverride,
+        brandOverride,
         activeMultiplier,
         finalPrice,
         margin,
@@ -372,7 +373,7 @@ export default function PriceListsPanel({
                             <div className="flex items-center gap-2">
                               <span className="text-xs font-semibold uppercase tracking-wide text-subtle">{group.label}</span>
                               {group.brandOverride && (
-                                <span className="inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold bg-primary/10 text-primary">
+                                <span className="inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold bg-primary text-primary-foreground">
                                   +{((group.brandOverride.multiplier - 1) * 100).toFixed(0)}%
                                 </span>
                               )}
@@ -401,8 +402,8 @@ export default function PriceListsPanel({
                           <TableCell className="text-right tabular-nums">${row.product.cost.toLocaleString('es-AR')}</TableCell>
                           <TableCell className="text-right tabular-nums">
                             ${row.finalPrice.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                            {row.productOverride && (
-                              <span className="ml-2 inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold bg-primary/10 text-primary">
+                            {(row.productOverride ?? row.brandOverride) && (
+                              <span className="ml-2 inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold bg-primary text-primary-foreground">
                                 Override
                               </span>
                             )}
@@ -465,6 +466,10 @@ export default function PriceListsPanel({
           currentOverride={
             activeListOverrides.find(override => override.product_id === overrideProduct.id) ?? null
           }
+          brandOverride={
+            productRows.find(row => row.product.id === overrideProduct.id)?.brandOverride ?? null
+          }
+          listMultiplier={activeList.multiplier}
           effectiveMultiplier={
             productRows.find(row => row.product.id === overrideProduct.id)?.activeMultiplier ?? activeList.multiplier
           }

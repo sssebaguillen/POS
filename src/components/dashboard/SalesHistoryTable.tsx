@@ -4,6 +4,7 @@ import { useState, useMemo, memo } from 'react'
 import { Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { DatePicker } from '@/components/ui/DatePicker'
 import { createClient } from '@/lib/supabase/client'
 import { normalizePayment } from '@/lib/payments'
 
@@ -198,11 +199,10 @@ function SalesHistoryTable({ rows, businessId }: Props) {
       <div className="p-4 border-b border-edge-soft space-y-3">
         <p className="font-semibold text-heading">Historial detallado</p>
         <div className="flex flex-wrap gap-2">
-          <Input
-            type="date"
+          <DatePicker
             value={dateFilter}
-            onChange={e => setDateFilter(e.target.value)}
-            className="h-9 w-40 rounded-lg text-sm"
+            onChange={setDateFilter}
+            className="w-40"
           />
           <Input
             value={searchQuery}

@@ -3,7 +3,7 @@
 import { useMemo, useState, memo } from 'react'
 import { TrendingDown, TrendingUp } from 'lucide-react'
 import PageHeader from '@/components/shared/PageHeader'
-import { Input } from '@/components/ui/input'
+import { DatePicker } from '@/components/ui/DatePicker'
 import { Button } from '@/components/ui/button'
 import {
   endOfDay, isCompletedSale, startOfDay, startOfWeek,
@@ -337,8 +337,8 @@ export default function StatsView({ sales, payments, saleItems, products, catego
 
           {period === 'custom' && (
             <div className="flex gap-3 items-center">
-              <Input type="date" value={fromDate} onChange={e => setFromDate(e.target.value)} className="h-9 w-40 rounded-lg text-sm" />
-              <Input type="date" value={toDate} onChange={e => setToDate(e.target.value)} className="h-9 w-40 rounded-lg text-sm" />
+              <DatePicker value={fromDate} onChange={setFromDate} className="w-40" />
+              <DatePicker value={toDate} onChange={setToDate} className="w-40" />
               <Button variant="outline" size="sm" className="rounded-lg text-xs" onClick={() => { setFromDate(''); setToDate('') }}>
                 Limpiar
               </Button>

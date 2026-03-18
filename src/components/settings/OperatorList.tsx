@@ -5,6 +5,9 @@ import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { type OperatorRole, type SettingsOperator } from '@/components/settings/types'
 import NewOperatorModal from '@/components/settings/NewOperatorModal'
+import ConfirmModal from '@/components/shared/ConfirmModal'
+
+type ConfirmState = { title: string; message: string; onConfirm: () => void } | null
 
 interface Props {
   businessId: string
@@ -24,32 +27,34 @@ export default function OperatorList({ businessId, initialOperators }: Props) {
   const [operatorError, setOperatorError] = useState('')
   const [operatorSuccess, setOperatorSuccess] = useState('')
   const [deletingOperatorId, setDeletingOperatorId] = useState<string | null>(null)
+  const [pendingConfirm, setPendingConfirm] = useState<ConfirmState>(null)
 
-  async function handleDeleteOperator(operator: SettingsOperator) {
-    const confirmed = window.confirm(`Eliminar operador ${operator.name}?`)
-    if (!confirmed) {
-      return
-    }
+  function handleDeleteOperator(operator: SettingsOperator) {
+    setPendingConfirm({
+      title: `Eliminar operador "${operator.name}"`,
+      message: 'Esta accion no se puede deshacer.',
+      onConfirm: async () => {
+        setDeletingOperatorId(operator.id)
+        setOperatorError('')
+        setOperatorSuccess('')
 
-    setDeletingOperatorId(operator.id)
-    setOperatorError('')
-    setOperatorSuccess('')
+        const { error: deleteError } = await supabase
+          .from('operators')
+          .delete()
+          .eq('id', operator.id)
+          .eq('business_id', businessId)
 
-    const { error: deleteError } = await supabase
-      .from('operators')
-      .delete()
-      .eq('id', operator.id)
-      .eq('business_id', businessId)
+        setDeletingOperatorId(null)
 
-    setDeletingOperatorId(null)
+        if (deleteError) {
+          setOperatorError(deleteError.message)
+          return
+        }
 
-    if (deleteError) {
-      setOperatorError(deleteError.message)
-      return
-    }
-
-    setOperatorSuccess('Operador eliminado correctamente.')
-    setOperatorList(prev => prev.filter(item => item.id !== operator.id))
+        setOperatorSuccess('Operador eliminado correctamente.')
+        setOperatorList(prev => prev.filter(item => item.id !== operator.id))
+      },
+    })
   }
 
   return (
@@ -115,6 +120,14 @@ export default function OperatorList({ businessId, initialOperators }: Props) {
             [...prev, operator].sort((a, b) => a.name.localeCompare(b.name))
           )
         }}
+      />
+
+      <ConfirmModal
+        open={pendingConfirm !== null}
+        title={pendingConfirm?.title ?? ''}
+        message={pendingConfirm?.message ?? ''}
+        onConfirm={() => { pendingConfirm?.onConfirm(); setPendingConfirm(null) }}
+        onCancel={() => setPendingConfirm(null)}
       />
     </div>
   )

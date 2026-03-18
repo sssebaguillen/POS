@@ -6,8 +6,11 @@ import { createClient } from '@/lib/supabase/client'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import NewProductModal from '@/components/stock/NewProductModal'
+import ConfirmModal from '@/components/shared/ConfirmModal'
 import type { InventoryProduct, InventoryBrand } from '@/components/stock/types'
 import type { PriceList } from '@/components/price-lists/types'
+
+type ConfirmState = { title: string; message: string; onConfirm: () => void } | null
 import {
   Table,
   TableBody,
@@ -41,6 +44,7 @@ export default function ProductsPanel({ businessId, initialProducts, categories,
   const [loadingId, setLoadingId] = useState<string | null>(null)
   const [showNewProduct, setShowNewProduct] = useState(false)
   const [crudError, setCrudError] = useState<string | null>(null)
+  const [pendingConfirm, setPendingConfirm] = useState<ConfirmState>(null)
 
   const filteredProducts = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase()
@@ -94,27 +98,30 @@ export default function ProductsPanel({ businessId, initialProducts, categories,
     setLoadingId(null)
   }
 
-  async function deleteProduct(product: InventoryProduct) {
-    const confirmed = window.confirm(`Eliminar "${product.name}"? Esta accion no se puede deshacer.`)
-    if (!confirmed) return
+  function deleteProduct(product: InventoryProduct) {
+    setPendingConfirm({
+      title: `Eliminar "${product.name}"`,
+      message: 'Esta accion no se puede deshacer.',
+      onConfirm: async () => {
+        setCrudError(null)
+        setLoadingId(product.id)
 
-    setCrudError(null)
-    setLoadingId(product.id)
+        const { error } = await supabase
+          .from('products')
+          .delete()
+          .eq('id', product.id)
+          .eq('business_id', businessId)
 
-    const { error } = await supabase
-      .from('products')
-      .delete()
-      .eq('id', product.id)
-      .eq('business_id', businessId)
+        if (error) {
+          setCrudError(error.message)
+          setLoadingId(null)
+          return
+        }
 
-    if (error) {
-      setCrudError(error.message)
-      setLoadingId(null)
-      return
-    }
-
-    setProducts(prev => prev.filter(item => item.id !== product.id))
-    setLoadingId(null)
+        setProducts(prev => prev.filter(item => item.id !== product.id))
+        setLoadingId(null)
+      },
+    })
   }
 
   function exportCsv() {
@@ -299,6 +306,14 @@ export default function ProductsPanel({ businessId, initialProducts, categories,
         brands={brands}
         defaultPriceList={defaultPriceList}
         onCreated={product => setProducts(prev => [product, ...prev])}
+      />
+
+      <ConfirmModal
+        open={pendingConfirm !== null}
+        title={pendingConfirm?.title ?? ''}
+        message={pendingConfirm?.message ?? ''}
+        onConfirm={() => { pendingConfirm?.onConfirm(); setPendingConfirm(null) }}
+        onCancel={() => setPendingConfirm(null)}
       />
     </div>
   )

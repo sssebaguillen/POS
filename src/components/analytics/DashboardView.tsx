@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
+import { DatePicker } from '@/components/ui/DatePicker'
 import PageHeader from '@/components/shared/PageHeader'
 import KPICard from '@/components/shared/KPICard'
 import Link from 'next/link'
@@ -274,8 +274,8 @@ export default function DashboardView({ sales, payments, saleItems, products, bu
 
           {(period === 'custom' || period === 'history') && (
             <div className="flex gap-3 items-center">
-              <Input type="date" value={fromDate} onChange={e => setFromDate(e.target.value)} className="h-9 w-40 rounded-lg text-sm" />
-              <Input type="date" value={toDate} onChange={e => setToDate(e.target.value)} className="h-9 w-40 rounded-lg text-sm" />
+              <DatePicker value={fromDate} onChange={setFromDate} className="w-40" />
+              <DatePicker value={toDate} onChange={setToDate} className="w-40" />
               <Button variant="outline" size="sm" className="rounded-lg text-xs" onClick={() => { setFromDate(''); setToDate('') }}>
                 Limpiar
               </Button>

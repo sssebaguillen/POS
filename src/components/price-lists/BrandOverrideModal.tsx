@@ -175,7 +175,7 @@ export default function BrandOverrideModal({
                 onClick={() => void handleDelete()}
                 disabled={saving}
               >
-                Eliminar override
+                Restablecer
               </Button>
             ) : (
               <div />

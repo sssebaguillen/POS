@@ -11,8 +11,11 @@ import EditProductModal from '@/components/stock/EditProductModal'
 import CategoryModal from '@/components/stock/CategoryModal'
 import BrandModal from './BrandModal'
 import ImportProductsModal from '@/components/stock/ImportProductsModal'
+import ConfirmModal from '@/components/shared/ConfirmModal'
 import type { PriceList, PriceListOverride } from '@/components/price-lists/types'
 import type { InventoryBrand, InventoryCategory, InventoryProduct } from '@/components/stock/types'
+
+type ConfirmState = { title: string; message: string; onConfirm: () => void } | null
 
 type FilterStatus = 'all' | 'low' | 'out' | 'discontinued'
 
@@ -75,6 +78,7 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
   const [showBrands, setShowBrands] = useState(false)
   const [editingProduct, setEditingProduct] = useState<InventoryProduct | null>(null)
   const [crudError, setCrudError] = useState<string | null>(null)
+  const [pendingConfirm, setPendingConfirm] = useState<ConfirmState>(null)
 
   const supabase = useMemo(() => createClient(), [])
 
@@ -199,7 +203,7 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
     }))
   }
 
-  async function handleDeleteProduct(product: InventoryProduct) {
+  function handleDeleteProduct(product: InventoryProduct) {
     if (readOnly) {
       setCrudError('Tu rol tiene acceso de solo lectura para stock.')
       return
@@ -210,25 +214,27 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
       return
     }
 
-    const confirmed = window.confirm(`Eliminar "${product.name}"? Esta accion no se puede deshacer.`)
-    if (!confirmed) return
+    setPendingConfirm({
+      title: `Eliminar "${product.name}"`,
+      message: 'Esta accion no se puede deshacer.',
+      onConfirm: async () => {
+        setCrudError(null)
+        setLoadingId(product.id)
 
-    setCrudError(null)
-    setLoadingId(product.id)
+        const { error } = await supabase
+          .from('products')
+          .delete()
+          .eq('id', product.id)
+          .eq('business_id', businessId)
 
-    const { error } = await supabase
-      .from('products')
-      .delete()
-      .eq('id', product.id)
-      .eq('business_id', businessId)
-
-    if (!error) {
-      setProducts(prev => prev.filter(p => p.id !== product.id))
-    } else {
-      setCrudError(error.message)
-    }
-
-    setLoadingId(null)
+        if (!error) {
+          setProducts(prev => prev.filter(p => p.id !== product.id))
+        } else {
+          setCrudError(error.message)
+        }
+        setLoadingId(null)
+      },
+    })
   }
 
   function exportCsv() {
@@ -608,6 +614,14 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
         </span>
         <span className="ml-auto">{categoryCount} categorias</span>
       </div>
+
+      <ConfirmModal
+        open={pendingConfirm !== null}
+        title={pendingConfirm?.title ?? ''}
+        message={pendingConfirm?.message ?? ''}
+        onConfirm={() => { pendingConfirm?.onConfirm(); setPendingConfirm(null) }}
+        onCancel={() => setPendingConfirm(null)}
+      />
     </div>
   )
 }

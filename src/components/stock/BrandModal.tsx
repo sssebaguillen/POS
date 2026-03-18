@@ -6,7 +6,10 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { X } from 'lucide-react'
 import { Dialog, DialogContent } from '@/components/ui/dialog'
+import ConfirmModal from '@/components/shared/ConfirmModal'
 import type { InventoryBrand } from '@/components/stock/types'
+
+type ConfirmState = { title: string; message: string; onConfirm: () => void } | null
 
 interface BrandModalProps {
   open: boolean
@@ -32,6 +35,7 @@ export default function BrandModal({
   const [error, setError] = useState<string | null>(null)
   const [creating, setCreating] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [pendingConfirm, setPendingConfirm] = useState<ConfirmState>(null)
 
   const supabase = useMemo(() => createClient(), [])
 
@@ -93,27 +97,30 @@ export default function BrandModal({
     setCreating(false)
   }
 
-  async function handleDelete(brand: InventoryBrand) {
-    const confirmed = window.confirm('Esto quitara la marca de todos los productos y listas de precios asociadas.')
-    if (!confirmed) return
+  function handleDelete(brand: InventoryBrand) {
+    setPendingConfirm({
+      title: `Eliminar marca "${brand.name}"`,
+      message: 'Esto quitara la marca de todos los productos y listas de precios asociadas.',
+      onConfirm: async () => {
+        setDeletingId(brand.id)
+        setError(null)
 
-    setDeletingId(brand.id)
-    setError(null)
+        const { error: deleteError } = await supabase
+          .from('brands')
+          .delete()
+          .eq('id', brand.id)
+          .eq('business_id', businessId)
 
-    const { error: deleteError } = await supabase
-      .from('brands')
-      .delete()
-      .eq('id', brand.id)
-      .eq('business_id', businessId)
+        if (deleteError) {
+          setError(deleteError.message)
+          setDeletingId(null)
+          return
+        }
 
-    if (deleteError) {
-      setError(deleteError.message)
-      setDeletingId(null)
-      return
-    }
-
-    await refreshBrands()
-    setDeletingId(null)
+        await refreshBrands()
+        setDeletingId(null)
+      },
+    })
   }
 
   function handleClose() {
@@ -122,6 +129,7 @@ export default function BrandModal({
   }
 
   return (
+    <>
     <Dialog open={open} onOpenChange={nextOpen => !nextOpen && handleClose()}>
       <DialogContent className="sm:max-w-[560px] p-0 gap-0 rounded-2xl overflow-hidden bg-app-bg" showCloseButton={false}>
         <div className="modal-header px-6 py-4 flex items-center justify-between">
@@ -213,5 +221,14 @@ export default function BrandModal({
         </div>
       </DialogContent>
     </Dialog>
+
+    <ConfirmModal
+      open={pendingConfirm !== null}
+      title={pendingConfirm?.title ?? ''}
+      message={pendingConfirm?.message ?? ''}
+      onConfirm={() => { pendingConfirm?.onConfirm(); setPendingConfirm(null) }}
+      onCancel={() => setPendingConfirm(null)}
+    />
+  </>
   )
 }
