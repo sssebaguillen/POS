@@ -14,7 +14,35 @@ function flashRedirect(destination: URL): NextResponse {
 }
 
 export async function proxy(request: NextRequest) {
-  let supabaseResponse = NextResponse.next({ request })
+  // Generate a cryptographically random nonce per request.
+  // Next.js reads the x-nonce request header and automatically stamps it onto
+  // the inline <script> and <style> tags it generates for hydration, so those
+  // tags pass the nonce-based CSP without needing 'unsafe-inline'.
+  const nonce = btoa(crypto.randomUUID())
+
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? ''
+  const supabaseWs = supabaseUrl.replace(/^https:\/\//, 'wss://')
+  const csp = [
+    "default-src 'self'",
+    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'`,
+    `style-src 'self' 'nonce-${nonce}'`,
+    // style-src-attr covers inline style="" attributes used by recharts and
+    // other component libraries. This is lower risk than script 'unsafe-inline'.
+    "style-src-attr 'unsafe-inline'",
+    "img-src 'self' data: https:",
+    "font-src 'self'",
+    `connect-src 'self' ${supabaseUrl} ${supabaseWs}`,
+    "frame-ancestors 'none'",
+    "object-src 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+  ].join('; ')
+
+  // Forward the nonce to Server Components via request headers.
+  const requestHeaders = new Headers(request.headers)
+  requestHeaders.set('x-nonce', nonce)
+
+  let supabaseResponse = NextResponse.next({ request: { headers: requestHeaders } })
   const { pathname } = request.nextUrl
 
   const supabase = createServerClient(
@@ -29,7 +57,8 @@ export async function proxy(request: NextRequest) {
           cookiesToSet.forEach(({ name, value }) =>
             request.cookies.set(name, value)
           )
-          supabaseResponse = NextResponse.next({ request })
+          // Preserve the nonce headers when Supabase recreates the response.
+          supabaseResponse = NextResponse.next({ request: { headers: requestHeaders } })
           cookiesToSet.forEach(({ name, value, options }) =>
             supabaseResponse.cookies.set(name, value, options)
           )
@@ -55,6 +84,7 @@ export async function proxy(request: NextRequest) {
   }
 
   if (!user || isCatalogRoute) {
+    supabaseResponse.headers.set('Content-Security-Policy', csp)
     return supabaseResponse
   }
 
@@ -71,12 +101,14 @@ export async function proxy(request: NextRequest) {
       path: '/',
       secure: process.env.NODE_ENV === 'production',
     })
+    supabaseResponse.headers.set('Content-Security-Policy', csp)
     return supabaseResponse
   }
 
   if (!operator) {
     // No operator session — allow operator-select to render, redirect everything else.
     if (isOperatorSelectRoute) {
+      supabaseResponse.headers.set('Content-Security-Policy', csp)
       return supabaseResponse
     }
     return NextResponse.redirect(new URL('/operator-select', request.url))
@@ -159,6 +191,7 @@ export async function proxy(request: NextRequest) {
     })
   }
 
+  supabaseResponse.headers.set('Content-Security-Policy', csp)
   return supabaseResponse
 }
 
