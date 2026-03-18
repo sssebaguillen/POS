@@ -118,14 +118,14 @@ create table products (
 );
 
 -- Upsert por SKU (importacion masiva)
-create unique index unique_sku_per_business
-  on products (business_id, sku)
-  where sku is not null;
+alter table products
+  add constraint unique_sku_per_business
+  unique (business_id, sku);
 
 -- Upsert por barcode (importacion masiva)
-create unique index unique_barcode_per_business
-  on products (business_id, barcode)
-  where barcode is not null;
+alter table products
+  add constraint unique_barcode_per_business
+  unique (business_id, barcode);
 
 -- ============================================================
 -- PRICE LISTS

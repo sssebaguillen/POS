@@ -432,7 +432,7 @@ export default function ImportProductsModal({
           const { error } = await supabase
             .from('products')
             .upsert(batch, {
-              onConflict: 'sku,business_id',
+              onConflict: 'business_id,sku',
               ignoreDuplicates: false,
             })
           if (error) throw new Error(`Error al importar productos (SKU): ${error.message}`)
@@ -446,7 +446,7 @@ export default function ImportProductsModal({
           const { error } = await supabase
             .from('products')
             .upsert(batch, {
-              onConflict: 'barcode,business_id',
+              onConflict: 'business_id,barcode',
               ignoreDuplicates: false,
             })
           if (error) throw new Error(`Error al importar productos (barcode): ${error.message}`)
