@@ -85,6 +85,7 @@
 | `price_lists` | Ver listas de precios | true | true | false |
 | `price_lists_write` | Modificar listas de precios | true | true | false |
 | `settings` | Configuración | true | false | false |
+| `expenses` | Ver y cargar gastos | true | true | false |
 
 Rol `'custom'`: cualquier combinación definida por el owner via toggles en Settings.
 

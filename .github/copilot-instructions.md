@@ -226,7 +226,8 @@ export type UserRole = 'owner' | 'manager' | 'cashier' | 'custom'
 ```ts
 export const OWNER_PERMISSIONS: Permissions = {
   sales: true, stock: true, stock_write: true,
-  stats: true, price_lists: true, price_lists_write: true, settings: true
+  stats: true, price_lists: true, price_lists_write: true, settings: true,
+  expenses: true
 }
 ```
 

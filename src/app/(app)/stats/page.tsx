@@ -21,12 +21,24 @@ export default async function StatsPage() {
 
   const businessId = profileBusinessId
 
-  const { data: sales } = await supabase
-    .from('sales')
-    .select('id, total, created_at, status')
-    .eq('business_id', businessId)
-    .order('created_at', { ascending: false })
-    .limit(3000)
+  const [{ data: sales }, { data: products }, { data: categories }] = await Promise.all([
+    supabase
+      .from('sales')
+      .select('id, total, created_at, status')
+      .eq('business_id', businessId)
+      .order('created_at', { ascending: false })
+      .limit(3000),
+    supabase
+      .from('products')
+      .select('id, name, category_id, brand_id, brands(id, name)')
+      .eq('business_id', businessId)
+      .limit(5000),
+    supabase
+      .from('categories')
+      .select('id, name')
+      .eq('business_id', businessId)
+      .limit(500),
+  ])
 
   const saleIds = (sales ?? []).map(sale => sale.id)
 
@@ -60,19 +72,6 @@ export default async function StatsPage() {
       total: Number(item.total),
     }))
   }
-
-  const [{ data: products }, { data: categories }] = await Promise.all([
-    supabase
-      .from('products')
-      .select('id, name, category_id, brand_id, brands(id, name)')
-      .eq('business_id', businessId)
-      .limit(5000),
-    supabase
-      .from('categories')
-      .select('id, name')
-      .eq('business_id', businessId)
-      .limit(500),
-  ])
 
   return (
     <StatsView

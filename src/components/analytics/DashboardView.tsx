@@ -9,6 +9,8 @@ import Link from 'next/link'
 import { endOfDay, isCompletedSale, startOfDay, startOfWeek } from '@/components/analytics/utils'
 import { normalizePayment } from '@/lib/payments'
 import SalesHistoryTable from '@/components/dashboard/SalesHistoryTable'
+import BalanceWidget from '@/components/dashboard/BalanceWidget'
+import type { BusinessBalance } from '@/components/expenses/types'
 
 type Period = 'today' | 'week' | 'month' | 'custom' | 'history'
 
@@ -48,6 +50,7 @@ interface Props {
   saleItems: SaleItemRecord[]
   products: ProductRecord[]
   businessId: string | null
+  balance: BusinessBalance
 }
 
 const PERIOD_TABS = [
@@ -75,7 +78,7 @@ function computeTrend(
   }
 }
 
-export default function DashboardView({ sales, payments, saleItems, products, businessId }: Props) {
+export default function DashboardView({ sales, payments, saleItems, products, businessId, balance }: Props) {
   const [period, setPeriod] = useState<Period>('today')
   const [fromDate, setFromDate] = useState('')
   const [toDate, setToDate] = useState('')
@@ -318,6 +321,14 @@ export default function DashboardView({ sales, payments, saleItems, products, bu
             />
           </div>
 
+          {/* Balance widget */}
+          <BalanceWidget
+            income={balance.income}
+            expenses={balance.expenses}
+            profit={balance.profit}
+            margin={balance.margin}
+          />
+
           {/* Charts row */}
           <div className="surface-card p-6 animate-fade-in" style={{ animationDelay: '80ms' }}>
             <p className="font-semibold text-heading mb-4">
@@ -352,7 +363,12 @@ export default function DashboardView({ sales, payments, saleItems, products, bu
           {/* Bottom row: top products + stock alerts */}
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
             <div className="surface-card p-6">
-              <p className="font-semibold text-heading mb-4">Productos más vendidos</p>
+              <div className="flex items-center justify-between mb-4">
+                <p className="font-semibold text-heading">Productos más vendidos</p>
+                <Link href="/stats/top-products" className="text-xs text-primary font-medium hover:underline">
+                  Ver más →
+                </Link>
+              </div>
               <div className="space-y-3">
                 {topProducts.length === 0 ? (
                   <p className="text-sm text-hint">Sin datos</p>

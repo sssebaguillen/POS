@@ -1,14 +1,22 @@
 'use client'
 
-import { Menu } from 'lucide-react'
+import { Fragment } from 'react'
+import Link from 'next/link'
+import { Menu, ChevronRight } from 'lucide-react'
 import { useSidebar } from '@/components/shared/AppShell'
+
+interface Breadcrumb {
+  label: string
+  href: string
+}
 
 interface Props {
   title: string
+  breadcrumbs?: Breadcrumb[]
   children?: React.ReactNode
 }
 
-export default function PageHeader({ title, children }: Props) {
+export default function PageHeader({ title, breadcrumbs, children }: Props) {
   const { toggle } = useSidebar()
 
   return (
@@ -21,7 +29,22 @@ export default function PageHeader({ title, children }: Props) {
       >
         <Menu size={20} className="text-body" />
       </button>
-      <h1 className="text-lg font-bold text-heading">{title}</h1>
+      {breadcrumbs && breadcrumbs.length > 0 ? (
+        <nav className="flex items-center gap-1 text-sm text-muted-foreground" aria-label="Breadcrumb">
+          {breadcrumbs.map((crumb, i) => (
+            <Fragment key={i}>
+              {i > 0 && <ChevronRight size={14} className="shrink-0" />}
+              <Link href={crumb.href} className="hover:text-heading transition-colors">
+                {crumb.label}
+              </Link>
+            </Fragment>
+          ))}
+          <ChevronRight size={14} className="shrink-0" />
+          <span className="font-semibold text-heading">{title}</span>
+        </nav>
+      ) : (
+        <h1 className="text-lg font-bold text-heading">{title}</h1>
+      )}
       {children && (
         <div className="flex-1 flex items-center justify-end gap-3">
           {children}

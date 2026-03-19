@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import DashboardView from '@/components/analytics/DashboardView'
+import type { BusinessBalance } from '@/components/expenses/types'
 
 export default async function DashboardPage() {
   const supabase = await createClient()
@@ -21,12 +22,28 @@ export default async function DashboardPage() {
 
   const businessId = profileBusinessId
 
-  const { data: sales } = await supabase
-    .from('sales')
-    .select('id, total, created_at, status')
-    .eq('business_id', businessId)
-    .order('created_at', { ascending: false })
-    .limit(3000)
+  const [{ data: sales }, { data: products }, balanceResult] = await Promise.all([
+    supabase
+      .from('sales')
+      .select('id, total, created_at, status')
+      .eq('business_id', businessId)
+      .order('created_at', { ascending: false })
+      .limit(3000),
+    supabase
+      .from('products')
+      .select('id, name, category_id, stock, min_stock, is_active')
+      .eq('business_id', businessId)
+      .limit(5000),
+    supabase.rpc('get_business_balance', {
+      p_business_id: businessId,
+      p_from: null,
+      p_to: null,
+    }),
+  ])
+
+  const balance = (balanceResult.data as unknown as BusinessBalance | null) ?? {
+    income: 0, expenses: 0, profit: 0, margin: 0, by_category: {}, period_from: '', period_to: '',
+  }
 
   const saleIds = (sales ?? []).map(sale => sale.id)
 
@@ -62,12 +79,6 @@ export default async function DashboardPage() {
     }))
   }
 
-  const { data: products } = await supabase
-    .from('products')
-    .select('id, name, category_id, stock, min_stock, is_active')
-    .eq('business_id', businessId)
-    .limit(5000)
-
   return (
     <DashboardView
       sales={(sales ?? []).map(sale => ({
@@ -87,6 +98,7 @@ export default async function DashboardPage() {
         is_active: Boolean(product.is_active),
       }))}
       businessId={businessId}
+      balance={balance}
     />
   )
 }

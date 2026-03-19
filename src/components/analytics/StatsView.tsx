@@ -2,6 +2,7 @@
 
 import { useMemo, useState, memo } from 'react'
 import { TrendingDown, TrendingUp } from 'lucide-react'
+import Link from 'next/link'
 import PageHeader from '@/components/shared/PageHeader'
 import { DatePicker } from '@/components/ui/DatePicker'
 import { Button } from '@/components/ui/button'
@@ -490,7 +491,12 @@ export default function StatsView({ sales, payments, saleItems, products, catego
 
             {/* Payment methods */}
             <div className="surface-card p-6 space-y-4">
-              <p className="font-semibold text-heading">Métodos de pago</p>
+              <div className="flex items-center gap-3">
+                <p className="font-semibold text-heading">Métodos de pago</p>
+                <Link href="/stats/metodos-pago" className="text-xs text-primary font-medium hover:underline">
+                  Ver más →
+                </Link>
+              </div>
               {paymentBreakdown.length === 0 ? (
                 <p className="text-sm text-hint">Sin datos</p>
               ) : (
@@ -514,7 +520,12 @@ export default function StatsView({ sales, payments, saleItems, products, catego
             {/* Ranking */}
             <div className="surface-card p-6 space-y-3">
               <div className="flex items-center justify-between">
-                <p className="font-semibold text-heading">Ranking de productos</p>
+                <div className="flex items-center gap-3">
+                  <p className="font-semibold text-heading">Ranking de productos</p>
+                  <Link href="/stats/top-products" className="text-xs text-primary font-medium hover:underline">
+                    Ver más →
+                  </Link>
+                </div>
                 <div className="flex gap-1.5">
                   <button
                     onClick={() => setRankingMode('amount')}
@@ -548,7 +559,12 @@ export default function StatsView({ sales, payments, saleItems, products, catego
             {/* Breakdown */}
             <div className="surface-card p-6 space-y-3">
               <div className="flex items-center justify-between">
-                <p className="font-semibold text-heading">Breakdown</p>
+                <div className="flex items-center gap-3">
+                  <p className="font-semibold text-heading">Breakdown</p>
+                  <Link href="/stats/breakdown" className="text-xs text-primary font-medium hover:underline">
+                    Ver más →
+                  </Link>
+                </div>
                 <div className="flex gap-1.5">
                   <button
                     onClick={() => setBreakdownMode('category')}

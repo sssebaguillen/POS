@@ -121,6 +121,19 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(new URL('/pos', request.url))
   }
 
+  // /profile is accessible to all authenticated operators — no permission check needed.
+  const isProfileRoute = pathname === '/profile' || pathname.startsWith('/profile/')
+  if (isProfileRoute) {
+    supabaseResponse.headers.set('Content-Security-Policy', csp)
+    return supabaseResponse
+  }
+
+  // /gastos requires expenses permission
+  const isGastosRoute = pathname === '/gastos' || pathname.startsWith('/gastos/')
+  if (isGastosRoute && !hasPermission(operator, 'expenses')) {
+    return flashRedirect(new URL('/pos', request.url))
+  }
+
   const isStatsRoute =
     pathname === '/dashboard' ||
     pathname.startsWith('/dashboard/') ||

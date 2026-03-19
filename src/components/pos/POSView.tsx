@@ -118,12 +118,12 @@ export default function POSView({ products, categories, businessId, priceLists, 
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [listDropdownOpen])
 
-  function handleNewSale() {
+  const handleNewSale = useCallback(() => {
     clearCart()
     setSearch('')
     setActiveFilter(null)
     searchRef.current?.focus()
-  }
+  }, [clearCart])
 
   // Global barcode scanner listener — redirects keystrokes to the search input
   // when no text input is currently focused, so scanning works regardless of
@@ -156,7 +156,7 @@ export default function POSView({ products, categories, businessId, priceLists, 
     return () => document.removeEventListener('keydown', handleGlobalKeyDown)
   }, [])
 
-  function handleSearchKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+  const handleSearchKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
       const barcodeMatch = products.find(p => p.barcode === search)
       if (barcodeMatch) {
@@ -175,7 +175,7 @@ export default function POSView({ products, categories, businessId, priceLists, 
         searchRef.current?.focus()
       }
     }
-  }
+  }, [products, search, addItem])
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
@@ -253,17 +253,18 @@ export default function POSView({ products, categories, businessId, priceLists, 
         <div className="flex-1 min-w-0 flex flex-col min-h-0">
           {/* Filter chips strip — scoped to product column only */}
           {(topCategories.length > 0 || topBrands.length > 0) && (
-            <div className="border-b border-edge/60 bg-surface shrink-0 overflow-hidden">
+            <div className="border-b border-edge/60 shrink-0 overflow-hidden">
               <div
                 ref={filterScrollRef}
-                className="flex items-center gap-1.5 overflow-x-auto no-scrollbar px-4 py-2"
+                className="flex flex-nowrap gap-1.5 overflow-x-auto px-3 py-2"
+                style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
               >
                 <button
                   onClick={() => setActiveFilter(null)}
-                  className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs transition-colors ${
+                  className={`shrink-0 rounded-full px-3 py-1 text-xs font-medium transition-colors ${
                     activeFilter === null
-                      ? 'bg-primary text-white font-semibold'
-                      : 'border border-edge text-body hover:border-primary/50'
+                      ? 'bg-primary text-primary-foreground'
+                      : 'text-muted-foreground hover:text-foreground hover:bg-muted'
                   }`}
                 >
                   Todos
@@ -281,10 +282,10 @@ export default function POSView({ products, categories, businessId, priceLists, 
                           : { type: 'category', id: cat.id }
                       )
                     }
-                    className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs transition-colors ${
+                    className={`shrink-0 rounded-full px-3 py-1 text-xs font-medium transition-colors ${
                       activeFilter?.type === 'category' && activeFilter.id === cat.id
-                        ? 'bg-primary text-white font-semibold'
-                        : 'border border-edge text-body hover:border-primary/50'
+                        ? 'bg-primary text-primary-foreground'
+                        : 'text-muted-foreground hover:text-foreground hover:bg-muted'
                     }`}
                   >
                     {cat.name}
@@ -303,10 +304,10 @@ export default function POSView({ products, categories, businessId, priceLists, 
                           : { type: 'brand', id: brand.id }
                       )
                     }
-                    className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs transition-colors ${
+                    className={`shrink-0 rounded-full px-3 py-1 text-xs font-medium transition-colors ${
                       activeFilter?.type === 'brand' && activeFilter.id === brand.id
-                        ? 'bg-primary text-white font-semibold'
-                        : 'border border-edge text-body hover:border-primary/50'
+                        ? 'bg-primary text-primary-foreground'
+                        : 'text-muted-foreground hover:text-foreground hover:bg-muted'
                     }`}
                   >
                     {brand.name}

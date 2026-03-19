@@ -216,7 +216,7 @@ export default function Sidebar({ open, onClose, activeOperatorName, collapsed, 
               ? 'p-2.5 flex items-center justify-center w-full'
               : 'flex items-center gap-2 px-3 py-2 text-left w-full'
           )}
-          onClick={() => { router.push('/settings'); if (isMobileDrawer) onClose() }}
+          onClick={() => { router.push('/profile'); if (isMobileDrawer) onClose() }}
         >
           <User size={18} />
           {(!collapsed || isMobileDrawer) && 'Perfil'}

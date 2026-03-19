@@ -55,16 +55,12 @@ export default function SalesHistoryView({ rows, businessId, period, from, to }:
 
       <div className="px-4 md:px-6 space-y-3">
         {/* Period tabs */}
-        <div className="flex gap-1.5 flex-wrap">
+        <div className="pill-tabs">
           {(['hoy', 'semana', 'mes', 'personalizado'] as Period[]).map(p => (
             <button
               key={p}
               onClick={() => navigate(p)}
-              className={`text-sm px-4 py-1.5 rounded-full border transition-colors ${
-                period === p
-                  ? 'bg-primary text-primary-foreground border-primary font-medium'
-                  : 'border-edge text-body hover:bg-hover-bg'
-              }`}
+              className={`pill-tab${period === p ? ' pill-tab-active' : ''}`}
             >
               {PERIOD_LABELS[p]}
             </button>

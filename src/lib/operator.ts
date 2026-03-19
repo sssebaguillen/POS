@@ -8,6 +8,7 @@ export interface Permissions {
   price_lists: boolean
   price_lists_write: boolean
   settings: boolean
+  expenses: boolean
 }
 
 export const OWNER_PERMISSIONS: Permissions = {
@@ -18,6 +19,7 @@ export const OWNER_PERMISSIONS: Permissions = {
   price_lists: true,
   price_lists_write: true,
   settings: true,
+  expenses: true,
 }
 
 export interface ActiveOperator {
