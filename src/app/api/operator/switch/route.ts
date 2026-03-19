@@ -107,6 +107,7 @@ function parseVerifyResult(value: unknown): ActiveOperator | null {
       price_lists: permissionRecord.price_lists,
       price_lists_write: permissionRecord.price_lists_write,
       settings: permissionRecord.settings,
+      expenses: permissionRecord.expenses ?? false,
     },
   }
 }
