@@ -21,7 +21,7 @@ export default function StatsLoading() {
                 </div>
                 <div className="space-y-2">
                   <div className="skeleton-pulse h-3 w-28 rounded" />
-                  <div className="skeleton-pulse h-8 w-36 rounded-lg" />
+                  <div className="skeleton-pulse h-6 w-36 rounded-lg" />
                 </div>
               </div>
             ))}

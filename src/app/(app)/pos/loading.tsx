@@ -20,10 +20,10 @@ export default function POSLoading() {
         <div className="flex-1 overflow-y-auto p-4">
           <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-3">
             {Array.from({ length: 16 }).map((_, i) => (
-              <div key={i} className="surface-card p-3 flex flex-col gap-2">
-                <div className="skeleton-pulse h-20 w-full rounded-xl" />
-                <div className="skeleton-pulse h-4 w-full rounded" />
-                <div className="skeleton-pulse h-4 w-16 rounded" />
+              <div key={i} className="p-4 rounded-2xl border border-edge/60 bg-surface flex flex-col">
+                <div className="skeleton-pulse h-10 w-10 rounded-lg mb-3 shrink-0" />
+                <div className="skeleton-pulse h-5 w-full rounded mb-1" />
+                <div className="skeleton-pulse h-5 w-14 rounded" />
               </div>
             ))}
           </div>

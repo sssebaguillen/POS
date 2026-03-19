@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
+import { createContext, useCallback, useContext, useMemo, useState } from 'react'
 import Sidebar from '@/components/sidebar'
 
 interface SidebarContextValue {
@@ -14,6 +14,7 @@ interface SidebarContextValue {
 interface AppShellProps {
   children: React.ReactNode
   activeOperatorName: string | null
+  initialCollapsed?: boolean
 }
 
 const SidebarContext = createContext<SidebarContextValue | undefined>(undefined)
@@ -28,19 +29,14 @@ export function useSidebar() {
 
 const STORAGE_KEY = 'pos-sidebar-collapsed'
 
-export default function AppShell({ children, activeOperatorName }: AppShellProps) {
+export default function AppShell({ children, activeOperatorName, initialCollapsed = false }: AppShellProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
-  const [collapsed, setCollapsed] = useState(false)
-
-  // Restore collapse preference from localStorage on mount
-  useEffect(() => {
-    const stored = localStorage.getItem(STORAGE_KEY)
-    if (stored === 'true') setCollapsed(true)
-  }, [])
+  const [collapsed, setCollapsed] = useState(initialCollapsed)
 
   const toggleCollapse = useCallback(() => {
     setCollapsed(prev => {
       const next = !prev
+      document.cookie = `${STORAGE_KEY}=${next}; path=/; max-age=31536000; SameSite=Lax`
       localStorage.setItem(STORAGE_KEY, String(next))
       return next
     })

@@ -22,7 +22,7 @@ export default function DashboardLoading() {
                 </div>
                 <div className="space-y-2">
                   <div className="skeleton-pulse h-3 w-24 rounded" />
-                  <div className="skeleton-pulse h-8 w-28 rounded-lg" />
+                  <div className="skeleton-pulse h-6 w-28 rounded-lg" />
                   <div className="skeleton-pulse h-3 w-20 rounded" />
                 </div>
               </div>

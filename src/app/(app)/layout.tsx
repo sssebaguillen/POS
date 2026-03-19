@@ -43,6 +43,7 @@ export default async function AppLayout({
   const cookieStore = await cookies()
   const flashMessage = cookieStore.get('flash_toast')?.value ?? null
   const activeOperator = getActiveOperator(cookieStore)
+  const sidebarCollapsed = cookieStore.get('pos-sidebar-collapsed')?.value === 'true'
 
   if (flashMessage) {
     cookieStore.delete('flash_toast')
@@ -82,7 +83,7 @@ export default async function AppLayout({
           --primary-active-text: ${computeActiveText(primaryColor).dark};
         }
       `}</style>
-      <AppShell activeOperatorName={activeOperator?.name ?? null}>
+      <AppShell activeOperatorName={activeOperator?.name ?? null} initialCollapsed={sidebarCollapsed}>
         {children}
       </AppShell>
       {flashMessage && <FlashToast message={flashMessage} />}
