@@ -145,8 +145,6 @@ const ProductCard = memo(function ProductCard({
   priceListOverrides: PriceListOverride[]
   onAdd: (p: Product) => void
 }) {
-  const disabled = product.stock === 0
-
   const displayPrice = activePriceList
     ? calculateProductPrice(product.cost, product.price, product.id, product.brand_id, activePriceList, priceListOverrides)
     : product.price
@@ -154,8 +152,7 @@ const ProductCard = memo(function ProductCard({
   return (
     <button
       onClick={() => onAdd(product)}
-      disabled={disabled}
-      className="group relative text-left p-4 rounded-2xl border border-edge/60 bg-surface hover:border-primary/50 hover:shadow-md transition-all disabled:opacity-40 disabled:cursor-not-allowed flex flex-col"
+      className="group relative text-left p-4 rounded-2xl border border-edge/60 bg-surface hover:border-primary/50 hover:shadow-md transition-all flex flex-col"
     >
       {/* Category marker */}
       <div className="h-10 mb-3 flex items-center text-3xl leading-none">
