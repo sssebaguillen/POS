@@ -55,6 +55,7 @@ function parseOpPerms(raw: string): Permissions | null {
       price_lists:        typeof p.price_lists === 'boolean'        ? p.price_lists        : false,
       price_lists_write:  typeof p.price_lists_write === 'boolean'  ? p.price_lists_write  : false,
       settings:           typeof p.settings === 'boolean'           ? p.settings           : false,
+      expenses:           typeof p.expenses === 'boolean'           ? p.expenses           : false,
     }
   } catch {
     return null

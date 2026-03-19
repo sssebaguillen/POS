@@ -185,6 +185,7 @@ export async function proxy(request: NextRequest) {
     price_lists:       operator.permissions.price_lists       ?? false,
     price_lists_write: operator.permissions.price_lists_write ?? false,
     settings:          operator.permissions.settings          ?? false,
+    expenses:          operator.permissions.expenses          ?? false,
   }
 
   supabaseResponse.cookies.set('op_perms', JSON.stringify(normalizedPerms), {
