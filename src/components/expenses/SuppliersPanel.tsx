@@ -117,7 +117,7 @@ export default function SuppliersPanel({ suppliers, businessId, supabaseClient, 
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <p className="font-semibold text-heading">Proveedores ({suppliers.length})</p>
-        <Button size="sm" variant="outline" className="gap-2" onClick={() => setShowForm(prev => !prev)}>
+        <Button size="sm" className="rounded-lg text-xs bg-primary hover:bg-primary/90 text-primary-foreground gap-2" onClick={() => setShowForm(prev => !prev)}>
           <Plus size={14} />
           Nuevo proveedor
         </Button>

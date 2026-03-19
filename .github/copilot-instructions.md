@@ -4,7 +4,7 @@
 - Next.js 16+ App Router + TypeScript (strict mode)
 - Supabase (PostgreSQL + Auth + RLS)
 - Tailwind CSS + shadcn/ui
-- Vercel (deploy)
+- Vercel (deploy, región gru1 São Paulo)
 
 ---
 
@@ -99,6 +99,7 @@ If the same logic appears in more than one place, extract it into a shared utili
 - Server Components fetch data; Client Components handle interaction
 - Do not fetch data inside Client Components unless necessary — prefer passing props from Server Components
 - Keep components small and focused; extract sub-components when a file exceeds ~150 lines
+- Never define a component function inside another component's render body — always define at module scope
 
 ---
 
@@ -164,6 +165,31 @@ const [{ data: products }, { data: categories }] = await Promise.all([
 ])
 ```
 
+### RPC data extraction — CRITICAL
+All stats and expenses RPCs return a jsonb wrapper `{ data: [...] }`. ALWAYS extract `.data` before using the result. Never iterate over the wrapper object directly.
+
+```ts
+// WRONG — iterates the wrapper object, throws "not iterable"
+const { data: rows } = await supabase.rpc('get_top_products_detail', { ... })
+rows.map(...) // CRASH
+
+// CORRECT — extract the array from the wrapper
+const { data: rpcResult } = await supabase.rpc('get_top_products_detail', { ... })
+const rows = (rpcResult as unknown as { data: RowType[] } | null)?.data ?? []
+rows.map(...) // OK
+```
+
+### Null-safe numeric fields from RPC results
+Fields from RPC rows can arrive as `null` from PostgreSQL. Always guard numeric fields before calling methods:
+
+```ts
+// WRONG — crashes if value is null
+row.total_amount.toLocaleString(...)
+
+// CORRECT
+(row.total_amount ?? 0).toLocaleString(...)
+```
+
 ### Never use the service role key on the client
 Server-side privileged operations must go through `security definer` SQL functions called via RPC.
 
@@ -188,24 +214,34 @@ app/
     login/page.tsx
     register/page.tsx
   (app)/
-    layout.tsx          → mounts FlashToast
+    layout.tsx              → reads pos-sidebar-collapsed cookie → passes initialCollapsed to AppShell
     operator-select/page.tsx
     settings/page.tsx
     inventory/page.tsx
     price-lists/page.tsx
     dashboard/page.tsx
     stats/page.tsx
-    ventas/page.tsx
+    stats/top-products/page.tsx
+    stats/breakdown/page.tsx
+    stats/metodos-pago/page.tsx
+    stats/operadores/page.tsx
+    gastos/page.tsx
+    profile/page.tsx
+    pos/page.tsx
 components/
-  shared/               → FlashToast, reusable cross-feature components
+  shared/               → FlashToast, PageHeader (breadcrumbs), DateRangeFilter, ExportCSVButton
   ui/                   → shadcn/ui primitives + SelectDropdown
+  sidebar.tsx           → VENTAS / ANÁLISIS / FINANZAS / GESTIÓN / SISTEMA sections
   stock/                → inventory-related components
   price-lists/          → price list management components
-  dashboard/            → SalesHistoryTable and dashboard sub-components
-  settings/             → SettingsForm, OperatorList, NewOperatorModal
+  dashboard/            → SalesHistoryTable, BalanceWidget
+  stats/                → TopProductsDetailView, BreakdownDetailView, PaymentMethodDetailView, OperatorSalesDetailView
+  expenses/             → GastosView, NewExpensePanel, ExpenseSummaryCards, ExpensesTable, ExpenseAttachmentUploader, SupplierSelectDropdown, SuppliersPanel, types.ts
+  profile/              → ProfileView, EditEmailPanel, EditPasswordPanel
+  settings/             → SettingsForm, OperatorList, NewOperatorModal (8 permission toggles)
   pos/                  → sales terminal components
 lib/
-  operator.ts           → UserRole, OWNER_PERMISSIONS, getActiveOperator()
+  operator.ts           → UserRole, OWNER_PERMISSIONS (8 fields incl. expenses), getActiveOperator()
   payments.ts           → normalizePayment, PAYMENT_LABELS, PAYMENT_COLORS
   price-lists.ts        → calculateProductPrice (single source of truth)
   supabase/
@@ -226,18 +262,83 @@ export type UserRole = 'owner' | 'manager' | 'cashier' | 'custom'
 ```ts
 export const OWNER_PERMISSIONS: Permissions = {
   sales: true, stock: true, stock_write: true,
-  stats: true, price_lists: true, price_lists_write: true, settings: true,
-  expenses: true
+  stats: true, price_lists: true, price_lists_write: true,
+  settings: true, expenses: true
 }
 ```
+
+`Permissions` interface has 8 fields:
+```ts
+export interface Permissions {
+  sales: boolean
+  stock: boolean
+  stock_write: boolean
+  stats: boolean
+  price_lists: boolean
+  price_lists_write: boolean
+  settings: boolean
+  expenses: boolean
+}
+```
+
+**CRITICAL:** When adding a new field to `Permissions`, search the entire codebase for every file that manually constructs a `Permissions` object literal and add the field to ALL of them. Known files: `lib/operator.ts`, `sidebar.tsx`, `api/operator/switch/route.ts`. Missing even one will cause a TypeScript build error on Vercel.
 
 Permission map per route:
 - `/stock` → `permissions.stock === true`
 - `/price-lists` → `permissions.price_lists === true`
-- `/dashboard`, `/stats` → `permissions.stats === true`
+- `/dashboard`, `/stats`, `/stats/*` → `permissions.stats === true`
+- `/gastos` → `permissions.expenses === true`
 - `/settings` → `permissions.settings === true`
+- `/profile` → no permission check (any authenticated operator)
 
 Owner identification in proxy: `operator?.role === 'owner'` or absence of `operator_session` cookie. Never use a DB lookup to identify the owner in middleware.
+
+---
+
+## Sidebar Structure
+
+The sidebar uses 5 named sections. Never collapse these into a flat list.
+
+```
+VENTAS      → Vender (/pos)
+ANÁLISIS    → Dashboard (/dashboard), Estadísticas (/stats)
+FINANZAS    → Gastos (/gastos) [requires expenses permission]
+GESTIÓN     → Stock (/stock), Listas de precios (/price-lists)
+SISTEMA     → Configuración (/settings)
+```
+
+Profile button in sidebar footer routes to `/profile`, not `/settings`.
+
+---
+
+## Breadcrumbs
+
+`PageHeader` accepts `breadcrumbs?: { label: string; href: string }[]`.
+
+- **Top-level routes** (`/dashboard`, `/stats`, `/gastos`, `/pos`, `/settings`, `/stock`, `/price-lists`, `/profile`): title only, NO breadcrumbs
+- **Sub-routes**: always include breadcrumbs pointing to the parent
+
+| Route | breadcrumbs | title |
+|---|---|---|
+| `/stats/top-products` | `[{ label: 'Estadísticas', href: '/stats' }]` | Top productos |
+| `/stats/breakdown` | `[{ label: 'Estadísticas', href: '/stats' }]` | Breakdown |
+| `/stats/metodos-pago` | `[{ label: 'Estadísticas', href: '/stats' }]` | Métodos de pago |
+| `/stats/operadores` | `[{ label: 'Estadísticas', href: '/stats' }]` | Operadores |
+| `/profile` | `[{ label: 'Configuración', href: '/settings' }]` | Perfil |
+
+---
+
+## Filter Chips (pill-tabs)
+
+ALL filter chip rows in the app use these CSS classes from `globals.css`. Never use `flex gap-2` with custom border buttons for filter chips.
+
+```
+Container: pill-tabs (+ flex-wrap if many items, + flex-nowrap overflow-x-auto if horizontal scroll needed)
+Inactive chip: pill-tab
+Active chip: pill-tab-active
+```
+
+Exception: semantic status chips (e.g. amber/red sale status in EditSalePanel) keep their own color classes.
 
 ---
 
@@ -273,27 +374,49 @@ Never inline this formula. Never duplicate it.
 
 ---
 
+## Expenses Module
+
+- Types defined in `components/expenses/types.ts`: `Expense`, `Supplier`, `BusinessBalance`, `ExpenseCategory`, `EXPENSE_CATEGORY_LABELS`
+- `EXPENSE_CATEGORY_LABELS` is the single source of truth for category display names — never hardcode labels in components
+- File uploads go to Supabase storage bucket `expense-receipts` using path `{business_id}/{uuid}.{ext}`
+- `NewExpensePanel` is a fixed right-side panel (`fixed inset-y-0 right-0 max-w-md`) — never fullscreen
+- `GastosView` uses a `showSuppliers` boolean state to toggle between expenses view and `SuppliersPanel` — no tab bar
+
+---
+
 ## Operator Session
 
 - `operator_session` cookie: httpOnly, sameSite: lax — contains `{ profile_id, name, role: UserRole, permissions }`
 - `op_perms` cookie: non-httpOnly — client-readable copy of permissions for sidebar
 - Logout route: clears both cookies AND restores owner session before redirecting
 - Registration flow: calls `/api/operator/logout` before redirecting to clear any stale cookies
-- Flash messages: proxy sets `flash_toast=no-access` cookie (maxAge: 5, non-httpOnly) on unauthorized redirect; layout reads it server-side and passes to `FlashToast` component
+- Flash messages: proxy sets `flash_toast=no-access` cookie (maxAge: 5, non-httpOnly) on unauthorized redirect
+
+---
+
+## Sidebar Collapse (CLS-free)
+
+- `(app)/layout.tsx` reads cookie `pos-sidebar-collapsed` server-side and passes it as `initialCollapsed` prop to `AppShell`
+- `AppShell` initializes collapsed state from this prop — NO `useEffect` reading `localStorage` after mount
+- Toggle writes both `document.cookie` and `localStorage`
+- This eliminates the 184px layout shift (CLS) that would occur with post-hydration state changes
 
 ---
 
 ## UI & Design
 
 ### No glass effects
-Do not use `backdrop-filter`, `backdrop-blur`, or `bg-white/[0.xx]` anywhere. These effects are unreliable across browsers and have been removed from the project.
+Do not use `backdrop-filter`, `backdrop-blur`, or `bg-white/[0.xx]` anywhere.
 
 ### Utility classes (defined in globals.css)
 ```css
-.surface-elevated  → modals, dropdowns, popovers (solid opaque surface)
-.surface-sidebar   → sidebar panel
-.btn-primary-gradient → primary CTA button
-.btn-danger        → destructive action button
+.surface-elevated      → modals, dropdowns, popovers
+.surface-sidebar       → sidebar panel
+.btn-primary-gradient  → primary CTA button
+.btn-danger            → destructive action button
+.pill-tabs             → filter chip container
+.pill-tab              → inactive filter chip
+.pill-tab-active       → active filter chip
 ```
 
 ### Component style reference
@@ -301,9 +424,10 @@ Do not use `backdrop-filter`, `backdrop-blur`, or `bg-white/[0.xx]` anywhere. Th
 |---|---|
 | Modals, dropdowns, popovers | `surface-elevated` |
 | Sidebar | `surface-sidebar` |
-| Primary CTA | `btn-primary-gradient` |
+| Primary CTA | `btn-primary-gradient` or `rounded-lg text-xs bg-primary hover:bg-primary/90 text-primary-foreground` |
 | Destructive action | `btn-danger` |
 | Active nav item | `bg-primary/10 rounded-xl px-3 py-2` |
+| Filter chips | `pill-tabs` / `pill-tab` / `pill-tab-active` |
 
 ### Color palette
 - **Primary:** `#1C4A3B` (dark green)
@@ -311,12 +435,11 @@ Do not use `backdrop-filter`, `backdrop-blur`, or `bg-white/[0.xx]` anywhere. Th
 - Semantic: green = success, amber = warning, red = error/destructive, gray = inactive
 
 ### Typography
-- Font: `DM Sans` via `next/font/google`
+- Font: `DM Sans` via `next/font/google` with `display: 'swap'`, `preload: true`, explicit weights `['400','500','600','700']`
 - Never mix more than 3 font sizes in a single card or panel
 
 ### Layout
-- Sidebar: `position: fixed`, overlays content — never pushes layout
-- Content area never has `margin-left` or `padding-left` based on sidebar state
+- Sidebar: `position: fixed`, overlays content
 - `SelectDropdown` component replaces all native `<select>` elements
 
 ### Iconography
@@ -330,8 +453,11 @@ Do not use `backdrop-filter`, `backdrop-blur`, or `bg-white/[0.xx]` anywhere. Th
 ### Single responsibility + size limit
 Each component does one thing. Extract sub-components when a file exceeds ~150 lines.
 
+### Never define components inside render
+Never define a React component function inside another component's render body. Always define at module scope. Inline component definitions create new references on every render, causing React to unmount/remount subtrees unnecessarily.
+
 ### Props
-Always define props with a named `interface`. Never use optional props as a workaround for missing data. Guard nullable props at the call site, not by making the receiving prop nullable.
+Always define props with a named `interface`. Never use optional props as a workaround for missing data.
 
 ### Server vs Client components
 - Default to Server Components
@@ -355,6 +481,7 @@ Always define props with a named `interface`. Never use optional props as a work
 - Business logic lives in components, not `page.tsx`
 - `next/image` for all images — never raw `<img>`
 - Never `useEffect` for data fetching
+- High-traffic pages use `export const runtime = 'edge'` for lower latency
 
 ---
 
@@ -386,3 +513,10 @@ Always define props with a named `interface`. Never use optional props as a work
 - Fetching `defaultPriceList` from anywhere other than `price_lists` where `is_default = true`
 - Creating more than one `price_lists` row with `is_default = true` per business
 - Upsert on `price_list_overrides` without the correct `onConflict` key
+- Using custom `flex gap-2` border buttons for filter chips — always use `pill-tabs` / `pill-tab` / `pill-tab-active`
+- Iterating directly over RPC results without extracting `.data` from the wrapper object
+- Calling `.toLocaleString()` or any method on numeric RPC fields without null-guarding with `?? 0`
+- Defining React component functions inside another component's render body
+- Reading sidebar collapse state from `localStorage` in a `useEffect` — always initialize from the `pos-sidebar-collapsed` cookie server-side
+- Adding a field to `Permissions` without updating ALL files that manually construct a `Permissions` object
+- Routing the sidebar profile button to `/settings` — it must route to `/profile`

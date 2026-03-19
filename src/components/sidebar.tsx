@@ -2,7 +2,7 @@
 
 import { usePathname } from 'next/navigation'
 import Link from 'next/link'
-import { X, ShoppingCart, Package, ClipboardList, BarChart2, LineChart, Settings, Sun, Moon, User, LogOut, PanelLeftClose, PanelLeftOpen } from 'lucide-react'
+import { X, ShoppingCart, Package, ClipboardList, BarChart2, LineChart, Settings, Sun, Moon, User, LogOut, PanelLeftClose, PanelLeftOpen, Receipt } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useState, useEffect, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
@@ -19,22 +19,31 @@ interface NavLink {
 }
 
 const NAV_LINKS: NavLink[] = [
-  { href: '/pos',         label: 'Vender',            icon: ShoppingCart, check: () => true },
-  { href: '/dashboard',   label: 'Dashboard',         icon: BarChart2,    check: (p) => p.stats === true },
-  { href: '/stats',       label: 'Estadísticas',      icon: LineChart,    check: (p) => p.stats === true },
-  { href: '/price-lists', label: 'Listas de precios', icon: ClipboardList, check: (p) => p.price_lists === true },
+  { href: '/pos',         label: 'Vender',            icon: ShoppingCart,  check: () => true },
+  { href: '/dashboard',   label: 'Dashboard',         icon: BarChart2,     check: (p) => p.stats === true },
+  { href: '/stats',       label: 'Estadísticas',      icon: LineChart,     check: (p) => p.stats === true },
+  { href: '/gastos',      label: 'Gastos',            icon: Receipt,       check: (p) => p.expenses === true },
   { href: '/inventory',   label: 'Stock',             icon: Package,       check: (p) => p.stock === true },
-  { href: '/settings',    label: 'Configuración',     icon: Settings,     check: (p) => p.settings === true },
+  { href: '/price-lists', label: 'Listas de precios', icon: ClipboardList, check: (p) => p.price_lists === true },
+  { href: '/settings',    label: 'Configuración',     icon: Settings,      check: (p) => p.settings === true },
 ]
 
 const NAV_SECTIONS = [
   {
-    label: 'Principal',
-    hrefs: ['/pos', '/dashboard', '/stats'],
+    label: 'Ventas',
+    hrefs: ['/pos'],
+  },
+  {
+    label: 'Análisis',
+    hrefs: ['/dashboard', '/stats'],
+  },
+  {
+    label: 'Finanzas',
+    hrefs: ['/gastos'],
   },
   {
     label: 'Gestión',
-    hrefs: ['/price-lists', '/inventory'],
+    hrefs: ['/inventory', '/price-lists'],
   },
   {
     label: 'Sistema',

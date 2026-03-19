@@ -76,7 +76,7 @@ export default function NewExpensePanel({ businessId, supabaseClient, onCreated,
   }
 
   return (
-    <div className="absolute inset-0 z-40 bg-background flex flex-col">
+    <div className="fixed inset-y-0 right-0 z-40 w-full max-w-md bg-background border-l border-edge shadow-xl flex flex-col">
       <div className="h-14 border-b border-edge/60 flex items-center justify-between px-5 shrink-0">
         <h2 className="font-semibold text-heading">Nuevo gasto</h2>
         <button

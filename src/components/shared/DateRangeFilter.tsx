@@ -2,7 +2,6 @@
 
 import { useRouter, usePathname } from 'next/navigation'
 import { useState } from 'react'
-import { Button } from '@/components/ui/button'
 import { DatePicker } from '@/components/ui/DatePicker'
 
 export type DateRangePeriod = 'hoy' | 'semana' | 'mes' | 'personalizado'
@@ -61,14 +60,14 @@ export default function DateRangeFilter({ value, from, to, onChange, useUrlParam
           <DatePicker value={localFrom} onChange={setLocalFrom} className="w-40" />
           <span className="text-sm text-hint">—</span>
           <DatePicker value={localTo} onChange={setLocalTo} className="w-40" />
-          <Button
-            size="sm"
-            className="h-9 rounded-lg text-sm"
+          <button
+            type="button"
+            className="px-3 py-1.5 text-sm rounded-lg border border-border bg-surface hover:bg-muted transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
             disabled={!localFrom || !localTo}
             onClick={() => handleSelect('personalizado', localFrom, localTo)}
           >
             Aplicar
-          </Button>
+          </button>
         </div>
       )}
     </div>

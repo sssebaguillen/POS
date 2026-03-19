@@ -21,8 +21,6 @@ import {
   type ExpenseCategory,
 } from './types'
 
-type ActiveTab = 'gastos' | 'proveedores'
-
 interface Props {
   expenses: Expense[]
   balance: BusinessBalance
@@ -38,7 +36,7 @@ export default function GastosView({ expenses: initialExpenses, balance, supplie
   const router = useRouter()
   const pathname = usePathname()
   const supabase = useMemo(() => createClient(), [])
-  const [tab, setTab] = useState<ActiveTab>('gastos')
+  const [showSuppliers, setShowSuppliers] = useState(false)
   const [panelOpen, setPanelOpen] = useState(false)
   const [expenses, setExpenses] = useState<Expense[]>(initialExpenses)
   const [suppliers, setSuppliers] = useState<Supplier[]>(initialSuppliers)
@@ -76,35 +74,21 @@ export default function GastosView({ expenses: initialExpenses, balance, supplie
   return (
     <div className="flex flex-col h-screen overflow-hidden">
       <PageHeader title="Gastos">
-        <Button
-          onClick={() => setPanelOpen(true)}
-          className="btn-primary-gradient gap-2"
-          size="sm"
-        >
-          <Plus size={15} />
-          Nuevo gasto
-        </Button>
+        {!showSuppliers && (
+          <Button
+            onClick={() => setPanelOpen(true)}
+            size="sm"
+            className="rounded-lg text-xs bg-primary hover:bg-primary/90 text-primary-foreground gap-2"
+          >
+            <Plus size={15} />
+            Nuevo gasto
+          </Button>
+        )}
       </PageHeader>
 
       <div className="flex-1 overflow-y-auto">
         <div className="px-5 pt-4 pb-6 space-y-5">
-          {/* Tabs */}
-          <div className="pill-tabs">
-            <button
-              onClick={() => setTab('gastos')}
-              className={`pill-tab${tab === 'gastos' ? ' pill-tab-active' : ''}`}
-            >
-              Gastos
-            </button>
-            <button
-              onClick={() => setTab('proveedores')}
-              className={`pill-tab${tab === 'proveedores' ? ' pill-tab-active' : ''}`}
-            >
-              Proveedores
-            </button>
-          </div>
-
-          {tab === 'gastos' && (
+          {!showSuppliers && (
             <>
               <DateRangeFilter
                 value={period as DateRangePeriod}
@@ -141,7 +125,13 @@ export default function GastosView({ expenses: initialExpenses, balance, supplie
 
               <ExpenseSummaryCards balance={balance} />
 
-              <div className="flex items-center justify-end">
+              <div className="flex items-center justify-between">
+                <button
+                  onClick={() => setShowSuppliers(true)}
+                  className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  Gestionar proveedores →
+                </button>
                 <ExportCSVButton data={csvData} filename="gastos" label="Exportar" />
               </div>
 
@@ -154,13 +144,21 @@ export default function GastosView({ expenses: initialExpenses, balance, supplie
             </>
           )}
 
-          {tab === 'proveedores' && (
-            <SuppliersPanel
-              suppliers={suppliers}
-              businessId={businessId}
-              supabaseClient={supabase}
-              onSuppliersChange={setSuppliers}
-            />
+          {showSuppliers && (
+            <>
+              <button
+                onClick={() => setShowSuppliers(false)}
+                className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+              >
+                ← Volver a Gastos
+              </button>
+              <SuppliersPanel
+                suppliers={suppliers}
+                businessId={businessId}
+                supabaseClient={supabase}
+                onSuppliersChange={setSuppliers}
+              />
+            </>
           )}
         </div>
       </div>
