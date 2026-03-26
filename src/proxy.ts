@@ -14,10 +14,6 @@ function flashRedirect(destination: URL): NextResponse {
 }
 
 export async function proxy(request: NextRequest) {
-  // Generate a cryptographically random nonce per request.
-  // Next.js reads the x-nonce request header and automatically stamps it onto
-  // the inline <script> and <style> tags it generates for hydration, so those
-  // tags pass the nonce-based CSP without needing 'unsafe-inline'.
   const nonce = btoa(crypto.randomUUID())
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? ''
@@ -26,11 +22,7 @@ export async function proxy(request: NextRequest) {
     "default-src 'self'",
     `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'`,
     `style-src 'self' 'nonce-${nonce}'`,
-    // style-src-attr covers inline style="" attributes used by recharts and
-    // other component libraries. This is lower risk than script 'unsafe-inline'.
     "style-src-attr 'unsafe-inline'",
-    // next/image serves all images through /_next/image (self).
-    // The Supabase host is needed for the raw <img> logo preview in SettingsForm.
     `img-src 'self' data: ${supabaseUrl}`,
     "font-src 'self'",
     `connect-src 'self' ${supabaseUrl} ${supabaseWs}`,
@@ -59,7 +51,6 @@ export async function proxy(request: NextRequest) {
           cookiesToSet.forEach(({ name, value }) =>
             request.cookies.set(name, value)
           )
-          // Preserve the nonce headers when Supabase recreates the response.
           supabaseResponse = NextResponse.next({ request: { headers: requestHeaders } })
           cookiesToSet.forEach(({ name, value, options }) =>
             supabaseResponse.cookies.set(name, value, options)
@@ -85,15 +76,17 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(new URL('/pos', request.url))
   }
 
+  // Helper: always set CSP right before returning supabaseResponse
+  const withCsp = (res: NextResponse) => {
+    res.headers.set('Content-Security-Policy', csp)
+    return res
+  }
+
   if (!user || isCatalogRoute) {
-    supabaseResponse.headers.set('Content-Security-Policy', csp)
-    return supabaseResponse
+    return withCsp(supabaseResponse)
   }
 
   const operator = getActiveOperator(request.cookies)
-
-  // Owner identification — only the role: 'owner' cookie value identifies the owner.
-  // null (no cookie) means no operator selected yet → send to /operator-select.
   const isOwner = operator?.role === 'owner'
 
   if (isOwner) {
@@ -103,32 +96,25 @@ export async function proxy(request: NextRequest) {
       path: '/',
       secure: process.env.NODE_ENV === 'production',
     })
-    supabaseResponse.headers.set('Content-Security-Policy', csp)
-    return supabaseResponse
+    return withCsp(supabaseResponse)
   }
 
   if (!operator) {
-    // No operator session — allow operator-select to render, redirect everything else.
     if (isOperatorSelectRoute) {
-      supabaseResponse.headers.set('Content-Security-Policy', csp)
-      return supabaseResponse
+      return withCsp(supabaseResponse)
     }
     return NextResponse.redirect(new URL('/operator-select', request.url))
   }
 
-  // Non-owner operator with active session — redirect away from operator-select
   if (isOperatorSelectRoute) {
     return NextResponse.redirect(new URL('/pos', request.url))
   }
 
-  // /profile is accessible to all authenticated operators — no permission check needed.
   const isProfileRoute = pathname === '/profile' || pathname.startsWith('/profile/')
   if (isProfileRoute) {
-    supabaseResponse.headers.set('Content-Security-Policy', csp)
-    return supabaseResponse
+    return withCsp(supabaseResponse)
   }
 
-  // /gastos requires expenses permission
   const isGastosRoute = pathname === '/gastos' || pathname.startsWith('/gastos/')
   if (isGastosRoute && !hasPermission(operator, 'expenses')) {
     return flashRedirect(new URL('/pos', request.url))
@@ -172,7 +158,6 @@ export async function proxy(request: NextRequest) {
   }
 
   const isSettingsRoute = pathname === '/settings' || pathname.startsWith('/settings/')
-
   if (isSettingsRoute && !hasPermission(operator, 'settings')) {
     return flashRedirect(new URL('/pos', request.url))
   }
@@ -195,8 +180,6 @@ export async function proxy(request: NextRequest) {
     secure: process.env.NODE_ENV === 'production',
   })
 
-  // Forward flash_toast onto supabaseResponse so the Supabase SSR response
-  // pipeline does not drop it before the layout reads it server-side.
   const flashCookie = request.cookies.get('flash_toast')
   if (flashCookie) {
     supabaseResponse.cookies.set('flash_toast', flashCookie.value, {
@@ -207,8 +190,7 @@ export async function proxy(request: NextRequest) {
     })
   }
 
-  supabaseResponse.headers.set('Content-Security-Policy', csp)
-  return supabaseResponse
+  return withCsp(supabaseResponse)
 }
 
 export const config = {
