@@ -26,7 +26,7 @@ export function useTheme() {
 
 // ─── Provider ────────────────────────────────────────────────────────────────
 
-export function ThemeProvider({ children }: { children: React.ReactNode }) {
+export function ThemeProvider({ children, nonce }: { children: React.ReactNode; nonce?: string }) {
   const [theme, setTheme] = useState<Theme>('light')
   const [mounted, setMounted] = useState(false)
 

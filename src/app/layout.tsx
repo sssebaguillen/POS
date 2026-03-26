@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import { headers } from 'next/headers'
 import { DM_Sans } from 'next/font/google'
 import './globals.css'
 import { ThemeProvider } from '@/components/shared/theme'
@@ -18,15 +19,16 @@ export const metadata: Metadata = {
   description: 'Sistema de punto de venta para PyMEs',
 }
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
+  const nonce = (await headers()).get('x-nonce') ?? undefined
   return (
     <html lang="es" className={dmSans.variable} suppressHydrationWarning>
       <body className="font-sans antialiased">
-        <ThemeProvider>{children}</ThemeProvider>
+        <ThemeProvider nonce={nonce}>{children}</ThemeProvider>
         <SpeedInsights />
       </body>
     </html>
