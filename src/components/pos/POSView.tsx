@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect, useMemo, useCallback } from 'react'
-import { Search, Menu, ChevronDown, Check } from 'lucide-react'
+import { Search, Menu, ChevronDown, Check, ScanBarcode } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { useSidebar } from '@/components/shared/AppShell'
@@ -21,6 +21,9 @@ interface Props {
   activeOperator: ActiveOperator | null
 }
 
+// Estado visual del feedback de escaneo
+type ScanFeedback = 'found' | 'not-found' | null
+
 function formatDate(date: Date) {
   return date.toLocaleDateString('es-AR', {
     weekday: 'long',
@@ -33,7 +36,10 @@ export default function POSView({ products, categories, businessId, priceLists, 
   const { toggle } = useSidebar()
   const [search, setSearch] = useState('')
   const [activeFilter, setActiveFilter] = useState<ActiveFilter>(null)
+  const [scanFeedback, setScanFeedback] = useState<ScanFeedback>(null)
   const searchRef = useRef<HTMLInputElement>(null)
+  const scanFeedbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const lastGlobalPrintableKeyAtRef = useRef(0)
   const clearCart = useCartStore(s => s.clearCart)
   const addItem = useCartStore(s => s.addItem)
 
@@ -52,6 +58,13 @@ export default function POSView({ products, categories, businessId, priceLists, 
     el.addEventListener('wheel', handleFilterWheel, { passive: false })
     return () => el.removeEventListener('wheel', handleFilterWheel)
   }, [handleFilterWheel])
+
+  // Limpiar timer de feedback al desmontar
+  useEffect(() => {
+    return () => {
+      if (scanFeedbackTimerRef.current) clearTimeout(scanFeedbackTimerRef.current)
+    }
+  }, [])
 
   const TOP_FILTER_LIMIT = 8
 
@@ -122,12 +135,67 @@ export default function POSView({ products, categories, businessId, priceLists, 
     clearCart()
     setSearch('')
     setActiveFilter(null)
+    setScanFeedback(null)
     searchRef.current?.focus()
   }, [clearCart])
 
-  // Global barcode scanner listener — redirects keystrokes to the search input
-  // when no text input is currently focused, so scanning works regardless of
-  // where the user last clicked.
+  /**
+   * Muestra feedback visual por 900ms y lo limpia.
+   * Cancela cualquier timer previo para evitar solapamiento.
+   */
+  const showScanFeedback = useCallback((type: ScanFeedback) => {
+    if (scanFeedbackTimerRef.current) clearTimeout(scanFeedbackTimerRef.current)
+    setScanFeedback(type)
+    scanFeedbackTimerRef.current = setTimeout(() => setScanFeedback(null), 900)
+  }, [])
+
+  /**
+   * Intenta agregar un producto al carrito a partir de un string de búsqueda.
+   * Orden de resolución:
+   *   1. Barcode exacto
+   *   2. Resultado único por nombre o SKU
+   *
+   * Devuelve true si se agregó el producto (para que el caller limpie el input).
+   */
+  const tryAddBySearch = useCallback((value: string): boolean => {
+    const trimmed = value.trim()
+    if (!trimmed) return false
+
+    // 1. Match exacto por barcode
+    const barcodeMatch = products.find(p => p.barcode === trimmed)
+    if (barcodeMatch) {
+      addItem(barcodeMatch)
+      showScanFeedback('found')
+      return true
+    }
+
+    // 2. Resultado único por nombre o SKU
+    const q = trimmed.toLowerCase()
+    const nameMatches = products.filter(p =>
+      p.name.toLowerCase().includes(q) ||
+      p.sku?.toLowerCase().includes(q)
+    )
+    if (nameMatches.length === 1) {
+      addItem(nameMatches[0])
+      showScanFeedback('found')
+      return true
+    }
+
+    // No encontrado — solo mostrar feedback si parece un barcode numérico.
+    // Evita marcar como error búsquedas de texto como "coca" o "leche".
+    const looksLikeBarcode = /^\d{4,}$/.test(trimmed)
+    if (looksLikeBarcode) {
+      showScanFeedback('not-found')
+    }
+
+    return false
+  }, [products, addItem, showScanFeedback])
+
+  /**
+   * Global keydown listener — redirige keystrokes al input de búsqueda cuando
+   * ningún campo de texto está enfocado. Soporta lectores USB que envían chars
+   * incluso si el cajero hizo click en otra parte de la pantalla.
+   */
   useEffect(() => {
     function handleGlobalKeyDown(e: KeyboardEvent) {
       if (e.ctrlKey || e.altKey || e.metaKey) return
@@ -142,40 +210,51 @@ export default function POSView({ products, categories, businessId, priceLists, 
       if (isTextInputActive) return
 
       if (e.key.length === 1) {
-        // Printable character — prevent double-insert and route to search
+        // Caracter imprimible — redirigir al input de búsqueda
         e.preventDefault()
+        lastGlobalPrintableKeyAtRef.current = Date.now()
         searchRef.current.focus()
         setSearch(prev => prev + e.key)
       } else if (e.key === 'Enter') {
+        const activeIsInteractive =
+          active instanceof HTMLButtonElement ||
+          active instanceof HTMLAnchorElement ||
+          (active instanceof HTMLElement && active.isContentEditable)
+        const recentlyBufferedInput = Date.now() - lastGlobalPrintableKeyAtRef.current < 500
+
+        // Respetar Enter sobre controles interactivos, salvo que venga de un escaneo/tecleo global reciente.
+        if (activeIsInteractive && !recentlyBufferedInput) return
+
+        // Enter con foco fuera del input: intentar agregar con el valor actual del input
         e.preventDefault()
+        const currentValue = searchRef.current.value
+        if (currentValue.trim()) {
+          const added = tryAddBySearch(currentValue)
+          if (added) {
+            setSearch('')
+          }
+        }
         searchRef.current.focus()
       }
     }
 
     document.addEventListener('keydown', handleGlobalKeyDown)
     return () => document.removeEventListener('keydown', handleGlobalKeyDown)
-  }, [])
+  }, [tryAddBySearch])
 
+  /**
+   * Keydown handler del input de búsqueda.
+   * Enter: intentar agregar producto. Si se agrega, limpiar el input y mantener foco.
+   */
   const handleSearchKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
-      const barcodeMatch = products.find(p => p.barcode === search)
-      if (barcodeMatch) {
-        addItem(barcodeMatch)
-        setSearch('')
-        searchRef.current?.focus()
-        return
-      }
-      const filtered = products.filter(p =>
-        p.name.toLowerCase().includes(search.toLowerCase()) ||
-        p.sku?.toLowerCase().includes(search.toLowerCase())
-      )
-      if (filtered.length === 1) {
-        addItem(filtered[0])
+      const added = tryAddBySearch(search)
+      if (added) {
         setSearch('')
         searchRef.current?.focus()
       }
     }
-  }, [products, search, addItem])
+  }, [search, tryAddBySearch])
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
@@ -192,15 +271,47 @@ export default function POSView({ products, categories, businessId, priceLists, 
 
         <div className="flex-1 max-w-lg mx-auto">
           <div className="relative">
-            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-hint" />
+            {/* Ícono: muestra ScanBarcode animado cuando detecta escaneo, Search en reposo */}
+            <div className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none">
+              {scanFeedback ? (
+                <ScanBarcode
+                  size={16}
+                  className={
+                    scanFeedback === 'found'
+                      ? 'text-emerald-500'
+                      : 'text-red-400'
+                  }
+                />
+              ) : (
+                <Search size={16} className="text-hint" />
+              )}
+            </div>
             <Input
               ref={searchRef}
               value={search}
               onChange={e => setSearch(e.target.value)}
               onKeyDown={handleSearchKeyDown}
-              placeholder="Buscar producto o marca..."
-              className="pl-9 h-9 bg-surface-alt border-edge text-sm rounded-lg"
+              placeholder="Buscar producto o escanear código..."
+              className={[
+                'pl-9 h-9 text-sm rounded-lg transition-colors',
+                scanFeedback === 'found'
+                  ? 'bg-emerald-50 border-emerald-300 dark:bg-emerald-950/30 dark:border-emerald-700'
+                  : scanFeedback === 'not-found'
+                    ? 'bg-red-50 border-red-300 dark:bg-red-950/30 dark:border-red-700'
+                    : 'bg-surface-alt border-edge',
+              ].join(' ')}
             />
+            {/* Tooltip de feedback bajo el input */}
+            {scanFeedback && (
+              <p
+                className={[
+                  'absolute left-0 -bottom-5 text-[11px] font-medium animate-fade-in',
+                  scanFeedback === 'found' ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500 dark:text-red-400',
+                ].join(' ')}
+              >
+                {scanFeedback === 'found' ? 'Producto agregado' : 'Código no encontrado'}
+              </p>
+            )}
           </div>
         </div>
 
