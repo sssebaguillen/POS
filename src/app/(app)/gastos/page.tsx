@@ -1,12 +1,57 @@
 import { createClient } from '@/lib/supabase/server'
 import GastosView from '@/components/expenses/GastosView'
-import type { Expense, Supplier, BusinessBalance, ExpenseCategory } from '@/components/expenses/types'
+import type { Expense, Supplier, BusinessBalance } from '@/components/expenses/types'
 
 interface SearchParams {
   period?: string
   from?: string
   to?: string
-  category?: string
+}
+
+type FilterPeriod = 'hoy' | 'semana' | 'mes' | 'personalizado'
+
+function resolveDateRange(
+  period: FilterPeriod,
+  from?: string,
+  to?: string
+): { from: string | null; to: string | null } {
+  if (period === 'personalizado') {
+    return {
+      from: from ?? null,
+      to: to ?? null,
+    }
+  }
+
+  const now = new Date()
+  const year = now.getFullYear()
+  const month = String(now.getMonth() + 1).padStart(2, '0')
+  const day = String(now.getDate()).padStart(2, '0')
+  const today = `${year}-${month}-${day}`
+
+  if (period === 'hoy') {
+    return { from: today, to: today }
+  }
+
+  if (period === 'semana') {
+    const start = new Date(now)
+    const weekday = start.getDay()
+    const diff = weekday === 0 ? -6 : 1 - weekday
+    start.setDate(start.getDate() + diff)
+
+    const startYear = start.getFullYear()
+    const startMonth = String(start.getMonth() + 1).padStart(2, '0')
+    const startDay = String(start.getDate()).padStart(2, '0')
+
+    return {
+      from: `${startYear}-${startMonth}-${startDay}`,
+      to: today,
+    }
+  }
+
+  return {
+    from: `${year}-${month}-01`,
+    to: today,
+  }
 }
 
 export default async function GastosPage({
@@ -31,23 +76,25 @@ export default async function GastosPage({
     businessId = profile?.business_id ?? null
   }
 
-  const period = params.period ?? 'mes'
-  const from = params.from ?? null
-  const to = params.to ?? null
-  const category = params.category ?? null
+  const period: FilterPeriod =
+    params.period === 'hoy' || params.period === 'semana' || params.period === 'personalizado'
+      ? params.period
+      : 'mes'
+  const from = params.from ?? undefined
+  const to = params.to ?? undefined
+  const resolvedRange = resolveDateRange(period, from, to)
 
   const [balanceResult, expensesResult, suppliersResult] = await Promise.all([
     supabase.rpc('get_business_balance', {
       p_business_id: businessId,
-      p_from: from,
-      p_to: to,
+      p_from: resolvedRange.from,
+      p_to: resolvedRange.to,
     }),
     supabase.rpc('get_expenses_list', {
       p_business_id: businessId,
-      p_from: from,
-      p_to: to,
-      p_category: category,
-      p_limit: 50,
+      p_from: resolvedRange.from,
+      p_to: resolvedRange.to,
+      p_limit: 5000,
       p_offset: 0,
     }),
     supabase
@@ -64,8 +111,8 @@ export default async function GastosPage({
     profit: 0,
     margin: 0,
     by_category: {},
-    period_from: from ?? '',
-    period_to: to ?? '',
+    period_from: resolvedRange.from ?? '',
+    period_to: resolvedRange.to ?? '',
   }
 
   const expensesData = (expensesResult.data as unknown as { data: Expense[]; total: number } | null)
@@ -79,9 +126,8 @@ export default async function GastosPage({
       suppliers={suppliers}
       businessId={businessId ?? ''}
       period={period}
-      from={from ?? undefined}
-      to={to ?? undefined}
-      category={category as ExpenseCategory | undefined}
+      from={from}
+      to={to}
     />
   )
 }
