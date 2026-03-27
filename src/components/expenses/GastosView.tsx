@@ -48,6 +48,7 @@ export default function GastosView({ expenses: initialExpenses, balance, supplie
       params.set('from', newFrom)
       params.set('to', newTo)
     }
+    if (category) params.set('category', category)
     router.push(`${pathname}?${params.toString()}`)
   }
 

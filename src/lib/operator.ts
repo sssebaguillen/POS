@@ -1,4 +1,5 @@
-export type UserRole = 'owner' | 'manager' | 'cashier' | 'custom'
+export type { UserRole } from '@/lib/types';
+import type { UserRole } from '@/lib/types'
 
 export interface Permissions {
   sales: boolean
@@ -50,7 +51,8 @@ function isPermissions(value: unknown): value is Permissions {
     typeof p.stats === 'boolean' &&
     typeof p.price_lists === 'boolean' &&
     typeof p.price_lists_write === 'boolean' &&
-    typeof p.settings === 'boolean'
+    typeof p.settings === 'boolean' &&
+    typeof p.expenses === 'boolean'
   )
 }
 

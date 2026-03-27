@@ -435,7 +435,8 @@ begin
       "stats": true,
       "price_lists": true,
       "price_lists_write": true,
-      "settings": true
+      "settings": true,
+      "expenses": true
     }'::jsonb
   );
 
@@ -473,7 +474,8 @@ begin
       "stats": true,
       "price_lists": true,
       "price_lists_write": true,
-      "settings": false
+      "settings": false,
+      "expenses": true
     }'::jsonb
     when 'cashier' then '{
       "sales": true,
@@ -482,7 +484,8 @@ begin
       "stats": false,
       "price_lists": false,
       "price_lists_write": false,
-      "settings": false
+      "settings": false,
+      "expenses": false
     }'::jsonb
     else '{
       "sales": true,
@@ -491,7 +494,8 @@ begin
       "stats": false,
       "price_lists": false,
       "price_lists_write": false,
-      "settings": false
+      "settings": false,
+      "expenses": false
     }'::jsonb
   end;
 
@@ -800,7 +804,18 @@ begin
     return jsonb_build_object('success', false);
   end if;
 
+  -- Restore stock and sales_count for the old items before removing them
+  update products p
+  set
+    stock       = p.stock + si.quantity,
+    sales_count = greatest(0, p.sales_count - si.quantity)
+  from sale_items si
+  where si.sale_id = p_sale_id and p.id = si.product_id;
+
   delete from sale_items where sale_id = p_sale_id;
+
+  -- Disable the stock trigger so re-inserting items doesn't double-decrement
+  alter table sale_items disable trigger on_sale_item_inserted;
 
   insert into sale_items (sale_id, product_id, quantity, unit_price, total)
   select
@@ -810,6 +825,16 @@ begin
     (item->>'unit_price')::numeric(12,2),
     (item->>'quantity')::int * (item->>'unit_price')::numeric(12,2)
   from jsonb_array_elements(p_items) as item;
+
+  alter table sale_items enable trigger on_sale_item_inserted;
+
+  -- Apply stock changes for the new items
+  update products p
+  set
+    stock       = p.stock - si.quantity,
+    sales_count = p.sales_count + si.quantity
+  from sale_items si
+  where si.sale_id = p_sale_id and p.id = si.product_id;
 
   select coalesce(sum(total), 0) into v_total
   from sale_items

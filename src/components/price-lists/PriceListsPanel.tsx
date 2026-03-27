@@ -258,24 +258,13 @@ export default function PriceListsPanel({
     setSavingDefaultId(listId)
     setCrudError(null)
 
-    const { error: clearError } = await supabase
-      .from('price_lists')
-      .update({ is_default: false })
-      .eq('business_id', businessId)
+    const { error } = await supabase.rpc('swap_default_price_list', {
+      p_price_list_id: listId,
+      p_business_id: businessId,
+    })
 
-    if (clearError) {
-      setCrudError(clearError.message)
-      setSavingDefaultId(null)
-      return
-    }
-
-    const { error: setError } = await supabase
-      .from('price_lists')
-      .update({ is_default: true })
-      .eq('id', listId)
-
-    if (setError) {
-      setCrudError(setError.message)
+    if (error) {
+      setCrudError(error.message)
       setSavingDefaultId(null)
       return
     }

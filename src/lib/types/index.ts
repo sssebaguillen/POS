@@ -1,4 +1,4 @@
-export type UserRole = 'owner' | 'manager' | 'cashier'
+export type UserRole = 'owner' | 'manager' | 'cashier' | 'custom'
 
 export type Plan = 'free' | 'basic' | 'standard' | 'pro'
 

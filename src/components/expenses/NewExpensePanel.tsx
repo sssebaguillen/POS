@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState } from 'react'
 import { X } from 'lucide-react'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { Button } from '@/components/ui/button'
@@ -33,8 +33,7 @@ const categoryOptions = EXPENSE_CATEGORIES.map(c => ({
   label: EXPENSE_CATEGORY_LABELS[c],
 }))
 
-export default function NewExpensePanel({ businessId, supabaseClient, onCreated, onClose }: Props) {
-  const supabase = useMemo(() => supabaseClient, [supabaseClient])
+export default function NewExpensePanel({ businessId, supabaseClient: supabase, onCreated, onClose }: Props) {
   const [category, setCategory] = useState<ExpenseCategory>('mercaderia')
   const [amount, setAmount] = useState('')
   const [description, setDescription] = useState('')
@@ -180,7 +179,7 @@ export default function NewExpensePanel({ businessId, supabaseClient, onCreated,
           Cancelar
         </Button>
         <Button
-          type="submit"
+          type="button"
           className="btn-primary-gradient flex-1"
           disabled={saving}
           onClick={handleSubmit}

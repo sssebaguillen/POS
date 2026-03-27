@@ -90,8 +90,7 @@ function parseVerifyResult(value: unknown): ActiveOperator | null {
     typeof permissionRecord.stats !== 'boolean' ||
     typeof permissionRecord.price_lists !== 'boolean' ||
     typeof permissionRecord.price_lists_write !== 'boolean' ||
-    typeof permissionRecord.settings !== 'boolean' ||
-    typeof permissionRecord.expenses !== 'boolean'
+    typeof permissionRecord.settings !== 'boolean'
   ) {
     return null
   }
@@ -108,7 +107,7 @@ function parseVerifyResult(value: unknown): ActiveOperator | null {
       price_lists: permissionRecord.price_lists,
       price_lists_write: permissionRecord.price_lists_write,
       settings: permissionRecord.settings,
-      expenses: permissionRecord.expenses,
+      expenses: typeof permissionRecord.expenses === 'boolean' ? permissionRecord.expenses : false,
     },
   }
 }

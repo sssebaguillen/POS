@@ -78,7 +78,7 @@ export default function ProductPanel({ products, search, activeFilter, activePri
   return (
     <div className="p-6 space-y-6">
       {/* Más vendidos */}
-      {topSellers.length > 0 && !isSearching && (
+      {topSellers.length > 0 && !isSearching && !activeFilter && (
         <section>
           <p className="text-xs font-semibold text-hint uppercase tracking-wider mb-3">
             Más vendidos — últimos 30 días

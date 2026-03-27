@@ -8,7 +8,7 @@ import { useCartStore } from '@/lib/store/cart.store'
 import PaymentModal from '@/components/pos/PaymentModal'
 import { createClient } from '@/lib/supabase/client'
 import { calculateProductPrice } from '@/lib/price-lists'
-import { normalizePayment } from '@/lib/payments'
+import { normalizePayment, PAYMENT_LABELS } from '@/lib/payments'
 import type { PriceList, PriceListOverride } from '@/components/price-lists/types'
 
 function getStockIndicator(
@@ -694,9 +694,14 @@ function EditSalePanel({
   onSave: (items: { product_id: string; quantity: number; unit_price: number }[], paymentMethod: string) => void
   onCancel: () => void
 }) {
-  const PAYMENT_OPTIONS = ['efectivo', 'tarjeta', 'mercadopago', 'transferencia', 'otro']
+  const PAYMENT_OPTIONS: { value: string; label: string }[] = [
+    { value: 'cash', label: PAYMENT_LABELS.cash },
+    { value: 'card', label: PAYMENT_LABELS.card },
+    { value: 'mercadopago', label: PAYMENT_LABELS.mercadopago },
+    { value: 'transfer', label: PAYMENT_LABELS.transfer },
+  ]
   const [items, setItems] = useState(sale.items.map(i => ({ ...i })))
-  const [paymentMethod, setPaymentMethod] = useState(sale.payment_method ?? 'efectivo')
+  const [paymentMethod, setPaymentMethod] = useState(sale.payment_method ?? 'cash')
 
   function updateQty(productId: string, qty: number) {
     if (qty < 1) return
@@ -750,17 +755,17 @@ function EditSalePanel({
         <div>
           <p className="text-xs text-hint mb-1.5">Método de pago</p>
           <div className="flex flex-wrap gap-1.5">
-            {PAYMENT_OPTIONS.map(method => (
+            {PAYMENT_OPTIONS.map(opt => (
               <button
-                key={method}
-                onClick={() => setPaymentMethod(method)}
-                className={`text-xs px-3 py-1.5 rounded-full border transition-colors capitalize ${
-                  paymentMethod === method
+                key={opt.value}
+                onClick={() => setPaymentMethod(opt.value)}
+                className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${
+                  paymentMethod === opt.value
                     ? 'bg-primary text-primary-foreground border-primary'
                     : 'border-edge text-body hover:bg-hover-bg'
                 }`}
               >
-                {method}
+                {opt.label}
               </button>
             ))}
           </div>
