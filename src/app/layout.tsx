@@ -1,10 +1,12 @@
+// src/app/layout.tsx
 import type { Metadata } from 'next'
-import { headers } from 'next/headers'
 import { DM_Sans } from 'next/font/google'
 import './globals.css'
 import { ThemeProvider } from '@/components/shared/theme'
-import { SpeedInsights } from "@vercel/speed-insights/next";
+import { SpeedInsights } from "@vercel/speed-insights/next"
 
+// 🔥 Obligatorio para que el layout reciba el header x-nonce del proxy
+export const dynamic = 'force-dynamic'
 
 const dmSans = DM_Sans({
   subsets: ['latin'],
@@ -24,7 +26,6 @@ export default async function RootLayout({
 }: {
   children: React.ReactNode
 }) {
-  // nonce is not needed for ThemeProvider
   return (
     <html lang="es" className={dmSans.variable} suppressHydrationWarning>
       <body className="font-sans antialiased">

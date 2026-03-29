@@ -18,27 +18,35 @@ export async function proxy(request: NextRequest) {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? ''
   const supabaseWs = supabaseUrl.replace(/^https:\/\//, 'wss://')
 
-  const csp = [
+  // 🔥 NUEVO: Generamos nonce único por request
+  const nonce = Buffer.from(crypto.randomUUID()).toString('base64')
+  const isDev = process.env.NODE_ENV === 'development'
+
+  // CSP PROFESIONAL con nonce + strict-dynamic
+  const cspHeader = [
     "default-src 'self'",
-    "script-src 'self' 'unsafe-eval'",
-    "style-src 'self' 'unsafe-inline'",
-    `img-src 'self' data: ${supabaseUrl}`,
+    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${isDev ? " 'unsafe-eval'" : ''}`,
+    "style-src 'self' 'unsafe-inline'",           // necesario para Next.js
+    `img-src 'self' data: blob: ${supabaseUrl}`,
     "font-src 'self'",
-    `connect-src 'self' ${supabaseUrl} ${supabaseWs}`,
+    `connect-src 'self' ${supabaseUrl} ${supabaseWs} https://*.supabase.co`,
     "frame-ancestors 'none'",
     "object-src 'none'",
     "base-uri 'self'",
     "form-action 'self'",
+    "upgrade-insecure-requests",
   ].join('; ')
 
   const withCsp = (res: NextResponse) => {
-    res.headers.set('Content-Security-Policy', csp)
+    res.headers.set('Content-Security-Policy', cspHeader)
+    res.headers.set('x-nonce', nonce)                    // ← importante para leer después
     return res
   }
 
   const requestHeaders = new Headers(request.headers)
 
   let supabaseResponse = NextResponse.next({ request: { headers: requestHeaders } })
+
   const { pathname } = request.nextUrl
 
   const supabase = createServerClient(
@@ -70,7 +78,7 @@ export async function proxy(request: NextRequest) {
   const isCatalogRoute = pathname.startsWith('/catalogo')
   const isOperatorSelectRoute = pathname.startsWith('/operator-select')
 
-  // 🔥 FIX: todos los redirects con CSP
+  // 🔥 FIX: todos los redirects con CSP + nonce
   if (!user && !isAuthRoute && !isCatalogRoute) {
     return withCsp(NextResponse.redirect(new URL('/login', request.url)))
   }
@@ -114,7 +122,7 @@ export async function proxy(request: NextRequest) {
 
   const isGastosRoute = pathname === '/gastos' || pathname.startsWith('/gastos/')
   if (isGastosRoute && !hasPermission(operator, 'expenses')) {
-    return flashRedirect(new URL('/pos', request.url), csp)
+    return flashRedirect(new URL('/pos', request.url), cspHeader)
   }
 
   const isStatsRoute =
@@ -124,7 +132,7 @@ export async function proxy(request: NextRequest) {
     pathname.startsWith('/stats/')
 
   if (isStatsRoute && !hasPermission(operator, 'stats')) {
-    return flashRedirect(new URL('/pos', request.url), csp)
+    return flashRedirect(new URL('/pos', request.url), cspHeader)
   }
 
   const isStockRoute =
@@ -136,7 +144,7 @@ export async function proxy(request: NextRequest) {
     pathname.startsWith('/products/')
 
   if (isStockRoute && !hasPermission(operator, 'stock')) {
-    return flashRedirect(new URL('/pos', request.url), csp)
+    return flashRedirect(new URL('/pos', request.url), cspHeader)
   }
 
   const isPriceListsRoute =
@@ -144,7 +152,7 @@ export async function proxy(request: NextRequest) {
     pathname.startsWith('/price-lists/')
 
   if (isPriceListsRoute && !hasPermission(operator, 'price_lists')) {
-    return flashRedirect(new URL('/pos', request.url), csp)
+    return flashRedirect(new URL('/pos', request.url), cspHeader)
   }
 
   if (
@@ -156,7 +164,7 @@ export async function proxy(request: NextRequest) {
 
   const isSettingsRoute = pathname === '/settings' || pathname.startsWith('/settings/')
   if (isSettingsRoute && !hasPermission(operator, 'settings')) {
-    return flashRedirect(new URL('/pos', request.url), csp)
+    return flashRedirect(new URL('/pos', request.url), cspHeader)
   }
 
   const normalizedPerms = normalizePermissions(operator.permissions)

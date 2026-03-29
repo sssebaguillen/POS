@@ -1,3 +1,4 @@
+// src/app/(auth)/login/page.tsx
 'use client'
 
 import { useState, useMemo } from 'react'
@@ -6,6 +7,9 @@ import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import Link from 'next/link'
+
+// 🔥 ESTA LÍNEA ES OBLIGATORIA para que funcione el nonce + CSP
+export const dynamic = 'force-dynamic'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')

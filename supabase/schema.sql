@@ -43,7 +43,8 @@ create table profiles (
     "stats": true,
     "price_lists": true,
     "price_lists_write": true,
-    "settings": true
+    "settings": true,
+    "expenses": false
   }'::jsonb,
   created_at  timestamptz default now()
 );
@@ -65,7 +66,8 @@ create table operators (
     "stats": false,
     "price_lists": false,
     "price_lists_write": false,
-    "settings": false
+    "settings": false,
+    "expenses": false
   }'::jsonb,
   is_active   bool        not null default true,
   created_at  timestamptz default now()

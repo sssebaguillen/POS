@@ -1,3 +1,4 @@
+// src/app/(auth)/register/page.tsx
 'use client'
 
 import { useState, useMemo } from 'react'
@@ -5,6 +6,9 @@ import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+
+// 🔥 ESTA LÍNEA ES OBLIGATORIA para que funcione el nonce + CSP
+export const dynamic = 'force-dynamic'
 
 export default function RegisterPage() {
   const [businessName, setBusinessName] = useState('')
