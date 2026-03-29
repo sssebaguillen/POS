@@ -34,10 +34,16 @@ export default async function POSPage() {
   const activeOperator = getActiveOperator(cookieStore)
 
   const [
+    { data: business, error: businessError },
     { data: products, error: productsError },
     { data: categories, error: categoriesError },
     { data: priceLists, error: priceListsError },
   ] = await Promise.all([
+    supabase
+      .from('businesses')
+      .select('id, name')
+      .eq('id', profileBusinessId)
+      .single(),
     supabase
       .from('products')
       .select('id, business_id, name, price, cost, stock, min_stock, is_active, show_in_catalog, category_id, sku, barcode, brand_id, image_url, sales_count, created_at, brands(id, name), categories(name, icon)')
@@ -55,6 +61,10 @@ export default async function POSPage() {
       .order('is_default', { ascending: false })
       .order('name', { ascending: true }),
   ])
+
+  if (businessError) {
+    throw new Error(businessError.message)
+  }
 
   if (productsError) {
     throw new Error(productsError.message)
@@ -108,6 +118,7 @@ export default async function POSPage() {
         icon: c.icon,
       }))}
       businessId={profileBusinessId}
+      businessName={business?.name ?? 'Negocio'}
       priceLists={(priceLists ?? []).map(pl => ({
         id: pl.id,
         business_id: pl.business_id,

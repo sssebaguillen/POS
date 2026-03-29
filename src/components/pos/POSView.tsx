@@ -16,6 +16,7 @@ interface Props {
   products: ProductWithCategory[]
   categories: PosCategory[]
   businessId: string | null
+  businessName: string
   priceLists: PriceList[]
   priceListOverrides: PriceListOverride[]
   activeOperator: ActiveOperator | null
@@ -32,7 +33,7 @@ function formatDate(date: Date) {
   })
 }
 
-export default function POSView({ products, categories, businessId, priceLists, priceListOverrides, activeOperator }: Props) {
+export default function POSView({ products, businessId, businessName, priceLists, priceListOverrides, activeOperator }: Props) {
   const { toggle } = useSidebar()
   const [search, setSearch] = useState('')
   const [activeFilter, setActiveFilter] = useState<ActiveFilter>(null)
@@ -440,6 +441,7 @@ export default function POSView({ products, categories, businessId, priceLists, 
         <div className="w-[380px] shrink-0 bg-surface border-l border-edge/60 flex flex-col">
           <CartPanel
             businessId={businessId}
+            businessName={businessName}
             activePriceList={activePriceList}
             priceListOverrides={priceListOverrides}
             operatorId={activeOperator?.role === 'owner' || !activeOperator ? null : activeOperator.profile_id ?? null}

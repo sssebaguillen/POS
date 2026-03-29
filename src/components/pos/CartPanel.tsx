@@ -1,11 +1,13 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { Trash2, Plus, Minus, ShoppingCart } from 'lucide-react'
+import { Check, Minus, Plus, ShoppingCart, Trash2, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { useCartStore } from '@/lib/store/cart.store'
 import PaymentModal from '@/components/pos/PaymentModal'
+import type { ProductWithCategory } from '@/components/pos/types'
+import type { ReceiptItemInput } from '@/lib/printer/types'
 import { createClient } from '@/lib/supabase/client'
 import { calculateProductPrice } from '@/lib/price-lists'
 import { normalizePayment, PAYMENT_LABELS } from '@/lib/payments'
@@ -58,14 +60,16 @@ interface SaleItemQueryRow {
 
 interface Props {
   businessId: string | null
+  businessName: string
   activePriceList: PriceList | null
   priceListOverrides: PriceListOverride[]
   operatorId: string | null
 }
 
-export default function CartPanel({ businessId, activePriceList, priceListOverrides, operatorId }: Props) {
-  const { items, removeItem, updateQuantity, subtotal, total, discount, clearCart } = useCartStore()
+export default function CartPanel({ businessId, businessName, activePriceList, priceListOverrides, operatorId }: Props) {
+  const { items, removeItem, updateQuantity, discount, clearCart } = useCartStore()
   const [showPayment, setShowPayment] = useState(false)
+  const [saleToast, setSaleToast] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<RightTab>('current')
   const [historyLoading, setHistoryLoading] = useState(false)
   const [history, setHistory] = useState<SaleRow[]>([])
@@ -110,6 +114,20 @@ export default function CartPanel({ businessId, activePriceList, priceListOverri
 
   const adjustedSubtotal = adjustedItems.reduce((sum, i) => sum + i.total, 0)
   const adjustedTotal = Math.max(0, adjustedSubtotal - discount)
+  const receiptItems = useMemo<ReceiptItemInput[]>(() => {
+    return items.map(item => {
+      const adjusted = adjustedByProductId.get(item.product.id)
+      const product = item.product as ProductWithCategory
+      return {
+        product_id: item.product.id,
+        name: item.product.name,
+        icon: product.categories?.icon ?? null,
+        quantity: item.quantity,
+        unit_price: adjusted?.unit_price ?? item.unit_price,
+        total: adjusted?.total ?? item.total,
+      }
+    })
+  }, [adjustedByProductId, items])
 
   const hasStockWarning = items.some(
     item => item.quantity >= item.product.stock
@@ -127,6 +145,13 @@ export default function CartPanel({ businessId, activePriceList, priceListOverri
   const historyTotal = (() =>
     filteredHistory.reduce((acc, sale) => acc + sale.total, 0)
   )()
+
+  useEffect(() => {
+    if (!saleToast) return
+
+    const timer = setTimeout(() => setSaleToast(null), 3000)
+    return () => clearTimeout(timer)
+  }, [saleToast])
 
   useEffect(() => {
     if (activeTab !== 'history' || !businessId) return
@@ -673,13 +698,33 @@ export default function CartPanel({ businessId, activePriceList, priceListOverri
 
       {showPayment && (
         <PaymentModal
+          businessName={businessName}
+          subtotal={adjustedSubtotal}
+          discount={discount}
           total={adjustedTotal}
           businessId={businessId}
           priceListId={activePriceList?.id ?? null}
           saleItems={adjustedItems}
+          receiptItems={receiptItems}
           operatorId={operatorId}
+          onSaleCompleted={setSaleToast}
           onClose={() => setShowPayment(false)}
         />
+      )}
+
+      {saleToast && (
+        <div className="fixed bottom-4 right-4 z-[70] flex items-center gap-3 rounded-lg border border-emerald-200 bg-white px-4 py-2.5 shadow-lg text-sm text-emerald-800 dark:border-emerald-500/30 dark:bg-emerald-950/80 dark:text-emerald-200">
+          <Check size={14} />
+          <span>{saleToast}</span>
+          <button
+            type="button"
+            onClick={() => setSaleToast(null)}
+            aria-label="Cerrar notificacion"
+            className="ml-1 rounded p-0.5 hover:bg-emerald-100 dark:hover:bg-emerald-900 transition-colors"
+          >
+            <X size={14} />
+          </button>
+        </div>
       )}
     </>
   )
