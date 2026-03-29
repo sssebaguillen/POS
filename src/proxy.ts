@@ -2,7 +2,7 @@ import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 import { getActiveOperator, hasPermission, normalizePermissions, OWNER_PERMISSIONS } from '@/lib/operator'
 
-function flashRedirect(destination: URL): NextResponse {
+function flashRedirect(destination: URL, csp: string): NextResponse {
   const response = NextResponse.redirect(destination)
   response.cookies.set('flash_toast', 'no-access', {
     maxAge: 5,
@@ -10,19 +10,18 @@ function flashRedirect(destination: URL): NextResponse {
     sameSite: 'lax',
     path: '/',
   })
+  response.headers.set('Content-Security-Policy', csp)
   return response
 }
 
 export async function proxy(request: NextRequest) {
-  const nonce = btoa(crypto.randomUUID())
-
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? ''
   const supabaseWs = supabaseUrl.replace(/^https:\/\//, 'wss://')
+
   const csp = [
     "default-src 'self'",
-    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'`,
-    `style-src 'self' 'nonce-${nonce}'`,
-    "style-src-attr 'unsafe-inline'",
+    "script-src 'self' 'unsafe-eval'",
+    "style-src 'self' 'unsafe-inline'",
     `img-src 'self' data: ${supabaseUrl}`,
     "font-src 'self'",
     `connect-src 'self' ${supabaseUrl} ${supabaseWs}`,
@@ -32,9 +31,12 @@ export async function proxy(request: NextRequest) {
     "form-action 'self'",
   ].join('; ')
 
-  // Forward the nonce to Server Components via request headers.
+  const withCsp = (res: NextResponse) => {
+    res.headers.set('Content-Security-Policy', csp)
+    return res
+  }
+
   const requestHeaders = new Headers(request.headers)
-  requestHeaders.set('x-nonce', nonce)
 
   let supabaseResponse = NextResponse.next({ request: { headers: requestHeaders } })
   const { pathname } = request.nextUrl
@@ -68,18 +70,13 @@ export async function proxy(request: NextRequest) {
   const isCatalogRoute = pathname.startsWith('/catalogo')
   const isOperatorSelectRoute = pathname.startsWith('/operator-select')
 
+  // 🔥 FIX: todos los redirects con CSP
   if (!user && !isAuthRoute && !isCatalogRoute) {
-    return NextResponse.redirect(new URL('/login', request.url))
+    return withCsp(NextResponse.redirect(new URL('/login', request.url)))
   }
 
   if (user && isAuthRoute) {
-    return NextResponse.redirect(new URL('/pos', request.url))
-  }
-
-  // Helper: always set CSP right before returning supabaseResponse
-  const withCsp = (res: NextResponse) => {
-    res.headers.set('Content-Security-Policy', csp)
-    return res
+    return withCsp(NextResponse.redirect(new URL('/pos', request.url)))
   }
 
   if (!user || isCatalogRoute) {
@@ -103,11 +100,11 @@ export async function proxy(request: NextRequest) {
     if (isOperatorSelectRoute) {
       return withCsp(supabaseResponse)
     }
-    return NextResponse.redirect(new URL('/operator-select', request.url))
+    return withCsp(NextResponse.redirect(new URL('/operator-select', request.url)))
   }
 
   if (isOperatorSelectRoute) {
-    return NextResponse.redirect(new URL('/pos', request.url))
+    return withCsp(NextResponse.redirect(new URL('/pos', request.url)))
   }
 
   const isProfileRoute = pathname === '/profile' || pathname.startsWith('/profile/')
@@ -117,7 +114,7 @@ export async function proxy(request: NextRequest) {
 
   const isGastosRoute = pathname === '/gastos' || pathname.startsWith('/gastos/')
   if (isGastosRoute && !hasPermission(operator, 'expenses')) {
-    return flashRedirect(new URL('/pos', request.url))
+    return flashRedirect(new URL('/pos', request.url), csp)
   }
 
   const isStatsRoute =
@@ -127,7 +124,7 @@ export async function proxy(request: NextRequest) {
     pathname.startsWith('/stats/')
 
   if (isStatsRoute && !hasPermission(operator, 'stats')) {
-    return flashRedirect(new URL('/pos', request.url))
+    return flashRedirect(new URL('/pos', request.url), csp)
   }
 
   const isStockRoute =
@@ -139,7 +136,7 @@ export async function proxy(request: NextRequest) {
     pathname.startsWith('/products/')
 
   if (isStockRoute && !hasPermission(operator, 'stock')) {
-    return flashRedirect(new URL('/pos', request.url))
+    return flashRedirect(new URL('/pos', request.url), csp)
   }
 
   const isPriceListsRoute =
@@ -147,19 +144,19 @@ export async function proxy(request: NextRequest) {
     pathname.startsWith('/price-lists/')
 
   if (isPriceListsRoute && !hasPermission(operator, 'price_lists')) {
-    return flashRedirect(new URL('/pos', request.url))
+    return flashRedirect(new URL('/pos', request.url), csp)
   }
 
   if (
     (pathname === '/products' || pathname.startsWith('/products/')) &&
     !hasPermission(operator, 'stock_write')
   ) {
-    return NextResponse.redirect(new URL('/inventory', request.url))
+    return withCsp(NextResponse.redirect(new URL('/inventory', request.url)))
   }
 
   const isSettingsRoute = pathname === '/settings' || pathname.startsWith('/settings/')
   if (isSettingsRoute && !hasPermission(operator, 'settings')) {
-    return flashRedirect(new URL('/pos', request.url))
+    return flashRedirect(new URL('/pos', request.url), csp)
   }
 
   const normalizedPerms = normalizePermissions(operator.permissions)
