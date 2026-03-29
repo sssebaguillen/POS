@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -38,13 +38,6 @@ export default function BrandModal({
   const [pendingConfirm, setPendingConfirm] = useState<ConfirmState>(null)
 
   const supabase = useMemo(() => createClient(), [])
-
-  useEffect(() => {
-    if (!open) return
-    setBrands(initialBrands)
-    setName('')
-    setError(null)
-  }, [open, initialBrands])
 
   async function refreshBrands() {
     const { data, error: fetchError } = await supabase

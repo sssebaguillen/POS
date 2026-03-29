@@ -28,6 +28,24 @@ interface PriceListsPanelProps {
   initialOverrides: PriceListOverride[]
 }
 
+interface ProductRowData {
+  product: PriceListProduct
+  productOverride: PriceListOverride | null
+  brandOverride: PriceListOverride | null
+  activeMultiplier: number
+  finalPrice: number
+  margin: number
+}
+
+interface GroupedPriceRows {
+  key: string
+  brandId: string | null
+  brandName: string | null
+  label: string
+  brandOverride: PriceListOverride | null
+  rows: ProductRowData[]
+}
+
 function getMarginPercent(multiplier: number): number {
   return Math.round((multiplier - 1) * 100)
 }
@@ -49,28 +67,6 @@ export default function PriceListsPanel({
   const [savingDefaultId, setSavingDefaultId] = useState<string | null>(null)
   const [crudError, setCrudError] = useState<string | null>(null)
   const [search, setSearch] = useState('')
-  const [visibleGroupCount, setVisibleGroupCount] = useState(20)
-  const sentinelRef = useRef<HTMLDivElement>(null)
-  const prevKeyRef = useRef(`${activeListId}|${search}`)
-
-  const resetKey = `${activeListId}|${search}`
-  if (prevKeyRef.current !== resetKey) {
-    prevKeyRef.current = resetKey
-    setVisibleGroupCount(20)
-  }
-
-  useEffect(() => {
-    const sentinel = sentinelRef.current
-    if (!sentinel) return
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) setVisibleGroupCount(prev => prev + 20)
-      },
-      { rootMargin: '300px' }
-    )
-    observer.observe(sentinel)
-    return () => observer.disconnect()
-  }, [])
 
   const supabase = useMemo(() => createClient(), [])
 
@@ -137,7 +133,7 @@ export default function PriceListsPanel({
         margin,
       }
     })
-  }, [products, activeList, activeListOverrides])
+  }, [products, activeList, activeListOverrides, overrides])
 
   const filteredRows = useMemo(() => {
     if (!search.trim()) return productRows
@@ -149,14 +145,7 @@ export default function PriceListsPanel({
   }, [productRows, search])
 
   const groupedRows = useMemo(() => {
-    const groups = new Map<string, {
-      key: string
-      brandId: string | null
-      brandName: string | null
-      label: string
-      brandOverride: PriceListOverride | null
-      rows: typeof productRows
-    }>()
+    const groups = new Map<string, GroupedPriceRows>()
 
     for (const row of filteredRows) {
       const brandId = row.product.brand_id ?? null
@@ -183,11 +172,6 @@ export default function PriceListsPanel({
 
     return Array.from(groups.values())
   }, [filteredRows, activeListOverrides])
-
-  const visibleGroups = useMemo(
-    () => groupedRows.slice(0, visibleGroupCount),
-    [groupedRows, visibleGroupCount]
-  )
 
   function handleCreated(list: PriceList) {
     setLists(prev => [...prev, list])
@@ -382,100 +366,14 @@ export default function PriceListsPanel({
               )}
             </div>
 
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Producto</TableHead>
-                  <TableHead>Marca</TableHead>
-                  <TableHead className="text-right">Costo</TableHead>
-                  <TableHead className="text-right">Precio lista</TableHead>
-                  <TableHead className="text-right">Margen %</TableHead>
-                  <TableHead className="text-right">Acciones</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {groupedRows.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={6} className="h-28 text-center text-sm text-hint">
-                      No hay productos activos para calcular precios.
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  visibleGroups.map(group => (
-                    <Fragment key={`brand-${group.key}`}>
-                      <TableRow className="bg-surface-alt/70">
-                        <TableCell colSpan={6}>
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                              <span className="text-xs font-semibold uppercase tracking-wide text-subtle">{group.label}</span>
-                              {group.brandOverride && (
-                                <span className="inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold bg-primary text-primary-foreground">
-                                  +{((group.brandOverride.multiplier - 1) * 100).toFixed(0)}%
-                                </span>
-                              )}
-                            </div>
-                            <Button
-                              variant="outline"
-                              size="icon-sm"
-                              onClick={() => group.brandId && setOverrideBrandId(group.brandId)}
-                              aria-label={`Editar override de marca ${group.label}`}
-                              title="Editar override de marca"
-                              disabled={readOnly || !group.brandId}
-                            >
-                              <Pencil size={14} />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-
-                      {group.rows.map(row => (
-                        <TableRow key={row.product.id}>
-                          <TableCell>
-                            <p className="font-medium text-heading">{row.product.name}</p>
-                            <p className="text-xs text-hint">{row.product.categories?.name ?? 'Sin categoria'}</p>
-                          </TableCell>
-                          <TableCell className="text-body">{row.product.brand?.name ?? '—'}</TableCell>
-                          <TableCell className="text-right tabular-nums">${row.product.cost.toLocaleString('es-AR')}</TableCell>
-                          <TableCell className="text-right tabular-nums">
-                            ${row.finalPrice.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                            {(row.productOverride ?? row.brandOverride) && (
-                              <span className="ml-2 inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold bg-primary text-primary-foreground">
-                                Override
-                              </span>
-                            )}
-                          </TableCell>
-                          <TableCell className="text-right tabular-nums">
-                            <span className={row.margin > 0 ? 'text-emerald-700 dark:text-emerald-400 font-semibold' : 'text-red-600 dark:text-red-400 font-semibold'}>
-                              {row.margin}%
-                            </span>
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex justify-end">
-                              <Button
-                                variant="outline"
-                                size="icon-sm"
-                                onClick={() => setOverrideProductId(row.product.id)}
-                                aria-label={`Editar override de ${row.product.name}`}
-                                title="Editar override"
-                                disabled={readOnly}
-                              >
-                                <Pencil size={14} />
-                              </Button>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </Fragment>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-            <div ref={sentinelRef} />
-            {visibleGroupCount < groupedRows.length && (
-              <p className="py-3 text-center text-xs text-subtle">
-                Mostrando {visibleGroups.reduce((n, g) => n + g.rows.length, 0)} de {filteredRows.length} productos — seguí scrolleando para ver más
-              </p>
-            )}
+            <GroupedPriceRowsTable
+              key={`${activeList.id}|${search}`}
+              groupedRows={groupedRows}
+              filteredRowsCount={filteredRows.length}
+              readOnly={readOnly}
+              onEditBrandOverride={setOverrideBrandId}
+              onEditProductOverride={setOverrideProductId}
+            />
           </div>
         )}
       </div>
@@ -491,6 +389,7 @@ export default function PriceListsPanel({
 
       {editingList && (
         <EditPriceListModal
+          key={editingList.id}
           open={Boolean(editingList)}
           onClose={() => setEditingListId(null)}
           list={editingList}
@@ -501,6 +400,7 @@ export default function PriceListsPanel({
 
       {activeList && overrideProduct && (
         <ProductOverrideModal
+          key={`${activeList.id}:${overrideProduct.id}:${activeListOverrides.find(override => override.product_id === overrideProduct.id)?.id ?? 'new'}`}
           open={Boolean(overrideProduct)}
           onClose={() => setOverrideProductId(null)}
           priceListId={activeList.id}
@@ -521,6 +421,7 @@ export default function PriceListsPanel({
 
       {activeList && overrideBrandId && (
         <BrandOverrideModal
+          key={`${activeList.id}:${overrideBrandId}:${selectedBrandOverride?.id ?? 'new'}`}
           open={Boolean(overrideBrandId)}
           onClose={() => setOverrideBrandId(null)}
           brandId={overrideBrandId}
@@ -533,5 +434,146 @@ export default function PriceListsPanel({
         />
       )}
     </div>
+  )
+}
+
+interface GroupedPriceRowsTableProps {
+  groupedRows: GroupedPriceRows[]
+  filteredRowsCount: number
+  readOnly: boolean
+  onEditBrandOverride: (brandId: string) => void
+  onEditProductOverride: (productId: string) => void
+}
+
+function GroupedPriceRowsTable({
+  groupedRows,
+  filteredRowsCount,
+  readOnly,
+  onEditBrandOverride,
+  onEditProductOverride,
+}: GroupedPriceRowsTableProps) {
+  const [visibleGroupCount, setVisibleGroupCount] = useState(20)
+  const sentinelRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const sentinel = sentinelRef.current
+    if (!sentinel) return
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setVisibleGroupCount(prev => prev + 20)
+        }
+      },
+      { rootMargin: '300px' }
+    )
+
+    observer.observe(sentinel)
+
+    return () => observer.disconnect()
+  }, [])
+
+  const visibleGroups = useMemo(
+    () => groupedRows.slice(0, visibleGroupCount),
+    [groupedRows, visibleGroupCount]
+  )
+
+  return (
+    <>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Producto</TableHead>
+            <TableHead>Marca</TableHead>
+            <TableHead className="text-right">Costo</TableHead>
+            <TableHead className="text-right">Precio lista</TableHead>
+            <TableHead className="text-right">Margen %</TableHead>
+            <TableHead className="text-right">Acciones</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {groupedRows.length === 0 ? (
+            <TableRow>
+              <TableCell colSpan={6} className="h-28 text-center text-sm text-hint">
+                No hay productos activos para calcular precios.
+              </TableCell>
+            </TableRow>
+          ) : (
+            visibleGroups.map(group => (
+              <Fragment key={`brand-${group.key}`}>
+                <TableRow className="bg-surface-alt/70">
+                  <TableCell colSpan={6}>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-semibold uppercase tracking-wide text-subtle">{group.label}</span>
+                        {group.brandOverride && (
+                          <span className="inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold bg-primary text-primary-foreground">
+                            +{((group.brandOverride.multiplier - 1) * 100).toFixed(0)}%
+                          </span>
+                        )}
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="icon-sm"
+                        onClick={() => group.brandId && onEditBrandOverride(group.brandId)}
+                        aria-label={`Editar override de marca ${group.label}`}
+                        title="Editar override de marca"
+                        disabled={readOnly || !group.brandId}
+                      >
+                        <Pencil size={14} />
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+
+                {group.rows.map(row => (
+                  <TableRow key={row.product.id}>
+                    <TableCell>
+                      <p className="font-medium text-heading">{row.product.name}</p>
+                      <p className="text-xs text-hint">{row.product.categories?.name ?? 'Sin categoria'}</p>
+                    </TableCell>
+                    <TableCell className="text-body">{row.product.brand?.name ?? '—'}</TableCell>
+                    <TableCell className="text-right tabular-nums">${row.product.cost.toLocaleString('es-AR')}</TableCell>
+                    <TableCell className="text-right tabular-nums">
+                      ${row.finalPrice.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      {(row.productOverride ?? row.brandOverride) && (
+                        <span className="ml-2 inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold bg-primary text-primary-foreground">
+                          Override
+                        </span>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right tabular-nums">
+                      <span className={row.margin > 0 ? 'text-emerald-700 dark:text-emerald-400 font-semibold' : 'text-red-600 dark:text-red-400 font-semibold'}>
+                        {row.margin}%
+                      </span>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex justify-end">
+                        <Button
+                          variant="outline"
+                          size="icon-sm"
+                          onClick={() => onEditProductOverride(row.product.id)}
+                          aria-label={`Editar override de ${row.product.name}`}
+                          title="Editar override"
+                          disabled={readOnly}
+                        >
+                          <Pencil size={14} />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </Fragment>
+            ))
+          )}
+        </TableBody>
+      </Table>
+      <div ref={sentinelRef} />
+      {visibleGroupCount < groupedRows.length && (
+        <p className="py-3 text-center text-xs text-subtle">
+          Mostrando {visibleGroups.reduce((total, group) => total + group.rows.length, 0)} de {filteredRowsCount} productos — seguí scrolleando para ver más
+        </p>
+      )}
+    </>
   )
 }

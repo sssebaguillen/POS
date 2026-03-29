@@ -4,6 +4,7 @@ import AppShell from '@/components/shared/AppShell'
 import FlashToast from '@/components/shared/FlashToast'
 import { cookies } from 'next/headers'
 import { getActiveOperator } from '@/lib/operator'
+import { getBusinessIdByUserId } from '@/lib/business'
 
 function luminance(hex: string): number {
   const r = parseInt(hex.slice(1, 3), 16) / 255
@@ -45,23 +46,14 @@ export default async function AppLayout({
   const activeOperator = getActiveOperator(cookieStore)
   const sidebarCollapsed = cookieStore.get('pos-sidebar-collapsed')?.value === 'true'
 
-  if (flashMessage) {
-    cookieStore.delete('flash_toast')
-  }
-
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('business_id')
-    .eq('id', user.id)
-    .maybeSingle()
-
   let primaryColor = '#1C4A3B'
+  const businessId = await getBusinessIdByUserId(supabase, user.id)
 
-  if (profile?.business_id) {
+  if (businessId) {
     const { data: business } = await supabase
       .from('businesses')
       .select('settings')
-      .eq('id', profile.business_id)
+      .eq('id', businessId)
       .maybeSingle()
 
     const color = business?.settings?.primary_color

@@ -5,7 +5,7 @@ import * as XLSX from '@e965/xlsx'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import SelectDropdown from '@/components/ui/SelectDropdown'
-import type { InventoryBrand, InventoryCategory, InventoryProduct } from '@/components/stock/types'
+import type { InventoryBrand, InventoryCategory } from '@/components/stock/types'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -607,7 +607,7 @@ export default function ImportProductsModal({
           {step === 'mapping' && (
             <div className="p-6">
               <p className="text-body-sm text-hint mb-4">
-                Algunas columnas no fueron reconocidas automaticamente. Asignalas manualmente o marcalas como "Ignorar".
+                Algunas columnas no fueron reconocidas automaticamente. Asignalas manualmente o marcalas como &quot;Ignorar&quot;.
               </p>
 
               <div className="rounded-xl border border-edge/60 overflow-hidden">

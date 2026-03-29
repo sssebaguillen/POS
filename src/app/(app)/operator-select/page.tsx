@@ -3,6 +3,7 @@ export const runtime = 'edge'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import OperatorSelectView from '@/components/operator/OperatorSelectView'
+import { getBusinessIdByUserId } from '@/lib/business'
 
 interface Profile {
   id: string
@@ -41,20 +42,26 @@ export default async function OperatorSelectPage() {
     redirect('/login')
   }
 
-  const { data: profile, error: profileError } = await supabase
+  const { data: ownerProfile, error: profileError } = await supabase
     .from('profiles')
-    .select('id, name, business_id')
+    .select('id, name')
     .eq('id', user.id)
-    .single<Profile>()
+    .single<Pick<Profile, 'id' | 'name'>>()
 
-  if (profileError || !profile?.business_id) {
+  if (profileError || !ownerProfile) {
     throw new Error(profileError?.message ?? 'No se pudo obtener el perfil del usuario autenticado.')
+  }
+
+  const businessId = await getBusinessIdByUserId(supabase, user.id)
+
+  if (!businessId) {
+    throw new Error('No se pudo obtener el negocio asociado al usuario autenticado.')
   }
 
   const { data: operators, error: operatorsError } = await supabase
     .from('operators')
     .select('id, name, role')
-    .eq('business_id', profile.business_id)
+    .eq('business_id', businessId)
     .eq('is_active', true)
     .order('name')
 
@@ -66,7 +73,7 @@ export default async function OperatorSelectPage() {
 
   return (
     <OperatorSelectView
-      ownerProfile={profile}
+      ownerProfile={{ ...ownerProfile, business_id: businessId }}
       operators={visibleOperators}
       availableOperatorsCount={visibleOperators.length}
     />

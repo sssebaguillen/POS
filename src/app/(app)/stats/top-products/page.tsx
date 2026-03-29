@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import TopProductsDetailView from '@/components/stats/TopProductsDetailView'
+import { requireAuthenticatedBusinessId } from '@/lib/business'
 
 interface SearchParams {
   period?: string
@@ -15,20 +16,7 @@ export default async function TopProductsDetailPage({
 }) {
   const params = await searchParams
   const supabase = await createClient()
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
-  let businessId: string | null = null
-  if (user) {
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('business_id')
-      .eq('id', user.id)
-      .single()
-    businessId = profile?.business_id ?? null
-  }
+  const businessId = await requireAuthenticatedBusinessId(supabase)
 
   const period = params.period ?? 'mes'
   const from = params.from

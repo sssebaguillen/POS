@@ -19,34 +19,8 @@ interface Props {
 
 export default function ProductPanel({ products, search, activeFilter, activePriceList, priceListOverrides }: Props) {
   const addItem = useCartStore(s => s.addItem)
-  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
-  const sentinelRef = useRef<HTMLDivElement>(null)
-  const prevSearchRef = useRef(search)
-  const prevFilterRef = useRef<ActiveFilter>(activeFilter)
-
-  // Reset pagination whenever search or active filter changes
-  if (prevSearchRef.current !== search || prevFilterRef.current !== activeFilter) {
-    prevSearchRef.current = search
-    prevFilterRef.current = activeFilter
-    setVisibleCount(PAGE_SIZE)
-  }
 
   // IntersectionObserver — load more when sentinel comes into view
-  useEffect(() => {
-    const sentinel = sentinelRef.current
-    if (!sentinel) return
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          setVisibleCount(prev => prev + PAGE_SIZE)
-        }
-      },
-      { rootMargin: '300px' }
-    )
-    observer.observe(sentinel)
-    return () => observer.disconnect()
-  }, [])
-
   const filtered = useMemo(() => {
     let result = products
     if (activeFilter?.type === 'category') {
@@ -69,7 +43,7 @@ export default function ProductPanel({ products, search, activeFilter, activePri
   )
 
   const isSearching = search.trim().length > 0
-  const visible = useMemo(() => filtered.slice(0, visibleCount), [filtered, visibleCount])
+  const paginationKey = `${search}|${activeFilter?.type ?? 'all'}|${activeFilter?.id ?? 'all'}`
 
   const handleAdd = useCallback((product: Product) => {
     addItem(product)
@@ -110,27 +84,78 @@ export default function ProductPanel({ products, search, activeFilter, activePri
             )}
           </div>
         ) : (
-          <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))' }}>
-            {visible.map(product => (
-              <ProductCard
-                key={product.id}
-                product={product}
-                activePriceList={activePriceList}
-                priceListOverrides={priceListOverrides}
-                onAdd={handleAdd}
-              />
-            ))}
-          </div>
-        )}
-        {/* Infinite scroll sentinel */}
-        <div ref={sentinelRef} />
-        {visibleCount < filtered.length && (
-          <p className="py-4 text-center text-xs text-subtle">
-            Mostrando {visibleCount} de {filtered.length} — seguí scrolleando para ver más
-          </p>
+          <PaginatedProductGrid
+            key={paginationKey}
+            products={filtered}
+            activePriceList={activePriceList}
+            priceListOverrides={priceListOverrides}
+            onAdd={handleAdd}
+          />
         )}
       </section>
     </div>
+  )
+}
+
+interface PaginatedProductGridProps {
+  products: ProductWithCategory[]
+  activePriceList: PriceList | null
+  priceListOverrides: PriceListOverride[]
+  onAdd: (product: Product) => void
+}
+
+function PaginatedProductGrid({
+  products,
+  activePriceList,
+  priceListOverrides,
+  onAdd,
+}: PaginatedProductGridProps) {
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
+  const sentinelRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const sentinel = sentinelRef.current
+    if (!sentinel) return
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setVisibleCount(prev => prev + PAGE_SIZE)
+        }
+      },
+      { rootMargin: '300px' }
+    )
+
+    observer.observe(sentinel)
+
+    return () => observer.disconnect()
+  }, [])
+
+  const visibleProducts = useMemo(
+    () => products.slice(0, visibleCount),
+    [products, visibleCount]
+  )
+
+  return (
+    <>
+      <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))' }}>
+        {visibleProducts.map(product => (
+          <ProductCard
+            key={product.id}
+            product={product}
+            activePriceList={activePriceList}
+            priceListOverrides={priceListOverrides}
+            onAdd={onAdd}
+          />
+        ))}
+      </div>
+      <div ref={sentinelRef} />
+      {visibleCount < products.length && (
+        <p className="py-4 text-center text-xs text-subtle">
+          Mostrando {visibleCount} de {products.length} — seguí scrolleando para ver más
+        </p>
+      )}
+    </>
   )
 }
 

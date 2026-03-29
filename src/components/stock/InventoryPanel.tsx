@@ -85,23 +85,13 @@ interface QuickEditCategoryModalProps {
 }
 
 function QuickEditCategoryModal({ open, product, categories, businessId, operatorId, onSaved, onClose }: QuickEditCategoryModalProps) {
-  const [selectedId, setSelectedId] = useState<string>('')
+  const [selectedId, setSelectedId] = useState<string>(product?.category_id ?? '')
   const [creating, setCreating] = useState(false)
   const [newName, setNewName] = useState('')
   const [newIcon, setNewIcon] = useState('📦')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const supabase = useMemo(() => createClient(), [])
-
-  useEffect(() => {
-    if (open && product) {
-      setSelectedId(product.category_id ?? '')
-      setCreating(false)
-      setNewName('')
-      setNewIcon('📦')
-      setError(null)
-    }
-  }, [open, product])
 
   async function handleSave() {
     if (!product) return
@@ -224,21 +214,12 @@ interface QuickEditBrandModalProps {
 }
 
 function QuickEditBrandModal({ open, product, brands, businessId, operatorId, onSaved, onClose }: QuickEditBrandModalProps) {
-  const [selectedId, setSelectedId] = useState<string>('')
+  const [selectedId, setSelectedId] = useState<string>(product?.brand_id ?? '')
   const [creating, setCreating] = useState(false)
   const [newName, setNewName] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const supabase = useMemo(() => createClient(), [])
-
-  useEffect(() => {
-    if (open && product) {
-      setSelectedId(product.brand_id ?? '')
-      setCreating(false)
-      setNewName('')
-      setError(null)
-    }
-  }, [open, product])
 
   async function handleSave() {
     if (!product) return
@@ -616,7 +597,6 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
   const activeFilterCount = selectedCategories.length + selectedBrands.length + (showInCatalogOnly ? 1 : 0)
 
   const filtered = useMemo(() => {
-    setVisibleCount(PAGE_SIZE)
     const q = query.trim().toLowerCase()
     return products.filter(product => {
       const status = getStatus(product)
@@ -661,19 +641,10 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
 
   const visibleProducts = useMemo(() => sorted.slice(0, visibleCount), [sorted, visibleCount])
 
-  // Handlers estables via ref para no re-renderizar ProductCard en cada update de estado
-  const handlersRef = useRef({
-    edit: (_product: InventoryProduct) => {},
-    toggleActive: (_product: InventoryProduct) => {},
-    delete: (_product: InventoryProduct) => {},
-    quickCategory: (_product: InventoryProduct) => {},
-    quickBrand: (_product: InventoryProduct) => {},
-  })
-
-  // Infinite scroll: al llegar al final del área virtual, carga mas productos
+  // Resetear paginación cuando cambia el conjunto base mostrado
   useEffect(() => {
     setVisibleCount(PAGE_SIZE)
-  }, [sort])
+  }, [query, selectedCategories, selectedBrands, showInCatalogOnly, sort, statusFilter])
 
   // Infinite scroll: al llegar al final del área virtual, carga mas productos
   useEffect(() => {
@@ -692,12 +663,6 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
     return () => el.removeEventListener('scroll', onScroll)
   }, [filtered.length, visibleCount])
 
-  const handleEdit = useCallback((product: InventoryProduct) => handlersRef.current.edit(product), [])
-  const handleToggleActive = useCallback((product: InventoryProduct) => handlersRef.current.toggleActive(product), [])
-  const handleDeleteProduct = useCallback((product: InventoryProduct) => handlersRef.current.delete(product), [])
-  const handleQuickCategory = useCallback((product: InventoryProduct) => handlersRef.current.quickCategory(product), [])
-  const handleQuickBrand = useCallback((product: InventoryProduct) => handlersRef.current.quickBrand(product), [])
-
   const activeProducts = products.filter(p => p.is_active)
   const totalStock = activeProducts.reduce((acc, p) => acc + p.stock, 0)
   const inventoryValue = activeProducts.reduce((acc, p) => acc + p.cost * p.stock, 0)
@@ -711,7 +676,7 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
   const lowStock = activeProducts.filter(p => p.stock > 0 && p.stock <= p.min_stock).length
   const categoryCount = new Set(products.map(p => p.category_id).filter(Boolean)).size
 
-  async function updateProduct(productId: string, values: Partial<InventoryProduct>) {
+  const updateProduct = useCallback(async (productId: string, values: Partial<InventoryProduct>) => {
     if (readOnly) {
       setCrudError('Tu rol tiene acceso de solo lectura para stock.')
       return
@@ -756,7 +721,7 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
     }
 
     setLoadingId(null)
-  }
+  }, [brands, businessId, readOnly, supabase])
 
   function handleBrandsChanged(updatedBrands: InventoryBrand[]) {
     setBrands(updatedBrands)
@@ -787,7 +752,7 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
     }))
   }
 
-  function handleQuickCategorySaved(productId: string, categoryId: string | null, newCategory?: InventoryCategory) {
+  const handleQuickCategorySaved = useCallback((productId: string, categoryId: string | null, newCategory?: InventoryCategory) => {
     if (newCategory) {
       setCategories(prev => [...prev, newCategory].sort((a, b) => a.name.localeCompare(b.name)))
     }
@@ -798,9 +763,9 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
         : null
       return { ...p, category_id: categoryId, categories: cat ? { name: cat.name, icon: cat.icon } : null }
     }))
-  }
+  }, [categories])
 
-  function handleQuickBrandSaved(productId: string, brandId: string | null, newBrand?: InventoryBrand) {
+  const handleQuickBrandSaved = useCallback((productId: string, brandId: string | null, newBrand?: InventoryBrand) => {
     if (newBrand) {
       setBrands(prev => [...prev, newBrand].sort((a, b) => a.name.localeCompare(b.name)))
     }
@@ -811,9 +776,9 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
         : null
       return { ...p, brand_id: brandId, brand: brand ? { id: brand.id, name: brand.name } : null }
     }))
-  }
+  }, [brands])
 
-  function handleDeleteProductImpl(product: InventoryProduct) {
+  const handleDeleteProductImpl = useCallback((product: InventoryProduct) => {
     if (readOnly) {
       setCrudError('Tu rol tiene acceso de solo lectura para stock.')
       return
@@ -845,7 +810,7 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
         setLoadingId(null)
       },
     })
-  }
+  }, [businessId, readOnly, supabase])
 
   function exportCsv() {
     const headers = ['id', 'nombre', 'categoria', 'precio', 'costo', 'stock', 'stock_minimo', 'activo']
@@ -875,28 +840,32 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
     URL.revokeObjectURL(url)
   }
 
-  // Actualizar handlers estables en cada render para que siempre capturen el closure actual
-  handlersRef.current = {
-    edit: (product: InventoryProduct) => {
-      if (readOnly) {
-        setCrudError('Tu rol tiene acceso de solo lectura para stock.')
-        return
-      }
-      setEditingProduct(product)
-    },
-    toggleActive: (product: InventoryProduct) => {
-      void updateProduct(product.id, { is_active: !product.is_active })
-    },
-    delete: handleDeleteProductImpl,
-    quickCategory: (product: InventoryProduct) => {
-      if (readOnly) return
-      setQuickEditCategoryProduct(product)
-    },
-    quickBrand: (product: InventoryProduct) => {
-      if (readOnly) return
-      setQuickEditBrandProduct(product)
-    },
-  }
+  const handleEdit = useCallback((product: InventoryProduct) => {
+    if (readOnly) {
+      setCrudError('Tu rol tiene acceso de solo lectura para stock.')
+      return
+    }
+
+    setEditingProduct(product)
+  }, [readOnly])
+
+  const handleToggleActive = useCallback((product: InventoryProduct) => {
+    void updateProduct(product.id, { is_active: !product.is_active })
+  }, [updateProduct])
+
+  const handleDeleteProduct = useCallback((product: InventoryProduct) => {
+    handleDeleteProductImpl(product)
+  }, [handleDeleteProductImpl])
+
+  const handleQuickCategory = useCallback((product: InventoryProduct) => {
+    if (readOnly) return
+    setQuickEditCategoryProduct(product)
+  }, [readOnly])
+
+  const handleQuickBrand = useCallback((product: InventoryProduct) => {
+    if (readOnly) return
+    setQuickEditBrandProduct(product)
+  }, [readOnly])
 
   if (!businessId) {
     return (
@@ -1162,7 +1131,7 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
         />
       )}
 
-      {businessId && (
+      {showCategories && businessId && (
         <CategoryModal
           open={showCategories}
           onClose={() => setShowCategories(false)}
@@ -1190,7 +1159,7 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
         />
       )}
 
-      {businessId && (
+      {showBrands && businessId && (
         <BrandModal
           open={showBrands}
           onClose={() => setShowBrands(false)}

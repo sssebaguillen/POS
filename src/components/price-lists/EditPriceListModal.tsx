@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -8,6 +8,7 @@ import { X } from 'lucide-react'
 import { Dialog, DialogContent } from '@/components/ui/dialog'
 import ConfirmModal from '@/components/shared/ConfirmModal'
 import type { PriceList } from '@/components/price-lists/types'
+import { normalizePriceList } from '@/lib/mappers'
 
 type ConfirmState = { title: string; message: string; onConfirm: () => void } | null
 
@@ -35,14 +36,6 @@ export default function EditPriceListModal({
   const [pendingConfirm, setPendingConfirm] = useState<ConfirmState>(null)
 
   const supabase = useMemo(() => createClient(), [])
-
-  useEffect(() => {
-    if (!open) return
-    setName(list.name)
-    setDescription(list.description ?? '')
-    setPercentage(((list.multiplier - 1) * 100).toFixed(2))
-    setError(null)
-  }, [open, list])
 
   function handleClose() {
     if (saving || deleting) return
@@ -86,13 +79,7 @@ export default function EditPriceListModal({
     }
 
     onSaved({
-      id: data.id,
-      business_id: data.business_id,
-      name: data.name,
-      description: data.description,
-      multiplier: Number(data.multiplier),
-      is_default: data.is_default,
-      created_at: data.created_at,
+      ...normalizePriceList(data),
     })
 
     onClose()

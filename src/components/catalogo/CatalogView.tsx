@@ -11,6 +11,37 @@ type SortBy = 'name-asc' | 'name-desc' | 'price-asc' | 'price-desc'
 
 const VIEW_MODE_KEY = 'catalog-view-mode'
 
+function getStoredViewMode(): ViewMode {
+  if (typeof window === 'undefined') {
+    return 'grid'
+  }
+
+  const stored = localStorage.getItem(VIEW_MODE_KEY)
+  return stored === 'list' ? 'list' : 'grid'
+}
+
+function getStoredCartItems(
+  cartKey: string,
+  products: CatalogProduct[]
+): CatalogCartItem[] {
+  if (typeof window === 'undefined') {
+    return []
+  }
+
+  const storedCart = localStorage.getItem(cartKey)
+  if (!storedCart) {
+    return []
+  }
+
+  try {
+    const parsed = JSON.parse(storedCart) as CatalogCartItem[]
+    const productIds = new Set(products.map(product => product.id))
+    return parsed.filter(item => productIds.has(item.product.id))
+  } catch {
+    return []
+  }
+}
+
 interface CatalogViewProps {
   business: CatalogBusiness
   products: CatalogProduct[]
@@ -18,32 +49,13 @@ interface CatalogViewProps {
 }
 
 export default function CatalogView({ business, products, categories }: CatalogViewProps) {
+  const cartKey = `catalog-cart-${business.id}`
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
   const [isMobileCartOpen, setIsMobileCartOpen] = useState(false)
-  const [cartItems, setCartItems] = useState<CatalogCartItem[]>([])
-  const [viewMode, setViewMode] = useState<ViewMode>('grid')
+  const [cartItems, setCartItems] = useState<CatalogCartItem[]>(() => getStoredCartItems(cartKey, products))
+  const [viewMode, setViewMode] = useState<ViewMode>(getStoredViewMode)
   const [searchQuery, setSearchQuery] = useState('')
   const [sortBy, setSortBy] = useState<SortBy>('name-asc')
-
-  const cartKey = `catalog-cart-${business.id}`
-
-  useEffect(() => {
-    const storedViewMode = localStorage.getItem(VIEW_MODE_KEY) as ViewMode | null
-    if (storedViewMode === 'grid' || storedViewMode === 'list') {
-      setViewMode(storedViewMode)
-    }
-
-    const storedCart = localStorage.getItem(cartKey)
-    if (storedCart) {
-      try {
-        const parsed: CatalogCartItem[] = JSON.parse(storedCart)
-        const productIds = new Set(products.map(p => p.id))
-        setCartItems(parsed.filter(item => productIds.has(item.product.id)))
-      } catch {
-        // ignore malformed data
-      }
-    }
-  }, [cartKey, products])
 
   useEffect(() => {
     localStorage.setItem(cartKey, JSON.stringify(cartItems))

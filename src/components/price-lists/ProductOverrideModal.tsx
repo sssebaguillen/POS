@@ -1,12 +1,13 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { X } from 'lucide-react'
 import { Dialog, DialogContent } from '@/components/ui/dialog'
 import type { PriceListOverride, PriceListProduct } from '@/components/price-lists/types'
+import { normalizePriceListOverride } from '@/lib/mappers'
 
 interface ProductOverrideModalProps {
   open: boolean
@@ -36,12 +37,6 @@ export default function ProductOverrideModal({
   const [saving, setSaving] = useState(false)
 
   const supabase = useMemo(() => createClient(), [])
-
-  useEffect(() => {
-    if (!open) return
-    setPercentage(currentOverride ? ((currentOverride.multiplier - 1) * 100).toFixed(2) : '')
-    setError(null)
-  }, [open, currentOverride])
 
   function handleClose() {
     if (saving) return
@@ -92,11 +87,7 @@ export default function ProductOverrideModal({
     }
 
     onSaved({
-      id: data.id,
-      price_list_id: data.price_list_id,
-      product_id: data.product_id,
-      brand_id: data.brand_id,
-      multiplier: Number(data.multiplier),
+      ...normalizePriceListOverride(data),
     })
     onClose()
   }
@@ -158,11 +149,7 @@ export default function ProductOverrideModal({
       }
 
       onSaved({
-        id: data.id,
-        price_list_id: data.price_list_id,
-        product_id: data.product_id,
-        brand_id: data.brand_id,
-        multiplier: Number(data.multiplier),
+        ...normalizePriceListOverride(data),
       })
       onClose()
       return
@@ -187,11 +174,7 @@ export default function ProductOverrideModal({
     }
 
     onSaved({
-      id: data.id,
-      price_list_id: data.price_list_id,
-      product_id: data.product_id,
-      brand_id: data.brand_id,
-      multiplier: Number(data.multiplier),
+      ...normalizePriceListOverride(data),
     })
     onClose()
   }

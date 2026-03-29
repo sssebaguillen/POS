@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -37,14 +37,6 @@ export default function CategoryModal({
   const [deletingId, setDeletingId] = useState<string | null>(null)
 
   const supabase = useMemo(() => createClient(), [])
-
-  useEffect(() => {
-    if (!open) return
-    setCategories(initialCategories)
-    setName('')
-    setIcon(DEFAULT_ICON)
-    setError(null)
-  }, [open, initialCategories])
 
   async function refreshCategories() {
     const { data, error: fetchError } = await supabase

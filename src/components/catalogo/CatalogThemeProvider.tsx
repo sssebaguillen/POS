@@ -15,6 +15,19 @@ const CatalogThemeContext = createContext<CatalogThemeContextType | undefined>(u
 const CATALOG_THEME_KEY = 'catalog-theme'
 const APP_THEME_KEY = 'pos-theme'
 
+function getCatalogTheme(): Theme {
+  if (typeof window === 'undefined') {
+    return 'light'
+  }
+
+  const stored = localStorage.getItem(CATALOG_THEME_KEY)
+  if (stored === 'dark' || stored === 'light') {
+    return stored
+  }
+
+  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+}
+
 export function useCatalogTheme() {
   const context = useContext(CatalogThemeContext)
   if (!context) throw new Error('useCatalogTheme must be used within CatalogThemeProvider')
@@ -22,29 +35,18 @@ export function useCatalogTheme() {
 }
 
 export function CatalogThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setTheme] = useState<Theme>('light')
-  const [mounted, setMounted] = useState(false)
+  const [theme, setTheme] = useState<Theme>(getCatalogTheme)
 
   useEffect(() => {
-    const stored = localStorage.getItem(CATALOG_THEME_KEY) as Theme | null
-    const preferred: Theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
-    const resolved = stored ?? preferred
-    setTheme(resolved)
-    document.documentElement.classList.toggle('dark', resolved === 'dark')
-    setMounted(true)
+    document.documentElement.classList.toggle('dark', theme === 'dark')
+    localStorage.setItem(CATALOG_THEME_KEY, theme)
 
     return () => {
-      const appTheme = localStorage.getItem(APP_THEME_KEY) as Theme | null
+      const appTheme = localStorage.getItem(APP_THEME_KEY)
       const appPreferred: Theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
       document.documentElement.classList.toggle('dark', (appTheme ?? appPreferred) === 'dark')
     }
-  }, [])
-
-  useEffect(() => {
-    if (!mounted) return
-    document.documentElement.classList.toggle('dark', theme === 'dark')
-    localStorage.setItem(CATALOG_THEME_KEY, theme)
-  }, [theme, mounted])
+  }, [theme])
 
   const toggle = () => setTheme(prev => (prev === 'light' ? 'dark' : 'light'))
 

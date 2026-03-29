@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import GastosView from '@/components/expenses/GastosView'
 import type { Expense, Supplier, BusinessBalance } from '@/components/expenses/types'
+import { requireAuthenticatedBusinessId } from '@/lib/business'
 
 interface SearchParams {
   period?: string
@@ -61,20 +62,7 @@ export default async function GastosPage({
 }) {
   const params = await searchParams
   const supabase = await createClient()
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
-  let businessId: string | null = null
-  if (user) {
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('business_id')
-      .eq('id', user.id)
-      .single()
-    businessId = profile?.business_id ?? null
-  }
+  const businessId = await requireAuthenticatedBusinessId(supabase)
 
   const period: FilterPeriod =
     params.period === 'hoy' || params.period === 'semana' || params.period === 'personalizado'
@@ -124,7 +112,7 @@ export default async function GastosPage({
       expenses={expenses}
       balance={balance}
       suppliers={suppliers}
-      businessId={businessId ?? ''}
+      businessId={businessId}
       period={period}
       from={from}
       to={to}

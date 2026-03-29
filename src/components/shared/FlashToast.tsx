@@ -11,10 +11,15 @@ interface Props {
   message: string
 }
 
+function clearFlashCookie() {
+  document.cookie = 'flash_toast=; Max-Age=0; path=/; SameSite=Lax'
+}
+
 export default function FlashToast({ message }: Props) {
   const [visible, setVisible] = useState(true)
 
   useEffect(() => {
+    clearFlashCookie()
     const timer = setTimeout(() => setVisible(false), 3000)
     return () => clearTimeout(timer)
   }, [])
@@ -29,7 +34,10 @@ export default function FlashToast({ message }: Props) {
       <span>{MESSAGES[message] ?? message}</span>
       <button
         type="button"
-        onClick={() => setVisible(false)}
+        onClick={() => {
+          clearFlashCookie()
+          setVisible(false)
+        }}
         aria-label="Cerrar notificacion"
         className="ml-1 rounded p-0.5 hover:bg-amber-100 dark:hover:bg-amber-900 transition-colors"
       >

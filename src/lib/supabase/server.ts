@@ -17,7 +17,9 @@ export async function createClient() {
             cookiesToSet.forEach(({ name, value, options }) =>
               cookieStore.set(name, value, options)
             )
-          } catch {}
+          } catch (error) {
+            console.error('Failed to persist Supabase auth cookies on the server.', error)
+          }
         },
       },
     }

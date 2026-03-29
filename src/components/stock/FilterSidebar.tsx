@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { createPortal } from 'react-dom'
 import { ArrowDown, ArrowUp, ChevronDown, Search, SlidersHorizontal, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -91,7 +91,6 @@ export default function FilterSidebar({
   showInCatalogOnly,
   onShowInCatalogChange,
 }: Props) {
-  const [mounted, setMounted] = useState(false)
   const [catQuery, setCatQuery] = useState('')
   const [brandQuery, setBrandQuery] = useState('')
   const [openSections, setOpenSections] = useState({
@@ -100,8 +99,6 @@ export default function FilterSidebar({
     categories: true,
     brands: true,
   })
-
-  useEffect(() => { setMounted(true) }, [])
 
   function toggleSection(key: keyof typeof openSections) {
     setOpenSections(prev => ({ ...prev, [key]: !prev[key] }))
@@ -147,7 +144,7 @@ export default function FilterSidebar({
     }
   }
 
-  if (!mounted) return null
+  if (typeof document === 'undefined') return null
 
   return createPortal(
     <>

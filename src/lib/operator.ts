@@ -1,4 +1,4 @@
-export type { UserRole } from '@/lib/types';
+export type { UserRole } from '@/lib/types'
 import type { UserRole } from '@/lib/types'
 
 export interface Permissions {
@@ -34,44 +34,71 @@ interface CookieLike {
   value: string
 }
 
-interface CookieStoreLike {
+export interface CookieStoreLike {
   get: (name: string) => CookieLike | undefined
 }
 
-function isPermissions(value: unknown): value is Permissions {
-  if (!value || typeof value !== 'object') {
-    return false
-  }
-
-  const p = value as Record<string, unknown>
-  return (
-    typeof p.sales === 'boolean' &&
-    typeof p.stock === 'boolean' &&
-    typeof p.stock_write === 'boolean' &&
-    typeof p.stats === 'boolean' &&
-    typeof p.price_lists === 'boolean' &&
-    typeof p.price_lists_write === 'boolean' &&
-    typeof p.settings === 'boolean' &&
-    typeof p.expenses === 'boolean'
-  )
-}
-
-function isUserRole(value: unknown): value is UserRole {
-  return value === 'owner' || value === 'manager' || value === 'cashier' || value === 'custom'
-}
-
-function parseOperator(value: unknown): ActiveOperator | null {
+export function parsePermissions(value: unknown): Permissions | null {
   if (!value || typeof value !== 'object') {
     return null
   }
 
   const record = value as Record<string, unknown>
+  if (
+    typeof record.sales !== 'boolean' ||
+    typeof record.stock !== 'boolean' ||
+    typeof record.stock_write !== 'boolean' ||
+    typeof record.stats !== 'boolean' ||
+    typeof record.price_lists !== 'boolean' ||
+    typeof record.price_lists_write !== 'boolean' ||
+    typeof record.settings !== 'boolean' ||
+    typeof record.expenses !== 'boolean'
+  ) {
+    return null
+  }
+
+  return {
+    sales: record.sales,
+    stock: record.stock,
+    stock_write: record.stock_write,
+    stats: record.stats,
+    price_lists: record.price_lists,
+    price_lists_write: record.price_lists_write,
+    settings: record.settings,
+    expenses: record.expenses,
+  }
+}
+
+export function normalizePermissions(value: Partial<Permissions> | null | undefined): Permissions {
+  return {
+    sales: value?.sales === true,
+    stock: value?.stock === true,
+    stock_write: value?.stock_write === true,
+    stats: value?.stats === true,
+    price_lists: value?.price_lists === true,
+    price_lists_write: value?.price_lists_write === true,
+    settings: value?.settings === true,
+    expenses: value?.expenses === true,
+  }
+}
+
+export function isUserRole(value: unknown): value is UserRole {
+  return value === 'owner' || value === 'manager' || value === 'cashier' || value === 'custom'
+}
+
+export function parseActiveOperator(value: unknown): ActiveOperator | null {
+  if (!value || typeof value !== 'object') {
+    return null
+  }
+
+  const record = value as Record<string, unknown>
+  const permissions = parsePermissions(record.permissions)
 
   if (
     typeof record.profile_id !== 'string' ||
     typeof record.name !== 'string' ||
     !isUserRole(record.role) ||
-    !isPermissions(record.permissions)
+    !permissions
   ) {
     return null
   }
@@ -80,7 +107,7 @@ function parseOperator(value: unknown): ActiveOperator | null {
     profile_id: record.profile_id,
     name: record.name,
     role: record.role,
-    permissions: record.permissions,
+    permissions,
   }
 }
 
@@ -93,7 +120,7 @@ export function getActiveOperator(cookieStore: CookieStoreLike): ActiveOperator 
 
   try {
     const parsed = JSON.parse(rawCookie.value) as unknown
-    return parseOperator(parsed)
+    return parseActiveOperator(parsed)
   } catch {
     return null
   }

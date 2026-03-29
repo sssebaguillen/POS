@@ -3,32 +3,12 @@ import { cookies } from 'next/headers'
 import { getActiveOperator } from '@/lib/operator'
 import type { PriceListOverride } from '@/components/price-lists/types'
 import POSView from '@/components/pos/POSView'
+import { requireAuthenticatedBusinessId } from '@/lib/business'
+import { normalizePriceList, normalizePriceListOverride, unwrapRelation } from '@/lib/mappers'
 
 export default async function POSPage() {
   const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
-  let profileBusinessId: string | null = null
-
-  if (user) {
-    const { data: profile, error: profileError } = await supabase
-      .from('profiles')
-      .select('business_id')
-      .eq('id', user.id)
-      .single()
-
-    if (profileError) {
-      throw new Error(profileError.message)
-    }
-
-    profileBusinessId = profile?.business_id ?? null
-  }
-
-  if (!profileBusinessId) {
-    throw new Error('No se encontro business_id en el perfil del usuario autenticado')
-  }
+  const businessId = await requireAuthenticatedBusinessId(supabase)
 
   const cookieStore = await cookies()
   const activeOperator = getActiveOperator(cookieStore)
@@ -42,22 +22,24 @@ export default async function POSPage() {
     supabase
       .from('businesses')
       .select('id, name')
-      .eq('id', profileBusinessId)
+      .eq('id', businessId)
       .single(),
     supabase
       .from('products')
       .select('id, business_id, name, price, cost, stock, min_stock, is_active, show_in_catalog, category_id, sku, barcode, brand_id, image_url, sales_count, created_at, brands(id, name), categories(name, icon)')
+      .eq('business_id', businessId)
       .eq('is_active', true)
       .order('sales_count', { ascending: false }),
     supabase
       .from('categories')
       .select('id, business_id, name, icon, position, is_active')
+      .eq('business_id', businessId)
       .eq('is_active', true)
       .order('position'),
     supabase
       .from('price_lists')
       .select('id, business_id, name, description, multiplier, is_default, created_at')
-      .eq('business_id', profileBusinessId)
+      .eq('business_id', businessId)
       .order('is_default', { ascending: false })
       .order('name', { ascending: true }),
   ])
@@ -85,13 +67,7 @@ export default async function POSPage() {
       .from('price_list_overrides')
       .select('id, price_list_id, product_id, brand_id, multiplier')
       .in('price_list_id', priceListIds)
-    priceListOverrides = (overridesData ?? []).map(o => ({
-      id: o.id,
-      price_list_id: o.price_list_id,
-      product_id: o.product_id,
-      brand_id: o.brand_id,
-      multiplier: Number(o.multiplier),
-    }))
+    priceListOverrides = (overridesData ?? []).map(normalizePriceListOverride)
   }
 
   return (
@@ -104,30 +80,18 @@ export default async function POSPage() {
         min_stock: Number(product.min_stock),
         sales_count: Number(product.sales_count),
         brand_id: product.brand_id ?? null,
-        brand: Array.isArray(product.brands)
-          ? product.brands[0] ?? null
-          : product.brands ?? null,
+        brand: unwrapRelation(product.brands),
         image_url: product.image_url ?? null,
-        categories: Array.isArray(product.categories)
-          ? product.categories[0] ?? null
-          : product.categories ?? null,
+        categories: unwrapRelation(product.categories),
       }))}
       categories={(categories ?? []).map(c => ({
         id: c.id,
         name: c.name,
         icon: c.icon,
       }))}
-      businessId={profileBusinessId}
+      businessId={businessId}
       businessName={business?.name ?? 'Negocio'}
-      priceLists={(priceLists ?? []).map(pl => ({
-        id: pl.id,
-        business_id: pl.business_id,
-        name: pl.name,
-        description: pl.description,
-        multiplier: Number(pl.multiplier),
-        is_default: pl.is_default,
-        created_at: pl.created_at,
-      }))}
+      priceLists={(priceLists ?? []).map(normalizePriceList)}
       priceListOverrides={priceListOverrides}
       activeOperator={activeOperator}
     />

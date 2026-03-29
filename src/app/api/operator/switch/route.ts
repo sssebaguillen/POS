@@ -1,6 +1,12 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { OWNER_PERMISSIONS, type ActiveOperator, type UserRole } from '@/lib/operator'
+import {
+  OWNER_PERMISSIONS,
+  type ActiveOperator,
+  isUserRole,
+  normalizePermissions,
+} from '@/lib/operator'
+import { getBusinessIdByUserId } from '@/lib/business'
 
 interface OperatorSwitchPayload {
   isOwner: false
@@ -18,10 +24,6 @@ type SwitchPayload = OperatorSwitchPayload | OwnerSwitchPayload
 interface OwnerProfile {
   id: string
   name: string
-}
-
-interface SessionProfile {
-  business_id: string
 }
 
 function parseSwitchPayload(value: unknown): SwitchPayload | null {
@@ -61,10 +63,6 @@ function isOperatorSwitchPayload(payload: SwitchPayload): payload is OperatorSwi
   return payload.isOwner === false
 }
 
-function isUserRole(value: unknown): value is UserRole {
-  return value === 'owner' || value === 'manager' || value === 'cashier' || value === 'custom'
-}
-
 function parseVerifyResult(value: unknown): ActiveOperator | null {
   const record = Array.isArray(value) ? value[0] : value
 
@@ -99,7 +97,7 @@ function parseVerifyResult(value: unknown): ActiveOperator | null {
     profile_id: operator.profile_id,
     name: operator.name,
     role: operator.role,
-    permissions: {
+    permissions: normalizePermissions({
       sales: permissionRecord.sales,
       stock: permissionRecord.stock,
       stock_write: permissionRecord.stock_write,
@@ -107,8 +105,8 @@ function parseVerifyResult(value: unknown): ActiveOperator | null {
       price_lists: permissionRecord.price_lists,
       price_lists_write: permissionRecord.price_lists_write,
       settings: permissionRecord.settings,
-      expenses: typeof permissionRecord.expenses === 'boolean' ? permissionRecord.expenses : false,
-    },
+      expenses: permissionRecord.expenses === true,
+    }),
   }
 }
 
@@ -187,21 +185,29 @@ export async function POST(request: Request) {
     return NextResponse.json({ success: false, error: 'PIN must contain exactly 4 digits.' }, { status: 400 })
   }
 
-  const { data: profile, error: profileError } = await supabase
-    .from('profiles')
-    .select('business_id')
-    .eq('id', user.id)
-    .single<SessionProfile>()
+  let businessId: string | null = null
 
-  if (profileError || !profile?.business_id) {
+  try {
+    businessId = await getBusinessIdByUserId(supabase, user.id)
+  } catch (error) {
     return NextResponse.json(
-      { success: false, error: profileError?.message ?? 'Failed to resolve business_id from profile.' },
+      {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to resolve business_id from profile.',
+      },
+      { status: 400 }
+    )
+  }
+
+  if (!businessId) {
+    return NextResponse.json(
+      { success: false, error: 'Failed to resolve business_id from profile.' },
       { status: 400 }
     )
   }
 
   const { data: verifyData, error: verifyError } = await supabase.rpc('verify_operator_pin', {
-    p_business_id: profile.business_id,
+    p_business_id: businessId,
     p_operator_id: body.profile_id,
     p_pin: normalizedPin,
   })

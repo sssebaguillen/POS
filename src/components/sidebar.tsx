@@ -9,7 +9,7 @@ import { createClient } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
 import { useTheme } from '@/components/shared/theme'
 import OperatorSwitcher from '@/components/operator/OperatorSwitcher'
-import type { Permissions } from '@/lib/operator'
+import { parsePermissions, type Permissions } from '@/lib/operator'
 
 interface NavLink {
   href: string
@@ -51,26 +51,6 @@ const NAV_SECTIONS = [
   },
 ]
 
-function parseOpPerms(raw: string): Permissions | null {
-  try {
-    const parsed = JSON.parse(decodeURIComponent(raw)) as unknown
-    if (!parsed || typeof parsed !== 'object') return null
-    const p = parsed as Record<string, unknown>
-    return {
-      sales:              typeof p.sales === 'boolean'              ? p.sales              : false,
-      stock:              typeof p.stock === 'boolean'              ? p.stock              : false,
-      stock_write:        typeof p.stock_write === 'boolean'        ? p.stock_write        : false,
-      stats:              typeof p.stats === 'boolean'              ? p.stats              : false,
-      price_lists:        typeof p.price_lists === 'boolean'        ? p.price_lists        : false,
-      price_lists_write:  typeof p.price_lists_write === 'boolean'  ? p.price_lists_write  : false,
-      settings:           typeof p.settings === 'boolean'           ? p.settings           : false,
-      expenses:           typeof p.expenses === 'boolean'           ? p.expenses           : false,
-    }
-  } catch {
-    return null
-  }
-}
-
 interface Props {
   open: boolean
   onClose: () => void
@@ -84,17 +64,24 @@ export default function Sidebar({ open, onClose, activeOperatorName, collapsed, 
   const { theme, toggle } = useTheme()
   const router = useRouter()
   const supabase = useMemo(() => createClient(), [])
-  const [permissions, setPermissions] = useState<Permissions | null>(null)
   const [toast, setToast] = useState<string | null>(null)
-
-  useEffect(() => {
-    const match = document.cookie.match(/(?:^|;)\s*op_perms=([^;]+)/)
-    if (match) {
-      setPermissions(parseOpPerms(match[1]))
-    } else {
-      setPermissions(null)
+  const permissions: Permissions | null = (() => {
+    if (typeof document === 'undefined') {
+      return null
     }
-  }, [pathname])
+
+    const match = document.cookie.match(/(?:^|;)\s*op_perms=([^;]+)/)
+    if (!match) {
+      return null
+    }
+
+    try {
+      const parsed = JSON.parse(decodeURIComponent(match[1])) as unknown
+      return parsePermissions(parsed)
+    } catch {
+      return null
+    }
+  })()
 
   useEffect(() => {
     if (!toast) return
@@ -112,6 +99,7 @@ export default function Sidebar({ open, onClose, activeOperatorName, collapsed, 
 
   async function handleLogout() {
     await supabase.auth.signOut()
+    await fetch('/api/operator/logout', { method: 'POST' })
     router.push('/login')
   }
 

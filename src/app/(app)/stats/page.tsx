@@ -2,26 +2,12 @@ export const runtime = 'edge'
 
 import { createClient } from '@/lib/supabase/server'
 import StatsView from '@/components/analytics/StatsView'
+import { requireAuthenticatedBusinessId } from '@/lib/business'
+import { unwrapRelation } from '@/lib/mappers'
 
 export default async function StatsPage() {
   const supabase = await createClient()
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
-  let profileBusinessId: string | null = null
-  if (user) {
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('business_id')
-      .eq('id', user.id)
-      .single()
-
-    profileBusinessId = profile?.business_id ?? null
-  }
-
-  const businessId = profileBusinessId
+  const businessId = await requireAuthenticatedBusinessId(supabase)
 
   const [{ data: sales }, { data: products }, { data: categories }] = await Promise.all([
     supabase
@@ -90,9 +76,7 @@ export default async function StatsPage() {
         name: product.name,
         category_id: product.category_id,
         brand_id: product.brand_id ?? null,
-        brand: Array.isArray(product.brands)
-          ? product.brands[0] ?? null
-          : product.brands ?? null,
+        brand: unwrapRelation(product.brands),
       }))}
       categories={(categories ?? []).map(category => ({
         id: category.id,

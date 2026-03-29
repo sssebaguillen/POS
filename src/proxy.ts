@@ -1,6 +1,6 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
-import { getActiveOperator, hasPermission, OWNER_PERMISSIONS } from '@/lib/operator'
+import { getActiveOperator, hasPermission, normalizePermissions, OWNER_PERMISSIONS } from '@/lib/operator'
 
 function flashRedirect(destination: URL): NextResponse {
   const response = NextResponse.redirect(destination)
@@ -162,16 +162,7 @@ export async function proxy(request: NextRequest) {
     return flashRedirect(new URL('/pos', request.url))
   }
 
-  const normalizedPerms = {
-    sales:             operator.permissions.sales             ?? false,
-    stock:             operator.permissions.stock             ?? false,
-    stock_write:       operator.permissions.stock_write       ?? false,
-    stats:             operator.permissions.stats             ?? false,
-    price_lists:       operator.permissions.price_lists       ?? false,
-    price_lists_write: operator.permissions.price_lists_write ?? false,
-    settings:          operator.permissions.settings          ?? false,
-    expenses:          operator.permissions.expenses          ?? false,
-  }
+  const normalizedPerms = normalizePermissions(operator.permissions)
 
   supabaseResponse.cookies.set('op_perms', JSON.stringify(normalizedPerms), {
     httpOnly: false,

@@ -3,26 +3,11 @@ export const runtime = 'edge'
 import { createClient } from '@/lib/supabase/server'
 import DashboardView from '@/components/analytics/DashboardView'
 import type { BusinessBalance } from '@/components/expenses/types'
+import { requireAuthenticatedBusinessId } from '@/lib/business'
 
 export default async function DashboardPage() {
   const supabase = await createClient()
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
-  let profileBusinessId: string | null = null
-  if (user) {
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('business_id')
-      .eq('id', user.id)
-      .single()
-
-    profileBusinessId = profile?.business_id ?? null
-  }
-
-  const businessId = profileBusinessId
+  const businessId = await requireAuthenticatedBusinessId(supabase)
 
   const [{ data: sales }, { data: products }, { data: business }, balanceResult] = await Promise.all([
     supabase

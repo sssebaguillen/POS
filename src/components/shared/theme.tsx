@@ -18,6 +18,19 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined)
 
 const STORAGE_KEY = 'pos-theme'
 
+function getPreferredTheme(): Theme {
+  if (typeof window === 'undefined') {
+    return 'light'
+  }
+
+  const stored = localStorage.getItem(STORAGE_KEY)
+  if (stored === 'dark' || stored === 'light') {
+    return stored
+  }
+
+  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+}
+
 export function useTheme() {
   const context = useContext(ThemeContext)
   if (!context) throw new Error('useTheme must be used within a ThemeProvider')
@@ -26,26 +39,13 @@ export function useTheme() {
 
 // ─── Provider ────────────────────────────────────────────────────────────────
 
-export function ThemeProvider({ children, nonce }: { children: React.ReactNode; nonce?: string }) {
-  const [theme, setTheme] = useState<Theme>('light')
-  const [mounted, setMounted] = useState(false)
+export function ThemeProvider({ children }: { children: React.ReactNode }) {
+  const [theme, setTheme] = useState<Theme>(getPreferredTheme)
 
   useEffect(() => {
-    const stored = localStorage.getItem(STORAGE_KEY) as Theme | null
-    const preferred = window.matchMedia('(prefers-color-scheme: dark)').matches
-      ? 'dark'
-      : 'light'
-    const resolved = stored ?? preferred
-    setTheme(resolved)
-    document.documentElement.classList.toggle('dark', resolved === 'dark')
-    setMounted(true)
-  }, [])
-
-  useEffect(() => {
-    if (!mounted) return
     document.documentElement.classList.toggle('dark', theme === 'dark')
     localStorage.setItem(STORAGE_KEY, theme)
-  }, [theme, mounted])
+  }, [theme])
 
   const toggle = () => setTheme((prev) => (prev === 'light' ? 'dark' : 'light'))
 

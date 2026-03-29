@@ -7,10 +7,9 @@ import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import NewProductModal from '@/components/stock/NewProductModal'
 import ConfirmModal from '@/components/shared/ConfirmModal'
+import ExportCSVButton from '@/components/shared/ExportCSVButton'
 import type { InventoryProduct, InventoryBrand } from '@/components/stock/types'
 import type { PriceList } from '@/components/price-lists/types'
-
-type ConfirmState = { title: string; message: string; onConfirm: () => void } | null
 import {
   Table,
   TableBody,
@@ -19,6 +18,8 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+
+type ConfirmState = { title: string; message: string; onConfirm: () => void } | null
 
 interface Category {
   id: string
@@ -76,6 +77,21 @@ export default function ProductsPanel({ businessId, initialProducts, categories,
     }
   }, [products])
 
+  const csvData = useMemo(
+    () =>
+      filteredProducts.map(product => ({
+        id: product.id,
+        nombre: product.name,
+        categoria: product.categories?.name ?? '',
+        sku: product.sku ?? '',
+        precio: product.price,
+        costo: product.cost,
+        stock: product.stock,
+        estado: product.is_active ? 'activo' : 'inactivo',
+      })),
+    [filteredProducts]
+  )
+
   async function toggleStatus(product: InventoryProduct) {
     setCrudError(null)
     setLoadingId(product.id)
@@ -124,46 +140,10 @@ export default function ProductsPanel({ businessId, initialProducts, categories,
     })
   }
 
-  function exportCsv() {
-    const headers = ['id', 'nombre', 'categoria', 'sku', 'precio', 'costo', 'stock', 'estado']
-    const rows = filteredProducts.map(product => [
-      product.id,
-      product.name,
-      product.categories?.name ?? '',
-      product.sku ?? '',
-      product.price.toString(),
-      product.cost.toString(),
-      product.stock.toString(),
-      product.is_active ? 'activo' : 'inactivo',
-    ])
-
-    const csv = [headers, ...rows]
-      .map(row => row.map(value => `"${String(value).replace(/"/g, '""')}"`).join(','))
-      .join('\n')
-
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.href = url
-    link.download = `productos-${new Date().toISOString().slice(0, 10)}.csv`
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-    URL.revokeObjectURL(url)
-  }
-
   return (
     <div className="flex flex-col h-screen overflow-hidden">
       <PageHeader title="Productos">
-        <Button
-          variant="outline"
-          size="sm"
-          className="rounded-lg text-xs"
-          onClick={exportCsv}
-          disabled={filteredProducts.length === 0}
-        >
-          Exportar CSV
-        </Button>
+        <ExportCSVButton data={csvData} filename={`productos-${new Date().toISOString().slice(0, 10)}`} />
         <Button
           size="sm"
           className="rounded-lg text-xs bg-primary hover:bg-primary/90 text-primary-foreground"
@@ -181,28 +161,22 @@ export default function ProductsPanel({ businessId, initialProducts, categories,
           className="h-9 max-w-sm rounded-lg text-sm"
         />
 
-        <div className="flex items-center gap-1.5">
+        <div className="pill-tabs">
           <button
             onClick={() => setStatusFilter('all')}
-            className={`h-8 px-3 rounded-full text-xs font-medium transition-colors ${
-              statusFilter === 'all' ? 'bg-heading text-white' : 'bg-surface-alt text-body hover:bg-hover-bg'
-            }`}
+            className={`pill-tab${statusFilter === 'all' ? ' pill-tab-active' : ''}`}
           >
             Todos ({totals.all})
           </button>
           <button
             onClick={() => setStatusFilter('active')}
-            className={`h-8 px-3 rounded-full text-xs font-medium transition-colors ${
-              statusFilter === 'active' ? 'bg-primary text-primary-foreground' : 'bg-surface-alt text-body hover:bg-hover-bg'
-            }`}
+            className={`pill-tab${statusFilter === 'active' ? ' pill-tab-active' : ''}`}
           >
             Activos ({totals.active})
           </button>
           <button
             onClick={() => setStatusFilter('inactive')}
-            className={`h-8 px-3 rounded-full text-xs font-medium transition-colors ${
-              statusFilter === 'inactive' ? 'bg-red-600 text-white' : 'bg-surface-alt text-body hover:bg-hover-bg'
-            }`}
+            className={`pill-tab${statusFilter === 'inactive' ? ' pill-tab-active' : ''}`}
           >
             Inactivos ({totals.inactive})
           </button>
