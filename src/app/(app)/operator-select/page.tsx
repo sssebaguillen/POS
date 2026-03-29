@@ -73,7 +73,7 @@ export default async function OperatorSelectPage() {
 
   return (
     <OperatorSelectView
-      ownerProfile={{ ...ownerProfile, business_id: businessId }}
+      ownerProfile={ownerProfile}
       operators={visibleOperators}
       availableOperatorsCount={visibleOperators.length}
     />
