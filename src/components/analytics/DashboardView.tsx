@@ -12,7 +12,7 @@ import SalesHistoryTable from '@/components/dashboard/SalesHistoryTable'
 import BalanceWidget from '@/components/dashboard/BalanceWidget'
 import type { BusinessBalance } from '@/components/expenses/types'
 
-type Period = 'today' | 'week' | 'month' | 'custom' | 'history'
+type Period = 'today' | 'week' | 'month' | 'custom'
 
 interface SaleRecord {
   id: string
@@ -58,7 +58,6 @@ const PERIOD_TABS = [
   { key: 'week',    label: 'Esta semana' },
   { key: 'month',   label: 'Este mes' },
   { key: 'custom',  label: 'Personalizado' },
-  { key: 'history', label: 'Historial' },
 ] as const
 
 function computeTrend(
@@ -80,6 +79,7 @@ function computeTrend(
 
 export default function DashboardView({ sales, payments, saleItems, products, businessId, balance }: Props) {
   const [period, setPeriod] = useState<Period>('today')
+  const [showHistory, setShowHistory] = useState(false)
   const [fromDate, setFromDate] = useState('')
   const [toDate, setToDate] = useState('')
 
@@ -97,7 +97,7 @@ export default function DashboardView({ sales, payments, saleItems, products, bu
     if (period === 'today') return { from: startOfDay(now), to: endOfDay(now) }
     if (period === 'week') return { from: startOfWeek(now), to: endOfDay(now) }
     if (period === 'month') return { from: new Date(now.getFullYear(), now.getMonth(), 1), to: endOfDay(now) }
-    if ((period === 'custom' || period === 'history') && fromDate && toDate) {
+    if (period === 'custom' && fromDate && toDate) {
       return { from: startOfDay(new Date(fromDate)), to: endOfDay(new Date(toDate)) }
     }
     const defaultFrom = new Date(now)
@@ -241,6 +241,11 @@ export default function DashboardView({ sales, payments, saleItems, products, bu
     filteredSales.map(s => ({ ...s, method: paymentsBySaleId.get(s.id) ?? 'sin dato' })),
     [filteredSales, paymentsBySaleId])
 
+  const historyTableKey = useMemo(
+    () => `${period}:${fromDate}:${toDate}`,
+    [period, fromDate, toDate]
+  )
+
   const yLabels = useMemo(() =>
     Array.from({ length: 5 }, (_, i) => {
       const val = maxChartValue * (1 - i / 4)
@@ -251,32 +256,34 @@ export default function DashboardView({ sales, payments, saleItems, products, bu
 
   return (
     <div className="flex flex-col h-screen overflow-hidden">
-      <PageHeader title="Dashboard">
-        <Link
-          href="/sales"
-          className="text-sm text-primary hover:underline font-medium"
-        >
-          Historial de ventas →
-        </Link>
-      </PageHeader>
+      <PageHeader title="Dashboard" />
 
       <div className="flex-1 overflow-y-auto">
         <div className="px-6 pt-4 pb-6 space-y-5">
-          {/* Period tabs — pill style */}
-          <div className="pill-tabs">
-            {PERIOD_TABS.map(tab => (
-              <button
-                key={tab.key}
-                onClick={() => setPeriod(tab.key)}
-                className={`pill-tab${period === tab.key ? ' pill-tab-active' : ''}`}
-              >
-                {tab.label}
-              </button>
-            ))}
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="pill-tabs">
+              {PERIOD_TABS.map(tab => (
+                <button
+                  key={tab.key}
+                  onClick={() => setPeriod(tab.key)}
+                  className={`pill-tab${period === tab.key ? ' pill-tab-active' : ''}`}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setShowHistory(prev => !prev)}
+              className={`pill-tab${showHistory ? ' pill-tab-active' : ''}`}
+            >
+              Historial de ventas
+            </button>
           </div>
 
-          {(period === 'custom' || period === 'history') && (
-            <div className="flex gap-3 items-center">
+          {period === 'custom' && (
+            <div className="flex flex-wrap gap-3 items-center">
               <DatePicker value={fromDate} onChange={setFromDate} className="w-40" />
               <DatePicker value={toDate} onChange={setToDate} className="w-40" />
               <Button variant="outline" size="sm" className="rounded-lg text-xs" onClick={() => { setFromDate(''); setToDate('') }}>
@@ -285,151 +292,150 @@ export default function DashboardView({ sales, payments, saleItems, products, bu
             </div>
           )}
 
-          {/* KPI Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 animate-fade-in">
-            <KPICard
-              icon="$"
-              iconBg="bg-emerald-100 dark:bg-emerald-950/50"
-              iconColor="text-emerald-700 dark:text-emerald-400"
-              label="TOTAL VENDIDO"
-              value={`$${totalSold.toLocaleString('es-AR')}`}
-              trend={trendLabel ? kpiTrends.total : undefined}
-            />
-            <KPICard
-              icon="T"
-              iconBg="bg-amber-100 dark:bg-amber-950/50"
-              iconColor="text-amber-700 dark:text-amber-400"
-              label="TRANSACCIONES"
-              value={String(transactions)}
-              trend={trendLabel ? kpiTrends.transactions : undefined}
-            />
-            <KPICard
-              icon="!"
-              iconBg="bg-red-100 dark:bg-red-950/50"
-              iconColor="text-red-600 dark:text-red-400"
-              label="STOCK BAJO / SIN STOCK"
-              value={String(lowStockProducts.length)}
-              subtitle={`${outOfStockCount} sin stock · ${lowStockCount} stock bajo`}
-            />
-            <KPICard
-              icon="PM"
-              iconBg="bg-emerald-100 dark:bg-emerald-950/50"
-              iconColor="text-emerald-700 dark:text-emerald-400"
-              label="PAGO MÁS USADO"
-              value={mostUsedPayment ? normalizePayment(mostUsedPayment.method) : '—'}
-              subtitle={mostUsedPayment ? `${mostUsedPayment.count} de ${transactions} transacciones` : undefined}
-            />
-          </div>
-
-          {/* Balance widget */}
-          <BalanceWidget
-            income={balance.income}
-            expenses={balance.expenses}
-            profit={balance.profit}
-            margin={balance.margin}
-          />
-
-          {/* Charts row */}
-          <div className="surface-card p-6 animate-fade-in" style={{ animationDelay: '80ms' }}>
-            <p className="font-semibold text-heading mb-4">
-              Ventas por {period === 'today' ? 'hora' : 'día'} — {period === 'today' ? 'hoy' : period === 'week' ? 'esta semana' : 'período'}
-            </p>
-            {chartData.every(d => d.value === 0) ? (
-              <p className="text-sm text-hint h-48 flex items-center justify-center">Sin datos para el período</p>
-            ) : (
-              <div className="flex h-56">
-                {/* Y axis */}
-                <div className="flex flex-col justify-between pr-3 text-xs text-hint py-1 shrink-0">
-                  {yLabels.map(l => <span key={l}>{l}</span>)}
-                </div>
-                {/* Bars */}
-                <div className="flex-1 flex items-end gap-1.5 pl-2 pb-1">
-                  {chartData.map(bar => (
-                    <div key={bar.label} className="flex-1 flex flex-col items-center justify-end h-full">
-                      <div
-                        className="w-full max-w-[32px] bg-primary/80 hover:bg-primary rounded-t-lg transition-all mx-auto"
-                        style={{ height: `${maxChartValue > 0 ? (bar.value / maxChartValue) * 100 : 0}%`, minHeight: bar.value > 0 ? 4 : 0 }}
-                      />
-                      <span className="text-[11px] text-hint mt-1.5 truncate w-full text-center">
-                        {bar.label}
-                      </span>
-                    </div>
-                  ))}
-                </div>
+          {showHistory ? (
+            <SalesHistoryTable key={historyTableKey} rows={historyRows} businessId={businessId} />
+          ) : (
+            <>
+              {/* KPI Cards */}
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 animate-fade-in">
+                <KPICard
+                  icon="$"
+                  iconBg="bg-emerald-100 dark:bg-emerald-950/50"
+                  iconColor="text-emerald-700 dark:text-emerald-400"
+                  label="TOTAL VENDIDO"
+                  value={`$${totalSold.toLocaleString('es-AR')}`}
+                  trend={trendLabel ? kpiTrends.total : undefined}
+                />
+                <KPICard
+                  icon="T"
+                  iconBg="bg-amber-100 dark:bg-amber-950/50"
+                  iconColor="text-amber-700 dark:text-amber-400"
+                  label="TRANSACCIONES"
+                  value={String(transactions)}
+                  trend={trendLabel ? kpiTrends.transactions : undefined}
+                />
+                <KPICard
+                  icon="!"
+                  iconBg="bg-red-100 dark:bg-red-950/50"
+                  iconColor="text-red-600 dark:text-red-400"
+                  label="STOCK BAJO / SIN STOCK"
+                  value={String(lowStockProducts.length)}
+                  subtitle={`${outOfStockCount} sin stock · ${lowStockCount} stock bajo`}
+                />
+                <KPICard
+                  icon="PM"
+                  iconBg="bg-emerald-100 dark:bg-emerald-950/50"
+                  iconColor="text-emerald-700 dark:text-emerald-400"
+                  label="PAGO MÁS USADO"
+                  value={mostUsedPayment ? normalizePayment(mostUsedPayment.method) : '—'}
+                  subtitle={mostUsedPayment ? `${mostUsedPayment.count} de ${transactions} transacciones` : undefined}
+                />
               </div>
-            )}
-          </div>
 
-          {/* Bottom row: top products + stock alerts */}
-          <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-            <div className="surface-card p-6">
-              <div className="flex items-center justify-between mb-4">
-                <p className="font-semibold text-heading">Productos más vendidos</p>
-                <Link href="/stats/top-products" className="text-xs text-primary font-medium hover:underline">
-                  Ver más →
-                </Link>
-              </div>
-              <div className="space-y-3">
-                {topProducts.length === 0 ? (
-                  <p className="text-sm text-hint">Sin datos</p>
+              <BalanceWidget
+                income={balance.income}
+                expenses={balance.expenses}
+                profit={balance.profit}
+                margin={balance.margin}
+              />
+
+              <div className="surface-card p-6 animate-fade-in" style={{ animationDelay: '80ms' }}>
+                <p className="font-semibold text-heading mb-4">
+                  Ventas por {period === 'today' ? 'hora' : 'día'} — {period === 'today' ? 'hoy' : period === 'week' ? 'esta semana' : 'período'}
+                </p>
+                {chartData.every(d => d.value === 0) ? (
+                  <p className="text-sm text-hint h-48 flex items-center justify-center">Sin datos para el período</p>
                 ) : (
-                  topProducts.map((row, i) => (
-                    <div key={row.name + i} className="flex items-center gap-3">
-                      <span className="text-xs text-hint w-5 shrink-0">#{i + 1}</span>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-heading truncate">{row.name}</p>
-                        <p className="text-xs text-hint">${row.amount.toLocaleString('es-AR')} recaudado</p>
-                      </div>
-                      <span className="text-sm font-semibold text-body shrink-0">{row.qty} uds</span>
+                  <div className="flex h-56">
+                    <div className="flex flex-col justify-between pr-3 text-xs text-hint py-1 shrink-0">
+                      {yLabels.map(l => <span key={l}>{l}</span>)}
                     </div>
-                  ))
+                    <div className="flex-1 flex items-end gap-1.5 pl-2 pb-1">
+                      {chartData.map(bar => (
+                        <div key={bar.label} className="flex-1 flex flex-col items-center justify-end h-full">
+                          <div
+                            className="w-full max-w-[32px] bg-primary/80 hover:bg-primary rounded-t-lg transition-all mx-auto"
+                            style={{ height: `${maxChartValue > 0 ? (bar.value / maxChartValue) * 100 : 0}%`, minHeight: bar.value > 0 ? 4 : 0 }}
+                          />
+                          <span className="text-[11px] text-hint mt-1.5 truncate w-full text-center">
+                            {bar.label}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 )}
               </div>
-            </div>
 
-            <div className="surface-card p-6">
-              <div className="flex items-center justify-between mb-4">
-                <p className="font-semibold text-heading">Alertas de stock</p>
-                <Link href="/inventory" className="text-xs text-primary font-medium hover:underline">
-                  Ver stock →
-                </Link>
-              </div>
-              {lowStockProducts.length === 0 ? (
-                <p className="text-sm text-hint">No hay alertas activas</p>
-              ) : (
-                <div className="max-h-80 overflow-y-auto space-y-4 pr-1">
-                  {outOfStock.length > 0 && (
-                    <div>
-                      <p className="text-xs font-semibold text-red-600 dark:text-red-400 mb-2">Sin stock ({outOfStock.length})</p>
-                      <div className="space-y-1.5">
-                        {outOfStock.map(product => (
-                          <div key={product.id} className="rounded-xl px-4 py-2.5 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800/50">
-                            <p className="text-sm font-medium text-heading">{product.name}</p>
-                            <p className="text-xs text-red-600 dark:text-red-400">Sin stock · mín. {product.min_stock}</p>
+              <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+                <div className="surface-card p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <p className="font-semibold text-heading">Productos más vendidos</p>
+                    <Link href="/stats/top-products" className="text-xs text-primary font-medium hover:underline">
+                      Ver más →
+                    </Link>
+                  </div>
+                  <div className="space-y-3">
+                    {topProducts.length === 0 ? (
+                      <p className="text-sm text-hint">Sin datos</p>
+                    ) : (
+                      topProducts.map((row, i) => (
+                        <div key={row.name + i} className="flex items-center gap-3">
+                          <span className="text-xs text-hint w-5 shrink-0">#{i + 1}</span>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-heading truncate">{row.name}</p>
+                            <p className="text-xs text-hint">${row.amount.toLocaleString('es-AR')} recaudado</p>
                           </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                  {lowStock.length > 0 && (
-                    <div>
-                      <p className="text-xs font-semibold text-amber-600 dark:text-amber-400 mb-2">Stock bajo ({lowStock.length})</p>
-                      <div className="space-y-1.5">
-                        {lowStock.map(product => (
-                          <div key={product.id} className="rounded-xl px-4 py-2.5 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/50">
-                            <p className="text-sm font-medium text-heading">{product.name}</p>
-                            <p className="text-xs text-amber-600 dark:text-amber-400">{product.stock} uds · mín. {product.min_stock}</p>
+                          <span className="text-sm font-semibold text-body shrink-0">{row.qty} uds</span>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+
+                <div className="surface-card p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <p className="font-semibold text-heading">Alertas de stock</p>
+                    <Link href="/inventory" className="text-xs text-primary font-medium hover:underline">
+                      Ver stock →
+                    </Link>
+                  </div>
+                  {lowStockProducts.length === 0 ? (
+                    <p className="text-sm text-hint">No hay alertas activas</p>
+                  ) : (
+                    <div className="max-h-80 overflow-y-auto space-y-4 pr-1">
+                      {outOfStock.length > 0 && (
+                        <div>
+                          <p className="text-xs font-semibold text-red-600 dark:text-red-400 mb-2">Sin stock ({outOfStock.length})</p>
+                          <div className="space-y-1.5">
+                            {outOfStock.map(product => (
+                              <div key={product.id} className="rounded-xl px-4 py-2.5 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800/50">
+                                <p className="text-sm font-medium text-heading">{product.name}</p>
+                                <p className="text-xs text-red-600 dark:text-red-400">Sin stock · mín. {product.min_stock}</p>
+                              </div>
+                            ))}
                           </div>
-                        ))}
-                      </div>
+                        </div>
+                      )}
+                      {lowStock.length > 0 && (
+                        <div>
+                          <p className="text-xs font-semibold text-amber-600 dark:text-amber-400 mb-2">Stock bajo ({lowStock.length})</p>
+                          <div className="space-y-1.5">
+                            {lowStock.map(product => (
+                              <div key={product.id} className="rounded-xl px-4 py-2.5 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/50">
+                                <p className="text-sm font-medium text-heading">{product.name}</p>
+                                <p className="text-xs text-amber-600 dark:text-amber-400">{product.stock} uds · mín. {product.min_stock}</p>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
-              )}
-            </div>
-          </div>
-
-          {period === 'history' && <SalesHistoryTable rows={historyRows} businessId={businessId} />}
+              </div>
+            </>
+          )}
         </div>
       </div>
     </div>

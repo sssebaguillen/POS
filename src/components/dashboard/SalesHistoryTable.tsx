@@ -4,7 +4,6 @@ import { useState, useMemo, memo } from 'react'
 import { Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { DatePicker } from '@/components/ui/DatePicker'
 import { createClient } from '@/lib/supabase/client'
 import { normalizePayment, PAYMENT_LABELS } from '@/lib/payments'
 
@@ -51,15 +50,13 @@ function SalesHistoryTable({ rows, businessId }: Props) {
   const [loadingDetailId, setLoadingDetailId] = useState<string | null>(null)
   const [editingSale, setEditingSale] = useState<SaleDetail | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
-  const [dateFilter, setDateFilter] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
   const supabase = useMemo(() => createClient(), [])
 
   const filteredRows = useMemo(() => {
     return localRows.filter(row => {
-      const matchesDate = !dateFilter || row.created_at.startsWith(dateFilter)
       const q = searchQuery.trim().toLowerCase()
-      if (!q) return matchesDate
+      if (!q) return true
       const detail = saleDetails[row.id]
       const matchesBasic =
         row.id.toLowerCase().includes(q) ||
@@ -69,9 +66,9 @@ function SalesHistoryTable({ rows, businessId }: Props) {
         ? detail.items.some(i => i.product_name.toLowerCase().includes(q)) ||
           (detail.operator_name?.toLowerCase().includes(q) ?? false)
         : false
-      return matchesDate && (matchesBasic || matchesDetail)
+      return matchesBasic || matchesDetail
     })
-  }, [localRows, dateFilter, searchQuery, saleDetails])
+  }, [localRows, searchQuery, saleDetails])
 
   const summaryTotal = useMemo(
     () => filteredRows.reduce((acc, r) => acc + r.total, 0),
@@ -199,23 +196,18 @@ function SalesHistoryTable({ rows, businessId }: Props) {
       <div className="p-4 border-b border-edge-soft space-y-3">
         <p className="font-semibold text-heading">Historial detallado</p>
         <div className="flex flex-wrap gap-2">
-          <DatePicker
-            value={dateFilter}
-            onChange={setDateFilter}
-            className="w-40"
-          />
           <Input
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
             placeholder="Buscar por id, método, producto..."
             className="h-9 flex-1 min-w-[160px] rounded-lg text-sm"
           />
-          {(dateFilter || searchQuery) && (
+          {searchQuery && (
             <Button
               variant="outline"
               size="sm"
               className="rounded-lg text-xs h-9"
-              onClick={() => { setDateFilter(''); setSearchQuery('') }}
+              onClick={() => setSearchQuery('')}
             >
               Limpiar
             </Button>
