@@ -109,7 +109,7 @@ export default function PriceListsPanel({
       const brandOverride =
         productOverride || !productBrandId
           ? null
-          : activeListOverrides.find(override => override.product_id === null && override.brand_id === productBrandId)
+          : activeListOverrides.find(override => override.product_id === null && override.brand_id === productBrandId) ?? null
 
       const activeMultiplier =
         productOverride?.multiplier ?? brandOverride?.multiplier ?? activeList.multiplier
