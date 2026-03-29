@@ -24,11 +24,11 @@ export default async function RootLayout({
 }: {
   children: React.ReactNode
 }) {
-  const nonce = (await headers()).get('x-nonce') ?? undefined
+  // nonce is not needed for ThemeProvider
   return (
     <html lang="es" className={dmSans.variable} suppressHydrationWarning>
       <body className="font-sans antialiased">
-        <ThemeProvider nonce={nonce}>{children}</ThemeProvider>
+        <ThemeProvider>{children}</ThemeProvider>
         <SpeedInsights />
       </body>
     </html>
