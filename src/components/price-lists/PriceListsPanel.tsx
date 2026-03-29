@@ -103,7 +103,7 @@ export default function PriceListsPanel({
     return products.map(product => {
       const productOverride = activeListOverrides.find(
         override => override.product_id === product.id
-      )
+      ) ?? null
 
       const productBrandId = product.brand_id ?? null
       const brandOverride =
