@@ -1,13 +1,15 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { Check, Minus, Plus, ShoppingCart, Trash2, X } from 'lucide-react'
+import { Check, Minus, Plus, Printer, ShoppingCart, Trash2, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { useCartStore } from '@/lib/store/cart.store'
 import PaymentModal from '@/components/pos/PaymentModal'
+import ReceiptPreviewModal from '@/components/pos/ReceiptPreviewModal'
 import type { ProductWithCategory } from '@/components/pos/types'
-import type { ReceiptItemInput } from '@/lib/printer/types'
+import { buildReceiptData } from '@/lib/printer/receipt'
+import type { ReceiptData, ReceiptItemInput } from '@/lib/printer/types'
 import { createClient } from '@/lib/supabase/client'
 import { calculateProductPrice } from '@/lib/price-lists'
 import { normalizePayment, PAYMENT_LABELS } from '@/lib/payments'
@@ -29,6 +31,8 @@ type RightTab = 'current' | 'history'
 
 interface SaleRow {
   id: string
+  subtotal: number
+  discount: number
   created_at: string
   total: number
   status: string | null
@@ -79,6 +83,8 @@ export default function CartPanel({ businessId, businessName, activePriceList, p
   const [loadingDetailId, setLoadingDetailId] = useState<string | null>(null)
   const [editingSale, setEditingSale] = useState<SaleDetail | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [receiptPreview, setReceiptPreview] = useState<ReceiptData | null>(null)
+  const [receiptError, setReceiptError] = useState('')
   const supabase = useMemo(() => createClient(), [])
 
   const isEmpty = items.length === 0
@@ -166,7 +172,7 @@ export default function CartPanel({ businessId, businessName, activePriceList, p
 
       const { data: sales } = await supabase
         .from('sales')
-        .select('id, total, status, created_at')
+        .select('id, subtotal, discount, total, status, created_at')
         .eq('business_id', businessId)
         .gte('created_at', startOfDay.toISOString())
         .lte('created_at', endOfDay.toISOString())
@@ -193,6 +199,8 @@ export default function CartPanel({ businessId, businessName, activePriceList, p
       setHistory(
         (sales ?? []).map(sale => ({
           id: sale.id,
+          subtotal: Number(sale.subtotal),
+          discount: Number(sale.discount ?? 0),
           created_at: sale.created_at,
           total: Number(sale.total),
           status: sale.status,
@@ -205,11 +213,11 @@ export default function CartPanel({ businessId, businessName, activePriceList, p
     loadDailyHistory()
   }, [activeTab, businessId, supabase])
 
-  async function fetchSaleDetail(saleId: string) {
+  async function loadSaleDetail(saleId: string): Promise<SaleDetail | null> {
     if (saleDetails[saleId]) {
-      setExpandedSaleId(prev => prev === saleId ? null : saleId)
-      return
+      return saleDetails[saleId]
     }
+
     setLoadingDetailId(saleId)
     const { data, error } = await supabase.rpc('get_sale_detail', {
       p_sale_id: saleId,
@@ -217,10 +225,14 @@ export default function CartPanel({ businessId, businessName, activePriceList, p
     })
     if (error || !data?.success) {
       setLoadingDetailId(null)
-      return
+      setReceiptError(error?.message ?? 'No se pudo cargar el detalle de la venta.')
+      return null
     }
     const sale = history.find(s => s.id === saleId)
-    if (!sale) { setLoadingDetailId(null); return }
+    if (!sale) {
+      setLoadingDetailId(null)
+      return null
+    }
 
     const detail: SaleDetail = {
       ...sale,
@@ -236,8 +248,47 @@ export default function CartPanel({ businessId, businessName, activePriceList, p
       })),
     }
     setSaleDetails(prev => ({ ...prev, [saleId]: detail }))
-    setExpandedSaleId(saleId)
     setLoadingDetailId(null)
+    return detail
+  }
+
+  async function fetchSaleDetail(saleId: string) {
+    if (saleDetails[saleId]) {
+      setExpandedSaleId(prev => prev === saleId ? null : saleId)
+      return
+    }
+
+    const detail = await loadSaleDetail(saleId)
+    if (!detail) return
+    setExpandedSaleId(saleId)
+  }
+
+  async function handleOpenReceiptPreview(saleId: string) {
+    setReceiptError('')
+    const detail = await loadSaleDetail(saleId)
+    if (!detail) return
+
+    try {
+      setReceiptPreview(buildReceiptData({
+        businessName,
+        sale: {
+          id: detail.id,
+          created_at: detail.created_at,
+          subtotal: detail.subtotal,
+          discount: detail.discount,
+          total: detail.total,
+          paymentMethod: detail.payment_method,
+        },
+        items: detail.items,
+      }))
+    } catch (receiptBuildError) {
+      console.error(receiptBuildError)
+      setReceiptError(
+        receiptBuildError instanceof Error
+          ? receiptBuildError.message
+          : 'No se pudo preparar el ticket de la venta.'
+      )
+    }
   }
 
   async function handleDeleteSale(saleId: string) {
@@ -271,7 +322,7 @@ export default function CartPanel({ businessId, businessName, activePriceList, p
       const newTotal = Number(data.total)
       setHistory(prev => prev.map(s =>
         s.id === saleId
-          ? { ...s, total: newTotal, payment_method: paymentMethod }
+          ? { ...s, subtotal: newTotal, total: newTotal, payment_method: paymentMethod }
           : s
       ))
       setSaleDetails(prev => {
@@ -281,6 +332,7 @@ export default function CartPanel({ businessId, businessName, activePriceList, p
           ...prev,
           [saleId]: {
             ...existing,
+            subtotal: newTotal,
             total: newTotal,
             payment_method: paymentMethod,
             items: items.map(i => {
@@ -519,6 +571,9 @@ export default function CartPanel({ businessId, businessName, activePriceList, p
               <p className="text-xs text-subtle">
                 {filteredHistory.length} ventas · ${historyTotal.toLocaleString('es-AR')}
               </p>
+              {receiptError && (
+                <p className="text-xs text-red-500">{receiptError}</p>
+              )}
             </div>
 
             <div className="flex-1 overflow-y-auto">
@@ -624,19 +679,28 @@ export default function CartPanel({ businessId, businessName, activePriceList, p
                               <p className="text-[11px] text-hint mb-2.5">Por: {detail.operator_name}</p>
                             )}
 
-                            <div className="flex gap-1.5 mt-2.5">
+                            <div className="flex items-center justify-between gap-2 mt-2.5">
+                              <div className="flex gap-1.5">
+                                <button
+                                  onClick={() => setEditingSale(detail)}
+                                  className="text-[11px] px-2.5 py-1 rounded-lg border border-edge text-body bg-surface hover:bg-hover-bg transition-colors"
+                                >
+                                  Editar
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteSale(sale.id)}
+                                  disabled={isDeleting}
+                                  className="text-[11px] px-2.5 py-1 rounded-lg border border-red-200 text-red-500 bg-surface hover:bg-red-50 dark:border-red-500/30 dark:text-red-400 dark:bg-transparent dark:hover:bg-red-500/10 transition-colors disabled:opacity-50"
+                                >
+                                  {isDeleting ? '…' : 'Eliminar'}
+                                </button>
+                              </div>
                               <button
-                                onClick={() => setEditingSale(detail)}
-                                className="text-[11px] px-2.5 py-1 rounded-lg border border-edge text-body bg-surface hover:bg-hover-bg transition-colors"
+                                onClick={() => handleOpenReceiptPreview(sale.id)}
+                                className="text-[11px] px-2.5 py-1 rounded-lg border border-edge text-body bg-surface hover:bg-hover-bg transition-colors inline-flex items-center gap-1.5"
                               >
-                                Editar
-                              </button>
-                              <button
-                                onClick={() => handleDeleteSale(sale.id)}
-                                disabled={isDeleting}
-                                className="text-[11px] px-2.5 py-1 rounded-lg border border-red-200 text-red-500 bg-surface hover:bg-red-50 dark:border-red-500/30 dark:text-red-400 dark:bg-transparent dark:hover:bg-red-500/10 transition-colors disabled:opacity-50"
-                              >
-                                {isDeleting ? '…' : 'Eliminar'}
+                                <Printer size={12} />
+                                Imprimir
                               </button>
                             </div>
                           </div>
@@ -725,6 +789,13 @@ export default function CartPanel({ businessId, businessName, activePriceList, p
             <X size={14} />
           </button>
         </div>
+      )}
+
+      {receiptPreview && (
+        <ReceiptPreviewModal
+          receipt={receiptPreview}
+          onClose={() => setReceiptPreview(null)}
+        />
       )}
     </>
   )

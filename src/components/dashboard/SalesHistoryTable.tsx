@@ -1,9 +1,12 @@
 'use client'
 
 import { useState, useMemo, memo } from 'react'
-import { Trash2 } from 'lucide-react'
+import { Printer, Trash2 } from 'lucide-react'
+import ReceiptPreviewModal from '@/components/pos/ReceiptPreviewModal'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { buildReceiptData } from '@/lib/printer/receipt'
+import type { ReceiptData } from '@/lib/printer/types'
 import { createClient } from '@/lib/supabase/client'
 import { normalizePayment, PAYMENT_LABELS } from '@/lib/payments'
 
@@ -18,6 +21,8 @@ interface SaleItem {
 
 interface SaleRow {
   id: string
+  subtotal: number
+  discount: number
   created_at: string
   total: number
   status: string | null
@@ -41,9 +46,10 @@ interface SaleItemQueryRow {
 interface Props {
   rows: SaleRow[]
   businessId: string | null
+  businessName: string
 }
 
-function SalesHistoryTable({ rows, businessId }: Props) {
+function SalesHistoryTable({ rows, businessId, businessName }: Props) {
   const [localRows, setLocalRows] = useState<SaleRow[]>(rows)
   const [expandedSaleId, setExpandedSaleId] = useState<string | null>(null)
   const [saleDetails, setSaleDetails] = useState<Record<string, SaleDetail>>({})
@@ -51,6 +57,8 @@ function SalesHistoryTable({ rows, businessId }: Props) {
   const [editingSale, setEditingSale] = useState<SaleDetail | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
+  const [receiptPreview, setReceiptPreview] = useState<ReceiptData | null>(null)
+  const [receiptError, setReceiptError] = useState('')
   const supabase = useMemo(() => createClient(), [])
 
   const filteredRows = useMemo(() => {
@@ -84,11 +92,11 @@ function SalesHistoryTable({ rows, businessId }: Props) {
     return winner ? winner[0] : null
   }, [filteredRows])
 
-  async function fetchSaleDetail(saleId: string) {
+  async function loadSaleDetail(saleId: string): Promise<SaleDetail | null> {
     if (saleDetails[saleId]) {
-      setExpandedSaleId(prev => (prev === saleId ? null : saleId))
-      return
+      return saleDetails[saleId]
     }
+
     setLoadingDetailId(saleId)
     const { data, error } = await supabase.rpc('get_sale_detail', {
       p_sale_id: saleId,
@@ -96,10 +104,14 @@ function SalesHistoryTable({ rows, businessId }: Props) {
     })
     if (error || !data?.success) {
       setLoadingDetailId(null)
-      return
+      setReceiptError(error?.message ?? 'No se pudo cargar el detalle de la venta.')
+      return null
     }
     const row = localRows.find(s => s.id === saleId)
-    if (!row) { setLoadingDetailId(null); return }
+    if (!row) {
+      setLoadingDetailId(null)
+      return null
+    }
     const detail: SaleDetail = {
       ...row,
       status: data.status ?? row.status,
@@ -115,8 +127,47 @@ function SalesHistoryTable({ rows, businessId }: Props) {
       })),
     }
     setSaleDetails(prev => ({ ...prev, [saleId]: detail }))
-    setExpandedSaleId(saleId)
     setLoadingDetailId(null)
+    return detail
+  }
+
+  async function fetchSaleDetail(saleId: string) {
+    if (saleDetails[saleId]) {
+      setExpandedSaleId(prev => (prev === saleId ? null : saleId))
+      return
+    }
+
+    const detail = await loadSaleDetail(saleId)
+    if (!detail) return
+    setExpandedSaleId(saleId)
+  }
+
+  async function handleOpenReceiptPreview(saleId: string) {
+    setReceiptError('')
+    const detail = await loadSaleDetail(saleId)
+    if (!detail) return
+
+    try {
+      setReceiptPreview(buildReceiptData({
+        businessName,
+        sale: {
+          id: detail.id,
+          created_at: detail.created_at,
+          subtotal: detail.subtotal,
+          discount: detail.discount,
+          total: detail.total,
+          paymentMethod: detail.method,
+        },
+        items: detail.items,
+      }))
+    } catch (receiptBuildError) {
+      console.error(receiptBuildError)
+      setReceiptError(
+        receiptBuildError instanceof Error
+          ? receiptBuildError.message
+          : 'No se pudo preparar el ticket de la venta.'
+      )
+    }
   }
 
   async function handleDeleteSale(saleId: string) {
@@ -152,7 +203,9 @@ function SalesHistoryTable({ rows, businessId }: Props) {
       const newTotal = Number(data.total)
       setLocalRows(prev =>
         prev.map(s =>
-          s.id === saleId ? { ...s, total: newTotal, method: paymentMethod, status } : s
+          s.id === saleId
+            ? { ...s, subtotal: newTotal, total: newTotal, method: paymentMethod, status }
+            : s
         )
       )
       setSaleDetails(prev => {
@@ -162,6 +215,7 @@ function SalesHistoryTable({ rows, businessId }: Props) {
           ...prev,
           [saleId]: {
             ...existing,
+            subtotal: newTotal,
             total: newTotal,
             method: paymentMethod,
             status,
@@ -220,6 +274,9 @@ function SalesHistoryTable({ rows, businessId }: Props) {
             <span>Método más usado: <strong className="text-body">{normalizePayment(mostUsedMethod)}</strong></span>
           )}
         </div>
+        {receiptError && (
+          <p className="text-xs text-red-500">{receiptError}</p>
+        )}
       </div>
 
       {/* Sale list */}
@@ -331,21 +388,30 @@ function SalesHistoryTable({ rows, businessId }: Props) {
                       <p className="text-[11px] text-hint mb-2.5">Por: {detail.operator_name}</p>
                     )}
 
-                    <div className="flex gap-1.5 mt-2.5">
-                      <button
-                        onClick={() => setEditingSale(detail)}
-                        className="text-[11px] px-2.5 py-1 rounded-lg border border-edge text-body bg-surface hover:bg-hover-bg transition-colors"
-                      >
-                        Editar
-                      </button>
-                      <button
-                        onClick={() => handleDeleteSale(sale.id)}
-                        disabled={isDeleting}
-                        className="text-[11px] px-2.5 py-1 rounded-lg border border-red-200 text-red-500 bg-surface hover:bg-red-50 dark:border-red-500/30 dark:text-red-400 dark:bg-transparent dark:hover:bg-red-500/10 transition-colors disabled:opacity-50"
-                      >
-                        {isDeleting ? '…' : 'Eliminar'}
-                      </button>
-                    </div>
+                            <div className="flex items-center justify-between gap-2 mt-2.5">
+                              <div className="flex gap-1.5">
+                                <button
+                                  onClick={() => setEditingSale(detail)}
+                                  className="text-[11px] px-2.5 py-1 rounded-lg border border-edge text-body bg-surface hover:bg-hover-bg transition-colors"
+                                >
+                                  Editar
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteSale(sale.id)}
+                                  disabled={isDeleting}
+                                  className="text-[11px] px-2.5 py-1 rounded-lg border border-red-200 text-red-500 bg-surface hover:bg-red-50 dark:border-red-500/30 dark:text-red-400 dark:bg-transparent dark:hover:bg-red-500/10 transition-colors disabled:opacity-50"
+                                >
+                                  {isDeleting ? '…' : 'Eliminar'}
+                                </button>
+                              </div>
+                              <button
+                                onClick={() => handleOpenReceiptPreview(sale.id)}
+                                className="text-[11px] px-2.5 py-1 rounded-lg border border-edge text-body bg-surface hover:bg-hover-bg transition-colors inline-flex items-center gap-1.5"
+                              >
+                                <Printer size={12} />
+                                Imprimir
+                              </button>
+                            </div>
                   </div>
                 )}
               </li>
@@ -375,6 +441,13 @@ function SalesHistoryTable({ rows, businessId }: Props) {
             onCancel={() => setEditingSale(null)}
           />
         </div>
+      )}
+
+      {receiptPreview && (
+        <ReceiptPreviewModal
+          receipt={receiptPreview}
+          onClose={() => setReceiptPreview(null)}
+        />
       )}
     </div>
   )

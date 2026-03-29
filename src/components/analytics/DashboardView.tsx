@@ -16,6 +16,8 @@ type Period = 'today' | 'week' | 'month' | 'custom'
 
 interface SaleRecord {
   id: string
+  subtotal: number
+  discount: number
   total: number
   created_at: string
   status: string | null
@@ -50,6 +52,7 @@ interface Props {
   saleItems: SaleItemRecord[]
   products: ProductRecord[]
   businessId: string | null
+  businessName: string
   balance: BusinessBalance
 }
 
@@ -77,7 +80,7 @@ function computeTrend(
   }
 }
 
-export default function DashboardView({ sales, payments, saleItems, products, businessId, balance }: Props) {
+export default function DashboardView({ sales, payments, saleItems, products, businessId, businessName, balance }: Props) {
   const [period, setPeriod] = useState<Period>('today')
   const [showHistory, setShowHistory] = useState(false)
   const [fromDate, setFromDate] = useState('')
@@ -293,7 +296,12 @@ export default function DashboardView({ sales, payments, saleItems, products, bu
           )}
 
           {showHistory ? (
-            <SalesHistoryTable key={historyTableKey} rows={historyRows} businessId={businessId} />
+            <SalesHistoryTable
+              key={historyTableKey}
+              rows={historyRows}
+              businessId={businessId}
+              businessName={businessName}
+            />
           ) : (
             <>
               {/* KPI Cards */}
