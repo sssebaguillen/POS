@@ -17,18 +17,15 @@ function flashRedirect(destination: URL, csp: string): NextResponse {
 export async function proxy(request: NextRequest) {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? ''
   const supabaseWs = supabaseUrl.replace(/^https:\/\//, 'wss://')
-
-  // 🔥 NUEVO: Generamos nonce único por request
-  const nonce = Buffer.from(crypto.randomUUID()).toString('base64')
   const isDev = process.env.NODE_ENV === 'development'
 
-  // CSP PROFESIONAL con nonce + strict-dynamic
+  // CSP sólido sin nonce — compatible con Next.js App Router static chunks
   const cspHeader = [
     "default-src 'self'",
-    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${isDev ? " 'unsafe-eval'" : ''}`,
-    "style-src 'self' 'unsafe-inline'",           // necesario para Next.js
-    `img-src 'self' data: blob: ${supabaseUrl}`,
-    "font-src 'self'",
+    `script-src 'self'${isDev ? " 'unsafe-eval'" : ''}`,
+    "style-src 'self' 'unsafe-inline'",
+    `img-src 'self' data: blob: ${supabaseUrl} https://*.supabase.co`,
+    "font-src 'self' https://fonts.gstatic.com",
     `connect-src 'self' ${supabaseUrl} ${supabaseWs} https://*.supabase.co`,
     "frame-ancestors 'none'",
     "object-src 'none'",
@@ -39,7 +36,6 @@ export async function proxy(request: NextRequest) {
 
   const withCsp = (res: NextResponse) => {
     res.headers.set('Content-Security-Policy', cspHeader)
-    res.headers.set('x-nonce', nonce)                    // ← importante para leer después
     return res
   }
 
@@ -105,18 +101,10 @@ export async function proxy(request: NextRequest) {
   }
 
   if (!operator) {
-    // Limpiar cookies stale de operador — pueden quedar con valores inválidos
-    // cuando el navegador se cierra sin hacer logout explícito (ej: Safari restore)
-    const cookieOptions = { maxAge: 0, path: '/' } as const
     if (isOperatorSelectRoute) {
-      supabaseResponse.cookies.set('operator_session', '', cookieOptions)
-      supabaseResponse.cookies.set('op_perms', '', cookieOptions)
       return withCsp(supabaseResponse)
     }
-    const redirectResponse = NextResponse.redirect(new URL('/operator-select', request.url))
-    redirectResponse.cookies.set('operator_session', '', cookieOptions)
-    redirectResponse.cookies.set('op_perms', '', cookieOptions)
-    return withCsp(redirectResponse)
+    return withCsp(NextResponse.redirect(new URL('/operator-select', request.url)))
   }
 
   if (isOperatorSelectRoute) {

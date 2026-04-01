@@ -5,9 +5,6 @@ import './globals.css'
 import { ThemeProvider } from '@/components/shared/theme'
 import { SpeedInsights } from "@vercel/speed-insights/next"
 
-// 🔥 Obligatorio para que el layout reciba el header x-nonce del proxy
-export const dynamic = 'force-dynamic'
-
 const dmSans = DM_Sans({
   subsets: ['latin'],
   display: 'swap',
