@@ -105,10 +105,18 @@ export async function proxy(request: NextRequest) {
   }
 
   if (!operator) {
+    // Limpiar cookies stale de operador — pueden quedar con valores inválidos
+    // cuando el navegador se cierra sin hacer logout explícito (ej: Safari restore)
+    const cookieOptions = { maxAge: 0, path: '/' } as const
     if (isOperatorSelectRoute) {
+      supabaseResponse.cookies.set('operator_session', '', cookieOptions)
+      supabaseResponse.cookies.set('op_perms', '', cookieOptions)
       return withCsp(supabaseResponse)
     }
-    return withCsp(NextResponse.redirect(new URL('/operator-select', request.url)))
+    const redirectResponse = NextResponse.redirect(new URL('/operator-select', request.url))
+    redirectResponse.cookies.set('operator_session', '', cookieOptions)
+    redirectResponse.cookies.set('op_perms', '', cookieOptions)
+    return withCsp(redirectResponse)
   }
 
   if (isOperatorSelectRoute) {
