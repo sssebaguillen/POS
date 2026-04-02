@@ -47,6 +47,7 @@ export default async function CatalogSlugPage({ params }: CatalogPageProps) {
     }
   )
 
+  // Obtener el negocio
   const { data: business, error: businessError } = await supabase
     .from('businesses')
     .select('id, name, description, logo_url, whatsapp')
@@ -61,7 +62,8 @@ export default async function CatalogSlugPage({ params }: CatalogPageProps) {
     notFound()
   }
 
-  const [{ data: products, error: productsError }, { data: categories, error: categoriesError }] = await Promise.all([
+  // === RPCs con tipado seguro ===
+  const [productsResult, categoriesResult] = await Promise.all([
     supabase
       .rpc('get_catalog_products', { p_slug: slug })
       .returns<ProductRow[]>(),
@@ -70,13 +72,16 @@ export default async function CatalogSlugPage({ params }: CatalogPageProps) {
       .returns<CategoryRow[]>(),
   ])
 
-  if (productsError) {
-    throw new Error(productsError.message)
+  if (productsResult.error) {
+    throw new Error(productsResult.error.message)
+  }
+  if (categoriesResult.error) {
+    throw new Error(categoriesResult.error.message)
   }
 
-  if (categoriesError) {
-    throw new Error(categoriesError.message)
-  }
+  // Casteo explícito para que TypeScript esté feliz
+  const products = (productsResult.data ?? []) as ProductRow[]
+  const categories = (categoriesResult.data ?? []) as CategoryRow[]
 
   return (
     <main className="min-h-screen bg-background px-4 py-6 md:px-6 md:py-8">
@@ -88,7 +93,7 @@ export default async function CatalogSlugPage({ params }: CatalogPageProps) {
           logoUrl: business.logo_url,
           whatsapp: business.whatsapp,
         }}
-        products={(products ?? []).map(product => ({
+        products={products.map(product => ({
           id: product.id,
           categoryId: product.category_id,
           name: product.name,
@@ -96,7 +101,7 @@ export default async function CatalogSlugPage({ params }: CatalogPageProps) {
           stock: Number(product.stock),
           imageUrl: product.image_url,
         }))}
-        categories={(categories ?? []).map(category => ({
+        categories={categories.map(category => ({
           id: category.id,
           name: category.name,
         }))}
