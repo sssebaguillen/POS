@@ -26,7 +26,7 @@ interface ProductRow {
 interface CategoryRow {
   id: string
   name: string
-  position: number
+  sort_order: number
 }
 
 interface CatalogPageProps {
@@ -63,19 +63,10 @@ export default async function CatalogSlugPage({ params }: CatalogPageProps) {
 
   const [{ data: products, error: productsError }, { data: categories, error: categoriesError }] = await Promise.all([
     supabase
-      .from('products')
-      .select('id, category_id, name, price, stock, image_url')
-      .eq('business_id', business.id)
-      .eq('is_active', true)
-      .eq('show_in_catalog', true)
-      .order('name', { ascending: true })
+      .rpc('get_catalog_products', { p_slug: slug })
       .returns<ProductRow[]>(),
     supabase
-      .from('categories')
-      .select('id, name, position')
-      .eq('business_id', business.id)
-      .eq('is_active', true)
-      .order('position', { ascending: true })
+      .rpc('get_catalog_categories', { p_slug: slug })
       .returns<CategoryRow[]>(),
   ])
 
