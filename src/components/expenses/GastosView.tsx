@@ -36,7 +36,7 @@ function resolveDateRange(
   from?: string,
   to?: string
 ): { from: string | null; to: string | null } {
-  if (period === 'personalizado') {
+  if (period === 'personalizado' || period === 'trimestre' || period === 'año') {
     return {
       from: from ?? null,
       to: to ?? null,
@@ -79,7 +79,7 @@ function buildDateParams(period: DateRangePeriod, from?: string, to?: string): s
   const params = new URLSearchParams()
   params.set('period', period)
 
-  if (period === 'personalizado' && from && to) {
+  if ((period === 'personalizado' || period === 'trimestre' || period === 'año') && from && to) {
     params.set('from', from)
     params.set('to', to)
   }
@@ -235,8 +235,8 @@ export default function GastosView({
                 from={from}
                 to={to}
                 onChange={(nextPeriod, nextFrom, nextTo) => {
-                  const resolvedFrom = nextPeriod === 'personalizado' ? nextFrom : undefined
-                  const resolvedTo = nextPeriod === 'personalizado' ? nextTo : undefined
+                  const resolvedFrom = (nextPeriod === 'personalizado' || nextPeriod === 'trimestre' || nextPeriod === 'año') ? nextFrom : undefined
+                  const resolvedTo = (nextPeriod === 'personalizado' || nextPeriod === 'trimestre' || nextPeriod === 'año') ? nextTo : undefined
                   void loadExpensesView(nextPeriod, resolvedFrom, resolvedTo)
                 }}
               />

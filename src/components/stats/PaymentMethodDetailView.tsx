@@ -29,7 +29,7 @@ export default function PaymentMethodDetailView({ rows, period, from, to }: Prop
   function navigate(newPeriod: DateRangePeriod, newFrom?: string, newTo?: string) {
     const params = new URLSearchParams()
     params.set('period', newPeriod)
-    if (newPeriod === 'personalizado' && newFrom && newTo) {
+    if ((newPeriod === 'personalizado' || newPeriod === 'trimestre' || newPeriod === 'año') && newFrom && newTo) {
       params.set('from', newFrom)
       params.set('to', newTo)
     }

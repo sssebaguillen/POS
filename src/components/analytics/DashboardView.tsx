@@ -1,9 +1,8 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { Button } from '@/components/ui/button'
-import { DatePicker } from '@/components/ui/DatePicker'
 import PageHeader from '@/components/shared/PageHeader'
+import DateRangeFilter, { type DateRangePeriod } from '@/components/shared/DateRangeFilter'
 import KPICard from '@/components/shared/KPICard'
 import Link from 'next/link'
 import { endOfDay, isCompletedSale, startOfDay, startOfWeek } from '@/components/analytics/utils'
@@ -11,8 +10,6 @@ import { normalizePayment } from '@/lib/payments'
 import SalesHistoryTable from '@/components/dashboard/SalesHistoryTable'
 import BalanceWidget from '@/components/dashboard/BalanceWidget'
 import type { BusinessBalance } from '@/components/expenses/types'
-
-type Period = 'today' | 'week' | 'month' | 'custom'
 
 interface SaleRecord {
   id: string
@@ -56,13 +53,6 @@ interface Props {
   balance: BusinessBalance
 }
 
-const PERIOD_TABS = [
-  { key: 'today',   label: 'Hoy' },
-  { key: 'week',    label: 'Esta semana' },
-  { key: 'month',   label: 'Este mes' },
-  { key: 'custom',  label: 'Personalizado' },
-] as const
-
 function computeTrend(
   current: number,
   previous: number,
@@ -81,7 +71,7 @@ function computeTrend(
 }
 
 export default function DashboardView({ sales, payments, saleItems, products, businessId, businessName, balance }: Props) {
-  const [period, setPeriod] = useState<Period>('today')
+  const [period, setPeriod] = useState<DateRangePeriod>('hoy')
   const [showHistory, setShowHistory] = useState(false)
   const [fromDate, setFromDate] = useState('')
   const [toDate, setToDate] = useState('')
@@ -97,10 +87,16 @@ export default function DashboardView({ sales, payments, saleItems, products, bu
 
   const periodRange = useMemo(() => {
     const now = new Date()
-    if (period === 'today') return { from: startOfDay(now), to: endOfDay(now) }
-    if (period === 'week') return { from: startOfWeek(now), to: endOfDay(now) }
-    if (period === 'month') return { from: new Date(now.getFullYear(), now.getMonth(), 1), to: endOfDay(now) }
-    if (period === 'custom' && fromDate && toDate) {
+    if (period === 'hoy') return { from: startOfDay(now), to: endOfDay(now) }
+    if (period === 'semana') return { from: startOfWeek(now), to: endOfDay(now) }
+    if (period === 'mes') return { from: new Date(now.getFullYear(), now.getMonth(), 1), to: endOfDay(now) }
+    if (period === 'personalizado' && fromDate && toDate) {
+      return { from: startOfDay(new Date(fromDate)), to: endOfDay(new Date(toDate)) }
+    }
+    if (period === 'trimestre' && fromDate && toDate) {
+      return { from: startOfDay(new Date(fromDate)), to: endOfDay(new Date(toDate)) }
+    }
+    if (period === 'año' && fromDate && toDate) {
       return { from: startOfDay(new Date(fromDate)), to: endOfDay(new Date(toDate)) }
     }
     const defaultFrom = new Date(now)
@@ -147,7 +143,7 @@ export default function DashboardView({ sales, payments, saleItems, products, bu
 
   // Vertical bar chart data
   const chartData = useMemo(() => {
-    if (period === 'today') {
+    if (period === 'hoy') {
       return Array.from({ length: 13 }, (_, i) => {
         const hour = i + 8
         const total = completedSales
@@ -197,17 +193,17 @@ export default function DashboardView({ sales, payments, saleItems, products, bu
   // Trend: previous period range for comparison
   const prevPeriodRange = useMemo(() => {
     const now = new Date()
-    if (period === 'today') {
+    if (period === 'hoy') {
       const yesterday = new Date(now)
       yesterday.setDate(yesterday.getDate() - 1)
       return { from: startOfDay(yesterday), to: endOfDay(yesterday) }
     }
-    if (period === 'week') {
+    if (period === 'semana') {
       const prevWeekStart = startOfWeek(new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000))
       const prevWeekEnd = new Date(startOfWeek(now).getTime() - 1)
       return { from: prevWeekStart, to: endOfDay(prevWeekEnd) }
     }
-    if (period === 'month') {
+    if (period === 'mes') {
       const firstOfPrevMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1)
       const lastOfPrevMonth = new Date(now.getFullYear(), now.getMonth(), 0)
       return { from: startOfDay(firstOfPrevMonth), to: endOfDay(lastOfPrevMonth) }
@@ -224,10 +220,10 @@ export default function DashboardView({ sales, payments, saleItems, products, bu
   }, [sales, prevPeriodRange])
 
   const trendLabel = useMemo(() =>
-    period === 'today' ? 'vs ayer'
-    : period === 'week' ? 'vs semana anterior'
-    : period === 'month' ? 'vs mes anterior'
-    : '',
+    period === 'hoy' ? 'vs ayer'
+    : period === 'semana' ? 'vs semana anterior'
+    : period === 'mes' ? 'vs mes anterior'
+    : ',',
     [period]
   )
 
@@ -264,17 +260,16 @@ export default function DashboardView({ sales, payments, saleItems, products, bu
       <div className="flex-1 overflow-y-auto">
         <div className="px-6 pt-4 pb-6 space-y-5">
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="pill-tabs">
-              {PERIOD_TABS.map(tab => (
-                <button
-                  key={tab.key}
-                  onClick={() => setPeriod(tab.key)}
-                  className={`pill-tab${period === tab.key ? ' pill-tab-active' : ''}`}
-                >
-                  {tab.label}
-                </button>
-              ))}
-            </div>
+            <DateRangeFilter
+              value={period}
+              from={fromDate}
+              to={toDate}
+              onChange={(p, f, t) => {
+                setPeriod(p)
+                if (f) setFromDate(f)
+                if (t) setToDate(t)
+              }}
+            />
 
             <button
               type="button"
@@ -284,16 +279,6 @@ export default function DashboardView({ sales, payments, saleItems, products, bu
               Historial de ventas
             </button>
           </div>
-
-          {period === 'custom' && (
-            <div className="flex flex-wrap gap-3 items-center">
-              <DatePicker value={fromDate} onChange={setFromDate} className="w-40" />
-              <DatePicker value={toDate} onChange={setToDate} className="w-40" />
-              <Button variant="outline" size="sm" className="rounded-lg text-xs" onClick={() => { setFromDate(''); setToDate('') }}>
-                Limpiar
-              </Button>
-            </div>
-          )}
 
           {showHistory ? (
             <SalesHistoryTable
@@ -349,7 +334,7 @@ export default function DashboardView({ sales, payments, saleItems, products, bu
 
               <div className="surface-card p-6 animate-fade-in" style={{ animationDelay: '80ms' }}>
                 <p className="font-semibold text-heading mb-4">
-                  Ventas por {period === 'today' ? 'hora' : 'día'} — {period === 'today' ? 'hoy' : period === 'week' ? 'esta semana' : 'período'}
+                  Ventas por {period === 'hoy' ? 'hora' : 'día'} — {period === 'hoy' ? 'hoy' : period === 'semana' ? 'esta semana' : 'período'}
                 </p>
                 {chartData.every(d => d.value === 0) ? (
                   <p className="text-sm text-hint h-48 flex items-center justify-center">Sin datos para el período</p>

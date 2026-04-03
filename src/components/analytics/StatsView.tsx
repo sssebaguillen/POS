@@ -4,8 +4,7 @@ import { useMemo, useState, memo } from 'react'
 import { TrendingDown, TrendingUp } from 'lucide-react'
 import Link from 'next/link'
 import PageHeader from '@/components/shared/PageHeader'
-import { DatePicker } from '@/components/ui/DatePicker'
-import { Button } from '@/components/ui/button'
+import DateRangeFilter, { type DateRangePeriod } from '@/components/shared/DateRangeFilter'
 import {
   endOfDay, isCompletedSale, startOfDay, startOfWeek,
   getPreviousPeriodRange, getDayLabel,
@@ -15,7 +14,6 @@ import {
   LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts'
 
-type Period = 'today' | 'week' | 'month' | 'custom'
 type EvolutionMode = 'revenue' | 'units'
 type RankingMode = 'amount' | 'units'
 type BreakdownMode = 'category' | 'brand'
@@ -88,7 +86,7 @@ const DeltaBadge = memo(function DeltaBadge({ current, previous }: { current: nu
 })
 
 export default function StatsView({ sales, payments, saleItems, products, categories }: Props) {
-  const [period, setPeriod] = useState<Period>('today')
+  const [period, setPeriod] = useState<DateRangePeriod>('hoy')
   const [fromDate, setFromDate] = useState('')
   const [toDate, setToDate] = useState('')
   const [evolutionMode, setEvolutionMode] = useState<EvolutionMode>('revenue')
@@ -100,10 +98,15 @@ export default function StatsView({ sales, payments, saleItems, products, catego
 
   const range = useMemo(() => {
     const now = new Date()
-    if (period === 'today') return { from: startOfDay(now), to: endOfDay(now) }
-    if (period === 'week') return { from: startOfWeek(now), to: endOfDay(now) }
-    if (period === 'month') return { from: new Date(now.getFullYear(), now.getMonth(), 1), to: endOfDay(now) }
-
+    if (period === 'hoy') return { from: startOfDay(now), to: endOfDay(now) }
+    if (period === 'semana') return { from: startOfWeek(now), to: endOfDay(now) }
+    if (period === 'mes') return { from: new Date(now.getFullYear(), now.getMonth(), 1), to: endOfDay(now) }
+    if (period === 'trimestre' && fromDate && toDate) {
+      return { from: startOfDay(new Date(fromDate)), to: endOfDay(new Date(toDate)) }
+    }
+    if (period === 'año' && fromDate && toDate) {
+      return { from: startOfDay(new Date(fromDate)), to: endOfDay(new Date(toDate)) }
+    }
     if (fromDate && toDate) {
       return { from: startOfDay(new Date(fromDate)), to: endOfDay(new Date(toDate)) }
     }
@@ -318,33 +321,17 @@ export default function StatsView({ sales, payments, saleItems, products, catego
 
       <div className="flex-1 overflow-y-auto">
         <div className="px-6 pt-4 pb-6 space-y-5">
-          {/* Period tabs — pill style */}
-          <div className="pill-tabs">
-            {([
-              { key: 'today', label: 'Hoy' },
-              { key: 'week', label: 'Esta semana' },
-              { key: 'month', label: 'Este mes' },
-              { key: 'custom', label: 'Personalizado' },
-            ] as const).map(tab => (
-              <button
-                key={tab.key}
-                onClick={() => setPeriod(tab.key)}
-                className={`pill-tab${period === tab.key ? ' pill-tab-active' : ''}`}
-              >
-                {tab.label}
-              </button>
-            ))}
-          </div>
-
-          {period === 'custom' && (
-            <div className="flex gap-3 items-center">
-              <DatePicker value={fromDate} onChange={setFromDate} className="w-40" />
-              <DatePicker value={toDate} onChange={setToDate} className="w-40" />
-              <Button variant="outline" size="sm" className="rounded-lg text-xs" onClick={() => { setFromDate(''); setToDate('') }}>
-                Limpiar
-              </Button>
-            </div>
-          )}
+          {/* Period filter */}
+          <DateRangeFilter
+            value={period}
+            from={fromDate}
+            to={toDate}
+            onChange={(p, f, t) => {
+              setPeriod(p)
+              if (f) setFromDate(f)
+              if (t) setToDate(t)
+            }}
+          />
 
           {/* KPI Cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">

@@ -23,12 +23,12 @@ export function isCompletedSale(status: string | null): boolean {
 }
 
 export function getPreviousPeriodRange(
-  period: 'today' | 'week' | 'month' | 'custom',
+  period: string,
   currentRange: { from: Date; to: Date }
 ): { from: Date; to: Date } {
   const dayMs = 24 * 60 * 60 * 1000
 
-  if (period === 'month') {
+  if (period === 'mes') {
     const prevStart = new Date(currentRange.from)
     prevStart.setMonth(prevStart.getMonth() - 1)
     const prevEnd = new Date(currentRange.to)

@@ -8,17 +8,20 @@ import ExportCSVButton from '@/components/shared/ExportCSVButton'
 import PageHeader from '@/components/shared/PageHeader'
 
 interface TopProductRow {
-  product_id: string
-  product_name: string
+  id: string
+  name: string
+  sku: string | null
   category_name: string | null
   brand_name: string | null
+  price: number
+  cost: number
   units_sold: number
   revenue: number
-  gross_margin: number | null
-  transactions: number
+  gross_profit: number
+  transaction_count: number
 }
 
-type SortKey = 'units_sold' | 'revenue' | 'transactions' | 'gross_margin'
+type SortKey = 'units_sold' | 'revenue' | 'transaction_count' | 'gross_profit'
 
 function SortButton({ col, onSort }: { col: SortKey; onSort: (col: SortKey) => void }) {
   return (
@@ -41,7 +44,7 @@ interface Props {
 export default function TopProductsDetailView({ rows, total, period, from, to, page }: Props) {
   const router = useRouter()
   const pathname = usePathname()
-  const [sortKey, setSortKey] = useState<SortKey>('revenue')
+  const [sortKey, setSortKey] = useState<SortKey>('revenue' as SortKey)
   const [sortAsc, setSortAsc] = useState(false)
 
   function handleSort(key: SortKey) {
@@ -63,13 +66,14 @@ export default function TopProductsDetailView({ rows, total, period, from, to, p
 
   const csvData = useMemo(() =>
     sorted.map(r => ({
-      Producto: r.product_name,
+      Producto: r.name,
+      SKU: r.sku ?? '',
       Categoría: r.category_name ?? '',
       Marca: r.brand_name ?? '',
       'Unidades vendidas': r.units_sold,
       Ingresos: r.revenue,
-      'Margen bruto': r.gross_margin ?? '',
-      Transacciones: r.transactions,
+      'Margen bruto': r.gross_profit,
+      Transacciones: r.transaction_count,
     })),
     [sorted]
   )
@@ -78,7 +82,7 @@ export default function TopProductsDetailView({ rows, total, period, from, to, p
     const params = new URLSearchParams()
     params.set('period', newPeriod)
     params.set('page', '1')
-    if (newPeriod === 'personalizado' && newFrom && newTo) {
+    if ((newPeriod === 'personalizado' || newPeriod === 'trimestre' || newPeriod === 'año') && newFrom && newTo) {
       params.set('from', newFrom)
       params.set('to', newTo)
     }
@@ -118,6 +122,7 @@ export default function TopProductsDetailView({ rows, total, period, from, to, p
                 <tr className="text-xs text-hint font-medium">
                   <th className="text-left px-4 py-3">#</th>
                   <th className="text-left px-4 py-3">Producto</th>
+                  <th className="text-left px-4 py-3 hidden md:table-cell">SKU</th>
                   <th className="text-left px-4 py-3 hidden md:table-cell">Categoría</th>
                   <th className="text-left px-4 py-3 hidden lg:table-cell">Marca</th>
                   <th className="text-right px-4 py-3">
@@ -127,31 +132,32 @@ export default function TopProductsDetailView({ rows, total, period, from, to, p
                     <span className="flex items-center justify-end gap-1">Ingresos <SortButton col="revenue" onSort={handleSort} /></span>
                   </th>
                   <th className="text-right px-4 py-3 hidden lg:table-cell">
-                    <span className="flex items-center justify-end gap-1">Margen <SortButton col="gross_margin" onSort={handleSort} /></span>
+                    <span className="flex items-center justify-end gap-1">Margen <SortButton col="gross_profit" onSort={handleSort} /></span>
                   </th>
                   <th className="text-right px-4 py-3 hidden md:table-cell">
-                    <span className="flex items-center justify-end gap-1">Transacciones <SortButton col="transactions" onSort={handleSort} /></span>
+                    <span className="flex items-center justify-end gap-1">Transacciones <SortButton col="transaction_count" onSort={handleSort} /></span>
                   </th>
                 </tr>
               </thead>
               <tbody>
                 {sorted.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="text-center text-hint py-12 text-sm">Sin datos para el período</td>
+                    <td colSpan={9} className="text-center text-hint py-12 text-sm">Sin datos para el período</td>
                   </tr>
                 ) : (
                   sorted.map((row, idx) => (
-                    <tr key={row.product_id} className="border-b border-edge/40 hover:bg-hover-bg transition-colors">
+                    <tr key={row.id} className="border-b border-edge/40 hover:bg-hover-bg transition-colors">
                       <td className="px-4 py-3 text-hint text-xs">{(page - 1) * 50 + idx + 1}</td>
-                      <td className="px-4 py-3 font-medium text-heading">{row.product_name}</td>
+                      <td className="px-4 py-3 font-medium text-heading">{row.name}</td>
+                      <td className="px-4 py-3 text-body hidden md:table-cell">{row.sku ?? '—'}</td>
                       <td className="px-4 py-3 text-body hidden md:table-cell">{row.category_name ?? '—'}</td>
                       <td className="px-4 py-3 text-body hidden lg:table-cell">{row.brand_name ?? '—'}</td>
                       <td className="px-4 py-3 text-right font-medium">{row.units_sold}</td>
                       <td className="px-4 py-3 text-right font-semibold text-heading">${(row.revenue ?? 0).toLocaleString('es-AR')}</td>
                       <td className="px-4 py-3 text-right hidden lg:table-cell">
-                        {row.gross_margin != null ? `$${row.gross_margin.toLocaleString('es-AR')}` : '—'}
+                        ${(row.gross_profit ?? 0).toLocaleString('es-AR')}
                       </td>
-                      <td className="px-4 py-3 text-right hidden md:table-cell">{row.transactions}</td>
+                      <td className="px-4 py-3 text-right hidden md:table-cell">{row.transaction_count}</td>
                     </tr>
                   ))
                 )}

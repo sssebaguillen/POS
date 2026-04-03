@@ -9,14 +9,14 @@ interface SearchParams {
   to?: string
 }
 
-type FilterPeriod = 'hoy' | 'semana' | 'mes' | 'personalizado'
+type FilterPeriod = 'hoy' | 'semana' | 'mes' | 'trimestre' | 'año' | 'personalizado'
 
 function resolveDateRange(
   period: FilterPeriod,
   from?: string,
   to?: string
 ): { from: string | null; to: string | null } {
-  if (period === 'personalizado') {
+  if (period === 'personalizado' || period === 'trimestre' || period === 'año') {
     return {
       from: from ?? null,
       to: to ?? null,
@@ -65,7 +65,8 @@ export default async function GastosPage({
   const businessId = await requireAuthenticatedBusinessId(supabase)
 
   const period: FilterPeriod =
-    params.period === 'hoy' || params.period === 'semana' || params.period === 'personalizado'
+    params.period === 'hoy' || params.period === 'semana' || params.period === 'personalizado' ||
+    params.period === 'trimestre' || params.period === 'año'
       ? params.period
       : 'mes'
   const from = params.from ?? undefined

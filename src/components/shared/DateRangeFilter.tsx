@@ -3,14 +3,26 @@
 import { useRouter, usePathname } from 'next/navigation'
 import { useState } from 'react'
 import { DatePicker } from '@/components/ui/DatePicker'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 
-export type DateRangePeriod = 'hoy' | 'semana' | 'mes' | 'personalizado'
+export type DateRangePeriod = 'hoy' | 'semana' | 'mes' | 'trimestre' | 'año' | 'personalizado'
 
 const PERIOD_LABELS: Record<DateRangePeriod, string> = {
   hoy: 'Hoy',
   semana: 'Esta semana',
   mes: 'Este mes',
+  trimestre: 'Trimestre',
+  año: 'Este año',
   personalizado: 'Personalizado',
+}
+
+const SIMPLE_PERIODS = ['hoy', 'semana', 'mes'] as const
+
+const QUARTER_RANGES: Record<string, { from: string; to: string; label: string }> = {
+  Q1: { from: `${new Date().getFullYear()}-01-01`, to: `${new Date().getFullYear()}-03-31`, label: 'Q1' },
+  Q2: { from: `${new Date().getFullYear()}-04-01`, to: `${new Date().getFullYear()}-06-30`, label: 'Q2' },
+  Q3: { from: `${new Date().getFullYear()}-07-01`, to: `${new Date().getFullYear()}-09-30`, label: 'Q3' },
+  Q4: { from: `${new Date().getFullYear()}-10-01`, to: `${new Date().getFullYear()}-12-31`, label: 'Q4' },
 }
 
 interface DateRangeFilterProps {
@@ -26,6 +38,8 @@ export default function DateRangeFilter({ value, from, to, onChange, useUrlParam
   const pathname = usePathname()
   const [localFrom, setLocalFrom] = useState(from ?? '')
   const [localTo, setLocalTo] = useState(to ?? '')
+  const [quarterOpen, setQuarterOpen] = useState(false)
+  const [activeQuarter, setActiveQuarter] = useState<string | null>(null)
 
   function handleSelect(period: DateRangePeriod, newFrom?: string, newTo?: string) {
     if (useUrlParams) {
@@ -41,10 +55,24 @@ export default function DateRangeFilter({ value, from, to, onChange, useUrlParam
     }
   }
 
+  function handleQuarterSelect(key: string) {
+    const { from: qFrom, to: qTo } = QUARTER_RANGES[key]
+    setActiveQuarter(key)
+    setQuarterOpen(false)
+    handleSelect('trimestre', qFrom, qTo)
+  }
+
+  function handleYearSelect() {
+    const year = new Date().getFullYear()
+    handleSelect('año', `${year}-01-01`, `${year}-12-31`)
+  }
+
+  const quarterLabel = value === 'trimestre' && activeQuarter ? activeQuarter : PERIOD_LABELS['trimestre']
+
   return (
     <div className="space-y-2">
       <div className="pill-tabs">
-        {(['hoy', 'semana', 'mes', 'personalizado'] as DateRangePeriod[]).map(p => (
+        {SIMPLE_PERIODS.map(p => (
           <button
             key={p}
             onClick={() => handleSelect(p)}
@@ -53,6 +81,41 @@ export default function DateRangeFilter({ value, from, to, onChange, useUrlParam
             {PERIOD_LABELS[p]}
           </button>
         ))}
+
+        <Popover open={quarterOpen} onOpenChange={setQuarterOpen}>
+          <PopoverTrigger asChild>
+            <button className={`pill-tab${value === 'trimestre' ? ' pill-tab-active' : ''}`}>
+              {quarterLabel}
+            </button>
+          </PopoverTrigger>
+          <PopoverContent className="w-40 p-2" align="start">
+            <div className="grid grid-cols-2 gap-1">
+              {Object.entries(QUARTER_RANGES).map(([key, { label }]) => (
+                <button
+                  key={key}
+                  onClick={() => handleQuarterSelect(key)}
+                  className="px-3 py-1.5 text-sm rounded-lg border border-border bg-surface hover:bg-muted transition-colors font-medium"
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </PopoverContent>
+        </Popover>
+
+        <button
+          onClick={handleYearSelect}
+          className={`pill-tab${value === 'año' ? ' pill-tab-active' : ''}`}
+        >
+          {PERIOD_LABELS['año']}
+        </button>
+
+        <button
+          onClick={() => handleSelect('personalizado')}
+          className={`pill-tab${value === 'personalizado' ? ' pill-tab-active' : ''}`}
+        >
+          {PERIOD_LABELS['personalizado']}
+        </button>
       </div>
 
       {value === 'personalizado' && (

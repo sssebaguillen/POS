@@ -116,7 +116,17 @@ This system is strictly multi-tenant. Every piece of data belongs to a business.
 - Always add `.eq('business_id', businessId)` to Server Component queries as defense-in-depth alongside RLS
 
 ### RLS public read policies
-`public_read_*` policies (products, categories, businesses) are restricted to `auth.role() = 'anon'` only. Authenticated users see their own data exclusively via `tenant_isolation`. Never create a public read policy without the `auth.role() = 'anon'` guard.
+`products` and `categories` have NO anon access via REST API. Their `public_read_*` policies
+only allow `business_id = get_business_id()` — no `auth.role() = 'anon'` exception.
+
+The public catalog uses SECURITY DEFINER RPCs instead:
+- `get_catalog_products(p_slug text)` — filters internally by slug → business_id
+- `get_catalog_categories(p_slug text)` — same pattern
+
+Both RPCs have `GRANT EXECUTE TO anon`. Never query `products` or `categories` directly
+from an anon context — always use these RPCs for public catalog access.
+
+`businesses` retains a permissive anon SELECT policy (needed for slug resolution inside the RPCs).
 
 ### Creating business data
 The only way to create a new business and profile is via the `bootstrap_new_user` RPC function.
@@ -228,10 +238,14 @@ app/
     gastos/page.tsx
     profile/page.tsx
     pos/page.tsx
+  catalogo/
+    [slug]/page.tsx          → public catalog, uses get_catalog_products + get_catalog_categories RPCs
+    [slug]/layout.tsx        → CatalogThemeProvider wrapper
 components/
   shared/               → FlashToast, PageHeader (breadcrumbs), DateRangeFilter, ExportCSVButton
   ui/                   → shadcn/ui primitives + SelectDropdown
   sidebar.tsx           → VENTAS / ANÁLISIS / FINANZAS / GESTIÓN / SISTEMA sections
+  catalogo/             → CatalogView, CatalogThemeProvider
   stock/                → inventory-related components
   price-lists/          → price list management components
   dashboard/            → SalesHistoryTable, BalanceWidget
@@ -384,6 +398,19 @@ Never inline this formula. Never duplicate it.
 
 ---
 
+## Catalog Module (Public)
+
+The public catalog at `/catalogo/[slug]` is accessible without authentication.
+
+- Never query `products` or `categories` tables directly from the catalog page — always use RPCs
+- `get_catalog_products(p_slug text)` — returns active catalog products for the given slug
+- `get_catalog_categories(p_slug text)` — returns active categories for the given slug
+- Both RPCs are SECURITY DEFINER and handle business_id resolution internally
+- The catalog client uses anon key with `persistSession: false, autoRefreshToken: false`
+- Business info (name, description, logo_url, whatsapp) is fetched directly from `businesses` by slug — this is allowed since businesses has a permissive anon SELECT policy
+
+---
+
 ## Operator Session
 
 - `operator_session` cookie: httpOnly, sameSite: lax — contains `{ profile_id, name, role: UserRole, permissions }`
@@ -508,7 +535,8 @@ Always define props with a named `interface`. Never use optional props as a work
 - Using `string` for `role` field — always use `UserRole` from `lib/operator.ts`
 - Calling `createClient()` outside `useMemo` in Client Components
 - Using `select('*')` — always specify explicit column lists
-- Creating `public_read_*` RLS policies without `auth.role() = 'anon'` guard
+- Creating a `public_read_products` or `public_read_categories` RLS policy with anon access — catalog uses `get_catalog_products` / `get_catalog_categories` RPCs (SECURITY DEFINER) instead of direct table access
+- Querying `products` or `categories` directly from `/catalogo/[slug]` — always use the catalog RPCs
 - Making a DB lookup in proxy/middleware to identify the owner — use the cookie role
 - Fetching `defaultPriceList` from anywhere other than `price_lists` where `is_default = true`
 - Creating more than one `price_lists` row with `is_default = true` per business

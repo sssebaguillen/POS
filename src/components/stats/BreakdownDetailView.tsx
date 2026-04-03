@@ -41,7 +41,7 @@ export default function BreakdownDetailView({ rows, period, from, to, tab }: Pro
     const params = new URLSearchParams()
     params.set('period', newPeriod)
     params.set('tab', tab)
-    if (newPeriod === 'personalizado' && newFrom && newTo) {
+    if ((newPeriod === 'personalizado' || newPeriod === 'trimestre' || newPeriod === 'año') && newFrom && newTo) {
       params.set('from', newFrom)
       params.set('to', newTo)
     }

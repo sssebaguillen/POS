@@ -49,12 +49,15 @@ export default async function TopProductsDetailPage({
 }
 
 interface TopProductRow {
-  product_id: string
-  product_name: string
+  id: string
+  name: string
+  sku: string | null
   category_name: string | null
   brand_name: string | null
+  price: number
+  cost: number
   units_sold: number
   revenue: number
-  gross_margin: number | null
-  transactions: number
+  gross_profit: number
+  transaction_count: number
 }
