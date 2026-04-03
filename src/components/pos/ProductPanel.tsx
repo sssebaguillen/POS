@@ -179,10 +179,20 @@ const ProductCard = memo(function ProductCard({
       onClick={() => onAdd(product)}
       className="group relative text-left p-4 rounded-2xl border border-edge/60 bg-surface hover:border-primary/50 hover:shadow-md transition-all flex flex-col"
     >
-      {/* Category marker */}
-      <div className="h-10 mb-3 flex items-center text-3xl leading-none">
-        {product.categories?.icon ?? 'CAT'}
-      </div>
+      {/* Image or category marker */}
+      {product.image_url ? (
+        <div className="w-full h-20 mb-3 rounded-md overflow-hidden shrink-0">
+          <img
+            src={product.image_url}
+            alt={product.name}
+            className="w-full h-full object-cover"
+          />
+        </div>
+      ) : (
+        <div className="h-10 mb-3 flex items-center text-3xl leading-none">
+          {product.categories?.icon ?? 'CAT'}
+        </div>
+      )}
 
       {/* Name */}
       <p className="text-sm font-medium text-heading leading-tight line-clamp-2 mb-1 flex-1">

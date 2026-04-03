@@ -5,8 +5,9 @@ import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import SelectDropdown from '@/components/ui/SelectDropdown'
-import { X } from 'lucide-react'
+import { Upload, X } from 'lucide-react'
 import { Dialog, DialogContent } from '@/components/ui/dialog'
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import type { PriceList, PriceListOverride } from '@/components/price-lists/types'
 import type { InventoryBrand, InventoryCategory, InventoryProduct } from '@/components/stock/types'
 
@@ -98,6 +99,19 @@ export default function EditProductModal({
   )
   const [brandInput, setBrandInput] = useState(product.brand?.name ?? '')
   const [showBrandOptions, setShowBrandOptions] = useState(false)
+  const [imageUrl, setImageUrl] = useState<string | null>(product.image_url ?? null)
+  const [imageSource, setImageSource] = useState<'upload' | 'url' | null>(
+    (product.image_source as 'upload' | 'url' | null) ?? null
+  )
+  const [imageTab, setImageTab] = useState<'upload' | 'url'>(
+    product.image_source === 'url' ? 'url' : 'upload'
+  )
+  const [externalUrlInput, setExternalUrlInput] = useState(
+    product.image_source === 'url' ? (product.image_url ?? '') : ''
+  )
+  const [urlError, setUrlError] = useState('')
+  const [imageUploading, setImageUploading] = useState(false)
+  const [imgError, setImgError] = useState(false)
 
   const supabase = useMemo(() => createClient(), [])
 
@@ -123,6 +137,43 @@ export default function EditProductModal({
   function setField<K extends keyof FormState>(field: K, value: FormState[K]) {
     setForm(prev => ({ ...prev, [field]: value }))
     setErrors(prev => ({ ...prev, [field]: '' }))
+  }
+
+  function validateImageUrl(url: string): string {
+    if (!url) return ''
+    if (
+      url.startsWith('data:') ||
+      url.startsWith('javascript:') ||
+      url.startsWith('file:') ||
+      url.startsWith('blob:')
+    ) {
+      return 'URL no permitida'
+    }
+    if (!url.startsWith('https://')) {
+      return 'La URL debe comenzar con https://'
+    }
+    return ''
+  }
+
+  async function handleFileUpload(file: File) {
+    setImageUploading(true)
+    setErrors(prev => ({ ...prev, image: '' }))
+    const ext = file.name.split('.').pop() ?? 'jpg'
+    const filename = `${product.id}/${crypto.randomUUID()}.${ext}`
+    const { error: uploadError } = await supabase.storage
+      .from('product-images')
+      .upload(filename, file, { upsert: true })
+    if (uploadError) {
+      setErrors(prev => ({ ...prev, image: `Error al subir imagen: ${uploadError.message}` }))
+      setImageUploading(false)
+      return
+    }
+    const { data: urlData } = supabase.storage
+      .from('product-images')
+      .getPublicUrl(filename)
+    setImageUrl(urlData.publicUrl)
+    setImageSource('upload')
+    setImageUploading(false)
   }
 
   function handlePriceChange(value: string) {
@@ -285,6 +336,8 @@ export default function EditProductModal({
         barcode: form.barcode.trim() || null,
         category_id: form.category_id || null,
         show_in_catalog: form.show_in_catalog,
+        image_url: imageUrl,
+        image_source: imageSource,
       },
       nextOverrides
     )
@@ -297,6 +350,13 @@ export default function EditProductModal({
     setErrors({})
     setIsPriceEdited(existingOverrides.length > 0)
     setSelectedListIds(new Set(existingOverrides.map(o => o.price_list_id)))
+    setImageUrl(product.image_url ?? null)
+    setImageSource((product.image_source as 'upload' | 'url' | null) ?? null)
+    setImageTab(product.image_source === 'url' ? 'url' : 'upload')
+    setExternalUrlInput(product.image_source === 'url' ? (product.image_url ?? '') : '')
+    setUrlError('')
+    setImageUploading(false)
+    setImgError(false)
     onClose()
   }
 
@@ -526,6 +586,124 @@ export default function EditProductModal({
                     />
                   </button>
                 </label>
+              </div>
+
+              {/* Imagen del producto */}
+              <div className="col-span-2">
+                <p className="text-label text-subtle mb-2">Imagen del producto</p>
+                {imageUrl && imageSource === 'upload' ? (
+                  <div className="flex items-start gap-3 rounded-xl border border-edge bg-surface px-3 py-3">
+                    <img
+                      src={imageUrl}
+                      alt="Vista previa"
+                      className="h-20 w-20 rounded-lg object-cover border border-edge shrink-0"
+                    />
+                    <div className="flex flex-col gap-1.5 pt-1 min-w-0">
+                      <p className="text-xs text-hint">Imagen subida</p>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setImageUrl(null)
+                          setImageSource(null)
+                        }}
+                        className="text-xs text-red-500 hover:text-red-600 text-left"
+                      >
+                        Quitar imagen
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <Tabs value={imageTab} onValueChange={v => setImageTab(v as 'upload' | 'url')}>
+                    <TabsList className="mb-2">
+                      <TabsTrigger value="upload">Subir archivo</TabsTrigger>
+                      <TabsTrigger value="url">URL externa</TabsTrigger>
+                    </TabsList>
+                    <TabsContent value="upload">
+                      <label className="flex flex-col items-center gap-2 cursor-pointer rounded-xl border border-dashed border-edge bg-surface px-4 py-5 hover:border-primary/40 transition-colors">
+                        <Upload className="h-5 w-5 text-hint" />
+                        <span className="text-xs text-hint">
+                          {imageUploading ? 'Subiendo...' : 'Seleccionar imagen'}
+                        </span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="sr-only"
+                          disabled={imageUploading}
+                          onChange={e => {
+                            const file = e.target.files?.[0]
+                            if (file) void handleFileUpload(file)
+                          }}
+                        />
+                      </label>
+                      {errors.image && <p className="text-caption text-red-500 mt-1">{errors.image}</p>}
+                    </TabsContent>
+                    <TabsContent value="url">
+                      <div className="flex flex-col gap-2">
+                        <div className="flex gap-2">
+                          <Input
+                            value={externalUrlInput}
+                            onChange={e => {
+                              setExternalUrlInput(e.target.value)
+                              setUrlError('')
+                              if (imageSource === 'url') {
+                                setImageUrl(null)
+                                setImageSource(null)
+                              }
+                            }}
+                            placeholder="https://..."
+                            className={`h-9 rounded-xl text-sm bg-surface ${urlError ? 'border-red-400 focus-visible:ring-red-200' : 'border-edge focus-visible:ring-ring/50 focus-visible:border-ring'}`}
+                          />
+                          <Button
+                            type="button"
+                            onClick={() => {
+                              const error = validateImageUrl(externalUrlInput)
+                              setUrlError(error)
+                              if (!error && externalUrlInput) {
+                                setImgError(false)
+                                setImageUrl(externalUrlInput)
+                                setImageSource('url')
+                              }
+                            }}
+                            className="h-9 px-4 rounded-xl text-sm bg-primary hover:bg-primary/90 text-primary-foreground shrink-0"
+                          >
+                            Confirmar
+                          </Button>
+                        </div>
+                        {urlError && <p className="text-caption text-red-500">{urlError}</p>}
+                        {imageUrl && imageSource === 'url' && (
+                          <div className="flex items-start gap-3">
+                            {imgError ? (
+                              <div className="h-20 w-20 rounded-lg border-2 border-red-400 bg-red-50 shrink-0 flex items-center justify-center p-1">
+                                <p className="text-[10px] text-red-500 text-center leading-tight">No se pudo cargar. Verificá que la URL sea pública y directa.</p>
+                              </div>
+                            ) : (
+                              <img
+                                src={imageUrl}
+                                alt="Vista previa"
+                                className="h-20 w-20 rounded-lg object-cover border border-edge shrink-0"
+                                onLoad={() => setImgError(false)}
+                                onError={() => setImgError(true)}
+                              />
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setImageUrl(null)
+                                setImageSource(null)
+                                setExternalUrlInput('')
+                                setUrlError('')
+                                setImgError(false)
+                              }}
+                              className="text-xs text-red-500 hover:text-red-600 mt-1"
+                            >
+                              Quitar imagen
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </TabsContent>
+                  </Tabs>
+                )}
               </div>
             </div>
           </div>

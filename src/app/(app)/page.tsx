@@ -26,7 +26,7 @@ export default async function POSPage() {
       .single(),
     supabase
       .from('products')
-      .select('id, business_id, name, price, cost, stock, min_stock, is_active, show_in_catalog, category_id, sku, barcode, brand_id, image_url, sales_count, created_at, brands(id, name), categories(name, icon)')
+      .select('id, business_id, name, price, cost, stock, min_stock, is_active, show_in_catalog, category_id, sku, barcode, brand_id, image_url, image_source, sales_count, created_at, brands(id, name), categories(name, icon)')
       .eq('business_id', businessId)
       .eq('is_active', true)
       .order('sales_count', { ascending: false }),
@@ -82,6 +82,7 @@ export default async function POSPage() {
         brand_id: product.brand_id ?? null,
         brand: unwrapRelation(product.brands),
         image_url: product.image_url ?? null,
+        image_source: product.image_source ?? null,
         categories: unwrapRelation(product.categories),
       }))}
       categories={(categories ?? []).map(c => ({

@@ -33,6 +33,8 @@ export interface InventoryProduct {
     name: string
   } | null
   barcode: string | null
+  image_url?: string | null
+  image_source?: 'upload' | 'url' | null
   categories?: {
     name: string
     icon: string

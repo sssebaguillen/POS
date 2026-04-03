@@ -43,6 +43,7 @@ export interface Product {
   stock: number
   min_stock: number
   image_url: string | null
+  image_source: string | null
   is_active: boolean
   show_in_catalog: boolean
   sales_count: number
