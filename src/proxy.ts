@@ -29,7 +29,7 @@ export async function proxy(request: NextRequest) {
     "default-src 'self'",
     `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ''}`,
     "style-src 'self' 'unsafe-inline'",
-    `img-src 'self' data: blob: ${supabaseUrl} https://*.supabase.co`,
+    `img-src 'self' data: blob: https: ${supabaseUrl} https://*.supabase.co`,
     "font-src 'self' https://fonts.gstatic.com",
     `connect-src 'self' ${supabaseUrl} ${supabaseWs} https://*.supabase.co`,
     "frame-ancestors 'none'",
