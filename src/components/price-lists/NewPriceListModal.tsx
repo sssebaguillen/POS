@@ -12,6 +12,7 @@ interface NewPriceListModalProps {
   open: boolean
   onClose: () => void
   businessId: string
+  hasDefault: boolean
   onCreated: (list: PriceList) => void
 }
 
@@ -19,6 +20,7 @@ export default function NewPriceListModal({
   open,
   onClose,
   businessId,
+  hasDefault,
   onCreated,
 }: NewPriceListModalProps) {
   const [name, setName] = useState('')
@@ -66,6 +68,7 @@ export default function NewPriceListModal({
         name: name.trim(),
         description: description.trim() || null,
         multiplier: 1 + parsedPercentage / 100,
+        is_default: !hasDefault,
       })
       .select('id, business_id, name, description, multiplier, is_default, created_at')
       .single()

@@ -34,7 +34,7 @@ interface ProductRowData {
   brandOverride: PriceListOverride | null
   activeMultiplier: number
   finalPrice: number
-  margin: number
+  margin: number | null
 }
 
 interface GroupedPriceRows {
@@ -122,7 +122,7 @@ export default function PriceListsPanel({
         activeList,
         overrides
       )
-      const margin = getMarginPercent(activeMultiplier)
+      const margin = product.cost <= 0 ? null : getMarginPercent(activeMultiplier)
 
       return {
         product,
@@ -174,7 +174,12 @@ export default function PriceListsPanel({
   }, [filteredRows, activeListOverrides])
 
   function handleCreated(list: PriceList) {
-    setLists(prev => [...prev, list])
+    setLists(prev => {
+      const base = list.is_default
+        ? prev.map(l => ({ ...l, is_default: false }))
+        : prev
+      return [...base, list]
+    })
     setActiveListId(list.id)
     setShowNewListModal(false)
   }
@@ -383,6 +388,7 @@ export default function PriceListsPanel({
           open={showNewListModal}
           onClose={() => setShowNewListModal(false)}
           businessId={businessId}
+          hasDefault={lists.some(l => l.is_default)}
           onCreated={handleCreated}
         />
       )}
@@ -543,9 +549,13 @@ function GroupedPriceRowsTable({
                       )}
                     </TableCell>
                     <TableCell className="text-right tabular-nums">
-                      <span className={row.margin > 0 ? 'text-emerald-700 dark:text-emerald-400 font-semibold' : 'text-red-600 dark:text-red-400 font-semibold'}>
-                        {row.margin}%
-                      </span>
+                      {row.margin === null ? (
+                        <span className="text-hint">—</span>
+                      ) : (
+                        <span className={row.margin > 0 ? 'text-emerald-700 dark:text-emerald-400 font-semibold' : 'text-red-600 dark:text-red-400 font-semibold'}>
+                          {row.margin}%
+                        </span>
+                      )}
                     </TableCell>
                     <TableCell>
                       <div className="flex justify-end">

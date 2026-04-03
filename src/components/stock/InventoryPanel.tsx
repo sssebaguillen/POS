@@ -32,7 +32,7 @@ interface Props {
   initialProducts: InventoryProduct[]
   categories: InventoryCategory[]
   brands: InventoryBrand[]
-  defaultPriceList: PriceList | null
+  priceLists: PriceList[]
   productOverrides: PriceListOverride[]
 }
 
@@ -552,10 +552,12 @@ const ProductListRow = memo(function ProductListRow({
   )
 })
 
-export default function InventoryPanel({ businessId, operatorId, readOnly, initialProducts, categories: initialCategories, brands: initialBrands, defaultPriceList, productOverrides }: Props) {
+export default function InventoryPanel({ businessId, operatorId, readOnly, initialProducts, categories: initialCategories, brands: initialBrands, priceLists, productOverrides: initialProductOverrides }: Props) {
+  const defaultPriceList = priceLists.find(pl => pl.is_default) ?? null
   const [products, setProducts] = useState(initialProducts)
   const [categories, setCategories] = useState<InventoryCategory[]>(initialCategories)
   const [brands, setBrands] = useState<InventoryBrand[]>(initialBrands)
+  const [productOverrides, setProductOverrides] = useState<PriceListOverride[]>(initialProductOverrides)
   const [query, setQuery] = useState('')
   const [selectedCategories, setSelectedCategories] = useState<string[]>([])
   const [selectedBrands, setSelectedBrands] = useState<string[]>([])
@@ -1124,7 +1126,7 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
           open={showNewProduct}
           onClose={() => setShowNewProduct(false)}
           businessId={businessId}
-          defaultPriceList={defaultPriceList}
+          priceLists={priceLists}
           categories={categories}
           brands={brands}
           onCreated={product => setProducts(prev => [product, ...prev])}
@@ -1150,10 +1152,14 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
           product={editingProduct}
           categories={categories}
           brands={brands}
-          defaultPriceList={defaultPriceList}
-          existingOverride={productOverrides.find(override => override.product_id === editingProduct.id) ?? null}
-          onSaved={values => {
+          priceLists={priceLists}
+          existingOverrides={productOverrides.filter(o => o.product_id === editingProduct.id)}
+          onSaved={(values, nextOverrides) => {
             void updateProduct(editingProduct.id, values)
+            setProductOverrides(prev => [
+              ...prev.filter(o => o.product_id !== editingProduct.id),
+              ...nextOverrides,
+            ])
             setEditingProduct(null)
           }}
         />

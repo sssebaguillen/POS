@@ -7,7 +7,7 @@ export default async function ProductsPage() {
   const supabase = await createClient()
   const businessId = await requireAuthenticatedBusinessId(supabase)
 
-  const [{ data: products, error: productsError }, { data: categories, error: categoriesError }, { data: brands, error: brandsError }, { data: priceLists, error: priceListsError }] = await Promise.all([
+  const [{ data: products, error: productsError }, { data: categories, error: categoriesError }, { data: brands, error: brandsError }, { data: priceListsData, error: priceListsError }] = await Promise.all([
     supabase
       .from('products')
       .select('id, name, sku, barcode, price, cost, stock, min_stock, is_active, category_id, categories(name, icon)')
@@ -28,8 +28,7 @@ export default async function ProductsPage() {
       .from('price_lists')
       .select('id, business_id, name, description, multiplier, is_default, created_at')
       .eq('business_id', businessId)
-      .eq('is_default', true)
-      .maybeSingle(),
+      .order('created_at'),
   ])
 
   if (productsError) {
@@ -61,7 +60,7 @@ export default async function ProductsPage() {
       }))}
       categories={categories ?? []}
       brands={brands ?? []}
-      defaultPriceList={priceLists ? normalizePriceList(priceLists) : null}
+      priceLists={(priceListsData ?? []).map(normalizePriceList)}
     />
   )
 }

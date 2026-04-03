@@ -15,7 +15,7 @@ export default async function InventoryPage() {
     { data: products },
     { data: categories },
     { data: brands },
-    { data: defaultPriceList },
+    { data: priceListsData },
   ] = await Promise.all([
     supabase
       .from('products')
@@ -37,15 +37,17 @@ export default async function InventoryPage() {
       .from('price_lists')
       .select('id, business_id, name, description, multiplier, is_default, created_at')
       .eq('business_id', businessId)
-      .eq('is_default', true)
-      .maybeSingle(),
+      .order('created_at'),
   ])
 
-  const { data: productOverrides } = defaultPriceList
+  const priceLists = (priceListsData ?? []).map(normalizePriceList)
+  const priceListIds = priceLists.map(pl => pl.id)
+
+  const { data: productOverridesData } = priceListIds.length > 0
     ? await supabase
         .from('price_list_overrides')
         .select('id, price_list_id, product_id, brand_id, multiplier')
-        .eq('price_list_id', defaultPriceList.id)
+        .in('price_list_id', priceListIds)
         .not('product_id', 'is', null)
     : { data: [] }
 
@@ -64,8 +66,8 @@ export default async function InventoryPage() {
       }))}
       categories={categories ?? []}
       brands={brands ?? []}
-      defaultPriceList={defaultPriceList ? normalizePriceList(defaultPriceList) : null}
-      productOverrides={(productOverrides ?? []).map(normalizePriceListOverride)}
+      priceLists={priceLists}
+      productOverrides={(productOverridesData ?? []).map(normalizePriceListOverride)}
     />
   )
 }

@@ -112,4 +112,5 @@ export interface CartItem {
   quantity: number
   unit_price: number
   total: number
+  priceIsManual?: boolean
 }

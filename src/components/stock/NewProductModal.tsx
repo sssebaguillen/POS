@@ -60,7 +60,7 @@ interface Props {
   open: boolean
   onClose: () => void
   businessId: string | null
-  defaultPriceList: PriceList | null
+  priceLists: PriceList[]
   categories: Category[]
   brands: InventoryBrand[]
   onCreated: (product: NewProduct) => void
@@ -79,7 +79,7 @@ const EMPTY_FORM = {
   is_active: true,
 }
 
-export default function NewProductModal({ open, onClose, businessId, defaultPriceList, categories, brands, onCreated }: Props) {
+export default function NewProductModal({ open, onClose, businessId, priceLists, categories, brands, onCreated }: Props) {
   const [form, setForm] = useState(EMPTY_FORM)
   const [loading, setLoading] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
@@ -87,6 +87,13 @@ export default function NewProductModal({ open, onClose, businessId, defaultPric
   const [brandInput, setBrandInput] = useState('')
   const [showBrandOptions, setShowBrandOptions] = useState(false)
   const supabase = useMemo(() => createClient(), [])
+
+  const defaultPriceList = priceLists.find(pl => pl.is_default) ?? null
+
+  const defaultSelectedIds = (): Set<string> =>
+    new Set(defaultPriceList ? [defaultPriceList.id] : [])
+
+  const [selectedListIds, setSelectedListIds] = useState<Set<string>>(defaultSelectedIds)
 
   const filteredBrands = useMemo(() => {
     const query = brandInput.trim().toLowerCase()
@@ -118,12 +125,14 @@ export default function NewProductModal({ open, onClose, businessId, defaultPric
     if (!value.trim() || !Number.isFinite(parsedCost) || parsedCost <= 0) {
       setForm(prev => ({ ...prev, cost: value, price: '' }))
       setIsPriceEdited(false)
+      setSelectedListIds(defaultSelectedIds())
       return
     }
 
     const nextSuggestedPrice = (parsedCost * defaultPriceList.multiplier).toFixed(2)
     setForm(prev => ({ ...prev, cost: value, price: nextSuggestedPrice }))
     setIsPriceEdited(false)
+    setSelectedListIds(defaultSelectedIds())
   }
 
   function handlePriceChange(value: string) {
@@ -132,16 +141,20 @@ export default function NewProductModal({ open, onClose, businessId, defaultPric
 
     if (suggestedPrice === null) {
       setIsPriceEdited(false)
+      setSelectedListIds(defaultSelectedIds())
       return
     }
 
     const parsedPrice = Number(value)
     if (!value.trim() || !Number.isFinite(parsedPrice)) {
       setIsPriceEdited(false)
+      setSelectedListIds(defaultSelectedIds())
       return
     }
 
-    setIsPriceEdited(Math.abs(parsedPrice - suggestedPrice) > 0.01)
+    const edited = Math.abs(parsedPrice - suggestedPrice) > 0.01
+    setIsPriceEdited(edited)
+    if (!edited) setSelectedListIds(defaultSelectedIds())
   }
 
   function validate() {
@@ -191,24 +204,23 @@ export default function NewProductModal({ open, onClose, businessId, defaultPric
       return
     }
 
-    if (isPriceEdited && defaultPriceList && payload.cost > 0) {
-      const defaultPrice = payload.cost * defaultPriceList.multiplier
-      if (Math.abs(payload.price - defaultPrice) > 0.01) {
-        void (async () => {
-          const { error: overrideError } = await supabase
-            .from('price_list_overrides')
-            .insert({
-              price_list_id: defaultPriceList.id,
+    if (isPriceEdited && payload.cost > 0 && selectedListIds.size > 0) {
+      const multiplier = payload.price / payload.cost
+      void (async () => {
+        const { error: overrideError } = await supabase
+          .from('price_list_overrides')
+          .insert(
+            [...selectedListIds].map(listId => ({
+              price_list_id: listId,
               product_id: data.id,
               brand_id: null,
-              multiplier: payload.price / payload.cost,
-            })
-
-          if (overrideError) {
-            console.error('Failed to create default price list override for new product:', overrideError.message)
-          }
-        })()
-      }
+              multiplier,
+            }))
+          )
+        if (overrideError) {
+          console.error('Failed to create price list overrides for new product:', overrideError.message)
+        }
+      })()
     }
 
     const created: NewProduct = {
@@ -229,6 +241,9 @@ export default function NewProductModal({ open, onClose, businessId, defaultPric
     setShowBrandOptions(false)
     setErrors({})
     setIsPriceEdited(false)
+    setSelectedListIds(defaultSelectedIds())
+    onClose()
+    setIsPriceEdited(false)
     onClose()
   }
 
@@ -238,6 +253,7 @@ export default function NewProductModal({ open, onClose, businessId, defaultPric
     setShowBrandOptions(false)
     setErrors({})
     setIsPriceEdited(false)
+    setSelectedListIds(defaultSelectedIds())
     onClose()
   }
 
@@ -350,6 +366,42 @@ export default function NewProductModal({ open, onClose, businessId, defaultPric
                   />
                 </div>
               </FieldGroup>
+
+              {isPriceEdited && priceLists.length > 0 && (
+                <div className="col-span-2 rounded-xl border border-edge bg-surface-alt px-3 py-2.5 flex flex-col gap-2">
+                  <p className="text-xs text-subtle">Aplicar este precio como override en:</p>
+                  <div className="flex flex-wrap gap-x-4 gap-y-1.5">
+                    {priceLists.map(list => (
+                      <label key={list.id} className="flex items-center gap-2 cursor-pointer select-none">
+                        <button
+                          type="button"
+                          role="checkbox"
+                          aria-checked={selectedListIds.has(list.id)}
+                          onClick={() => setSelectedListIds(prev => {
+                            const next = new Set(prev)
+                            if (next.has(list.id)) next.delete(list.id)
+                            else next.add(list.id)
+                            return next
+                          })}
+                          className={`w-4 h-4 rounded border-2 shrink-0 flex items-center justify-center transition-colors ${
+                            selectedListIds.has(list.id)
+                              ? 'bg-primary border-primary'
+                              : 'border-edge bg-surface'
+                          }`}
+                        >
+                          {selectedListIds.has(list.id) && (
+                            <svg viewBox="0 0 10 8" className="w-2.5 h-2 fill-none stroke-white stroke-[2]"><path d="M1 4l3 3 5-6" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                          )}
+                        </button>
+                        <span className="text-xs text-body">
+                          {list.name}
+                          {list.is_default && <span className="ml-1 text-hint">(default)</span>}
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               <FieldGroup label="Stock inicial" error={errors.stock}>
                 <Input

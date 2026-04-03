@@ -91,8 +91,9 @@ export default function CartPanel({ businessId, businessName, activePriceList, p
 
   const adjustedItems = useMemo(() => {
     return items.map(item => {
-      const unitPrice = activePriceList
-        ? calculateProductPrice(
+      const unitPrice = item.priceIsManual || !activePriceList
+        ? item.unit_price
+        : calculateProductPrice(
             item.product.cost,
             item.product.price,
             item.product.id,
@@ -100,7 +101,6 @@ export default function CartPanel({ businessId, businessName, activePriceList, p
             activePriceList,
             priceListOverrides
           )
-        : item.unit_price
       return {
         product_id: item.product.id,
         quantity: item.quantity,

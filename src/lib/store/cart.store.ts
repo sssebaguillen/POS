@@ -9,6 +9,7 @@ interface CartStore {
   addItem: (product: Product) => void
   removeItem: (productId: string) => void
   updateQuantity: (productId: string, quantity: number) => void
+  updatePrice: (productId: string, price: number) => void
   setDiscount: (discount: number) => void
   setCustomer: (customerId: string | null) => void
   clearCart: () => void
@@ -58,6 +59,16 @@ export const useCartStore = create<CartStore>((set, get) => ({
       items: get().items.map(i =>
         i.product.id === productId
           ? { ...i, quantity, total: quantity * i.unit_price }
+          : i
+      ),
+    })
+  },
+
+  updatePrice: (productId, price) => {
+    set({
+      items: get().items.map(i =>
+        i.product.id === productId
+          ? { ...i, unit_price: price, total: i.quantity * price, priceIsManual: true }
           : i
       ),
     })

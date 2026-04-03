@@ -32,12 +32,12 @@ interface Props {
   initialProducts: InventoryProduct[]
   categories: Category[]
   brands: InventoryBrand[]
-  defaultPriceList: PriceList | null
+  priceLists: PriceList[]
 }
 
 type StatusFilter = 'all' | 'active' | 'inactive'
 
-export default function ProductsPanel({ businessId, initialProducts, categories, brands, defaultPriceList }: Props) {
+export default function ProductsPanel({ businessId, initialProducts, categories, brands, priceLists }: Props) {
   const supabase = useMemo(() => createClient(), [])
   const [products, setProducts] = useState(initialProducts)
   const [query, setQuery] = useState('')
@@ -278,7 +278,7 @@ export default function ProductsPanel({ businessId, initialProducts, categories,
         businessId={businessId}
         categories={categories}
         brands={brands}
-        defaultPriceList={defaultPriceList}
+        priceLists={priceLists}
         onCreated={product => setProducts(prev => [product, ...prev])}
       />
 

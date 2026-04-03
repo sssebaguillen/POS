@@ -16,9 +16,9 @@ interface EditProductModalProps {
   product: InventoryProduct
   categories: InventoryCategory[]
   brands: InventoryBrand[]
-  defaultPriceList?: PriceList | null
-  existingOverride?: PriceListOverride | null
-  onSaved: (updated: Partial<InventoryProduct>) => void
+  priceLists: PriceList[]
+  existingOverrides: PriceListOverride[]
+  onSaved: (updated: Partial<InventoryProduct>, nextOverrides: PriceListOverride[]) => void
 }
 
 function FieldGroup({
@@ -83,13 +83,19 @@ export default function EditProductModal({
   product,
   categories,
   brands,
-  defaultPriceList = null,
-  existingOverride = null,
+  priceLists,
+  existingOverrides,
   onSaved,
 }: EditProductModalProps) {
+  const defaultPriceList = priceLists.find(pl => pl.is_default) ?? null
+
   const [form, setForm] = useState<FormState>(() => toFormState(product))
   const [errors, setErrors] = useState<Record<string, string>>({})
-  const [isPriceEdited, setIsPriceEdited] = useState<boolean>(() => existingOverride !== null)
+  const [isSaving, setIsSaving] = useState(false)
+  const [isPriceEdited, setIsPriceEdited] = useState<boolean>(() => existingOverrides.length > 0)
+  const [selectedListIds, setSelectedListIds] = useState<Set<string>>(
+    () => new Set(existingOverrides.map(o => o.price_list_id))
+  )
   const [brandInput, setBrandInput] = useState(product.brand?.name ?? '')
   const [showBrandOptions, setShowBrandOptions] = useState(false)
 
@@ -125,16 +131,20 @@ export default function EditProductModal({
 
     if (suggestedPrice === null) {
       setIsPriceEdited(false)
+      setSelectedListIds(new Set(existingOverrides.map(o => o.price_list_id)))
       return
     }
 
     const parsedPrice = Number(value)
     if (!value.trim() || !Number.isFinite(parsedPrice)) {
       setIsPriceEdited(false)
+      setSelectedListIds(new Set(existingOverrides.map(o => o.price_list_id)))
       return
     }
 
-    setIsPriceEdited(Math.abs(parsedPrice - suggestedPrice) > 0.01)
+    const edited = Math.abs(parsedPrice - suggestedPrice) > 0.01
+    setIsPriceEdited(edited)
+    if (!edited) setSelectedListIds(new Set(existingOverrides.map(o => o.price_list_id)))
   }
 
   function handleCostChange(value: string) {
@@ -193,7 +203,7 @@ export default function EditProductModal({
     return nextErrors
   }
 
-  function handleSubmit(event: React.FormEvent) {
+  async function handleSubmit(event: React.FormEvent) {
     event.preventDefault()
     const validationErrors = validate()
     if (Object.keys(validationErrors).length > 0) {
@@ -201,53 +211,83 @@ export default function EditProductModal({
       return
     }
 
-    onSaved({
-      name: form.name.trim(),
-      price: Number(form.price),
-      cost: Number(form.cost) || 0,
-      stock: Math.trunc(Number(form.stock) || 0),
-      min_stock: Math.trunc(Number(form.min_stock) || 0),
-      sku: form.sku.trim() || null,
-      brand_id: form.brand_id || null,
-      barcode: form.barcode.trim() || null,
-      category_id: form.category_id || null,
-      show_in_catalog: form.show_in_catalog,
-    })
+    const parsedCost = Number(form.cost)
+    const parsedPrice = Number(form.price)
 
-    // best-effort override upsert/delete
-    void (async () => {
-      const parsedCost = Number(form.cost)
-      const parsedPrice = Number(form.price)
+    setIsSaving(true)
 
-      if (!defaultPriceList || parsedCost <= 0 || !Number.isFinite(parsedPrice)) return
+    let nextOverrides: PriceListOverride[] = []
 
-      if (isPriceEdited && Math.abs(parsedPrice - (parsedCost * defaultPriceList.multiplier)) > 0.01) {
-        const { error } = await supabase
-          .from('price_list_overrides')
-          .upsert(
-            {
-              price_list_id: defaultPriceList.id,
-              product_id: product.id,
-              brand_id: null,
-              multiplier: parsedPrice / parsedCost,
-            },
-            { onConflict: 'price_list_id,product_id' }
+    if (parsedCost > 0 && Number.isFinite(parsedPrice)) {
+      const multiplier = parsedPrice / parsedCost
+
+      if (isPriceEdited) {
+        const upsertResults = await Promise.all(
+          [...selectedListIds].map(listId =>
+            supabase
+              .from('price_list_overrides')
+              .upsert(
+                { price_list_id: listId, product_id: product.id, brand_id: null, multiplier },
+                { onConflict: 'price_list_id,product_id' }
+              )
+              .select('id, price_list_id, product_id, brand_id, multiplier')
+              .single()
           )
+        )
 
-        if (error) {
-          console.error('Failed to upsert product override from edit modal:', error.message)
+        const deleteTargets = existingOverrides.filter(o => !selectedListIds.has(o.price_list_id))
+        if (deleteTargets.length > 0) {
+          await Promise.all(
+            deleteTargets.map(o =>
+              supabase.from('price_list_overrides').delete().eq('id', o.id)
+            )
+          )
         }
-      } else if (!isPriceEdited && existingOverride) {
-        const { error } = await supabase
-          .from('price_list_overrides')
-          .delete()
-          .eq('id', existingOverride.id)
 
-        if (error) {
-          console.error('Failed to delete product override from edit modal:', error.message)
+        nextOverrides = upsertResults
+          .filter(r => !r.error && r.data)
+          .map(r => ({
+            id: r.data!.id,
+            price_list_id: r.data!.price_list_id,
+            product_id: r.data!.product_id,
+            brand_id: r.data!.brand_id,
+            multiplier: Number(r.data!.multiplier),
+          }))
+
+        for (const r of upsertResults) {
+          if (r.error) console.error('Failed to upsert price list override:', r.error.message)
         }
+      } else {
+        if (existingOverrides.length > 0) {
+          await Promise.all(
+            existingOverrides.map(o =>
+              supabase.from('price_list_overrides').delete().eq('id', o.id)
+            )
+          )
+        }
+        nextOverrides = []
       }
-    })()
+    } else {
+      nextOverrides = existingOverrides
+    }
+
+    setIsSaving(false)
+
+    onSaved(
+      {
+        name: form.name.trim(),
+        price: parsedPrice,
+        cost: parsedCost || 0,
+        stock: Math.trunc(Number(form.stock) || 0),
+        min_stock: Math.trunc(Number(form.min_stock) || 0),
+        sku: form.sku.trim() || null,
+        brand_id: form.brand_id || null,
+        barcode: form.barcode.trim() || null,
+        category_id: form.category_id || null,
+        show_in_catalog: form.show_in_catalog,
+      },
+      nextOverrides
+    )
   }
 
   function handleClose() {
@@ -255,7 +295,8 @@ export default function EditProductModal({
     setBrandInput(product.brand?.name ?? '')
     setShowBrandOptions(false)
     setErrors({})
-    setIsPriceEdited(existingOverride !== null)
+    setIsPriceEdited(existingOverrides.length > 0)
+    setSelectedListIds(new Set(existingOverrides.map(o => o.price_list_id)))
     onClose()
   }
 
@@ -411,6 +452,42 @@ export default function EditProductModal({
                 {margin !== null && <p className="text-caption text-emerald-600 dark:text-emerald-400 font-medium">{margin}% margen</p>}
               </FieldGroup>
 
+              {isPriceEdited && priceLists.length > 0 && (
+                <div className="col-span-2 rounded-xl border border-edge bg-surface-alt px-3 py-2.5 flex flex-col gap-2">
+                  <p className="text-xs text-subtle">Aplicar este precio como override en:</p>
+                  <div className="flex flex-wrap gap-x-4 gap-y-1.5">
+                    {priceLists.map(list => (
+                      <label key={list.id} className="flex items-center gap-2 cursor-pointer select-none">
+                        <button
+                          type="button"
+                          role="checkbox"
+                          aria-checked={selectedListIds.has(list.id)}
+                          onClick={() => setSelectedListIds(prev => {
+                            const next = new Set(prev)
+                            if (next.has(list.id)) next.delete(list.id)
+                            else next.add(list.id)
+                            return next
+                          })}
+                          className={`w-4 h-4 rounded border-2 shrink-0 flex items-center justify-center transition-colors ${
+                            selectedListIds.has(list.id)
+                              ? 'bg-primary border-primary'
+                              : 'border-edge bg-surface'
+                          }`}
+                        >
+                          {selectedListIds.has(list.id) && (
+                            <svg viewBox="0 0 10 8" className="w-2.5 h-2 fill-none stroke-white stroke-[2]"><path d="M1 4l3 3 5-6" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                          )}
+                        </button>
+                        <span className="text-xs text-body">
+                          {list.name}
+                          {list.is_default && <span className="ml-1 text-hint">(default)</span>}
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               <FieldGroup label="Stock actual" required error={errors.stock}>
                 <Input
                   type="number"
@@ -454,11 +531,11 @@ export default function EditProductModal({
           </div>
 
           <div className="border-t border-edge-soft bg-surface-alt/80 px-6 py-3.5 flex items-center justify-end gap-2.5">
-            <Button type="button" variant="cancel" onClick={handleClose} className="h-9 px-5 rounded-xl text-sm">
+            <Button type="button" variant="cancel" onClick={handleClose} disabled={isSaving} className="h-9 px-5 rounded-xl text-sm">
               Cancelar
             </Button>
-            <Button type="submit" className="h-9 px-5 rounded-xl text-sm bg-primary hover:bg-primary/90 text-primary-foreground">
-              Guardar cambios
+            <Button type="submit" disabled={isSaving} className="h-9 px-5 rounded-xl text-sm bg-primary hover:bg-primary/90 text-primary-foreground">
+              {isSaving ? 'Guardando\u2026' : 'Guardar cambios'}
             </Button>
           </div>
         </form>
