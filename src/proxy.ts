@@ -125,7 +125,7 @@ export async function proxy(request: NextRequest) {
 
   const isProfileRoute = pathname === '/profile' || pathname.startsWith('/profile/')
   if (isProfileRoute) {
-    return withCsp(supabaseResponse)
+    return flashRedirect(new URL('/pos', request.url), cspHeader)
   }
 
   const isGastosRoute = pathname === '/gastos' || pathname.startsWith('/gastos/')
