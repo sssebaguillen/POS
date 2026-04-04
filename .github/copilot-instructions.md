@@ -228,6 +228,7 @@ app/
     operator-select/page.tsx
     settings/page.tsx
     inventory/page.tsx
+    products/page.tsx
     price-lists/page.tsx
     dashboard/page.tsx
     stats/page.tsx
@@ -298,7 +299,7 @@ export interface Permissions {
 **CRITICAL:** When adding a new field to `Permissions`, search the entire codebase for every file that manually constructs a `Permissions` object literal and add the field to ALL of them. Known files: `lib/operator.ts`, `sidebar.tsx`, `api/operator/switch/route.ts`. Missing even one will cause a TypeScript build error on Vercel.
 
 Permission map per route:
-- `/stock` → `permissions.stock === true`
+- `/inventory` → `permissions.stock === true`
 - `/price-lists` → `permissions.price_lists === true`
 - `/dashboard`, `/stats`, `/stats/*` → `permissions.stats === true`
 - `/gastos` → `permissions.expenses === true`
@@ -317,7 +318,7 @@ The sidebar uses 5 named sections. Never collapse these into a flat list.
 VENTAS      → Vender (/pos)
 ANÁLISIS    → Dashboard (/dashboard), Estadísticas (/stats)
 FINANZAS    → Gastos (/gastos) [requires expenses permission]
-GESTIÓN     → Stock (/stock), Listas de precios (/price-lists)
+GESTIÓN     → Inventario (/inventory), Listas de precios (/price-lists)
 SISTEMA     → Configuración (/settings)
 ```
 
@@ -363,6 +364,19 @@ Exception: semantic status chips (e.g. amber/red sale status in EditSalePanel) k
 - New brands created via `BrandModal` using `create_brand_guarded` RPC
 - Always join brands when fetching products: `brand_id, brands(id, name)`
 - Map result: `brand: Array.isArray(p.brands) ? p.brands[0] ?? null : p.brands ?? null`
+
+---
+
+## Product Images
+
+- `products.image_url text` — nullable HTTPS URL
+- `products.image_source text CHECK ('upload', 'url')` — nullable
+- Consistency constraint: both columns must be null together or non-null together — never one without the other
+- Storage bucket: `product-images` (public), path `{business_id}/{uuid}.{ext}`
+- Validation on save: HTTPS required — block `data:` `javascript:` `file:` `blob:` schemes
+- Never use raw `<img>` for product images — always `next/image` with explicit `width`/`height` or `fill`
+- `image_source = 'upload'` → URL comes from Supabase Storage; `image_source = 'url'` → external HTTPS URL
+- Categories and brands have no images
 
 ---
 
@@ -547,4 +561,9 @@ Always define props with a named `interface`. Never use optional props as a work
 - Defining React component functions inside another component's render body
 - Reading sidebar collapse state from `localStorage` in a `useEffect` — always initialize from the `pos-sidebar-collapsed` cookie server-side
 - Adding a field to `Permissions` without updating ALL files that manually construct a `Permissions` object
-- Routing the sidebar profile button to `/settings` — it must route to `/profile`
+- Replacing `product.price` in `cart.store.ts` `addItem` with `calculateProductPrice` — the store intentionally holds the base price; `activePriceList` and `priceListOverrides` are passed separately to `ProductPanel` and `CartPanel` where `calculateProductPrice` is applied at render time and at checkout
+- Adding `/stock` as a route guard in `proxy.ts` — the actual deployed route is `/inventory`; `/stock` does not exist in the app directory
+- Using raw `<img>` for product images — always `next/image`
+- Setting `image_url` without `image_source`, or vice versa — both must be set together or both null
+- Accepting non-HTTPS URLs or `data:` / `javascript:` / `file:` / `blob:` schemes for `image_url`
+- Adding image fields to `categories` or `brands` — only `products` has images for now
