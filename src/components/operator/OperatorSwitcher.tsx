@@ -1,7 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
 import { useSidebar } from '@/components/shared/AppShell'
 
 interface OperatorSwitcherProps {
@@ -14,7 +13,6 @@ interface LogoutResponse {
 }
 
 export default function OperatorSwitcher({ operatorName }: OperatorSwitcherProps) {
-  const router = useRouter()
   const { close } = useSidebar()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -40,8 +38,7 @@ export default function OperatorSwitcher({ operatorName }: OperatorSwitcherProps
       return
     }
 
-    router.push('/operator-select')
-    router.refresh()
+    window.location.href = '/operator-select'
   }
 
   return (
