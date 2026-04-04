@@ -173,6 +173,13 @@ export async function POST(request: Request) {
       secure: process.env.NODE_ENV === 'production',
     })
 
+    response.cookies.set('op_perms', JSON.stringify(ownerOperator.permissions), {
+      httpOnly: false,
+      sameSite: 'lax',
+      path: '/',
+      secure: process.env.NODE_ENV === 'production',
+    })
+
     return response
   }
 
@@ -229,6 +236,13 @@ export async function POST(request: Request) {
 
   response.cookies.set('operator_session', JSON.stringify(operator), {
     httpOnly: true,
+    sameSite: 'lax',
+    path: '/',
+    secure: process.env.NODE_ENV === 'production',
+  })
+
+  response.cookies.set('op_perms', JSON.stringify(operator.permissions), {
+    httpOnly: false,
     sameSite: 'lax',
     path: '/',
     secure: process.env.NODE_ENV === 'production',
