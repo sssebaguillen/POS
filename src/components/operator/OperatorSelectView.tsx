@@ -112,8 +112,7 @@ export default function OperatorSelectView({ ownerProfile, operators, availableO
       return
     }
 
-    router.push('/pos')
-    router.refresh()
+    window.location.href = '/pos'
   }
 
   function handleGoToSettings() {
