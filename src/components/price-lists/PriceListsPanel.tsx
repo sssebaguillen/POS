@@ -17,7 +17,8 @@ import NewPriceListModal from '@/components/price-lists/NewPriceListModal'
 import EditPriceListModal from '@/components/price-lists/EditPriceListModal'
 import ProductOverrideModal from '@/components/price-lists/ProductOverrideModal'
 import BrandOverrideModal from '@/components/price-lists/BrandOverrideModal'
-import type { PriceList, PriceListOverride, PriceListProduct } from '@/components/price-lists/types'
+import type { PriceList, PriceListOverride } from '@/lib/types'
+import type { PriceListProduct } from '@/components/price-lists/types'
 import { calculateProductPrice } from '@/lib/price-lists'
 
 interface PriceListsPanelProps {

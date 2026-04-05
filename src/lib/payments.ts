@@ -1,4 +1,4 @@
-export const PAYMENT_LABELS: Record<string, string> = {
+export const PAYMENT_LABELS: Record<'cash' | 'card' | 'transfer' | 'mercadopago' | 'credit', string> = {
   cash: 'Efectivo',
   card: 'Tarjeta',
   transfer: 'Transferencia',
@@ -6,7 +6,7 @@ export const PAYMENT_LABELS: Record<string, string> = {
   credit: 'Crédito',
 }
 
-export const PAYMENT_COLORS: Record<string, string> = {
+export const PAYMENT_COLORS: Record<'cash' | 'card' | 'transfer' | 'mercadopago' | 'credit', string> = {
   cash: 'bg-emerald-600',
   card: 'bg-indigo-500',
   transfer: 'bg-amber-500',
@@ -16,5 +16,6 @@ export const PAYMENT_COLORS: Record<string, string> = {
 
 export function normalizePayment(method: string | null): string {
   if (!method) return 'sin dato'
-  return PAYMENT_LABELS[method] ?? method
+  const key = method as keyof typeof PAYMENT_LABELS
+  return PAYMENT_LABELS[key] ?? method
 }

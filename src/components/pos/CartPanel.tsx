@@ -13,7 +13,7 @@ import type { ReceiptData, ReceiptItemInput } from '@/lib/printer/types'
 import { createClient } from '@/lib/supabase/client'
 import { calculateProductPrice } from '@/lib/price-lists'
 import { normalizePayment, PAYMENT_LABELS } from '@/lib/payments'
-import type { PriceList, PriceListOverride } from '@/components/price-lists/types'
+import type { PriceList, PriceListOverride } from '@/lib/types'
 
 function getStockIndicator(
   quantity: number,

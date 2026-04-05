@@ -16,7 +16,7 @@ import ImportProductsModal from '@/components/stock/ImportProductsModal'
 import ConfirmModal from '@/components/shared/ConfirmModal'
 import { Dialog, DialogContent } from '@/components/ui/dialog'
 import SelectDropdown from '@/components/ui/SelectDropdown'
-import type { PriceList, PriceListOverride } from '@/components/price-lists/types'
+import type { PriceList, PriceListOverride } from '@/lib/types'
 import type { InventoryBrand, InventoryCategory, InventoryProduct, SortOption } from '@/components/stock/types'
 
 const PAGE_SIZE = 60
