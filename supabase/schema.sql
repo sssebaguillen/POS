@@ -2,7 +2,7 @@
 -- Pulsar POS — Schema completo
 -- Proyecto Supabase: zrnthycznbrplzpmxmkwk (sa-east-1)
 -- Vercel: pulsarpos
--- Última actualización: P7a completo
+-- Última actualización: P7b completo (sincronizado con DB real — abril 2026)
 -- NOTA: Este es un snapshot — no aplicar como migración incremental
 -- ============================================================
 
@@ -50,7 +50,8 @@ create table businesses (
   whatsapp            text,
   logo_url            text,
   description         text,
-  accounting_enabled  bool not null default false,
+  -- accounting_enabled: PENDIENTE de agregar a DB (P10 — módulo contable)
+  -- accounting_enabled  bool not null default false,
   created_at          timestamptz default now()
 );
 
@@ -62,7 +63,7 @@ create table businesses (
 create table profiles (
   id          uuid primary key references auth.users(id) on delete cascade,
   business_id uuid references businesses(id) on delete cascade,
-  role        text not null default 'owner',
+  role        text not null default 'cashier',
   name        text not null,
   pin         text,
   avatar_url  text,
@@ -227,7 +228,8 @@ create table customers (
   phone          text,
   email          text,
   dni            text,
-  tax_type       text,
+  -- tax_type: PENDIENTE de agregar a DB (P8 — cuentas de clientes)
+  -- tax_type       text,
   credit_balance numeric(12,2) default 0,
   notes          text,
   created_at     timestamptz default now()
@@ -349,7 +351,7 @@ create table expenses (
   business_id     uuid not null references businesses(id) on delete cascade,
   operator_id     uuid references operators(id) on delete set null,
   supplier_id     uuid references suppliers(id) on delete set null,
-  category        expense_category not null,
+  category        expense_category not null default 'otro',
   amount          numeric(12,2) not null check (amount > 0),
   description     text not null,
   date            date not null default current_date,
@@ -381,20 +383,21 @@ create trigger expenses_updated_at
 
 -- ============================================================
 -- INVOICES
--- Capa fiscal abstracta — activa con P10 (accounting_enabled)
+-- Capa fiscal abstracta — PENDIENTE: tabla no existe en DB aún
+-- Se creará en P10 (accounting_enabled)
 -- provider: 'facturama' | 'alegra' | null
 -- ============================================================
 
-create table invoices (
-  id          uuid primary key default gen_random_uuid(),
-  business_id uuid not null references businesses(id) on delete cascade,
-  sale_id     uuid references sales(id) on delete set null,
-  provider    text,
-  external_id text,
-  status      text,
-  pdf_url     text,
-  created_at  timestamptz default now()
-);
+-- create table invoices (
+--   id          uuid primary key default gen_random_uuid(),
+--   business_id uuid not null references businesses(id) on delete cascade,
+--   sale_id     uuid references sales(id) on delete set null,
+--   provider    text,
+--   external_id text,
+--   status      text,
+--   pdf_url     text,
+--   created_at  timestamptz default now()
+-- );
 
 
 -- ============================================================
@@ -417,7 +420,8 @@ alter table payments           enable row level security;
 alter table inventory_movements enable row level security;
 alter table suppliers          enable row level security;
 alter table expenses           enable row level security;
-alter table invoices           enable row level security;
+-- invoices: RLS se habilitará cuando se cree la tabla en P10
+-- alter table invoices           enable row level security;
 
 
 -- ============================================================
@@ -529,8 +533,8 @@ create policy "tenant_isolation" on expenses
   for all using (business_id = get_business_id());
 
 -- invoices
-create policy "tenant_isolation" on invoices
-  for all using (business_id = get_business_id());
+-- create policy "tenant_isolation" on invoices
+--   for all using (business_id = get_business_id());
 
 
 -- ============================================================
@@ -604,9 +608,9 @@ create index idx_expenses_business_date on expenses (business_id, date desc);
 create index idx_expenses_supplier_id on expenses (supplier_id) where supplier_id is not null;
 create index idx_expenses_operator_id on expenses (operator_id) where operator_id is not null;
 
--- invoices
-create index idx_invoices_business_id on invoices (business_id);
-create index idx_invoices_sale_id on invoices (sale_id) where sale_id is not null;
+-- invoices (pendiente P10)
+-- create index idx_invoices_business_id on invoices (business_id);
+-- create index idx_invoices_sale_id on invoices (sale_id) where sale_id is not null;
 
 
 -- ============================================================
@@ -1442,6 +1446,313 @@ begin
   ) row;
 
   return jsonb_build_object('data', coalesce(v_data, '[]'::jsonb));
+end;
+$$;
+
+
+-- ============================================================
+-- get_catalog_products
+-- RPC pública para catálogo (GRANT EXECUTE TO anon)
+-- ============================================================
+
+create or replace function get_catalog_products(p_slug text)
+returns table(id uuid, category_id uuid, name text, price numeric, stock integer, image_url text)
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_business_id uuid;
+begin
+  select b.id into v_business_id
+  from businesses b
+  where b.slug = p_slug;
+
+  if v_business_id is null then
+    return;
+  end if;
+
+  return query
+  select
+    p.id,
+    p.category_id,
+    p.name,
+    p.price::numeric,
+    p.stock::integer,
+    p.image_url
+  from products p
+  where p.business_id = v_business_id
+    and p.is_active = true
+    and p.show_in_catalog = true
+  order by p.name asc;
+end;
+$$;
+
+grant execute on function get_catalog_products(text) to anon;
+
+
+-- ============================================================
+-- get_catalog_categories
+-- RPC pública para catálogo (GRANT EXECUTE TO anon)
+-- ============================================================
+
+create or replace function get_catalog_categories(p_slug text)
+returns table(id uuid, name text, sort_order integer)
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_business_id uuid;
+begin
+  select b.id into v_business_id
+  from businesses b
+  where b.slug = p_slug;
+
+  if v_business_id is null then
+    return;
+  end if;
+
+  return query
+  select
+    c.id,
+    c.name,
+    c.position as sort_order
+  from categories c
+  where c.business_id = v_business_id
+    and c.is_active = true
+  order by c.position asc;
+end;
+$$;
+
+grant execute on function get_catalog_categories(text) to anon;
+
+
+-- ============================================================
+-- get_sale_detail
+-- Retorna detalle completo de una venta con items, operator y payment
+-- ============================================================
+
+create or replace function get_sale_detail(
+  p_sale_id     uuid,
+  p_business_id uuid
+)
+returns json
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_result json;
+begin
+  if not exists (
+    select 1 from sales
+    where id = p_sale_id and business_id = p_business_id
+  ) then
+    return json_build_object('success', false, 'error', 'Sale not found');
+  end if;
+
+  select json_build_object(
+    'success',        true,
+    -- Direct operator_id takes priority; fall back to cash_sessions for legacy sales
+    'operator_name',  coalesce(direct_op.name, session_op.name),
+    'payment_method', pay.method,
+    'items', (
+      select json_agg(json_build_object(
+        'id',           si.id,
+        'product_id',   si.product_id,
+        'product_name', coalesce(p.name, 'Producto eliminado'),
+        'product_icon', cat.icon,
+        'quantity',     si.quantity,
+        'unit_price',   si.unit_price
+      ) order by si.id)
+      from sale_items si
+      left join products p     on p.id = si.product_id
+      left join categories cat on cat.id = p.category_id
+      where si.sale_id = p_sale_id
+    )
+  )
+  into v_result
+  from sales s
+  left join operators direct_op  on direct_op.id = s.operator_id
+  left join cash_sessions cs     on cs.id = s.session_id
+  left join operators session_op on session_op.id = cs.opened_by
+  left join lateral (
+    select method from payments
+    where sale_id = p_sale_id
+    order by created_at desc
+    limit 1
+  ) pay on true
+  where s.id = p_sale_id;
+
+  return v_result;
+end;
+$$;
+
+
+-- ============================================================
+-- delete_sale
+-- Elimina venta + revierte stock/sales_count + limpia movements y payments
+-- ============================================================
+
+create or replace function delete_sale(
+  p_sale_id     uuid,
+  p_business_id uuid
+)
+returns json
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_item record;
+begin
+  if not exists (
+    select 1 from sales
+    where id = p_sale_id and business_id = p_business_id
+  ) then
+    return json_build_object('success', false, 'error', 'Sale not found');
+  end if;
+
+  for v_item in
+    select product_id, quantity from sale_items where sale_id = p_sale_id
+  loop
+    update products
+    set
+      stock       = stock + v_item.quantity,
+      sales_count = greatest(0, sales_count - v_item.quantity)
+    where id = v_item.product_id
+      and business_id = p_business_id;
+  end loop;
+
+  delete from inventory_movements where reference_id = p_sale_id;
+  delete from payments             where sale_id = p_sale_id;
+  delete from sale_items           where sale_id = p_sale_id;
+  delete from sales                where id = p_sale_id and business_id = p_business_id;
+
+  return json_build_object('success', true);
+end;
+$$;
+
+
+-- ============================================================
+-- get_expenses_list
+-- Retorna { data: [...], total } — listado paginado de gastos con supplier
+-- ============================================================
+
+create or replace function get_expenses_list(
+  p_business_id uuid,
+  p_from        date    default null,
+  p_to          date    default null,
+  p_category    text    default null,
+  p_limit       int     default 50,
+  p_offset      int     default 0
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_rows  jsonb;
+  v_total bigint;
+begin
+  select count(*)
+  into v_total
+  from expenses e
+  where e.business_id = p_business_id
+    and (p_from     is null or e.date >= p_from)
+    and (p_to       is null or e.date <= p_to)
+    and (p_category is null or e.category::text = p_category);
+
+  select jsonb_agg(row_to_json(r))
+  into v_rows
+  from (
+    select
+      e.id,
+      e.category,
+      e.amount,
+      e.description,
+      e.date,
+      e.attachment_url,
+      e.attachment_type,
+      e.attachment_name,
+      e.notes,
+      e.created_at,
+      s.id   as supplier_id,
+      s.name as supplier_name
+    from expenses e
+    left join suppliers s on s.id = e.supplier_id
+    where e.business_id = p_business_id
+      and (p_from     is null or e.date >= p_from)
+      and (p_to       is null or e.date <= p_to)
+      and (p_category is null or e.category::text = p_category)
+    order by e.date desc, e.created_at desc
+    limit p_limit offset p_offset
+  ) r;
+
+  return jsonb_build_object(
+    'data',  coalesce(v_rows, '[]'::jsonb),
+    'total', v_total
+  );
+end;
+$$;
+
+
+-- ============================================================
+-- get_business_balance
+-- Retorna ingresos, egresos, profit, margen y desglose por categoría
+-- ============================================================
+
+create or replace function get_business_balance(
+  p_business_id uuid,
+  p_from        date default null,
+  p_to          date default null
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_from        date    := coalesce(p_from, date_trunc('month', current_date)::date);
+  v_to          date    := coalesce(p_to, current_date);
+  v_income      numeric := 0;
+  v_expenses    numeric := 0;
+  v_by_category jsonb;
+begin
+  select coalesce(sum(total), 0)
+  into v_income
+  from sales
+  where business_id = p_business_id
+    and status = 'completed'
+    and created_at::date between v_from and v_to;
+
+  select coalesce(sum(amount), 0)
+  into v_expenses
+  from expenses
+  where business_id = p_business_id
+    and date between v_from and v_to;
+
+  select coalesce(jsonb_object_agg(category, total_amount), '{}'::jsonb)
+  into v_by_category
+  from (
+    select category::text, sum(amount) as total_amount
+    from expenses
+    where business_id = p_business_id
+      and date between v_from and v_to
+    group by category
+  ) sub;
+
+  return jsonb_build_object(
+    'income',      v_income,
+    'expenses',    v_expenses,
+    'profit',      v_income - v_expenses,
+    'margin',      case when v_income > 0 then round(((v_income - v_expenses) / v_income) * 100, 2) else 0 end,
+    'by_category', v_by_category,
+    'period_from', v_from,
+    'period_to',   v_to
+  );
 end;
 $$;
 
