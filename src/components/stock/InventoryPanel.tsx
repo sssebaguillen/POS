@@ -1185,7 +1185,11 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
           onClose={() => setShowImport(false)}
           onImported={async () => {
             setShowImport(false)
-            const [{ data: updatedProducts }, { data: updatedCategories }, { data: updatedBrands }] = await Promise.all([
+            const [
+              { data: updatedProducts, error: productsError },
+              { data: updatedCategories, error: categoriesError },
+              { data: updatedBrands, error: brandsError },
+            ] = await Promise.all([
               supabase
                 .from('products')
                 .select('id, business_id, name, price, cost, stock, min_stock, is_active, show_in_catalog, category_id, sku, barcode, brand_id, image_url, image_source, brands(id, name), categories(name, icon)')
@@ -1203,6 +1207,11 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
                 .eq('business_id', businessId)
                 .order('name'),
             ])
+            const refreshError = productsError ?? categoriesError ?? brandsError
+            if (refreshError) {
+              setCrudError(refreshError.message)
+              return
+            }
             if (updatedProducts) {
               setProducts(updatedProducts.map(p => ({
                 ...p,
