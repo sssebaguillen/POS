@@ -1,7 +1,7 @@
 import type { PaymentMethod, ReceiptData, ReceiptItemInput } from '@/lib/printer/types'
 
 interface ReceiptSaleItemSource {
-  product_id: string
+  product_id: string | null
   product_name: string
   product_icon: string | null
   quantity: number
