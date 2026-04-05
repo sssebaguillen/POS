@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { X } from 'lucide-react'
 import { Dialog, DialogContent } from '@/components/ui/dialog'
-import type { PriceList, PriceListOverride } from '@/components/price-lists/types'
+import type { PriceList, PriceListOverride } from '@/lib/types'
 import { normalizePriceListOverride } from '@/lib/mappers'
 
 interface BrandOverrideModalProps {

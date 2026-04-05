@@ -43,7 +43,7 @@ export interface Product {
   stock: number
   min_stock: number
   image_url: string | null
-  image_source: string | null
+  image_source: 'upload' | 'url' | null
   is_active: boolean
   show_in_catalog: boolean
   sales_count: number
@@ -105,6 +105,24 @@ export interface Payment {
   reference: string | null
   status: 'completed' | 'failed' | 'pending'
   created_at: string
+}
+
+export interface PriceList {
+  id: string
+  business_id: string
+  name: string
+  description: string | null
+  multiplier: number
+  is_default: boolean
+  created_at: string
+}
+
+export interface PriceListOverride {
+  id: string
+  price_list_id: string
+  product_id: string | null
+  brand_id: string | null
+  multiplier: number
 }
 
 // Cart types (client-side only)

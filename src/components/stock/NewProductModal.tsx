@@ -11,7 +11,7 @@ import {
   DialogContent,
 } from '@/components/ui/dialog'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
-import type { PriceList } from '@/components/price-lists/types'
+import type { PriceList } from '@/lib/types'
 import type { InventoryBrand } from '@/components/stock/types'
 
 function FieldGroup({ label, required, error, hint, children }: {

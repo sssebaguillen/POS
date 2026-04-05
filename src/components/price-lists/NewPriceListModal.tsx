@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { X } from 'lucide-react'
 import { Dialog, DialogContent } from '@/components/ui/dialog'
-import type { PriceList } from '@/components/price-lists/types'
+import type { PriceList } from '@/lib/types'
 
 interface NewPriceListModalProps {
   open: boolean

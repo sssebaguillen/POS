@@ -1,4 +1,4 @@
-export type PaymentMethod = 'cash' | 'card' | 'transfer' | 'mercadopago'
+export type PaymentMethod = 'cash' | 'card' | 'transfer' | 'mercadopago' | 'credit'
 
 export interface SaleItemInput {
   product_id: string

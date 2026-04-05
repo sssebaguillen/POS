@@ -8,7 +8,7 @@ import SelectDropdown from '@/components/ui/SelectDropdown'
 import { Upload, X } from 'lucide-react'
 import { Dialog, DialogContent } from '@/components/ui/dialog'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
-import type { PriceList, PriceListOverride } from '@/components/price-lists/types'
+import type { PriceList, PriceListOverride } from '@/lib/types'
 import type { InventoryBrand, InventoryCategory, InventoryProduct } from '@/components/stock/types'
 
 interface EditProductModalProps {

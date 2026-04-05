@@ -1,4 +1,4 @@
-import type { PriceList, PriceListOverride } from '@/components/price-lists/types'
+import type { PriceList, PriceListOverride } from '@/lib/types'
 
 /**
  * Price resolution rules:

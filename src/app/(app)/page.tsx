@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { cookies } from 'next/headers'
 import { getActiveOperator } from '@/lib/operator'
-import type { PriceListOverride } from '@/components/price-lists/types'
+import type { PriceListOverride } from '@/lib/types'
 import POSView from '@/components/pos/POSView'
 import { requireAuthenticatedBusinessId } from '@/lib/business'
 import { normalizePriceList, normalizePriceListOverride, unwrapRelation } from '@/lib/mappers'

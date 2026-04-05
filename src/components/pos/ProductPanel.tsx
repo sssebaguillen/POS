@@ -5,7 +5,7 @@ import { useCartStore } from '@/lib/store/cart.store'
 import { calculateProductPrice } from '@/lib/price-lists'
 import type { Product } from '@/lib/types'
 import type { ProductWithCategory, ActiveFilter } from '@/components/pos/types'
-import type { PriceList, PriceListOverride } from '@/components/price-lists/types'
+import type { PriceList, PriceListOverride } from '@/lib/types'
 
 const PAGE_SIZE = 80
 

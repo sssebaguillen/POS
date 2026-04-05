@@ -9,7 +9,7 @@ import NewProductModal from '@/components/stock/NewProductModal'
 import ConfirmModal from '@/components/shared/ConfirmModal'
 import ExportCSVButton from '@/components/shared/ExportCSVButton'
 import type { InventoryProduct, InventoryBrand } from '@/components/stock/types'
-import type { PriceList } from '@/components/price-lists/types'
+import type { PriceList } from '@/lib/types'
 import {
   Table,
   TableBody,

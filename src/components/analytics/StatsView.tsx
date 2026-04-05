@@ -490,11 +490,11 @@ export default function StatsView({ sales, payments, saleItems, products, catego
                 paymentBreakdown.map(row => (
                   <div key={row.method} className="space-y-1.5">
                     <div className="flex justify-between text-sm">
-                      <span className="text-body font-medium">{PAYMENT_LABELS[row.method] ?? row.method}</span>
+                      <span className="text-body font-medium">{PAYMENT_LABELS[row.method as keyof typeof PAYMENT_LABELS] ?? row.method}</span>
                       <span className="text-subtle text-xs">{row.percent.toFixed(0)}%</span>
                     </div>
                     <div className="h-2 rounded-full bg-surface-alt">
-                      <div className={`h-2 rounded-full ${PAYMENT_COLORS[row.method] ?? 'bg-hint'}`} style={{ width: `${row.percent}%` }} />
+                      <div className={`h-2 rounded-full ${PAYMENT_COLORS[row.method as keyof typeof PAYMENT_COLORS] ?? 'bg-hint'}`} style={{ width: `${row.percent}%` }} />
                     </div>
                   </div>
                 ))
