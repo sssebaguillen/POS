@@ -1,7 +1,7 @@
 export type PaymentMethod = 'cash' | 'card' | 'transfer' | 'mercadopago' | 'credit'
 
 export interface SaleItemInput {
-  product_id: string
+  product_id: string | null
   quantity: number
   unit_price: number
   total: number

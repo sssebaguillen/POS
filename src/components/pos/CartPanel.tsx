@@ -41,7 +41,7 @@ interface SaleRow {
 
 interface SaleItem {
   id: string
-  product_id: string
+  product_id: string | null
   product_name: string
   product_icon: string | null
   quantity: number
@@ -55,7 +55,7 @@ interface SaleDetail extends SaleRow {
 
 interface SaleItemQueryRow {
   id: string
-  product_id: string
+  product_id: string | null
   product_name: string
   product_icon: string | null
   quantity: number
@@ -302,13 +302,15 @@ export default function CartPanel({ businessId, businessName, activePriceList, p
       setHistory(prev => prev.filter(s => s.id !== saleId))
       setSaleDetails(prev => { const next = { ...prev }; delete next[saleId]; return next })
       if (expandedSaleId === saleId) setExpandedSaleId(null)
+    } else {
+      setSaleToast(error?.message ?? data?.error ?? 'No se pudo eliminar la venta.')
     }
     setDeletingId(null)
   }
 
   async function handleUpdateSale(
     saleId: string,
-    items: { product_id: string; quantity: number; unit_price: number }[],
+    items: { product_id: string | null; quantity: number; unit_price: number }[],
     paymentMethod: string
   ) {
     if (!businessId) return
@@ -350,6 +352,8 @@ export default function CartPanel({ businessId, businessName, activePriceList, p
         }
       })
       setEditingSale(null)
+    } else {
+      setSaleToast(error?.message ?? data?.error ?? 'No se pudo actualizar la venta.')
     }
   }
 
@@ -640,7 +644,7 @@ export default function CartPanel({ businessId, businessName, activePriceList, p
                                 </span>
                                 {detail.items.slice(0, 4).map(item =>
                                   item.product_icon ? (
-                                    <span key={item.product_id} className="text-xs leading-none">{item.product_icon}</span>
+                                    <span key={item.id} className="text-xs leading-none">{item.product_icon}</span>
                                   ) : null
                                 )}
                               </>
@@ -807,7 +811,7 @@ function EditSalePanel({
   onCancel,
 }: {
   sale: SaleDetail
-  onSave: (items: { product_id: string; quantity: number; unit_price: number }[], paymentMethod: string) => void
+  onSave: (items: { product_id: string | null; quantity: number; unit_price: number }[], paymentMethod: string) => void
   onCancel: () => void
 }) {
   const PAYMENT_OPTIONS: { value: string; label: string }[] = [
@@ -819,13 +823,13 @@ function EditSalePanel({
   const [items, setItems] = useState(sale.items.map(i => ({ ...i })))
   const [paymentMethod, setPaymentMethod] = useState(sale.payment_method ?? 'cash')
 
-  function updateQty(productId: string, qty: number) {
+  function updateQty(itemId: string, qty: number) {
     if (qty < 1) return
-    setItems(prev => prev.map(i => i.product_id === productId ? { ...i, quantity: qty } : i))
+    setItems(prev => prev.map(i => i.id === itemId ? { ...i, quantity: qty } : i))
   }
 
-  function removeItem(productId: string) {
-    setItems(prev => prev.filter(i => i.product_id !== productId))
+  function removeItem(itemId: string) {
+    setItems(prev => prev.filter(i => i.id !== itemId))
   }
 
   const total = items.reduce((sum, i) => sum + i.quantity * i.unit_price, 0)
@@ -834,21 +838,21 @@ function EditSalePanel({
     <div className="flex flex-col flex-1 min-h-0">
       <div className="flex-1 overflow-y-auto p-4 space-y-2">
         {items.map(item => (
-          <div key={item.product_id} className="flex items-center gap-3 py-2 border-b border-edge-soft">
+          <div key={item.id} className="flex items-center gap-3 py-2 border-b border-edge-soft">
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-heading truncate">{item.product_name}</p>
               <p className="text-xs text-hint">${item.unit_price.toLocaleString('es-AR')} c/u</p>
             </div>
             <div className="flex items-center gap-1.5 shrink-0">
               <button
-                onClick={() => updateQty(item.product_id, item.quantity - 1)}
+                onClick={() => updateQty(item.id, item.quantity - 1)}
                 className="w-6 h-6 rounded-md bg-surface-alt hover:bg-hover-bg flex items-center justify-center transition-colors text-xs"
               >
                 −
               </button>
               <span className="text-sm font-semibold w-6 text-center tabular-nums">{item.quantity}</span>
               <button
-                onClick={() => updateQty(item.product_id, item.quantity + 1)}
+                onClick={() => updateQty(item.id, item.quantity + 1)}
                 className="w-6 h-6 rounded-md bg-surface-alt hover:bg-hover-bg flex items-center justify-center transition-colors text-xs"
               >
                 +
@@ -858,7 +862,7 @@ function EditSalePanel({
               ${(item.quantity * item.unit_price).toLocaleString('es-AR')}
             </p>
             <button
-              onClick={() => removeItem(item.product_id)}
+              onClick={() => removeItem(item.id)}
               className="text-faint hover:text-red-400 transition-colors shrink-0"
             >
               <Trash2 size={14} />

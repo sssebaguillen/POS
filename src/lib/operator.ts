@@ -121,7 +121,8 @@ export function getActiveOperator(cookieStore: CookieStoreLike): ActiveOperator 
   try {
     const parsed = JSON.parse(rawCookie.value) as unknown
     return parseActiveOperator(parsed)
-  } catch {
+  } catch (err) {
+    console.error('Failed to parse operator_session cookie:', err)
     return null
   }
 }
