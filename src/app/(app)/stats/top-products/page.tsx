@@ -87,8 +87,8 @@ export default async function TopProductsDetailPage({
       total={rows?.total ?? 0}
       businessId={businessId}
       period={period}
-      from={from ?? undefined}
-      to={to ?? undefined}
+      from={params.from}
+      to={params.to}
       page={page}
     />
   )

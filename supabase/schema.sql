@@ -1328,18 +1328,24 @@ begin
       p.id,
       p.name,
       p.sku,
-      sum(si.quantity)               as units_sold,
-      sum(si.total)                  as total_revenue,
-      sum(si.quantity * p.cost)      as total_cost,
-      sum(si.total) - sum(si.quantity * p.cost) as gross_profit
+      c.name                                        as category_name,
+      b.name                                        as brand_name,
+      p.price,
+      p.cost,
+      sum(si.quantity)                              as units_sold,
+      sum(si.total)                                 as revenue,
+      sum(si.total) - sum(si.quantity * p.cost)     as gross_profit,
+      count(distinct s.id)                          as transaction_count
     from sale_items si
-    join sales s     on s.id = si.sale_id
-    join products p  on p.id = si.product_id
+    join sales s         on s.id = si.sale_id
+    join products p      on p.id = si.product_id
+    left join categories c on c.id = p.category_id
+    left join brands b     on b.id = p.brand_id
     where s.business_id = p_business_id
       and s.status = 'completed'
       and (p_from is null or s.created_at::date >= p_from)
       and (p_to   is null or s.created_at::date <= p_to)
-    group by p.id, p.name, p.sku
+    group by p.id, p.name, p.sku, c.name, b.name, p.price, p.cost
     order by units_sold desc
     limit p_limit offset p_offset
   ) row;
