@@ -6,6 +6,16 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { X } from 'lucide-react'
 import { Dialog, DialogContent } from '@/components/ui/dialog'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import type { InventoryCategory } from '@/components/stock/types'
 
 interface CategoryModalProps {
@@ -35,6 +45,7 @@ export default function CategoryModal({
   const [error, setError] = useState<string | null>(null)
   const [creating, setCreating] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
 
   const supabase = useMemo(() => createClient(), [])
 
@@ -124,7 +135,8 @@ export default function CategoryModal({
   }
 
   return (
-    <Dialog open={open} onOpenChange={nextOpen => !nextOpen && handleClose()}>
+    <>
+      <Dialog open={open} onOpenChange={nextOpen => !nextOpen && handleClose()}>
       <DialogContent className="sm:max-w-[560px] p-0 gap-0 rounded-2xl overflow-hidden bg-app-bg" showCloseButton={false}>
         <div className="modal-header px-6 py-4 flex items-center justify-between">
           <h2 className="text-base font-semibold text-foreground">Categorías</h2>
@@ -160,7 +172,7 @@ export default function CategoryModal({
                       type="button"
                       size="sm"
                       variant="destructive"
-                      onClick={() => handleDelete(category.id)}
+                      onClick={() => setConfirmDeleteId(category.id)}
                       disabled={creating || deletingId !== null || !stockWriteAllowed}
                     >
                       {deletingId === category.id ? 'Eliminando...' : 'Eliminar'}
@@ -232,5 +244,23 @@ export default function CategoryModal({
         </div>
       </DialogContent>
     </Dialog>
+
+    <AlertDialog open={confirmDeleteId !== null} onOpenChange={open => { if (!open) setConfirmDeleteId(null) }}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>¿Eliminar categoría?</AlertDialogTitle>
+          <AlertDialogDescription>
+            Esta acción eliminará la categoría permanentemente y no se puede deshacer.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+          <AlertDialogAction onClick={() => { if (confirmDeleteId) void handleDelete(confirmDeleteId) }}>
+            Eliminar categoría
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+    </>
   )
 }

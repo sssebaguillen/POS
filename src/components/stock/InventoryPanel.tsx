@@ -1005,17 +1005,17 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
             )}
           </button>
 
-          <div className="flex items-center gap-1.5 shrink-0">
+          <div className="pill-tabs shrink-0">
             {([
-              { key: 'all', label: 'Todos', style: 'bg-primary text-primary-foreground', inactive: 'bg-surface-alt text-body hover:bg-hover-bg' },
-              { key: 'low', label: 'Stock bajo', style: 'bg-amber-500 text-white', inactive: 'bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800/50 hover:bg-amber-100 dark:hover:bg-amber-900/40' },
-              { key: 'out', label: 'Sin stock', style: 'bg-red-500 text-white', inactive: 'bg-red-50 dark:bg-red-950/30 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-800/50 hover:bg-red-100 dark:hover:bg-red-900/40' },
-              { key: 'discontinued', label: 'Discontinuados', style: 'bg-subtle text-white', inactive: 'bg-surface-alt text-body hover:bg-hover-bg' },
+              { key: 'all', label: 'Todos' },
+              { key: 'low', label: 'Stock bajo' },
+              { key: 'out', label: 'Sin stock' },
+              { key: 'discontinued', label: 'Discontinuados' },
             ] as const).map(s => (
               <button
                 key={s.key}
                 onClick={() => setStatusFilter(s.key)}
-                className={`px-3 h-8 rounded-full text-xs font-medium transition-colors ${statusFilter === s.key ? s.style : s.inactive}`}
+                className={`pill-tab${statusFilter === s.key ? ' pill-tab-active' : ''}`}
               >
                 {s.label}
               </button>
