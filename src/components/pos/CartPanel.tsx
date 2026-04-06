@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { Check, Minus, Plus, Printer, ShoppingCart, Trash2, X } from 'lucide-react'
+import { Minus, Plus, Printer, ShoppingCart, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { useCartStore } from '@/lib/store/cart.store'
@@ -14,6 +14,8 @@ import { createClient } from '@/lib/supabase/client'
 import { calculateProductPrice } from '@/lib/price-lists'
 import { normalizePayment, PAYMENT_LABELS } from '@/lib/payments'
 import type { PriceList, PriceListOverride } from '@/lib/types'
+import { useToast } from '@/hooks/useToast'
+import Toast from '@/components/shared/Toast'
 
 function getStockIndicator(
   quantity: number,
@@ -73,7 +75,7 @@ interface Props {
 export default function CartPanel({ businessId, businessName, activePriceList, priceListOverrides, operatorId }: Props) {
   const { items, removeItem, updateQuantity, discount, clearCart } = useCartStore()
   const [showPayment, setShowPayment] = useState(false)
-  const [saleToast, setSaleToast] = useState<string | null>(null)
+  const { toast, showToast, dismissToast } = useToast()
   const [activeTab, setActiveTab] = useState<RightTab>('current')
   const [historyLoading, setHistoryLoading] = useState(false)
   const [history, setHistory] = useState<SaleRow[]>([])
@@ -151,13 +153,6 @@ export default function CartPanel({ businessId, businessName, activePriceList, p
   const historyTotal = (() =>
     filteredHistory.reduce((acc, sale) => acc + sale.total, 0)
   )()
-
-  useEffect(() => {
-    if (!saleToast) return
-
-    const timer = setTimeout(() => setSaleToast(null), 3000)
-    return () => clearTimeout(timer)
-  }, [saleToast])
 
   useEffect(() => {
     if (activeTab !== 'history' || !businessId) return
@@ -302,9 +297,9 @@ export default function CartPanel({ businessId, businessName, activePriceList, p
       setHistory(prev => prev.filter(s => s.id !== saleId))
       setSaleDetails(prev => { const next = { ...prev }; delete next[saleId]; return next })
       if (expandedSaleId === saleId) setExpandedSaleId(null)
-      setSaleToast('Venta eliminada')
+      showToast({ message: 'Venta eliminada' })
     } else {
-      setSaleToast(error?.message ?? data?.error ?? 'No se pudo eliminar la venta.')
+      showToast({ message: error?.message ?? data?.error ?? 'No se pudo eliminar la venta.' })
     }
     setDeletingId(null)
   }
@@ -353,9 +348,9 @@ export default function CartPanel({ businessId, businessName, activePriceList, p
         }
       })
       setEditingSale(null)
-      setSaleToast('Venta actualizada')
+      showToast({ message: 'Venta actualizada' })
     } else {
-      setSaleToast(error?.message ?? data?.error ?? 'No se pudo actualizar la venta.')
+      showToast({ message: error?.message ?? data?.error ?? 'No se pudo actualizar la venta.' })
     }
   }
 
@@ -777,25 +772,12 @@ export default function CartPanel({ businessId, businessName, activePriceList, p
           saleItems={adjustedItems}
           receiptItems={receiptItems}
           operatorId={operatorId}
-          onSaleCompleted={setSaleToast}
+          onSaleCompleted={(message) => showToast({ message })}
           onClose={() => setShowPayment(false)}
         />
       )}
 
-      {saleToast && (
-        <div className="fixed bottom-4 right-4 z-[70] flex items-center gap-3 rounded-lg border border-emerald-200 bg-white px-4 py-2.5 shadow-lg text-sm text-emerald-800 dark:border-emerald-500/30 dark:bg-emerald-950/80 dark:text-emerald-200">
-          <Check size={14} />
-          <span>{saleToast}</span>
-          <button
-            type="button"
-            onClick={() => setSaleToast(null)}
-            aria-label="Cerrar notificacion"
-            className="ml-1 rounded p-0.5 hover:bg-emerald-100 dark:hover:bg-emerald-900 transition-colors"
-          >
-            <X size={14} />
-          </button>
-        </div>
-      )}
+      {toast && <Toast message={toast.message} duration={toast.duration} onUndo={toast.onUndo} onDismiss={dismissToast} />}
 
       {receiptPreview && (
         <ReceiptPreviewModal

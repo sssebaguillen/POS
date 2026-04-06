@@ -6,6 +6,8 @@ import { Button } from '@/components/ui/button'
 import { type OperatorRole, type SettingsOperator } from '@/components/settings/types'
 import NewOperatorModal from '@/components/settings/NewOperatorModal'
 import ConfirmModal from '@/components/shared/ConfirmModal'
+import { useToast } from '@/hooks/useToast'
+import Toast from '@/components/shared/Toast'
 
 type ConfirmState = { title: string; message: string; onConfirm: () => void } | null
 
@@ -24,10 +26,9 @@ export default function OperatorList({ businessId, initialOperators }: Props) {
   const supabase = useMemo(() => createClient(), [])
   const [operatorList, setOperatorList] = useState<SettingsOperator[]>(initialOperators)
   const [showNewOperatorModal, setShowNewOperatorModal] = useState(false)
-  const [operatorError, setOperatorError] = useState('')
-  const [operatorSuccess, setOperatorSuccess] = useState('')
   const [deletingOperatorId, setDeletingOperatorId] = useState<string | null>(null)
   const [pendingConfirm, setPendingConfirm] = useState<ConfirmState>(null)
+  const { toast, showToast, dismissToast } = useToast()
 
   function handleDeleteOperator(operator: SettingsOperator) {
     setPendingConfirm({
@@ -35,8 +36,6 @@ export default function OperatorList({ businessId, initialOperators }: Props) {
       message: 'Esta accion no se puede deshacer.',
       onConfirm: async () => {
         setDeletingOperatorId(operator.id)
-        setOperatorError('')
-        setOperatorSuccess('')
 
         const { error: deleteError } = await supabase
           .from('operators')
@@ -47,11 +46,11 @@ export default function OperatorList({ businessId, initialOperators }: Props) {
         setDeletingOperatorId(null)
 
         if (deleteError) {
-          setOperatorError(deleteError.message)
+          showToast({ message: deleteError.message })
           return
         }
 
-        setOperatorSuccess('Operador eliminado correctamente.')
+        showToast({ message: 'Operador eliminado correctamente.' })
         setOperatorList(prev => prev.filter(item => item.id !== operator.id))
       },
     })
@@ -99,18 +98,6 @@ export default function OperatorList({ businessId, initialOperators }: Props) {
         ))}
       </div>
 
-      {operatorError && (
-        <p className="mt-4 rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
-          {operatorError}
-        </p>
-      )}
-
-      {operatorSuccess && (
-        <p className="mt-4 rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-700 dark:border-green-500/30 dark:bg-green-500/10 dark:text-green-400">
-          {operatorSuccess}
-        </p>
-      )}
-
       <NewOperatorModal
         open={showNewOperatorModal}
         onClose={() => setShowNewOperatorModal(false)}
@@ -129,6 +116,8 @@ export default function OperatorList({ businessId, initialOperators }: Props) {
         onConfirm={() => { pendingConfirm?.onConfirm(); setPendingConfirm(null) }}
         onCancel={() => setPendingConfirm(null)}
       />
+
+      {toast && <Toast message={toast.message} duration={toast.duration} onUndo={toast.onUndo} onDismiss={dismissToast} />}
     </div>
   )
 }

@@ -19,6 +19,8 @@ import { Dialog, DialogContent } from '@/components/ui/dialog'
 import SelectDropdown from '@/components/ui/SelectDropdown'
 import type { PriceList, PriceListOverride } from '@/lib/types'
 import type { InventoryBrand, InventoryCategory, InventoryProduct, SortOption } from '@/components/stock/types'
+import { useToast } from '@/hooks/useToast'
+import Toast from '@/components/shared/Toast'
 
 const PAGE_SIZE = 60
 
@@ -615,6 +617,7 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
   const [sort, setSort] = useState<SortOption>({ field: 'name', dir: 'asc' })
   const [showInCatalogOnly, setShowInCatalogOnly] = useState(false)
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('list')
+  const { toast, showToast, dismissToast } = useToast()
 
   const scrollContainerRef = useRef<HTMLDivElement>(null)
 
@@ -844,13 +847,14 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
 
         if (!error) {
           setProducts(prev => prev.filter(p => p.id !== product.id))
+          showToast({ message: 'Producto eliminado' })
         } else {
-          setCrudError(error.message)
+          showToast({ message: error.message })
         }
         setLoadingId(null)
       },
     })
-  }, [businessId, readOnly, supabase])
+  }, [businessId, readOnly, showToast, supabase])
 
   function exportCsv() {
     const headers = ['id', 'nombre', 'categoria', 'precio', 'costo', 'stock', 'stock_minimo', 'activo']
@@ -1334,6 +1338,8 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
         showInCatalogOnly={showInCatalogOnly}
         onShowInCatalogChange={setShowInCatalogOnly}
       />
+
+      {toast && <Toast message={toast.message} duration={toast.duration} onUndo={toast.onUndo} onDismiss={dismissToast} />}
     </div>
   )
 }
