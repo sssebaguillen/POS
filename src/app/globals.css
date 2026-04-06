@@ -250,6 +250,14 @@
   }
 
 
+  /* Dark mode — restore pill tab contrast (muted vs card are near-identical in dark) */
+  .dark .pill-tabs {
+    background-color: var(--accent);
+  }
+  .dark .pill-tab-active {
+    background-color: var(--faint);
+    box-shadow: none;
+  }
 
   .text-label    { font-size: 10px; font-weight: 500; letter-spacing: 0.06em; text-transform: uppercase; }
   .text-caption  { font-size: 11px; font-weight: 400; }
@@ -258,13 +266,13 @@
 
   /* Pill-style tab/filter container */
   .pill-tabs {
-    @apply inline-flex items-center gap-1;
+    @apply inline-flex items-center bg-surface-alt rounded-full p-1 gap-0.5;
   }
   .pill-tab {
-    @apply px-3 py-1 text-sm font-medium rounded-full cursor-pointer bg-transparent text-muted-foreground transition-colors duration-150 hover:bg-muted hover:text-foreground;
+    @apply px-4 py-1.5 text-sm font-medium rounded-full transition-all duration-150 text-body hover:text-heading;
   }
   .pill-tab-active {
-    @apply bg-primary/10 text-primary font-semibold;
+    @apply bg-surface text-heading font-semibold shadow-sm;
   }
 
   /* Hide scrollbar while keeping scroll functionality */
