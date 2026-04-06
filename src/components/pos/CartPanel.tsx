@@ -302,6 +302,7 @@ export default function CartPanel({ businessId, businessName, activePriceList, p
       setHistory(prev => prev.filter(s => s.id !== saleId))
       setSaleDetails(prev => { const next = { ...prev }; delete next[saleId]; return next })
       if (expandedSaleId === saleId) setExpandedSaleId(null)
+      setSaleToast('Venta eliminada')
     } else {
       setSaleToast(error?.message ?? data?.error ?? 'No se pudo eliminar la venta.')
     }
@@ -352,6 +353,7 @@ export default function CartPanel({ businessId, businessName, activePriceList, p
         }
       })
       setEditingSale(null)
+      setSaleToast('Venta actualizada')
     } else {
       setSaleToast(error?.message ?? data?.error ?? 'No se pudo actualizar la venta.')
     }

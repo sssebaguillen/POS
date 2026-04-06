@@ -15,6 +15,7 @@ interface EditProductModalProps {
   open: boolean
   onClose: () => void
   product: InventoryProduct
+  businessId: string | null
   categories: InventoryCategory[]
   brands: InventoryBrand[]
   priceLists: PriceList[]
@@ -82,6 +83,7 @@ export default function EditProductModal({
   open,
   onClose,
   product,
+  businessId,
   categories,
   brands,
   priceLists,
@@ -156,10 +158,11 @@ export default function EditProductModal({
   }
 
   async function handleFileUpload(file: File) {
+    if (!businessId) return
     setImageUploading(true)
     setErrors(prev => ({ ...prev, image: '' }))
     const ext = file.name.split('.').pop() ?? 'jpg'
-    const filename = `${product.id}/${crypto.randomUUID()}.${ext}`
+    const filename = `${businessId}/${crypto.randomUUID()}.${ext}`
     const { error: uploadError } = await supabase.storage
       .from('product-images')
       .upload(filename, file, { upsert: true })

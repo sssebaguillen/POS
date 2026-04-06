@@ -1150,6 +1150,7 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
           open={Boolean(editingProduct)}
           onClose={() => setEditingProduct(null)}
           product={editingProduct}
+          businessId={businessId}
           categories={categories}
           brands={brands}
           priceLists={priceLists}
