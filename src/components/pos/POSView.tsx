@@ -365,7 +365,7 @@ export default function POSView({ products, businessId, businessName, priceLists
         <div className="flex-1 min-w-0 flex flex-col min-h-0">
           {/* Filter chips strip — scoped to product column only */}
           {(topCategories.length > 0 || topBrands.length > 0) && (
-            <div className="border-b border-edge/60 shrink-0 overflow-hidden py-3">
+            <div className="border-b border-edge/60 shrink-0 overflow-hidden py-2 px-4">
             <div
                 ref={filterScrollRef}
                 className="flex flex-nowrap gap-1.5 overflow-x-auto"
