@@ -109,7 +109,7 @@ export default function POSView({ products, businessId, businessName, priceLists
       .slice(0, TOP_FILTER_LIMIT)
   }, [products])
 
-  const defaultList = priceLists.find(pl => pl.is_default) ?? priceLists[0] ?? null
+  const defaultList = priceLists.find(pl => pl.is_default) ?? null
   const [activePriceListId, setActivePriceListId] = useState<string | null>(defaultList?.id ?? null)
   const [listDropdownOpen, setListDropdownOpen] = useState(false)
   const listDropdownRef = useRef<HTMLDivElement>(null)
@@ -366,18 +366,14 @@ export default function POSView({ products, businessId, businessName, priceLists
           {/* Filter chips strip — scoped to product column only */}
           {(topCategories.length > 0 || topBrands.length > 0) && (
             <div className="border-b border-edge/60 shrink-0 overflow-hidden">
-              <div
+            <div
                 ref={filterScrollRef}
-                className="flex flex-nowrap gap-1.5 overflow-x-auto px-3 py-2"
+                className="flex flex-nowrap gap-1.5 overflow-x-auto"
                 style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
               >
                 <button
                   onClick={() => setActiveFilter(null)}
-                  className={`shrink-0 rounded-full px-3 py-1 text-xs font-medium transition-colors ${
-                    activeFilter === null
-                      ? 'bg-primary text-primary-foreground'
-                      : 'text-muted-foreground hover:text-foreground hover:bg-muted'
-                  }`}
+                  className={activeFilter === null ? `shrink-0 rounded-full px-3 py-1 text-xs font-medium transition-colors bg-primary text-primary-foreground` : `shrink-0 rounded-full px-3 py-1 text-xs font-medium transition-colors text-muted-foreground hover:text-foreground hover:bg-muted`}
                 >
                   Todos
                 </button>
@@ -394,11 +390,7 @@ export default function POSView({ products, businessId, businessName, priceLists
                           : { type: 'category', id: cat.id }
                       )
                     }
-                    className={`shrink-0 rounded-full px-3 py-1 text-xs font-medium transition-colors ${
-                      activeFilter?.type === 'category' && activeFilter.id === cat.id
-                        ? 'bg-primary text-primary-foreground'
-                        : 'text-muted-foreground hover:text-foreground hover:bg-muted'
-                    }`}
+                    className={activeFilter?.type === 'category' && activeFilter.id === cat.id ? `shrink-0 rounded-full px-3 py-1 text-xs font-medium transition-colors bg-primary text-primary-foreground` : `shrink-0 rounded-full px-3 py-1 text-xs font-medium transition-colors text-muted-foreground hover:text-foreground hover:bg-muted`}
                   >
                     {cat.name}
                   </button>
@@ -416,11 +408,7 @@ export default function POSView({ products, businessId, businessName, priceLists
                           : { type: 'brand', id: brand.id }
                       )
                     }
-                    className={`shrink-0 rounded-full px-3 py-1 text-xs font-medium transition-colors ${
-                      activeFilter?.type === 'brand' && activeFilter.id === brand.id
-                        ? 'bg-primary text-primary-foreground'
-                        : 'text-muted-foreground hover:text-foreground hover:bg-muted'
-                    }`}
+                    className={activeFilter?.type === 'brand' && activeFilter.id === brand.id ? `shrink-0 rounded-full px-3 py-1 text-xs font-medium transition-colors bg-primary text-primary-foreground` : `shrink-0 rounded-full px-3 py-1 text-xs font-medium transition-colors text-muted-foreground hover:text-foreground hover:bg-muted`}
                   >
                     {brand.name}
                   </button>

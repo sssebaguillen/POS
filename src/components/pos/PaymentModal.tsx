@@ -8,6 +8,23 @@ import { Input } from '@/components/ui/input'
 import type { PaymentMethod, ReceiptData, ReceiptItemInput, SaleItemInput } from '@/lib/printer/types'
 import { useCartStore } from '@/lib/store/cart.store'
 import { createClient } from '@/lib/supabase/client'
+import { PAYMENT_LABELS } from '@/lib/payments'
+
+const PAYMENT_ICONS: Record<PaymentMethod, string> = {
+  cash: '$',
+  card: 'TC',
+  transfer: 'TR',
+  mercadopago: 'MP',
+  credit: 'CR',
+}
+
+const POS_METHODS: PaymentMethod[] = ['cash', 'card', 'transfer', 'mercadopago']
+
+const PAYMENT_METHOD_OPTIONS = POS_METHODS.map(id => ({
+  id,
+  label: PAYMENT_LABELS[id],
+  icon: PAYMENT_ICONS[id],
+}))
 
 interface Props {
   businessName: string
@@ -151,13 +168,6 @@ export default function PaymentModal({
     }
   }
 
-  const methods: { id: PaymentMethod; label: string; icon: string }[] = [
-    { id: 'cash', label: 'Efectivo', icon: '$' },
-    { id: 'card', label: 'Tarjeta', icon: 'TC' },
-    { id: 'transfer', label: 'Transferencia', icon: 'TR' },
-    { id: 'mercadopago', label: 'MercadoPago', icon: 'MP' },
-  ]
-
   return (
     <>
       {receipt ? (
@@ -185,7 +195,7 @@ export default function PaymentModal({
             <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain">
               <div className="p-5 space-y-4">
                 <div className="grid grid-cols-2 gap-2">
-                  {methods.map(m => (
+                  {PAYMENT_METHOD_OPTIONS.map(m => (
                     <button
                       key={m.id}
                       onClick={() => setMethod(m.id)}
