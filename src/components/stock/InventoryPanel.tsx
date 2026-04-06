@@ -1,7 +1,8 @@
 'use client'
 
+import Image from 'next/image'
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { LayoutGrid, LayoutList, Pencil, SlidersHorizontal, X } from 'lucide-react'
+import { LayoutGrid, LayoutList, Package, Pencil, SlidersHorizontal, X } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -351,11 +352,28 @@ const ProductCard = memo(function ProductCard({
 
   return (
     <article
-      className={`rounded-[20px] border-2 border-edge/30 ${config.hoverBorder} bg-surface p-4 flex flex-col relative transition-all hover:shadow-md`}
+      className={`rounded-[20px] border-2 border-edge/30 ${config.hoverBorder} bg-surface p-4 flex flex-col relative transition-all hover:shadow-md overflow-hidden`}
     >
-      <span className={`absolute top-3 right-3 text-[10px] font-bold px-2 py-0.5 rounded-full ${config.badge}`}>
+      <span className={`absolute top-3 right-3 z-10 text-[10px] font-bold px-2 py-0.5 rounded-full ${config.badge}`}>
         {config.label}
       </span>
+
+      {product.image_url ? (
+        <div className="relative -mx-4 -mt-4 mb-3 aspect-square">
+          <Image
+            src={product.image_url}
+            alt={product.name}
+            fill
+            sizes="(max-width: 768px) 50vw, 200px"
+            className="object-cover"
+            unoptimized={product.image_source === 'url'}
+          />
+        </div>
+      ) : (
+        <div className="-mx-4 -mt-4 mb-3 aspect-square bg-muted flex items-center justify-center">
+          <Package size={32} className="text-muted-foreground/40" />
+        </div>
+      )}
 
       <h3
         className="font-semibold text-heading text-sm leading-tight mb-2 truncate pr-16"
@@ -472,10 +490,30 @@ const ProductListRow = memo(function ProductListRow({
       </TableCell>
 
       <TableCell>
-        <p className="font-semibold text-sm text-heading">{product.name}</p>
-        <p className="text-xs text-subtle xl:hidden">
-          {product.categories?.name ?? '—'} · {product.brand?.name ?? '—'}
-        </p>
+        <div className="flex items-center gap-3">
+          {product.image_url ? (
+            <div className="relative w-12 h-12 rounded-md overflow-hidden shrink-0">
+              <Image
+                src={product.image_url}
+                alt={product.name}
+                fill
+                sizes="48px"
+                className="object-cover"
+                unoptimized={product.image_source === 'url'}
+              />
+            </div>
+          ) : (
+            <div className="w-12 h-12 rounded-md bg-muted flex items-center justify-center shrink-0">
+              <Package size={20} className="text-muted-foreground/40" />
+            </div>
+          )}
+          <div>
+            <p className="font-semibold text-sm text-heading">{product.name}</p>
+            <p className="text-xs text-subtle xl:hidden">
+              {product.categories?.name ?? '—'} · {product.brand?.name ?? '—'}
+            </p>
+          </div>
+        </div>
       </TableCell>
 
       <TableCell className="hidden xl:table-cell">
