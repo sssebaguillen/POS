@@ -1,5 +1,6 @@
 'use client'
 
+import Image from 'next/image'
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useCartStore } from '@/lib/store/cart.store'
 import { calculateProductPrice } from '@/lib/price-lists'
@@ -181,11 +182,14 @@ const ProductCard = memo(function ProductCard({
     >
       {/* Image or category marker */}
       {product.image_url ? (
-        <div className="w-full h-20 mb-3 rounded-md overflow-hidden shrink-0">
-          <img
+        <div className="relative w-full h-20 mb-3 rounded-md overflow-hidden shrink-0">
+          <Image
             src={product.image_url}
             alt={product.name}
-            className="w-full h-full object-cover"
+            fill
+            sizes="(max-width: 768px) 50vw, 140px"
+            className="object-cover"
+            unoptimized={product.image_source === 'url'}
           />
         </div>
       ) : (
