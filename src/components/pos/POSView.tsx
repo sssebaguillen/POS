@@ -368,12 +368,12 @@ export default function POSView({ products, businessId, businessName, priceLists
             <div className="border-b border-edge/60 shrink-0 overflow-hidden">
             <div
                 ref={filterScrollRef}
-                className="pill-tabs flex-nowrap overflow-x-auto"
+                className="flex flex-nowrap gap-1.5 overflow-x-auto"
                 style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
               >
                 <button
                   onClick={() => setActiveFilter(null)}
-                  className={`pill-tab shrink-0${activeFilter === null ? ' pill-tab-active' : ''}`}
+                  className={activeFilter === null ? `shrink-0 rounded-full px-3 py-1 text-xs font-medium transition-colors bg-primary text-primary-foreground` : `shrink-0 rounded-full px-3 py-1 text-xs font-medium transition-colors text-muted-foreground hover:text-foreground hover:bg-muted`}
                 >
                   Todos
                 </button>
@@ -390,7 +390,7 @@ export default function POSView({ products, businessId, businessName, priceLists
                           : { type: 'category', id: cat.id }
                       )
                     }
-                    className={`pill-tab shrink-0${activeFilter?.type === 'category' && activeFilter.id === cat.id ? ' pill-tab-active' : ''}`}
+                    className={activeFilter?.type === 'category' && activeFilter.id === cat.id ? `shrink-0 rounded-full px-3 py-1 text-xs font-medium transition-colors bg-primary text-primary-foreground` : `shrink-0 rounded-full px-3 py-1 text-xs font-medium transition-colors text-muted-foreground hover:text-foreground hover:bg-muted`}
                   >
                     {cat.name}
                   </button>
@@ -408,7 +408,7 @@ export default function POSView({ products, businessId, businessName, priceLists
                           : { type: 'brand', id: brand.id }
                       )
                     }
-                    className={`pill-tab shrink-0${activeFilter?.type === 'brand' && activeFilter.id === brand.id ? ' pill-tab-active' : ''}`}
+                    className={activeFilter?.type === 'brand' && activeFilter.id === brand.id ? `shrink-0 rounded-full px-3 py-1 text-xs font-medium transition-colors bg-primary text-primary-foreground` : `shrink-0 rounded-full px-3 py-1 text-xs font-medium transition-colors text-muted-foreground hover:text-foreground hover:bg-muted`}
                   >
                     {brand.name}
                   </button>
