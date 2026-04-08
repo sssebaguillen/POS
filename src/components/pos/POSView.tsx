@@ -11,6 +11,7 @@ import CartPanel from '@/components/pos/CartPanel'
 import type { PosCategory, ProductWithCategory, ActiveFilter } from '@/components/pos/types'
 import type { PriceList, PriceListOverride } from '@/lib/types'
 import type { ActiveOperator } from '@/lib/operator'
+import { OWNER_PERMISSIONS } from '@/lib/operator'
 
 interface Props {
   products: ProductWithCategory[]
@@ -433,7 +434,7 @@ export default function POSView({ products, businessId, businessName, priceLists
             activePriceList={activePriceList}
             priceListOverrides={priceListOverrides}
             operatorId={activeOperator?.role === 'owner' || !activeOperator ? null : activeOperator.profile_id ?? null}
-            permissions={activeOperator?.permissions ?? null}
+            permissions={activeOperator?.permissions ?? OWNER_PERMISSIONS}
           />
         </div>
       </div>
