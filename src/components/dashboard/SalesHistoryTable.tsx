@@ -2,8 +2,9 @@
 
 import { useState, useMemo, memo } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { Printer, Trash2 } from 'lucide-react'
+import { Printer, Trash2, X } from 'lucide-react'
 import ReceiptPreviewModal from '@/components/pos/ReceiptPreviewModal'
+import { Dialog, DialogContent } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { buildReceiptData } from '@/lib/printer/receipt'
@@ -470,28 +471,33 @@ function SalesHistoryTable({ rows, businessId, businessName }: Props) {
         </ul>
       )}
 
-      {editingSale && (
-        <div className="absolute inset-0 z-40 bg-card flex flex-col">
-          <div className="flex items-center gap-3 px-4 h-12 border-b border-edge shrink-0">
-            <button
-              onClick={() => setEditingSale(null)}
-              className="text-hint hover:text-body transition-colors text-sm"
-            >
-              ← Volver
-            </button>
-            <span className="text-sm font-semibold text-heading">
-              Editar venta · {formatTime(editingSale.created_at)}
-            </span>
-          </div>
-          <EditSalePanel
-            sale={editingSale}
-            onSave={(updatedItems, paymentMethod, status) =>
-              handleUpdateSale(editingSale.id, updatedItems, paymentMethod, status)
-            }
-            onCancel={() => setEditingSale(null)}
-          />
-        </div>
-      )}
+      <Dialog open={!!editingSale} onOpenChange={nextOpen => !nextOpen && setEditingSale(null)}>
+        <DialogContent className="sm:max-w-md p-0 gap-0 overflow-hidden bg-card" showCloseButton={false}>
+          {editingSale && (
+            <>
+              <div className="flex items-center justify-between px-5 py-4 border-b border-edge shrink-0">
+                <span className="text-base font-semibold text-heading">
+                  Editar venta · {formatTime(editingSale.created_at)}
+                </span>
+                <button
+                  onClick={() => setEditingSale(null)}
+                  className="text-hint hover:text-body transition-colors p-0.5"
+                  aria-label="Cerrar"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+              <EditSalePanel
+                sale={editingSale}
+                onSave={(updatedItems, paymentMethod, status) =>
+                  handleUpdateSale(editingSale.id, updatedItems, paymentMethod, status)
+                }
+                onCancel={() => setEditingSale(null)}
+              />
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {receiptPreview && (
         <ReceiptPreviewModal
@@ -544,8 +550,8 @@ function EditSalePanel({
   const total = items.reduce((sum, i) => sum + i.quantity * i.unit_price, 0)
 
   return (
-    <div className="flex flex-col flex-1 min-h-0">
-      <div className="flex-1 overflow-y-auto p-4 space-y-2">
+    <div className="flex flex-col">
+      <div className="overflow-y-auto px-5 py-3 space-y-1" style={{ maxHeight: '50vh' }}>
         {items.map(item => (
           <div key={item.product_id} className="flex items-center gap-3 py-2 border-b border-edge-soft">
             <div className="flex-1 min-w-0">
@@ -580,7 +586,7 @@ function EditSalePanel({
         ))}
       </div>
 
-      <div className="p-4 border-t border-edge space-y-3 shrink-0">
+      <div className="px-5 py-4 border-t border-edge space-y-3 shrink-0">
         <div>
           <p className="text-xs text-hint mb-1.5">Método de pago</p>
           <div className="flex flex-wrap gap-1.5">
