@@ -173,7 +173,7 @@ export default function ReceiptPreviewModal({ receipt, onClose, autoPrintOnOpen 
 
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
               <Button
-                className="w-full h-11 font-semibold bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl"
+                className="w-full h-11 font-semibold bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg"
                 disabled={printingBrowser || printingDirect || sharing}
                 onClick={handleBrowserPrint}
               >

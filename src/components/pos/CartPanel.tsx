@@ -1025,7 +1025,7 @@ function EditSalePanel({
             Cancelar
           </Button>
           <Button
-            className="h-10 rounded-xl text-sm font-semibold bg-primary hover:bg-primary/90 text-primary-foreground"
+            className="h-10 rounded-lg text-sm font-semibold bg-primary hover:bg-primary/90 text-primary-foreground"
             disabled={items.length === 0}
             onClick={() => onSave(
               items.map(i => ({ product_id: i.product_id, quantity: i.quantity, unit_price: i.unit_price })),

@@ -223,7 +223,7 @@ export default function PaymentModal({
 
                 <div className="space-y-2">
                   <Button
-                    className="w-full h-11 font-semibold bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl"
+                    className="w-full h-11 font-semibold bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg"
                     disabled={!canConfirm || loading}
                     onClick={() => handleConfirm(false)}
                   >

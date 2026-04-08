@@ -667,7 +667,7 @@ export default function EditProductModal({
                                 setImageSource('url')
                               }
                             }}
-                            className="h-9 px-4 rounded-xl text-sm bg-primary hover:bg-primary/90 text-primary-foreground shrink-0"
+                            className="h-9 px-4 rounded-lg text-sm bg-primary hover:bg-primary/90 text-primary-foreground shrink-0"
                           >
                             Confirmar
                           </Button>
@@ -715,7 +715,7 @@ export default function EditProductModal({
             <Button type="button" variant="cancel" onClick={handleClose} disabled={isSaving} className="h-9 px-5 rounded-xl text-sm">
               Cancelar
             </Button>
-            <Button type="submit" disabled={isSaving} className="h-9 px-5 rounded-xl text-sm bg-primary hover:bg-primary/90 text-primary-foreground">
+            <Button type="submit" disabled={isSaving} className="h-9 px-5 rounded-lg text-sm bg-primary hover:bg-primary/90 text-primary-foreground">
               {isSaving ? 'Guardando\u2026' : 'Guardar cambios'}
             </Button>
           </div>
