@@ -1,8 +1,9 @@
 'use client'
 
 import Image from 'next/image'
+import { useRouter } from 'next/navigation'
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { LayoutGrid, LayoutList, Package, Pencil, SlidersHorizontal, X } from 'lucide-react'
+import { LayoutGrid, LayoutList, Package, Pencil, SlidersHorizontal, X, CheckSquare } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -15,6 +16,7 @@ import CategoryModal from '@/components/inventory/CategoryModal'
 import BrandModal from './BrandModal'
 import ImportProductsModal from '@/components/inventory/ImportProductsModal'
 import ConfirmModal from '@/components/shared/ConfirmModal'
+import BulkActionBar from '@/components/inventory/BulkActionBar'
 import { Dialog, DialogContent } from '@/components/ui/dialog'
 import SelectDropdown from '@/components/ui/SelectDropdown'
 import type { PriceList, PriceListOverride } from '@/lib/types'
@@ -329,6 +331,9 @@ interface ProductCardProps {
   product: InventoryProduct
   readOnly: boolean
   loadingId: string | null
+  selectionMode: boolean
+  isSelected: boolean
+  onToggleSelect: (id: string) => void
   onEdit: (product: InventoryProduct) => void
   onToggleActive: (product: InventoryProduct) => void
   onDelete: (product: InventoryProduct) => void
@@ -336,10 +341,33 @@ interface ProductCardProps {
   onQuickBrand: (product: InventoryProduct) => void
 }
 
+function SelectionCheckbox({ checked, onClick }: { checked: boolean; onClick: (e: React.MouseEvent) => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="p-0.5"
+    >
+      <span className={`w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 transition-colors ${
+        checked ? 'bg-primary border-primary' : 'border-edge bg-surface'
+      }`}>
+        {checked && (
+          <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
+            <path d="M1 4L3.5 6.5L9 1" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        )}
+      </span>
+    </button>
+  )
+}
+
 const ProductCard = memo(function ProductCard({
   product,
   readOnly,
   loadingId,
+  selectionMode,
+  isSelected,
+  onToggleSelect,
   onEdit,
   onToggleActive,
   onDelete,
@@ -354,8 +382,14 @@ const ProductCard = memo(function ProductCard({
 
   return (
     <article
-      className={`rounded-[20px] border-2 border-edge/30 ${config.hoverBorder} bg-surface p-4 flex flex-col relative transition-all hover:shadow-md overflow-hidden`}
+      className={`rounded-[20px] border-2 ${isSelected ? 'border-primary' : 'border-edge/30'} ${config.hoverBorder} bg-surface p-4 flex flex-col relative transition-all hover:shadow-md overflow-hidden group/card`}
     >
+      <div className={`absolute top-3 left-3 z-10 ${selectionMode ? 'opacity-100' : 'opacity-0 group-hover/card:opacity-100'} transition-opacity`}>
+        <SelectionCheckbox
+          checked={isSelected}
+          onClick={(e) => { e.stopPropagation(); onToggleSelect(product.id) }}
+        />
+      </div>
       <span className={`absolute top-3 right-3 z-10 text-[10px] font-bold px-2 py-0.5 rounded-full ${config.badge}`}>
         {config.label}
       </span>
@@ -471,6 +505,9 @@ const ProductListRow = memo(function ProductListRow({
   product,
   readOnly,
   loadingId,
+  selectionMode,
+  isSelected,
+  onToggleSelect,
   onEdit,
   onToggleActive,
   onDelete,
@@ -484,7 +521,13 @@ const ProductListRow = memo(function ProductListRow({
     : 0
 
   return (
-    <TableRow>
+    <TableRow className={`group/row ${isSelected ? 'bg-primary/5' : ''}`}>
+      <TableCell className={`w-10 ${selectionMode ? '' : 'opacity-0 group-hover/row:opacity-100'} transition-opacity`}>
+        <SelectionCheckbox
+          checked={isSelected}
+          onClick={(e) => { e.stopPropagation(); onToggleSelect(product.id) }}
+        />
+      </TableCell>
       <TableCell>
         <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap ${config.badge}`}>
           {config.label}
@@ -617,9 +660,13 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
   const [sort, setSort] = useState<SortOption>({ field: 'name', dir: 'asc' })
   const [showInCatalogOnly, setShowInCatalogOnly] = useState(false)
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('list')
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [selectionMode, setSelectionMode] = useState(false)
+  const [bulkLoading, setBulkLoading] = useState(false)
   const { toast, showToast, dismissToast } = useToast()
 
   const scrollContainerRef = useRef<HTMLDivElement>(null)
+  const router = useRouter()
 
   useEffect(() => {
     const saved = localStorage.getItem('inventory-view-mode')
@@ -911,6 +958,139 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
     setQuickEditBrandProduct(product)
   }, [readOnly])
 
+  const handleToggleSelect = useCallback((id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) {
+        next.delete(id)
+      } else {
+        next.add(id)
+      }
+      return next
+    })
+    setSelectionMode(true)
+  }, [])
+
+  const handleSelectAll = useCallback(() => {
+    setSelectedIds(new Set(filtered.map(p => p.id)))
+    setSelectionMode(true)
+  }, [filtered])
+
+  const handleDeselectAll = useCallback(() => {
+    setSelectedIds(new Set())
+  }, [])
+
+  const handleCloseSelection = useCallback(() => {
+    setSelectedIds(new Set())
+    setSelectionMode(false)
+  }, [])
+
+  const handleBulkDelete = useCallback(async () => {
+    if (!businessId) return
+    setBulkLoading(true)
+    const ids = Array.from(selectedIds)
+    const { data, error } = await supabase.rpc('bulk_delete_products', {
+      p_business_id: businessId,
+      p_product_ids: ids,
+    })
+    setBulkLoading(false)
+    if (error) {
+      showToast({ message: error.message })
+      return
+    }
+    const result = data as { deleted: number; discontinued: number } | null
+    const deleted = result?.deleted ?? 0
+    const discontinued = result?.discontinued ?? 0
+
+    if (discontinued > 0 && deleted > 0) {
+      showToast({ message: `${deleted} eliminados, ${discontinued} discontinuados (tenian ventas)` })
+    } else if (discontinued > 0) {
+      showToast({ message: `${discontinued} productos discontinuados (tenian ventas)` })
+    } else {
+      showToast({ message: `${deleted} productos eliminados` })
+    }
+    handleCloseSelection()
+    router.refresh()
+  }, [businessId, selectedIds, supabase, showToast, handleCloseSelection, router])
+
+  const handleBulkActivate = useCallback(async () => {
+    if (!businessId) return
+    setBulkLoading(true)
+    const { data, error } = await supabase.rpc('bulk_set_product_status', {
+      p_business_id: businessId,
+      p_product_ids: Array.from(selectedIds),
+      p_is_active: true,
+    })
+    setBulkLoading(false)
+    if (error) {
+      showToast({ message: error.message })
+      return
+    }
+    const result = data as { updated: number } | null
+    showToast({ message: `${result?.updated ?? 0} productos activados` })
+    handleCloseSelection()
+    router.refresh()
+  }, [businessId, selectedIds, supabase, showToast, handleCloseSelection, router])
+
+  const handleBulkDeactivate = useCallback(async () => {
+    if (!businessId) return
+    setBulkLoading(true)
+    const { data, error } = await supabase.rpc('bulk_set_product_status', {
+      p_business_id: businessId,
+      p_product_ids: Array.from(selectedIds),
+      p_is_active: false,
+    })
+    setBulkLoading(false)
+    if (error) {
+      showToast({ message: error.message })
+      return
+    }
+    const result = data as { updated: number } | null
+    showToast({ message: `${result?.updated ?? 0} productos discontinuados` })
+    handleCloseSelection()
+    router.refresh()
+  }, [businessId, selectedIds, supabase, showToast, handleCloseSelection, router])
+
+  const handleBulkChangeCategory = useCallback(async (categoryId: string | null) => {
+    if (!businessId) return
+    setBulkLoading(true)
+    const { data, error } = await supabase.rpc('bulk_update_product_category', {
+      p_business_id: businessId,
+      p_product_ids: Array.from(selectedIds),
+      p_category_id: categoryId,
+    })
+    setBulkLoading(false)
+    if (error) {
+      showToast({ message: error.message })
+      return
+    }
+    const result = data as { updated: number } | null
+    const catName = categoryId ? categories.find(c => c.id === categoryId)?.name ?? '' : 'ninguna'
+    showToast({ message: `${result?.updated ?? 0} productos → categoria: ${catName}` })
+    handleCloseSelection()
+    router.refresh()
+  }, [businessId, selectedIds, supabase, showToast, handleCloseSelection, router, categories])
+
+  const handleBulkChangeBrand = useCallback(async (brandId: string | null) => {
+    if (!businessId) return
+    setBulkLoading(true)
+    const { data, error } = await supabase.rpc('bulk_update_product_brand', {
+      p_business_id: businessId,
+      p_product_ids: Array.from(selectedIds),
+      p_brand_id: brandId,
+    })
+    setBulkLoading(false)
+    if (error) {
+      showToast({ message: error.message })
+      return
+    }
+    const result = data as { updated: number } | null
+    const brandName = brandId ? brands.find(b => b.id === brandId)?.name ?? '' : 'ninguna'
+    showToast({ message: `${result?.updated ?? 0} productos → marca: ${brandName}` })
+    handleCloseSelection()
+    router.refresh()
+  }, [businessId, selectedIds, supabase, showToast, handleCloseSelection, router, brands])
+
   if (!businessId) {
     return (
       <div className="flex flex-col h-full overflow-hidden">
@@ -977,6 +1157,23 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
             Nuevo producto
           </Button>
         )}
+        {!readOnly && (
+          <Button
+            variant={selectionMode ? 'default' : 'outline'}
+            size="sm"
+            className={`rounded-lg text-xs gap-1.5 ${selectionMode ? 'bg-primary hover:bg-primary/90 text-primary-foreground' : ''}`}
+            onClick={() => {
+              if (selectionMode) {
+                handleCloseSelection()
+              } else {
+                setSelectionMode(true)
+              }
+            }}
+          >
+            <CheckSquare size={13} />
+            {selectionMode ? 'Cancelar seleccion' : 'Seleccionar'}
+          </Button>
+        )}
       </PageHeader>
 
       <div className="bg-surface border-b border-edge/60 px-5 py-3">
@@ -1023,6 +1220,21 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
           </div>
 
           <span className="text-xs text-subtle ml-auto shrink-0">{filtered.length} productos</span>
+
+          {selectionMode && (
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={selectedIds.size === filtered.length ? handleDeselectAll : handleSelectAll}
+                className="text-xs text-primary hover:text-primary/80 font-medium transition-colors"
+              >
+                {selectedIds.size === filtered.length ? 'Deseleccionar todo' : 'Seleccionar todo'}
+              </button>
+              {selectedIds.size > 0 && (
+                <span className="text-xs text-subtle">({selectedIds.size})</span>
+              )}
+            </div>
+          )}
 
           <div className="flex items-center gap-1 shrink-0 border border-edge rounded-lg p-0.5">
             <button
@@ -1114,6 +1326,9 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
                 product={product}
                 readOnly={readOnly}
                 loadingId={loadingId}
+                selectionMode={selectionMode}
+                isSelected={selectedIds.has(product.id)}
+                onToggleSelect={handleToggleSelect}
                 onEdit={handleEdit}
                 onToggleActive={handleToggleActive}
                 onDelete={handleDeleteProduct}
@@ -1127,6 +1342,7 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead className="w-10" />
                   <TableHead>Estado</TableHead>
                   <TableHead>Producto</TableHead>
                   <TableHead className="hidden xl:table-cell">Categoria</TableHead>
@@ -1145,6 +1361,9 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
                     product={product}
                     readOnly={readOnly}
                     loadingId={loadingId}
+                    selectionMode={selectionMode}
+                    isSelected={selectedIds.has(product.id)}
+                    onToggleSelect={handleToggleSelect}
                     onEdit={handleEdit}
                     onToggleActive={handleToggleActive}
                     onDelete={handleDeleteProduct}
@@ -1340,6 +1559,21 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
       />
 
       {toast && <Toast message={toast.message} duration={toast.duration} onUndo={toast.onUndo} onDismiss={dismissToast} />}
+
+      {selectedIds.size > 0 && (
+        <BulkActionBar
+          selectedCount={selectedIds.size}
+          categories={categories}
+          brands={brands}
+          loading={bulkLoading}
+          onDelete={handleBulkDelete}
+          onActivate={handleBulkActivate}
+          onDeactivate={handleBulkDeactivate}
+          onChangeCategory={handleBulkChangeCategory}
+          onChangeBrand={handleBulkChangeBrand}
+          onClose={handleCloseSelection}
+        />
+      )}
     </div>
   )
 }
