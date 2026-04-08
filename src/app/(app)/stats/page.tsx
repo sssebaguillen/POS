@@ -3,85 +3,74 @@ export const runtime = 'edge'
 import { createClient } from '@/lib/supabase/server'
 import StatsView from '@/components/stats/StatsView'
 import { requireAuthenticatedBusinessId } from '@/lib/business'
-import { unwrapRelation } from '@/lib/mappers'
+import { resolveDateRange } from '@/lib/date-utils'
+import type { StatsKpis, StatsEvolution, StatsBreakdown } from '@/lib/types'
 
-export default async function StatsPage() {
+interface SearchParams {
+  period?: string
+  from?: string
+  to?: string
+}
+
+export default async function StatsPage({
+  searchParams,
+}: {
+  searchParams: Promise<SearchParams>
+}) {
+  const params = await searchParams
   const supabase = await createClient()
   const businessId = await requireAuthenticatedBusinessId(supabase)
 
-  const [{ data: sales }, { data: products }, { data: categories }] = await Promise.all([
-    supabase
-      .from('sales')
-      .select('id, total, created_at, status')
-      .eq('business_id', businessId)
-      .order('created_at', { ascending: false })
-      .limit(3000),
-    supabase
-      .from('products')
-      .select('id, name, category_id, brand_id, brands(id, name)')
-      .eq('business_id', businessId)
-      .limit(5000),
-    supabase
-      .from('categories')
-      .select('id, name')
-      .eq('business_id', businessId)
-      .limit(500),
-  ])
+  const period = params.period ?? 'hoy'
+  const { from, to } = resolveDateRange(period, params.from, params.to)
 
-  const saleIds = (sales ?? []).map(sale => sale.id)
-
-  let payments: Array<{ sale_id: string; method: string; amount: number }> = []
-  let saleItems: Array<{ sale_id: string; product_id: string | null; quantity: number; total: number }> = []
-
-  if (saleIds.length > 0) {
-    const [{ data: paymentsData }, { data: saleItemsData }] = await Promise.all([
-      supabase
-        .from('payments')
-        .select('sale_id, method, amount')
-        .in('sale_id', saleIds)
-        .limit(5000),
-      supabase
-        .from('sale_items')
-        .select('sale_id, product_id, quantity, total')
-        .in('sale_id', saleIds)
-        .limit(10000),
+  const [{ data: kpisRaw }, { data: evolutionRaw }, { data: breakdownRaw }, { data: topProductsRaw }] =
+    await Promise.all([
+      supabase.rpc('get_stats_kpis', {
+        p_business_id: businessId,
+        p_from: from,
+        p_to: to,
+      }),
+      supabase.rpc('get_stats_evolution', {
+        p_business_id: businessId,
+        p_from: from,
+        p_to: to,
+      }),
+      supabase.rpc('get_stats_breakdown', {
+        p_business_id: businessId,
+        p_from: from,
+        p_to: to,
+      }),
+      supabase.rpc('get_top_products_detail', {
+        p_business_id: businessId,
+        p_from: from,
+        p_to: to,
+        p_limit: 8,
+        p_offset: 0,
+      }),
     ])
 
-    payments = (paymentsData ?? []).map(payment => ({
-      sale_id: payment.sale_id,
-      method: payment.method,
-      amount: Number(payment.amount),
-    }))
-
-    saleItems = (saleItemsData ?? []).map(item => ({
-      sale_id: item.sale_id,
-      product_id: item.product_id,
-      quantity: Number(item.quantity),
-      total: Number(item.total),
-    }))
-  }
+  const kpis = kpisRaw as unknown as StatsKpis | null
+  const evolution = evolutionRaw as unknown as StatsEvolution | null
+  const breakdown = breakdownRaw as unknown as StatsBreakdown | null
+  const topProducts = (topProductsRaw as unknown as { data: TopProductRow[] } | null)?.data ?? []
 
   return (
     <StatsView
-      sales={(sales ?? []).map(sale => ({
-        id: sale.id,
-        total: Number(sale.total),
-        created_at: sale.created_at,
-        status: sale.status,
-      }))}
-      payments={payments}
-      saleItems={saleItems}
-      products={(products ?? []).map(product => ({
-        id: product.id,
-        name: product.name,
-        category_id: product.category_id,
-        brand_id: product.brand_id ?? null,
-        brand: unwrapRelation(product.brands),
-      }))}
-      categories={(categories ?? []).map(category => ({
-        id: category.id,
-        name: category.name,
-      }))}
+      kpis={kpis}
+      evolution={evolution}
+      breakdown={breakdown}
+      topProducts={topProducts}
+      period={period}
+      from={params.from}
+      to={params.to}
     />
   )
+}
+
+interface TopProductRow {
+  id: string
+  name: string
+  units_sold: number
+  revenue: number
 }

@@ -125,6 +125,78 @@ export interface PriceListOverride {
   multiplier: number
 }
 
+// Stats RPC response types
+
+export interface StatsKpis {
+  total_sales: number
+  total_revenue: number
+  total_units: number
+  avg_ticket: number
+  prev_total_sales: number
+  prev_total_revenue: number
+  prev_total_units: number
+  peak_day: string | null
+  peak_revenue: number | null
+  day_of_week: DayOfWeekEntry[]
+  period_from: string
+  period_to: string
+}
+
+export interface DayOfWeekEntry {
+  dow: number
+  label: string
+  revenue: number
+  count: number
+}
+
+export interface StatsEvolution {
+  granularity: 'day' | 'week'
+  data: StatsEvolutionPoint[]
+}
+
+export interface StatsEvolutionPoint {
+  date: string
+  label: string
+  revenue: number
+  count: number
+  prev_revenue: number
+  prev_count: number
+}
+
+export interface StatsBreakdown {
+  by_category: StatsBreakdownCategory[]
+  by_brand: StatsBreakdownBrand[]
+  by_payment: StatsBreakdownPayment[]
+  by_operator: StatsBreakdownOperator[]
+}
+
+export interface StatsBreakdownCategory {
+  category_id: string | null
+  category_name: string
+  revenue: number
+  units: number
+}
+
+export interface StatsBreakdownBrand {
+  brand_id: string | null
+  brand_name: string
+  revenue: number
+  units: number
+}
+
+export interface StatsBreakdownPayment {
+  method: string
+  revenue: number
+  count: number
+}
+
+export interface StatsBreakdownOperator {
+  operator_id: string | null
+  operator_name: string
+  revenue: number
+  count: number
+}
+
 // Cart types (client-side only)
 export interface CartItem {
   product: Product
