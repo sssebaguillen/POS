@@ -4,8 +4,9 @@ import { useRouter, usePathname } from 'next/navigation'
 import { useState } from 'react'
 import { DatePicker } from '@/components/ui/DatePicker'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import type { DateRangePeriod } from '@/lib/date-utils'
 
-export type DateRangePeriod = 'hoy' | 'semana' | 'mes' | 'trimestre' | 'año' | 'personalizado'
+export type { DateRangePeriod } from '@/lib/date-utils'
 
 const PERIOD_LABELS: Record<DateRangePeriod, string> = {
   hoy: 'Hoy',

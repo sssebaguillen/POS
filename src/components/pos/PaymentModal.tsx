@@ -91,62 +91,38 @@ export default function PaymentModal({
     setError('')
     setLoading(true)
 
-    const { data: sale, error: saleError } = await supabase
-      .from('sales')
-      .insert({
-        business_id: businessId,
-        subtotal,
-        discount,
-        total,
-        status: 'completed',
-        price_list_id: priceListId,
-        operator_id: operatorId ?? null,
-      })
-      .select('id, created_at')
-      .single()
-
-    if (saleError || !sale) {
-      console.error(saleError)
-      setError(saleError?.message ?? 'No se pudo registrar la venta')
-      setLoading(false)
-      return
-    }
-
-    const { error: saleItemsError } = await supabase.from('sale_items').insert(
-      saleItems.map(item => ({
-        sale_id: sale.id,
+    const { data: rpcResult, error: rpcError } = await supabase.rpc('create_sale_transaction', {
+      p_business_id: businessId,
+      p_subtotal: subtotal,
+      p_discount: discount,
+      p_total: total,
+      p_status: 'completed',
+      p_price_list_id: priceListId,
+      p_operator_id: operatorId ?? null,
+      p_items: saleItems.map(item => ({
         product_id: item.product_id,
         quantity: item.quantity,
         unit_price: item.unit_price,
         total: item.total,
-      }))
-    )
-
-    if (saleItemsError) {
-      console.error(saleItemsError)
-      setError(saleItemsError.message)
-      setLoading(false)
-      return
-    }
-
-    const { error: paymentError } = await supabase.from('payments').insert({
-      sale_id: sale.id,
-      method,
-      amount: total,
-      status: 'completed',
+      })),
+      p_payment_method: method,
+      p_payment_amount: total,
     })
 
-    if (paymentError) {
-      console.error(paymentError)
-      setError(paymentError.message)
+    const result = rpcResult as { success: boolean; sale_id?: string; created_at?: string; error?: string } | null
+
+    if (rpcError || !result?.success) {
+      const msg = result?.error ?? rpcError?.message ?? 'No se pudo registrar la venta'
+      console.error(msg)
+      setError(msg)
       setLoading(false)
       return
     }
 
     const nextReceipt: ReceiptData = {
-      saleId: sale.id,
+      saleId: result.sale_id ?? '',
       businessName,
-      createdAt: sale.created_at ?? new Date().toISOString(),
+      createdAt: result.created_at ?? new Date().toISOString(),
       items: receiptItems,
       subtotal,
       discount,

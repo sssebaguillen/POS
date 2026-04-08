@@ -1,6 +1,8 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Minus, Pencil, Plus, Printer, ShoppingCart, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -75,12 +77,11 @@ interface Props {
 }
 
 export default function CartPanel({ businessId, businessName, activePriceList, priceListOverrides, operatorId, permissions }: Props) {
+  const router = useRouter()
   const { items, removeItem, updateQuantity, updatePrice, discount, clearCart } = useCartStore()
   const [showPayment, setShowPayment] = useState(false)
   const { toast, showToast, dismissToast } = useToast()
   const [activeTab, setActiveTab] = useState<RightTab>('current')
-  const [historyLoading, setHistoryLoading] = useState(false)
-  const [history, setHistory] = useState<SaleRow[]>([])
   const [historyQuery, setHistoryQuery] = useState('')
   const [expandedSaleId, setExpandedSaleId] = useState<string | null>(null)
   const [saleDetails, setSaleDetails] = useState<Record<string, SaleDetail>>({})
@@ -93,6 +94,7 @@ export default function CartPanel({ businessId, businessName, activePriceList, p
   const [editPriceValue, setEditPriceValue] = useState('')
   const priceEditResolvedRef = useRef(false)
   const supabase = useMemo(() => createClient(), [])
+  const queryClient = useQueryClient()
 
   const isEmpty = items.length === 0
 
@@ -146,24 +148,9 @@ export default function CartPanel({ businessId, businessName, activePriceList, p
     item => item.quantity >= item.product.stock
   )
 
-  const filteredHistory = (() => {
-    const q = historyQuery.trim().toLowerCase()
-    if (!q) return history
-    return history.filter(sale =>
-      sale.id.toLowerCase().includes(q) ||
-      normalizePayment(sale.payment_method).toLowerCase().includes(q)
-    )
-  })()
-
-  const historyTotal = (() =>
-    filteredHistory.reduce((acc, sale) => acc + sale.total, 0)
-  )()
-
-  useEffect(() => {
-    if (activeTab !== 'history' || !businessId) return
-
-    async function loadDailyHistory() {
-      setHistoryLoading(true)
+  const dailyHistoryQuery = useQuery<SaleRow[]>({
+    queryKey: ['pos-daily-history', businessId],
+    queryFn: async () => {
       const now = new Date()
       const startOfDay = new Date(now)
       startOfDay.setHours(0, 0, 0, 0)
@@ -173,7 +160,7 @@ export default function CartPanel({ businessId, businessName, activePriceList, p
       const { data: sales } = await supabase
         .from('sales')
         .select('id, subtotal, discount, total, status, created_at')
-        .eq('business_id', businessId)
+        .eq('business_id', businessId!)
         .gte('created_at', startOfDay.toISOString())
         .lte('created_at', endOfDay.toISOString())
         .order('created_at', { ascending: false })
@@ -196,22 +183,34 @@ export default function CartPanel({ businessId, businessName, activePriceList, p
         }, {})
       }
 
-      setHistory(
-        (sales ?? []).map(sale => ({
-          id: sale.id,
-          subtotal: Number(sale.subtotal),
-          discount: Number(sale.discount ?? 0),
-          created_at: sale.created_at,
-          total: Number(sale.total),
-          status: sale.status,
-          payment_method: paymentsBySaleId[sale.id] ?? null,
-        }))
-      )
-      setHistoryLoading(false)
-    }
+      return (sales ?? []).map(sale => ({
+        id: sale.id,
+        subtotal: Number(sale.subtotal),
+        discount: Number(sale.discount ?? 0),
+        created_at: sale.created_at,
+        total: Number(sale.total),
+        status: sale.status,
+        payment_method: paymentsBySaleId[sale.id] ?? null,
+      }))
+    },
+    enabled: activeTab === 'history' && !!businessId,
+  })
 
-    loadDailyHistory()
-  }, [activeTab, businessId, supabase])
+  const history = dailyHistoryQuery.data ?? []
+  const historyLoading = dailyHistoryQuery.isLoading
+
+  const filteredHistory = (() => {
+    const q = historyQuery.trim().toLowerCase()
+    if (!q) return history
+    return history.filter(sale =>
+      sale.id.toLowerCase().includes(q) ||
+      normalizePayment(sale.payment_method).toLowerCase().includes(q)
+    )
+  })()
+
+  const historyTotal = (() =>
+    filteredHistory.reduce((acc, sale) => acc + sale.total, 0)
+  )()
 
   async function loadSaleDetail(saleId: string): Promise<SaleDetail | null> {
     if (saleDetails[saleId]) {
@@ -299,10 +298,13 @@ export default function CartPanel({ businessId, businessName, activePriceList, p
       p_business_id: businessId,
     })
     if (!error && data?.success) {
-      setHistory(prev => prev.filter(s => s.id !== saleId))
+      queryClient.setQueryData<SaleRow[]>(['pos-daily-history', businessId], (prev) =>
+        prev ? prev.filter(s => s.id !== saleId) : prev
+      )
       setSaleDetails(prev => { const next = { ...prev }; delete next[saleId]; return next })
       if (expandedSaleId === saleId) setExpandedSaleId(null)
       showToast({ message: 'Venta eliminada' })
+      void queryClient.invalidateQueries({ queryKey: ['expenses'] })
     } else {
       showToast({ message: error?.message ?? data?.error ?? 'No se pudo eliminar la venta.' })
     }
@@ -323,11 +325,13 @@ export default function CartPanel({ businessId, businessName, activePriceList, p
     })
     if (!error && data?.success) {
       const newTotal = Number(data.total)
-      setHistory(prev => prev.map(s =>
-        s.id === saleId
-          ? { ...s, subtotal: newTotal, total: newTotal, payment_method: paymentMethod }
-          : s
-      ))
+      queryClient.setQueryData<SaleRow[]>(['pos-daily-history', businessId], (prev) =>
+        prev ? prev.map(s =>
+          s.id === saleId
+            ? { ...s, subtotal: newTotal, total: newTotal, payment_method: paymentMethod }
+            : s
+        ) : prev
+      )
       setSaleDetails(prev => {
         const existing = prev[saleId]
         if (!existing) return prev
@@ -354,6 +358,7 @@ export default function CartPanel({ businessId, businessName, activePriceList, p
       })
       setEditingSale(null)
       showToast({ message: 'Venta actualizada' })
+      void queryClient.invalidateQueries({ queryKey: ['expenses'] })
     } else {
       showToast({ message: error?.message ?? data?.error ?? 'No se pudo actualizar la venta.' })
     }
@@ -892,7 +897,12 @@ export default function CartPanel({ businessId, businessName, activePriceList, p
           saleItems={adjustedItems}
           receiptItems={receiptItems}
           operatorId={operatorId}
-          onSaleCompleted={(message) => showToast({ message })}
+          onSaleCompleted={(message) => {
+            showToast({ message })
+            // Re-run server components to refresh stock after sale
+            router.refresh()
+            void queryClient.invalidateQueries({ queryKey: ['pos-daily-history'] })
+          }}
           onClose={() => setShowPayment(false)}
         />
       )}
