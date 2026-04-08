@@ -39,6 +39,8 @@ export function buildReceiptData({ businessName, sale, items }: BuildReceiptData
     quantity: item.quantity,
     unit_price: item.unit_price,
     total: item.quantity * item.unit_price,
+    unit_price_override: null,
+    override_reason: null,
   }))
 
   return {
