@@ -40,6 +40,7 @@ export default function ExpenseAttachmentUploader({ businessId, onUpload, onRemo
   const [uploading, setUploading] = useState(false)
   const [progress, setProgress] = useState(0)
   const [error, setError] = useState<string | null>(null)
+  const [localPreviewUrl, setLocalPreviewUrl] = useState<string | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
   async function handleFile(file: File) {
@@ -67,13 +68,16 @@ export default function ExpenseAttachmentUploader({ businessId, onUpload, onRemo
       return
     }
     setProgress(90)
-    const { data: urlData } = supabase.storage
+    // Generate a short-lived signed URL for the local preview only.
+    // The storage path (data.path) is what gets persisted to the DB.
+    const { data: signedData } = await supabase.storage
       .from('expense-receipts')
-      .getPublicUrl(data.path)
+      .createSignedUrl(data.path, 3600)
+    setLocalPreviewUrl(signedData?.signedUrl ?? null)
     setProgress(100)
     setUploading(false)
     onUpload({
-      url: urlData.publicUrl,
+      url: data.path,
       type: getMimeAttachmentType(file.type),
       name: file.name,
     })
@@ -94,13 +98,15 @@ export default function ExpenseAttachmentUploader({ businessId, onUpload, onRemo
   if (current) {
     return (
       <div className="flex items-center gap-3 rounded-xl border border-edge bg-surface-alt px-4 py-3">
-        {current.type === 'image' ? (
+        {current.type === 'image' && localPreviewUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
-            src={current.url}
+            src={localPreviewUrl}
             alt={current.name}
             className="h-12 w-12 rounded-lg object-cover border border-edge shrink-0"
           />
+        ) : current.type === 'image' ? (
+          <FileText size={28} className="text-blue-500 shrink-0" />
         ) : current.type === 'pdf' ? (
           <FileText size={28} className="text-red-500 shrink-0" />
         ) : (
@@ -112,7 +118,7 @@ export default function ExpenseAttachmentUploader({ businessId, onUpload, onRemo
         </div>
         <button
           type="button"
-          onClick={onRemove}
+          onClick={() => { setLocalPreviewUrl(null); onRemove() }}
           className="p-1 rounded-lg hover:bg-hover-bg transition-colors text-hint hover:text-destructive"
         >
           <X size={16} />

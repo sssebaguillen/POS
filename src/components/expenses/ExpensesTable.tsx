@@ -1,9 +1,19 @@
 'use client'
 
 import { useState, useMemo } from 'react'
-import { Paperclip, Trash2 } from 'lucide-react'
+import { Paperclip, Trash2, Loader2 } from 'lucide-react'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { EXPENSE_CATEGORY_LABELS, type Expense } from './types'
+
+/** Extracts the storage path from either a legacy full Supabase URL or a bare path. */
+function extractStoragePath(url: string): string {
+  if (url.startsWith('http')) {
+    const marker = '/expense-receipts/'
+    const idx = url.indexOf(marker)
+    if (idx !== -1) return url.slice(idx + marker.length)
+  }
+  return url
+}
 
 interface Props {
   expenses: Expense[]
@@ -15,6 +25,8 @@ interface Props {
 export default function ExpensesTable({ expenses, businessId, supabaseClient, onDeleted }: Props) {
   const supabase = useMemo(() => supabaseClient, [supabaseClient])
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [loadingAttachmentId, setLoadingAttachmentId] = useState<string | null>(null)
+  const [attachmentError, setAttachmentError] = useState<string | null>(null)
 
   async function handleDelete(id: string) {
     setDeletingId(id)
@@ -29,6 +41,21 @@ export default function ExpensesTable({ expenses, businessId, supabaseClient, on
     onDeleted(id)
   }
 
+  async function handleOpenAttachment(expenseId: string, rawUrl: string) {
+    setAttachmentError(null)
+    setLoadingAttachmentId(expenseId)
+    const path = extractStoragePath(rawUrl)
+    const { data, error } = await supabase.storage
+      .from('expense-receipts')
+      .createSignedUrl(path, 3600)
+    setLoadingAttachmentId(null)
+    if (error || !data?.signedUrl) {
+      setAttachmentError('No se pudo cargar el documento. Intenta de nuevo.')
+      return
+    }
+    window.open(data.signedUrl, '_blank', 'noopener,noreferrer')
+  }
+
   if (expenses.length === 0) {
     return (
       <div className="surface-card px-6 py-16 flex flex-col items-center gap-2">
@@ -40,6 +67,11 @@ export default function ExpensesTable({ expenses, businessId, supabaseClient, on
 
   return (
     <div className="surface-card overflow-hidden">
+      {attachmentError && (
+        <div className="px-4 py-2 text-xs text-destructive border-b border-edge/40 bg-destructive/5">
+          {attachmentError}
+        </div>
+      )}
       <table className="w-full text-sm">
         <thead className="border-b border-edge/60">
           <tr className="text-xs text-hint font-medium">
@@ -72,15 +104,18 @@ export default function ExpensesTable({ expenses, businessId, supabaseClient, on
               </td>
               <td className="px-4 py-3 text-center hidden lg:table-cell">
                 {expense.attachment_url ? (
-                  <a
-                    href={expense.attachment_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center justify-center text-primary hover:text-primary/70 transition-colors"
-                    title={expense.attachment_name ?? 'Adjunto'}
+                  <button
+                    type="button"
+                    onClick={() => handleOpenAttachment(expense.id, expense.attachment_url!)}
+                    disabled={loadingAttachmentId === expense.id}
+                    className="inline-flex items-center justify-center text-primary hover:text-primary/70 transition-colors disabled:opacity-50"
+                    title={expense.attachment_name ?? 'Ver adjunto'}
                   >
-                    <Paperclip size={15} />
-                  </a>
+                    {loadingAttachmentId === expense.id
+                      ? <Loader2 size={15} className="animate-spin" />
+                      : <Paperclip size={15} />
+                    }
+                  </button>
                 ) : (
                   <span className="text-hint opacity-30"><Paperclip size={15} /></span>
                 )}
