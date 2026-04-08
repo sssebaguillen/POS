@@ -4,11 +4,12 @@ import { useMemo, useState, memo } from 'react'
 import { TrendingDown, TrendingUp } from 'lucide-react'
 import Link from 'next/link'
 import PageHeader from '@/components/shared/PageHeader'
-import DateRangeFilter, { type DateRangePeriod } from '@/components/shared/DateRangeFilter'
+import DateRangeFilter from '@/components/shared/DateRangeFilter'
 import {
-  endOfDay, isCompletedSale, startOfDay, startOfWeek,
+  isCompletedSale, getDateRange,
   getPreviousPeriodRange, getDayLabel,
-} from '@/components/dashboard/utils'
+  type DateRangePeriod,
+} from '@/lib/date-utils'
 import { PAYMENT_LABELS, PAYMENT_COLORS } from '@/lib/payments'
 import {
   LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -96,25 +97,10 @@ export default function StatsView({ sales, payments, saleItems, products, catego
   const productsById = useMemo(() => new Map(products.map(p => [p.id, p])), [products])
   const categoriesById = useMemo(() => new Map(categories.map(c => [c.id, c.name])), [categories])
 
-  const range = useMemo(() => {
-    const now = new Date()
-    if (period === 'hoy') return { from: startOfDay(now), to: endOfDay(now) }
-    if (period === 'semana') return { from: startOfWeek(now), to: endOfDay(now) }
-    if (period === 'mes') return { from: new Date(now.getFullYear(), now.getMonth(), 1), to: endOfDay(now) }
-    if (period === 'trimestre' && fromDate && toDate) {
-      return { from: startOfDay(new Date(fromDate)), to: endOfDay(new Date(toDate)) }
-    }
-    if (period === 'año' && fromDate && toDate) {
-      return { from: startOfDay(new Date(fromDate)), to: endOfDay(new Date(toDate)) }
-    }
-    if (fromDate && toDate) {
-      return { from: startOfDay(new Date(fromDate)), to: endOfDay(new Date(toDate)) }
-    }
-
-    const from = new Date(now)
-    from.setDate(from.getDate() - 30)
-    return { from: startOfDay(from), to: endOfDay(now) }
-  }, [period, fromDate, toDate])
+  const range = useMemo(
+    () => getDateRange(period, fromDate, toDate),
+    [period, fromDate, toDate]
+  )
 
   const filteredSales = useMemo(
     () => sales.filter(sale => {

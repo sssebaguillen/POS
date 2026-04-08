@@ -12,6 +12,8 @@
     "@e965/xlsx": "^0.20.3",
     "@supabase/ssr": "^0.9.0",
     "@supabase/supabase-js": "^2.99.1",
+    "@tanstack/react-query": "^5.96.2",
+    "@tanstack/react-query-devtools": "^5.96.2",
     "@tanstack/react-virtual": "^3.13.23",
     "@vercel/speed-insights": "^2.0.0",
     "class-variance-authority": "^0.7.1",

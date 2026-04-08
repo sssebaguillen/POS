@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import AppShell from '@/components/shared/AppShell'
 import FlashToast from '@/components/shared/FlashToast'
+import QueryProvider from '@/providers/query-provider'
 import { cookies } from 'next/headers'
 import { getActiveOperator } from '@/lib/operator'
 import { getBusinessIdByUserId } from '@/lib/business'
@@ -76,7 +77,9 @@ export default async function AppLayout({
         }
       `}</style>
       <AppShell activeOperatorName={activeOperator?.name ?? null} initialCollapsed={sidebarCollapsed}>
-        {children}
+        <QueryProvider>
+          {children}
+        </QueryProvider>
       </AppShell>
       {flashMessage && <FlashToast message={flashMessage} />}
     </>

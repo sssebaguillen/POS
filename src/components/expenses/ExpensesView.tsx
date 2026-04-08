@@ -1,12 +1,14 @@
 'use client'
 
-import { useMemo, useRef, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { usePathname } from 'next/navigation'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Plus } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import PageHeader from '@/components/shared/PageHeader'
-import DateRangeFilter, { type DateRangePeriod } from '@/components/shared/DateRangeFilter'
+import DateRangeFilter from '@/components/shared/DateRangeFilter'
+import { resolveDateRange, buildDateParams, periodNeedsCustomDates, type DateRangePeriod } from '@/lib/date-utils'
 import ExportCSVButton from '@/components/shared/ExportCSVButton'
 import ExpenseSummaryCards from './ExpenseSummaryCards'
 import ExpensesTable from './ExpensesTable'
@@ -31,60 +33,9 @@ interface Props {
   to?: string
 }
 
-function resolveDateRange(
-  period: DateRangePeriod,
-  from?: string,
-  to?: string
-): { from: string | null; to: string | null } {
-  if (period === 'personalizado' || period === 'trimestre' || period === 'año') {
-    return {
-      from: from ?? null,
-      to: to ?? null,
-    }
-  }
-
-  const now = new Date()
-  const year = now.getFullYear()
-  const month = String(now.getMonth() + 1).padStart(2, '0')
-  const day = String(now.getDate()).padStart(2, '0')
-  const today = `${year}-${month}-${day}`
-
-  if (period === 'hoy') {
-    return { from: today, to: today }
-  }
-
-  if (period === 'semana') {
-    const start = new Date(now)
-    const weekday = start.getDay()
-    const diff = weekday === 0 ? -6 : 1 - weekday
-    start.setDate(start.getDate() + diff)
-
-    const startYear = start.getFullYear()
-    const startMonth = String(start.getMonth() + 1).padStart(2, '0')
-    const startDay = String(start.getDate()).padStart(2, '0')
-
-    return {
-      from: `${startYear}-${startMonth}-${startDay}`,
-      to: today,
-    }
-  }
-
-  return {
-    from: `${year}-${month}-01`,
-    to: today,
-  }
-}
-
-function buildDateParams(period: DateRangePeriod, from?: string, to?: string): string {
-  const params = new URLSearchParams()
-  params.set('period', period)
-
-  if ((period === 'personalizado' || period === 'trimestre' || period === 'año') && from && to) {
-    params.set('from', from)
-    params.set('to', to)
-  }
-
-  return params.toString()
+interface ExpensesQueryData {
+  balance: BusinessBalance
+  expenses: Expense[]
 }
 
 export default function ExpensesView({
@@ -97,36 +48,23 @@ export default function ExpensesView({
   to: initialTo,
 }: Props) {
   const pathname = usePathname()
+  const queryClient = useQueryClient()
   const supabase = useMemo(() => createClient(), [])
   const [showSuppliers, setShowSuppliers] = useState(false)
   const [panelOpen, setPanelOpen] = useState(false)
   const [period, setPeriod] = useState<DateRangePeriod>(initialPeriod)
   const [from, setFrom] = useState(initialFrom)
   const [to, setTo] = useState(initialTo)
-  const [allExpenses, setAllExpenses] = useState<Expense[]>(initialExpenses)
-  const [fullBalance, setFullBalance] = useState<BusinessBalance>(initialBalance)
   const [selectedCategory, setSelectedCategory] = useState<ExpenseCategory | undefined>(undefined)
   const [suppliers, setSuppliers] = useState<Supplier[]>(initialSuppliers)
-  const [isLoading, setIsLoading] = useState(false)
-  const requestIdRef = useRef(0)
+  const [mountedAt] = useState(() => Date.now())
 
-  function syncDateUrl(nextPeriod: DateRangePeriod, nextFrom?: string, nextTo?: string) {
-    if (typeof window === 'undefined') return
-    const query = buildDateParams(nextPeriod, nextFrom, nextTo)
-    window.history.replaceState(window.history.state, '', `${pathname}?${query}`)
-  }
+  const isInitialPeriod = period === initialPeriod && from === initialFrom && to === initialTo
 
-  async function loadExpensesView(nextPeriod: DateRangePeriod, nextFrom?: string, nextTo?: string) {
-    const requestId = ++requestIdRef.current
-    const resolvedRange = resolveDateRange(nextPeriod, nextFrom, nextTo)
-
-    setPeriod(nextPeriod)
-    setFrom(nextFrom)
-    setTo(nextTo)
-    syncDateUrl(nextPeriod, nextFrom, nextTo)
-    setIsLoading(true)
-
-    try {
+  const { data, isFetching } = useQuery<ExpensesQueryData>({
+    queryKey: ['expenses', businessId, period, from, to],
+    queryFn: async () => {
+      const resolvedRange = resolveDateRange(period, from, to)
       const [balanceResult, expensesResult] = await Promise.all([
         supabase.rpc('get_business_balance', {
           p_business_id: businessId,
@@ -142,11 +80,7 @@ export default function ExpensesView({
         }),
       ])
 
-      if (requestId !== requestIdRef.current) {
-        return
-      }
-
-      const nextBalance = (balanceResult.data as unknown as BusinessBalance | null) ?? {
+      const balance = (balanceResult.data as unknown as BusinessBalance | null) ?? {
         income: 0,
         expenses: 0,
         profit: 0,
@@ -157,24 +91,42 @@ export default function ExpensesView({
       }
       const expensesData = expensesResult.data as unknown as { data: Expense[]; total: number } | null
 
-      setFullBalance(nextBalance)
-      setAllExpenses(expensesData?.data ?? [])
-    } catch (error) {
-      console.error('No se pudo actualizar la vista de gastos', error)
-    } finally {
-      if (requestId === requestIdRef.current) {
-        setIsLoading(false)
-      }
-    }
+      return { balance, expenses: expensesData?.data ?? [] }
+    },
+    initialData: isInitialPeriod
+      ? { balance: initialBalance, expenses: initialExpenses }
+      : undefined,
+    initialDataUpdatedAt: isInitialPeriod ? mountedAt : undefined,
+  })
+
+  const allExpenses = useMemo(() => data?.expenses ?? [], [data?.expenses])
+  const fullBalance = data?.balance ?? initialBalance
+
+  function syncDateUrl(nextPeriod: DateRangePeriod, nextFrom?: string, nextTo?: string) {
+    if (typeof window === 'undefined') return
+    const query = buildDateParams(nextPeriod, nextFrom, nextTo)
+    window.history.replaceState(window.history.state, '', `${pathname}?${query}`)
+  }
+
+  function handlePeriodChange(nextPeriod: DateRangePeriod, nextFrom?: string, nextTo?: string) {
+    const resolvedFrom = periodNeedsCustomDates(nextPeriod) ? nextFrom : undefined
+    const resolvedTo = periodNeedsCustomDates(nextPeriod) ? nextTo : undefined
+    setPeriod(nextPeriod)
+    setFrom(resolvedFrom)
+    setTo(resolvedTo)
+    syncDateUrl(nextPeriod, resolvedFrom, resolvedTo)
   }
 
   function handleExpenseDeleted(id: string) {
-    setAllExpenses(prev => prev.filter(expense => expense.id !== id))
-    void loadExpensesView(period, from, to)
+    queryClient.setQueryData<ExpensesQueryData>(
+      ['expenses', businessId, period, from, to],
+      (old) => old ? { ...old, expenses: old.expenses.filter(e => e.id !== id) } : old
+    )
+    void queryClient.invalidateQueries({ queryKey: ['expenses'] })
   }
 
   function handleExpenseCreated() {
-    void loadExpensesView(period, from, to)
+    void queryClient.invalidateQueries({ queryKey: ['expenses'] })
   }
 
   const filteredExpenses = useMemo(() => {
@@ -234,11 +186,7 @@ export default function ExpensesView({
                 value={period}
                 from={from}
                 to={to}
-                onChange={(nextPeriod, nextFrom, nextTo) => {
-                  const resolvedFrom = (nextPeriod === 'personalizado' || nextPeriod === 'trimestre' || nextPeriod === 'año') ? nextFrom : undefined
-                  const resolvedTo = (nextPeriod === 'personalizado' || nextPeriod === 'trimestre' || nextPeriod === 'año') ? nextTo : undefined
-                  void loadExpensesView(nextPeriod, resolvedFrom, resolvedTo)
-                }}
+                onChange={handlePeriodChange}
               />
 
               {/* Category filter */}
@@ -270,12 +218,12 @@ export default function ExpensesView({
                   Gestionar proveedores →
                 </button>
                 <div className="flex items-center gap-3">
-                  {isLoading && <span className="text-xs text-hint">Actualizando...</span>}
+                  {isFetching && <span className="text-xs text-hint">Actualizando...</span>}
                   <ExportCSVButton data={csvData} filename="gastos" label="Exportar" />
                 </div>
               </div>
 
-              <div className={isLoading ? 'opacity-60 transition-opacity' : 'transition-opacity'}>
+              <div className={isFetching ? 'opacity-60 transition-opacity' : 'transition-opacity'}>
                 <ExpensesTable
                   expenses={filteredExpenses}
                   businessId={businessId}

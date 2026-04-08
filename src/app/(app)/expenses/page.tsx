@@ -2,57 +2,12 @@ import { createClient } from '@/lib/supabase/server'
 import ExpensesView from '@/components/expenses/ExpensesView'
 import type { Expense, Supplier, BusinessBalance } from '@/components/expenses/types'
 import { requireAuthenticatedBusinessId } from '@/lib/business'
+import { resolveDateRange, type DateRangePeriod } from '@/lib/date-utils'
 
 interface SearchParams {
   period?: string
   from?: string
   to?: string
-}
-
-type FilterPeriod = 'hoy' | 'semana' | 'mes' | 'trimestre' | 'año' | 'personalizado'
-
-function resolveDateRange(
-  period: FilterPeriod,
-  from?: string,
-  to?: string
-): { from: string | null; to: string | null } {
-  if (period === 'personalizado' || period === 'trimestre' || period === 'año') {
-    return {
-      from: from ?? null,
-      to: to ?? null,
-    }
-  }
-
-  const now = new Date()
-  const year = now.getFullYear()
-  const month = String(now.getMonth() + 1).padStart(2, '0')
-  const day = String(now.getDate()).padStart(2, '0')
-  const today = `${year}-${month}-${day}`
-
-  if (period === 'hoy') {
-    return { from: today, to: today }
-  }
-
-  if (period === 'semana') {
-    const start = new Date(now)
-    const weekday = start.getDay()
-    const diff = weekday === 0 ? -6 : 1 - weekday
-    start.setDate(start.getDate() + diff)
-
-    const startYear = start.getFullYear()
-    const startMonth = String(start.getMonth() + 1).padStart(2, '0')
-    const startDay = String(start.getDate()).padStart(2, '0')
-
-    return {
-      from: `${startYear}-${startMonth}-${startDay}`,
-      to: today,
-    }
-  }
-
-  return {
-    from: `${year}-${month}-01`,
-    to: today,
-  }
 }
 
 export default async function ExpensesPage({
@@ -64,7 +19,7 @@ export default async function ExpensesPage({
   const supabase = await createClient()
   const businessId = await requireAuthenticatedBusinessId(supabase)
 
-  const period: FilterPeriod =
+  const period: DateRangePeriod =
     params.period === 'hoy' || params.period === 'semana' || params.period === 'personalizado' ||
     params.period === 'trimestre' || params.period === 'año'
       ? params.period

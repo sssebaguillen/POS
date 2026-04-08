@@ -2,10 +2,11 @@
 
 import { useMemo, useState } from 'react'
 import PageHeader from '@/components/shared/PageHeader'
-import DateRangeFilter, { type DateRangePeriod } from '@/components/shared/DateRangeFilter'
+import DateRangeFilter from '@/components/shared/DateRangeFilter'
+import { type DateRangePeriod } from '@/lib/date-utils'
 import KPICard from '@/components/shared/KPICard'
 import Link from 'next/link'
-import { endOfDay, isCompletedSale, startOfDay, startOfWeek } from '@/components/dashboard/utils'
+import { isCompletedSale, getDateRange, getPreviousPeriodRange } from '@/lib/date-utils'
 import { normalizePayment } from '@/lib/payments'
 import SalesHistoryTable from '@/components/dashboard/SalesHistoryTable'
 import BalanceWidget from '@/components/dashboard/BalanceWidget'
@@ -85,24 +86,10 @@ export default function DashboardView({ sales, payments, saleItems, products, bu
     return map
   }, [payments])
 
-  const periodRange = useMemo(() => {
-    const now = new Date()
-    if (period === 'hoy') return { from: startOfDay(now), to: endOfDay(now) }
-    if (period === 'semana') return { from: startOfWeek(now), to: endOfDay(now) }
-    if (period === 'mes') return { from: new Date(now.getFullYear(), now.getMonth(), 1), to: endOfDay(now) }
-    if (period === 'personalizado' && fromDate && toDate) {
-      return { from: startOfDay(new Date(fromDate)), to: endOfDay(new Date(toDate)) }
-    }
-    if (period === 'trimestre' && fromDate && toDate) {
-      return { from: startOfDay(new Date(fromDate)), to: endOfDay(new Date(toDate)) }
-    }
-    if (period === 'año' && fromDate && toDate) {
-      return { from: startOfDay(new Date(fromDate)), to: endOfDay(new Date(toDate)) }
-    }
-    const defaultFrom = new Date(now)
-    defaultFrom.setDate(defaultFrom.getDate() - 30)
-    return { from: startOfDay(defaultFrom), to: endOfDay(now) }
-  }, [period, fromDate, toDate])
+  const periodRange = useMemo(
+    () => getDateRange(period, fromDate, toDate),
+    [period, fromDate, toDate]
+  )
 
   const filteredSales = useMemo(() =>
     sales.filter(s => {
@@ -192,24 +179,9 @@ export default function DashboardView({ sales, payments, saleItems, products, bu
 
   // Trend: previous period range for comparison
   const prevPeriodRange = useMemo(() => {
-    const now = new Date()
-    if (period === 'hoy') {
-      const yesterday = new Date(now)
-      yesterday.setDate(yesterday.getDate() - 1)
-      return { from: startOfDay(yesterday), to: endOfDay(yesterday) }
-    }
-    if (period === 'semana') {
-      const prevWeekStart = startOfWeek(new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000))
-      const prevWeekEnd = new Date(startOfWeek(now).getTime() - 1)
-      return { from: prevWeekStart, to: endOfDay(prevWeekEnd) }
-    }
-    if (period === 'mes') {
-      const firstOfPrevMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1)
-      const lastOfPrevMonth = new Date(now.getFullYear(), now.getMonth(), 0)
-      return { from: startOfDay(firstOfPrevMonth), to: endOfDay(lastOfPrevMonth) }
-    }
-    return null
-  }, [period])
+    if (period !== 'hoy' && period !== 'semana' && period !== 'mes') return null
+    return getPreviousPeriodRange(period, periodRange)
+  }, [period, periodRange])
 
   const prevCompletedSales = useMemo(() => {
     if (!prevPeriodRange) return []

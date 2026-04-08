@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useMemo, memo } from 'react'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Printer, Trash2 } from 'lucide-react'
 import ReceiptPreviewModal from '@/components/pos/ReceiptPreviewModal'
 import { Button } from '@/components/ui/button'
@@ -9,6 +10,8 @@ import { buildReceiptData } from '@/lib/printer/receipt'
 import type { ReceiptData } from '@/lib/printer/types'
 import { createClient } from '@/lib/supabase/client'
 import { normalizePayment, PAYMENT_LABELS } from '@/lib/payments'
+import { useToast } from '@/hooks/useToast'
+import Toast from '@/components/shared/Toast'
 
 interface SaleItem {
   id: string
@@ -60,6 +63,8 @@ function SalesHistoryTable({ rows, businessId, businessName }: Props) {
   const [receiptPreview, setReceiptPreview] = useState<ReceiptData | null>(null)
   const [receiptError, setReceiptError] = useState('')
   const supabase = useMemo(() => createClient(), [])
+  const queryClient = useQueryClient()
+  const { toast, showToast, dismissToast } = useToast()
 
   const filteredRows = useMemo(() => {
     return localRows.filter(row => {
@@ -170,56 +175,71 @@ function SalesHistoryTable({ rows, businessId, businessName }: Props) {
     }
   }
 
-  async function handleDeleteSale(saleId: string) {
-    if (!businessId) return
-    setDeletingId(saleId)
-    const { data, error } = await supabase.rpc('delete_sale', {
-      p_sale_id: saleId,
-      p_business_id: businessId,
-    })
-    if (!error && data?.success) {
+  const deleteMutation = useMutation({
+    mutationFn: async (saleId: string) => {
+      const { data, error } = await supabase.rpc('delete_sale', {
+        p_sale_id: saleId,
+        p_business_id: businessId!,
+      })
+      if (error || !data?.success) {
+        throw new Error(error?.message ?? 'No se pudo eliminar la venta')
+      }
+      return saleId
+    },
+    onMutate: (saleId) => {
+      setDeletingId(saleId)
+    },
+    onSuccess: (saleId) => {
       setLocalRows(prev => prev.filter(s => s.id !== saleId))
       setSaleDetails(prev => { const next = { ...prev }; delete next[saleId]; return next })
       if (expandedSaleId === saleId) setExpandedSaleId(null)
-    }
-    setDeletingId(null)
-  }
+      void queryClient.invalidateQueries({ queryKey: ['expenses'] })
+      showToast({ message: 'Venta eliminada' })
+    },
+    onSettled: () => {
+      setDeletingId(null)
+    },
+  })
 
-  async function handleUpdateSale(
-    saleId: string,
-    updatedItems: { product_id: string; quantity: number; unit_price: number }[],
-    paymentMethod: string,
-    status: string
-  ) {
-    if (!businessId) return
-    const { data, error } = await supabase.rpc('update_sale', {
-      p_sale_id: saleId,
-      p_business_id: businessId,
-      p_items: updatedItems,
-      p_payment_method: paymentMethod,
-      p_status: status,
-    })
-    if (!error && data?.success) {
-      const newTotal = Number(data.total)
+  const updateMutation = useMutation({
+    mutationFn: async (vars: {
+      saleId: string
+      items: { product_id: string; quantity: number; unit_price: number }[]
+      paymentMethod: string
+      status: string
+    }) => {
+      const { data, error } = await supabase.rpc('update_sale', {
+        p_sale_id: vars.saleId,
+        p_business_id: businessId!,
+        p_items: vars.items,
+        p_payment_method: vars.paymentMethod,
+        p_status: vars.status,
+      })
+      if (error || !data?.success) {
+        throw new Error(error?.message ?? 'No se pudo actualizar la venta')
+      }
+      return { ...vars, total: Number(data.total) }
+    },
+    onSuccess: (result) => {
       setLocalRows(prev =>
         prev.map(s =>
-          s.id === saleId
-            ? { ...s, subtotal: newTotal, total: newTotal, method: paymentMethod, status }
+          s.id === result.saleId
+            ? { ...s, subtotal: result.total, total: result.total, method: result.paymentMethod, status: result.status }
             : s
         )
       )
       setSaleDetails(prev => {
-        const existing = prev[saleId]
+        const existing = prev[result.saleId]
         if (!existing) return prev
         return {
           ...prev,
-          [saleId]: {
+          [result.saleId]: {
             ...existing,
-            subtotal: newTotal,
-            total: newTotal,
-            method: paymentMethod,
-            status,
-            items: updatedItems.map(i => {
+            subtotal: result.total,
+            total: result.total,
+            method: result.paymentMethod,
+            status: result.status,
+            items: result.items.map(i => {
               const found = existing.items.find(ei => ei.product_id === i.product_id)
               return {
                 id: found?.id ?? '',
@@ -234,7 +254,26 @@ function SalesHistoryTable({ rows, businessId, businessName }: Props) {
         }
       })
       setEditingSale(null)
-    }
+      void queryClient.invalidateQueries({ queryKey: ['expenses'] })
+      showToast({ message: 'Venta actualizada' })
+    },
+  })
+
+  const mutationError = deleteMutation.error?.message ?? updateMutation.error?.message ?? null
+
+  function handleDeleteSale(saleId: string) {
+    if (!businessId) return
+    deleteMutation.mutate(saleId)
+  }
+
+  function handleUpdateSale(
+    saleId: string,
+    updatedItems: { product_id: string; quantity: number; unit_price: number }[],
+    paymentMethod: string,
+    status: string
+  ) {
+    if (!businessId) return
+    updateMutation.mutate({ saleId, items: updatedItems, paymentMethod, status })
   }
 
   function formatTime(dateString: string) {
@@ -276,6 +315,17 @@ function SalesHistoryTable({ rows, businessId, businessName }: Props) {
         </div>
         {receiptError && (
           <p className="text-xs text-red-500">{receiptError}</p>
+        )}
+        {mutationError && (
+          <div className="flex items-center justify-between bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-lg px-3 py-2">
+            <p className="text-xs text-red-600 dark:text-red-400">{mutationError}</p>
+            <button
+              className="text-xs text-red-500 hover:text-red-700 underline ml-2"
+              onClick={() => { deleteMutation.reset(); updateMutation.reset() }}
+            >
+              Cerrar
+            </button>
+          </div>
         )}
       </div>
 
@@ -449,6 +499,8 @@ function SalesHistoryTable({ rows, businessId, businessName }: Props) {
           onClose={() => setReceiptPreview(null)}
         />
       )}
+
+      {toast && <Toast message={toast.message} duration={toast.duration} onDismiss={dismissToast} />}
     </div>
   )
 }

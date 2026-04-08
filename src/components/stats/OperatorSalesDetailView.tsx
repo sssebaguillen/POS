@@ -2,7 +2,8 @@
 
 import { useMemo } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
-import DateRangeFilter, { type DateRangePeriod } from '@/components/shared/DateRangeFilter'
+import DateRangeFilter from '@/components/shared/DateRangeFilter'
+import { periodNeedsCustomDates, type DateRangePeriod } from '@/lib/date-utils'
 import ExportCSVButton from '@/components/shared/ExportCSVButton'
 import PageHeader from '@/components/shared/PageHeader'
 
@@ -38,7 +39,7 @@ export default function OperatorSalesDetailView({ rows, period, from, to }: Prop
   function navigate(newPeriod: DateRangePeriod, newFrom?: string, newTo?: string) {
     const params = new URLSearchParams()
     params.set('period', newPeriod)
-    if ((newPeriod === 'personalizado' || newPeriod === 'trimestre' || newPeriod === 'año') && newFrom && newTo) {
+    if (periodNeedsCustomDates(newPeriod) && newFrom && newTo) {
       params.set('from', newFrom)
       params.set('to', newTo)
     }
