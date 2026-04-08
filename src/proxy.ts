@@ -129,8 +129,8 @@ export async function proxy(request: NextRequest) {
     return flashRedirect(new URL('/pos', request.url), cspHeader)
   }
 
-  const isGastosRoute = pathname === '/gastos' || pathname.startsWith('/gastos/')
-  if (isGastosRoute && !hasPermission(operator, 'expenses')) {
+  const isExpensesRoute = pathname === '/expenses' || pathname.startsWith('/expenses/')
+  if (isExpensesRoute && !hasPermission(operator, 'expenses')) {
     return flashRedirect(new URL('/pos', request.url), cspHeader)
   }
 

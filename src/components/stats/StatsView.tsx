@@ -480,7 +480,7 @@ export default function StatsView({ sales, payments, saleItems, products, catego
             <div className="surface-card p-6 space-y-4">
               <div className="flex items-center gap-3">
                 <p className="font-semibold text-heading">Métodos de pago</p>
-                <Link href="/stats/metodos-pago" className="text-xs text-primary font-medium hover:underline">
+                <Link href="/stats/payment-methods" className="text-xs text-primary font-medium hover:underline">
                   Ver más →
                 </Link>
               </div>

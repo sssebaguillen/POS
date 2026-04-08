@@ -14,7 +14,7 @@ export default function BalanceWidget({ income, expenses, profit, margin }: Bala
     <div className="surface-card p-5 space-y-3">
       <div className="flex items-center justify-between">
         <p className="font-semibold text-heading">Balance del mes</p>
-        <Link href="/gastos" className="text-xs text-primary font-medium hover:underline">
+        <Link href="/expenses" className="text-xs text-primary font-medium hover:underline">
           Ver detalle →
         </Link>
       </div>

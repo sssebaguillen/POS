@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
-import OperatorSalesDetailView from '@/components/stats/OperatorSalesDetailView'
+import PaymentMethodDetailView from '@/components/stats/PaymentMethodDetailView'
 import { requireAuthenticatedBusinessId } from '@/lib/business'
 
 interface SearchParams {
@@ -8,7 +8,7 @@ interface SearchParams {
   to?: string
 }
 
-export default async function OperadoresDetailPage({
+export default async function PaymentMethodsDetailPage({
   searchParams,
 }: {
   searchParams: Promise<SearchParams>
@@ -21,16 +21,16 @@ export default async function OperadoresDetailPage({
   const from = params.from
   const to = params.to
 
-  const { data: rpcResult } = await supabase.rpc('get_sales_by_operator_detail', {
+  const { data: rpcResult } = await supabase.rpc('get_sales_by_payment_detail', {
     p_business_id: businessId,
     p_from: from ?? null,
     p_to: to ?? null,
   })
 
-  const rows = (rpcResult as unknown as { data: OperatorSalesRow[] } | null)?.data ?? []
+  const rows = (rpcResult as unknown as { data: PaymentMethodRow[] } | null)?.data ?? []
 
   return (
-    <OperatorSalesDetailView
+    <PaymentMethodDetailView
       rows={rows}
       businessId={businessId}
       period={period}
@@ -40,12 +40,9 @@ export default async function OperadoresDetailPage({
   )
 }
 
-interface OperatorSalesRow {
-  operator_id: string | null
-  operator_name: string
-  role: string
+interface PaymentMethodRow {
+  method: string
+  total_amount: number
   transactions: number
-  total_revenue: number
   avg_ticket: number
-  units_sold: number
 }

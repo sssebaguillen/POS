@@ -55,7 +55,7 @@ function resolveDateRange(
   }
 }
 
-export default async function GastosPage({
+export default async function ExpensesPage({
   searchParams,
 }: {
   searchParams: Promise<SearchParams>

@@ -53,7 +53,7 @@ export default function PaymentMethodDetailView({ rows, period, from, to }: Prop
   return (
     <div className="flex flex-col h-screen overflow-hidden">
       <PageHeader title="Métodos de pago" breadcrumbs={[{ label: 'Estadísticas', href: '/stats' }]}>
-        <ExportCSVButton data={csvData} filename="metodos-pago" />
+        <ExportCSVButton data={csvData} filename="payment-methods" />
       </PageHeader>
 
       <div className="flex-1 overflow-y-auto">
