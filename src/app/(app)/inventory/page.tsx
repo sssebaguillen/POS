@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
-import InventoryPanel from '@/components/stock/InventoryPanel'
+import InventoryPanel from '@/components/inventory/InventoryPanel'
 import { cookies } from 'next/headers'
 import { getActiveOperator } from '@/lib/operator'
 import { requireAuthenticatedBusinessId } from '@/lib/business'

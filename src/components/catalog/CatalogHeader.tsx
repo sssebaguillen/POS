@@ -3,8 +3,8 @@
 import Image from 'next/image'
 import { ShoppingCart } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { CatalogThemeToggle } from '@/components/catalogo/CatalogThemeProvider'
-import type { CatalogBusiness } from '@/components/catalogo/types'
+import { CatalogThemeToggle } from '@/components/catalog/CatalogThemeProvider'
+import type { CatalogBusiness } from '@/components/catalog/types'
 
 interface CatalogHeaderProps {
   business: CatalogBusiness

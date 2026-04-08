@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react'
 import { CheckCircle2, Minus, Plus, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import type { CatalogCartItem } from '@/components/catalogo/types'
+import type { CatalogCartItem } from '@/components/catalog/types'
 
 interface CartPanelProps {
   businessName: string

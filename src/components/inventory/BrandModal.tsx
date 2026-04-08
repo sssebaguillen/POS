@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input'
 import { X } from 'lucide-react'
 import { Dialog, DialogContent } from '@/components/ui/dialog'
 import ConfirmModal from '@/components/shared/ConfirmModal'
-import type { InventoryBrand } from '@/components/stock/types'
+import type { InventoryBrand } from '@/components/inventory/types'
 
 type ConfirmState = { title: string; message: string; onConfirm: () => void } | null
 

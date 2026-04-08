@@ -5,7 +5,7 @@ import * as XLSX from '@e965/xlsx'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import SelectDropdown from '@/components/ui/SelectDropdown'
-import type { InventoryBrand, InventoryCategory } from '@/components/stock/types'
+import type { InventoryBrand, InventoryCategory } from '@/components/inventory/types'
 
 // ---------------------------------------------------------------------------
 // Types

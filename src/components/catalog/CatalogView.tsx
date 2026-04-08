@@ -1,10 +1,10 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import ProductGrid from '@/components/catalogo/ProductGrid'
-import CartPanel from '@/components/catalogo/CartPanel'
-import CatalogHeader from '@/components/catalogo/CatalogHeader'
-import type { CatalogBusiness, CatalogCartItem, CatalogCategory, CatalogProduct } from '@/components/catalogo/types'
+import ProductGrid from '@/components/catalog/ProductGrid'
+import CartPanel from '@/components/catalog/CartPanel'
+import CatalogHeader from '@/components/catalog/CatalogHeader'
+import type { CatalogBusiness, CatalogCartItem, CatalogCategory, CatalogProduct } from '@/components/catalog/types'
 
 type ViewMode = 'grid' | 'list'
 type SortBy = 'name-asc' | 'name-desc' | 'price-asc' | 'price-desc'

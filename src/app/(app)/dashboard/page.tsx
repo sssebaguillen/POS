@@ -1,7 +1,7 @@
 export const runtime = 'edge'
 
 import { createClient } from '@/lib/supabase/server'
-import DashboardView from '@/components/analytics/DashboardView'
+import DashboardView from '@/components/dashboard/DashboardView'
 import type { BusinessBalance } from '@/components/expenses/types'
 import { requireAuthenticatedBusinessId } from '@/lib/business'
 

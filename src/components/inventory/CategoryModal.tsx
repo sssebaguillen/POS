@@ -16,7 +16,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import type { InventoryCategory } from '@/components/stock/types'
+import type { InventoryCategory } from '@/components/inventory/types'
 
 interface CategoryModalProps {
   open: boolean

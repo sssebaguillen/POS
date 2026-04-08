@@ -8,7 +8,7 @@ import DateRangeFilter, { type DateRangePeriod } from '@/components/shared/DateR
 import {
   endOfDay, isCompletedSale, startOfDay, startOfWeek,
   getPreviousPeriodRange, getDayLabel,
-} from '@/components/analytics/utils'
+} from '@/components/dashboard/utils'
 import { PAYMENT_LABELS, PAYMENT_COLORS } from '@/lib/payments'
 import {
   LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,

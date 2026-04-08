@@ -87,7 +87,7 @@ function buildDateParams(period: DateRangePeriod, from?: string, to?: string): s
   return params.toString()
 }
 
-export default function GastosView({
+export default function ExpensesView({
   expenses: initialExpenses,
   balance: initialBalance,
   suppliers: initialSuppliers,

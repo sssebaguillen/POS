@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation'
 import { createClient } from '@supabase/supabase-js'
-import CatalogView from '@/components/catalogo/CatalogView'
+import CatalogView from '@/components/catalog/CatalogView'
 
 interface CatalogPageParams {
   slug: string

@@ -5,7 +5,7 @@ import { ImageIcon, LayoutGrid, List, Plus, Search } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import SelectDropdown from '@/components/ui/SelectDropdown'
-import type { CatalogCategory, CatalogProduct } from '@/components/catalogo/types'
+import type { CatalogCategory, CatalogProduct } from '@/components/catalog/types'
 
 type ViewMode = 'grid' | 'list'
 type SortBy = 'name-asc' | 'name-desc' | 'price-asc' | 'price-desc'

@@ -1,7 +1,7 @@
 export const runtime = 'edge'
 
 import { createClient } from '@/lib/supabase/server'
-import StatsView from '@/components/analytics/StatsView'
+import StatsView from '@/components/stats/StatsView'
 import { requireAuthenticatedBusinessId } from '@/lib/business'
 import { unwrapRelation } from '@/lib/mappers'
 

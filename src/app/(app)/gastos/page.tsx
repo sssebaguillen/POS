@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
-import GastosView from '@/components/expenses/GastosView'
+import ExpensesView from '@/components/expenses/ExpensesView'
 import type { Expense, Supplier, BusinessBalance } from '@/components/expenses/types'
 import { requireAuthenticatedBusinessId } from '@/lib/business'
 
@@ -109,7 +109,7 @@ export default async function GastosPage({
   const suppliers = (suppliersResult.data ?? []) as Supplier[]
 
   return (
-    <GastosView
+    <ExpensesView
       expenses={expenses}
       balance={balance}
       suppliers={suppliers}

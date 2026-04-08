@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { createPortal } from 'react-dom'
 import { ArrowDown, ArrowUp, ChevronDown, Search, SlidersHorizontal, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import type { InventoryBrand, InventoryCategory, SortOption } from '@/components/stock/types'
+import type { InventoryBrand, InventoryCategory, SortOption } from '@/components/inventory/types'
 
 const SORT_OPTIONS: { field: SortOption['field']; label: string }[] = [
   { field: 'name',   label: 'Nombre' },

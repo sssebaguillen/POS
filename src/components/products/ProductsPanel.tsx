@@ -5,10 +5,10 @@ import PageHeader from '@/components/shared/PageHeader'
 import { createClient } from '@/lib/supabase/client'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
-import NewProductModal from '@/components/stock/NewProductModal'
+import NewProductModal from '@/components/inventory/NewProductModal'
 import ConfirmModal from '@/components/shared/ConfirmModal'
 import ExportCSVButton from '@/components/shared/ExportCSVButton'
-import type { InventoryProduct, InventoryBrand } from '@/components/stock/types'
+import type { InventoryProduct, InventoryBrand } from '@/components/inventory/types'
 import type { PriceList } from '@/lib/types'
 import {
   Table,
