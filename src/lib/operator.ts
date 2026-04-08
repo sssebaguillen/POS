@@ -10,6 +10,7 @@ export interface Permissions {
   price_lists_write: boolean
   settings: boolean
   expenses: boolean
+  price_override: boolean
 }
 
 export const OWNER_PERMISSIONS: Permissions = {
@@ -21,6 +22,7 @@ export const OWNER_PERMISSIONS: Permissions = {
   price_lists_write: true,
   settings: true,
   expenses: true,
+  price_override: true,
 }
 
 export interface ActiveOperator {
@@ -66,6 +68,8 @@ export function parsePermissions(value: unknown): Permissions | null {
     price_lists_write: record.price_lists_write,
     settings: record.settings,
     expenses: record.expenses,
+    // Soft default: old cookies without this field stay valid (defaults to false)
+    price_override: record.price_override === true,
   }
 }
 
@@ -79,6 +83,7 @@ export function normalizePermissions(value: Partial<Permissions> | null | undefi
     price_lists_write: value?.price_lists_write === true,
     settings: value?.settings === true,
     expenses: value?.expenses === true,
+    price_override: value?.price_override === true,
   }
 }
 

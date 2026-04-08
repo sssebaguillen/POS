@@ -14,6 +14,7 @@ import { createClient } from '@/lib/supabase/client'
 import { calculateProductPrice } from '@/lib/price-lists'
 import { normalizePayment, PAYMENT_LABELS } from '@/lib/payments'
 import type { PriceList, PriceListOverride } from '@/lib/types'
+import type { Permissions } from '@/lib/operator'
 import { useToast } from '@/hooks/useToast'
 import Toast from '@/components/shared/Toast'
 
@@ -70,10 +71,11 @@ interface Props {
   activePriceList: PriceList | null
   priceListOverrides: PriceListOverride[]
   operatorId: string | null
+  permissions: Permissions | null
 }
 
-export default function CartPanel({ businessId, businessName, activePriceList, priceListOverrides, operatorId }: Props) {
-  const { items, removeItem, updateQuantity, discount, clearCart } = useCartStore()
+export default function CartPanel({ businessId, businessName, activePriceList, priceListOverrides, operatorId, permissions }: Props) {
+  const { items, removeItem, updateQuantity, updatePrice, discount, clearCart } = useCartStore()
   const [showPayment, setShowPayment] = useState(false)
   const { toast, showToast, dismissToast } = useToast()
   const [activeTab, setActiveTab] = useState<RightTab>('current')
@@ -87,6 +89,8 @@ export default function CartPanel({ businessId, businessName, activePriceList, p
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [receiptPreview, setReceiptPreview] = useState<ReceiptData | null>(null)
   const [receiptError, setReceiptError] = useState('')
+  const [editingPriceId, setEditingPriceId] = useState<string | null>(null)
+  const [editPriceValue, setEditPriceValue] = useState('')
   const supabase = useMemo(() => createClient(), [])
 
   const isEmpty = items.length === 0
@@ -358,6 +362,26 @@ export default function CartPanel({ businessId, businessName, activePriceList, p
     clearCart()
   }
 
+  function startPriceEdit(productId: string, currentPrice: number) {
+    if (permissions?.price_override !== true) return
+    setEditingPriceId(productId)
+    setEditPriceValue(String(currentPrice))
+  }
+
+  function commitPriceEdit(productId: string) {
+    const parsed = parseFloat(editPriceValue)
+    if (!isNaN(parsed) && parsed > 0) {
+      updatePrice(productId, parsed)
+    }
+    setEditingPriceId(null)
+    setEditPriceValue('')
+  }
+
+  function cancelPriceEdit() {
+    setEditingPriceId(null)
+    setEditPriceValue('')
+  }
+
   function formatTime(dateString: string) {
     return new Date(dateString).toLocaleTimeString('es-AR', {
       hour: '2-digit',
@@ -446,63 +470,112 @@ export default function CartPanel({ businessId, businessName, activePriceList, p
                 </div>
               ) : (
                 <ul className="divide-y divide-edge-soft">
-                  {items.map(item => (
-                    <li key={item.product.id} className="px-4 py-3 flex items-start gap-3">
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-heading leading-tight truncate">
-                          {item.product.name}
-                        </p>
-                        <div className="flex items-center gap-1.5 mt-0.5">
-                          <p className="text-xs text-hint">
-                            ${(adjustedByProductId.get(item.product.id)?.unit_price ?? item.unit_price).toLocaleString('es-AR')} c/u
+                  {items.map(item => {
+                    const effectivePrice = adjustedByProductId.get(item.product.id)?.unit_price ?? item.unit_price
+                    const effectiveTotal = adjustedByProductId.get(item.product.id)?.total ?? item.total
+                    const isEditingPrice = editingPriceId === item.product.id
+                    const canOverridePrice = permissions?.price_override === true
+
+                    const originalPrice = item.priceIsManual
+                      ? !activePriceList
+                        ? item.product.price
+                        : calculateProductPrice(
+                            item.product.cost,
+                            item.product.price,
+                            item.product.id,
+                            item.product.brand_id,
+                            activePriceList,
+                            priceListOverrides
+                          )
+                      : null
+
+                    return (
+                      <li key={item.product.id} className="px-4 py-3 flex items-start gap-3">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-heading leading-tight truncate">
+                            {item.product.name}
                           </p>
-                          {(() => {
-                            const indicator = getStockIndicator(item.quantity, item.product.stock, item.product.min_stock)
-                            if (!indicator) return null
-                            const isRed = indicator.type === 'zero' || indicator.type === 'negative'
-                            return (
-                              <span className={`inline-flex items-center gap-1 leading-none ${isRed ? 'text-red-500 dark:text-red-400' : 'text-amber-500 dark:text-amber-400'}`}>
-                                <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${isRed ? 'bg-red-500 dark:bg-red-400' : 'bg-amber-400 dark:bg-amber-400'}`} />
-                                {indicator.label && (
-                                  <span className="text-[10px] font-medium tabular-nums">{indicator.label}</span>
+                          <div className="flex items-center gap-1.5 mt-0.5">
+                            {isEditingPrice ? (
+                              <input
+                                type="number"
+                                min={0}
+                                step="any"
+                                autoFocus
+                                value={editPriceValue}
+                                onChange={e => setEditPriceValue(e.target.value)}
+                                onBlur={() => commitPriceEdit(item.product.id)}
+                                onKeyDown={e => {
+                                  if (e.key === 'Enter') commitPriceEdit(item.product.id)
+                                  if (e.key === 'Escape') cancelPriceEdit()
+                                }}
+                                className="w-20 text-right text-xs bg-surface border border-primary rounded px-1 py-0.5 tabular-nums focus:outline-none"
+                              />
+                            ) : (
+                              <div className="flex items-center gap-1">
+                                {originalPrice !== null && originalPrice !== effectivePrice && (
+                                  <span className="text-[10px] text-muted-foreground line-through tabular-nums">
+                                    ${originalPrice.toLocaleString('es-AR')}
+                                  </span>
                                 )}
-                              </span>
-                            )
-                          })()}
+                                <p
+                                  onDoubleClick={() => startPriceEdit(item.product.id, effectivePrice)}
+                                  className={`text-xs tabular-nums ${
+                                    item.priceIsManual ? 'text-primary font-medium' : 'text-hint'
+                                  } ${canOverridePrice ? 'cursor-text' : ''}`}
+                                >
+                                  ${effectivePrice.toLocaleString('es-AR')} c/u
+                                </p>
+                              </div>
+                            )}
+                            {(() => {
+                              const indicator = getStockIndicator(item.quantity, item.product.stock, item.product.min_stock)
+                              if (!indicator) return null
+                              const isRed = indicator.type === 'zero' || indicator.type === 'negative'
+                              return (
+                                <span className={`inline-flex items-center gap-1 leading-none ${isRed ? 'text-red-500 dark:text-red-400' : 'text-amber-500 dark:text-amber-400'}`}>
+                                  <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${isRed ? 'bg-red-500 dark:bg-red-400' : 'bg-amber-400 dark:bg-amber-400'}`} />
+                                  {indicator.label && (
+                                    <span className="text-[10px] font-medium tabular-nums">{indicator.label}</span>
+                                  )}
+                                </span>
+                              )
+                            })()}
+                          </div>
                         </div>
-                      </div>
 
-                      <div className="flex items-center gap-1.5 shrink-0">
-                        <button
-                          onClick={() => updateQuantity(item.product.id, item.quantity - 1)}
-                          className="w-6 h-6 rounded-md bg-surface-alt hover:bg-hover-bg flex items-center justify-center transition-colors"
-                        >
-                          <Minus size={12} />
-                        </button>
-                        <span className="text-sm font-semibold w-6 text-center tabular-nums">
-                          {item.quantity}
-                        </span>
-                        <button
-                          onClick={() => updateQuantity(item.product.id, item.quantity + 1)}
-                          className="w-6 h-6 rounded-md bg-surface-alt hover:bg-hover-bg flex items-center justify-center transition-colors"
-                        >
-                          <Plus size={12} />
-                        </button>
-                      </div>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <button
+                            onClick={() => updateQuantity(item.product.id, item.quantity - 1)}
+                            className="w-6 h-6 rounded-md bg-surface-alt hover:bg-hover-bg flex items-center justify-center transition-colors"
+                          >
+                            <Minus size={12} />
+                          </button>
+                          <span className="text-sm font-semibold w-6 text-center tabular-nums">
+                            {item.quantity}
+                          </span>
+                          <button
+                            onClick={() => updateQuantity(item.product.id, item.quantity + 1)}
+                            className="w-6 h-6 rounded-md bg-surface-alt hover:bg-hover-bg flex items-center justify-center transition-colors"
+                          >
+                            <Plus size={12} />
+                          </button>
+                        </div>
 
-                      <div className="text-right shrink-0">
-                        <p className="text-sm font-semibold text-heading tabular-nums">
-                          ${(adjustedByProductId.get(item.product.id)?.total ?? item.total).toLocaleString('es-AR')}
-                        </p>
-                        <button
-                          onClick={() => removeItem(item.product.id)}
-                          className="text-faint hover:text-red-400 transition-colors mt-1"
-                        >
-                          <Trash2 size={12} />
-                        </button>
-                      </div>
-                    </li>
-                  ))}
+                        <div className="text-right shrink-0 min-w-[60px]">
+                          <p className={`text-sm font-semibold tabular-nums ${item.priceIsManual ? 'text-primary' : 'text-heading'}`}>
+                            ${effectiveTotal.toLocaleString('es-AR')}
+                          </p>
+                          <button
+                            onClick={() => removeItem(item.product.id)}
+                            className="text-faint hover:text-red-400 transition-colors mt-1"
+                          >
+                            <Trash2 size={12} />
+                          </button>
+                        </div>
+                      </li>
+                    )
+                  })}
                 </ul>
               )}
             </div>

@@ -16,12 +16,13 @@ const PERMISSION_LABELS: { key: keyof Permissions; label: string }[] = [
   { key: 'expenses',           label: 'Gastos' },
   { key: 'price_lists',        label: 'Ver listas de precios' },
   { key: 'price_lists_write',  label: 'Modificar listas de precios' },
+  { key: 'price_override',     label: 'Editar precio en venta' },
   { key: 'settings',           label: 'Configuración' },
 ]
 
 const ROLE_DEFAULTS: Record<'manager' | 'cashier', Permissions> = {
-  manager: { sales: true, stock: true, stock_write: true,  stats: true,  expenses: true,  price_lists: true,  price_lists_write: true,  settings: false },
-  cashier: { sales: true, stock: true, stock_write: false, stats: false, expenses: false, price_lists: false, price_lists_write: false, settings: false },
+  manager: { sales: true, stock: true, stock_write: true,  stats: true,  expenses: true,  price_lists: true,  price_lists_write: true,  settings: false, price_override: false },
+  cashier: { sales: true, stock: true, stock_write: false, stats: false, expenses: false, price_lists: false, price_lists_write: false, settings: false, price_override: false },
 }
 
 function permissionsMatch(a: Permissions, b: Permissions): boolean {
