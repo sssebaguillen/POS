@@ -471,7 +471,7 @@ function SalesHistoryTable({ rows, businessId, businessName }: Props) {
       )}
 
       {editingSale && (
-        <div className="absolute inset-0 z-40 bg-background flex flex-col">
+        <div className="absolute inset-0 z-40 bg-card flex flex-col">
           <div className="flex items-center gap-3 px-4 h-12 border-b border-edge shrink-0">
             <button
               onClick={() => setEditingSale(null)}
@@ -633,13 +633,13 @@ function EditSalePanel({
         <div className="grid grid-cols-2 gap-2">
           <Button
             variant="cancel"
-            className="h-10 rounded-xl text-sm"
+            className="h-9 rounded-lg text-sm"
             onClick={onCancel}
           >
             Cancelar
           </Button>
           <Button
-            className="h-10 rounded-lg text-sm font-semibold bg-primary hover:bg-primary/90 text-primary-foreground"
+            className="h-9 rounded-lg text-sm font-semibold bg-primary hover:bg-primary/90 text-primary-foreground"
             disabled={items.length === 0}
             onClick={() =>
               onSave(

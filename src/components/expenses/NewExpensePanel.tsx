@@ -75,7 +75,7 @@ export default function NewExpensePanel({ businessId, supabaseClient: supabase, 
   }
 
   return (
-    <div className="fixed inset-y-0 right-0 z-40 w-full max-w-md bg-background border-l border-edge shadow-xl flex flex-col">
+    <div className="fixed inset-y-0 right-0 z-40 w-full max-w-md bg-card border-l border-edge shadow-xl flex flex-col">
       <div className="h-14 border-b border-edge/60 flex items-center justify-between px-5 shrink-0">
         <h2 className="font-semibold text-heading">Nuevo gasto</h2>
         <button
@@ -172,7 +172,7 @@ export default function NewExpensePanel({ businessId, supabaseClient: supabase, 
         <Button
           type="button"
           variant="outline"
-          className="flex-1"
+          className="flex-1 h-9 rounded-lg text-sm"
           onClick={onClose}
           disabled={saving}
         >
@@ -180,7 +180,7 @@ export default function NewExpensePanel({ businessId, supabaseClient: supabase, 
         </Button>
         <Button
           type="button"
-          className="btn-primary-gradient flex-1"
+          className="flex-1 h-9 rounded-lg text-sm font-semibold bg-primary hover:bg-primary/90 text-primary-foreground"
           disabled={saving}
           onClick={handleSubmit}
         >
