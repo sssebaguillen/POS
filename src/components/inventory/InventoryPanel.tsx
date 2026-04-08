@@ -1202,24 +1202,23 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
             ))}
           </div>
 
-          <span className="text-xs text-subtle ml-auto shrink-0">
-
           {!readOnly && selectionMode && (
-            <div className="flex items-center gap-2 shrink-0 mr-2">
+            <div className="flex items-center gap-2 shrink-0 ml-auto">
               <button
                 type="button"
                 onClick={selectedIds.size === filtered.length ? handleDeselectAll : handleSelectAll}
-                className="text-xs text-primary hover:text-primary/80 font-medium transition-colors"
+                className="inline-flex items-center gap-1 rounded-md border border-primary/30 bg-primary/5 px-2.5 py-1 text-xs font-medium text-primary hover:bg-primary/10 transition-colors"
               >
+                <CheckSquare size={12} />
                 {selectedIds.size === filtered.length ? 'Deseleccionar todo' : 'Seleccionar todo'}
               </button>
-              <span className="text-edge">|</span>
               <button
                 type="button"
                 onClick={handleCloseSelection}
-                className="text-xs text-subtle hover:text-body font-medium transition-colors"
+                className="inline-flex items-center gap-1 rounded-md border border-edge px-2.5 py-1 text-xs font-medium text-subtle hover:text-body hover:bg-surface-alt transition-colors"
               >
-                Cancelar
+                <X size={12} />
+                Cancelar seleccion
               </button>
             </div>
           )}
@@ -1228,17 +1227,18 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
             <button
               type="button"
               onClick={() => setSelectionMode(true)}
-              className="flex items-center gap-1.5 text-xs text-subtle hover:text-body font-medium transition-colors mr-2"
+              className="inline-flex items-center gap-1 rounded-md border border-edge px-2.5 py-1 text-xs font-medium text-subtle hover:text-body hover:bg-surface-alt transition-colors ml-auto shrink-0"
             >
               <CheckSquare size={13} />
               Seleccionar
             </button>
           )}
 
-          {filtered.length} productos
-          {selectionMode && selectedIds.size > 0 && (
-            <span className="text-primary font-medium"> ({selectedIds.size} sel.)</span>
-          )}
+          <span className={`text-xs text-subtle shrink-0 ${selectionMode ? '' : 'ml-auto'}`}>
+            {filtered.length} productos
+            {selectionMode && selectedIds.size > 0 && (
+              <span className="text-primary font-medium"> ({selectedIds.size} sel.)</span>
+            )}
           </span>
 
           <div className="flex items-center gap-1 shrink-0 border border-edge rounded-lg p-0.5">

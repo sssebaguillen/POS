@@ -63,7 +63,7 @@ export default function BulkActionBar({
 
   return (
     <>
-      <div className="fixed bottom-0 inset-x-0 z-40 flex items-center justify-center px-4 pb-4 pointer-events-none">
+      <div className="fixed bottom-14 inset-x-0 z-40 flex items-center justify-center px-4 pointer-events-none">
         <div className="surface-elevated rounded-2xl shadow-2xl border border-edge/60 px-5 py-3 flex items-center gap-3 pointer-events-auto max-w-3xl w-full overflow-x-auto flex-nowrap">
           <span className="text-sm font-semibold text-heading shrink-0 whitespace-nowrap">
             {selectedCount} {selectedCount === 1 ? 'producto' : 'productos'}
