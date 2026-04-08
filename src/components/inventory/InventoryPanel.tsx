@@ -1157,23 +1157,6 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
             Nuevo producto
           </Button>
         )}
-        {!readOnly && (
-          <Button
-            variant={selectionMode ? 'default' : 'outline'}
-            size="sm"
-            className={`rounded-lg text-xs gap-1.5 ${selectionMode ? 'bg-primary hover:bg-primary/90 text-primary-foreground' : ''}`}
-            onClick={() => {
-              if (selectionMode) {
-                handleCloseSelection()
-              } else {
-                setSelectionMode(true)
-              }
-            }}
-          >
-            <CheckSquare size={13} />
-            {selectionMode ? 'Cancelar seleccion' : 'Seleccionar'}
-          </Button>
-        )}
       </PageHeader>
 
       <div className="bg-surface border-b border-edge/60 px-5 py-3">
@@ -1219,10 +1202,10 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
             ))}
           </div>
 
-          <span className="text-xs text-subtle ml-auto shrink-0">{filtered.length} productos</span>
+          <span className="text-xs text-subtle ml-auto shrink-0">
 
-          {selectionMode && (
-            <div className="flex items-center gap-2 shrink-0">
+          {!readOnly && selectionMode && (
+            <div className="flex items-center gap-2 shrink-0 mr-2">
               <button
                 type="button"
                 onClick={selectedIds.size === filtered.length ? handleDeselectAll : handleSelectAll}
@@ -1230,11 +1213,33 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
               >
                 {selectedIds.size === filtered.length ? 'Deseleccionar todo' : 'Seleccionar todo'}
               </button>
-              {selectedIds.size > 0 && (
-                <span className="text-xs text-subtle">({selectedIds.size})</span>
-              )}
+              <span className="text-edge">|</span>
+              <button
+                type="button"
+                onClick={handleCloseSelection}
+                className="text-xs text-subtle hover:text-body font-medium transition-colors"
+              >
+                Cancelar
+              </button>
             </div>
           )}
+
+          {!readOnly && !selectionMode && (
+            <button
+              type="button"
+              onClick={() => setSelectionMode(true)}
+              className="flex items-center gap-1.5 text-xs text-subtle hover:text-body font-medium transition-colors mr-2"
+            >
+              <CheckSquare size={13} />
+              Seleccionar
+            </button>
+          )}
+
+          {filtered.length} productos
+          {selectionMode && selectedIds.size > 0 && (
+            <span className="text-primary font-medium"> ({selectedIds.size} sel.)</span>
+          )}
+          </span>
 
           <div className="flex items-center gap-1 shrink-0 border border-edge rounded-lg p-0.5">
             <button

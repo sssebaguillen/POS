@@ -64,18 +64,18 @@ export default function BulkActionBar({
   return (
     <>
       <div className="fixed bottom-0 inset-x-0 z-40 flex items-center justify-center px-4 pb-4 pointer-events-none">
-        <div className="surface-elevated rounded-2xl shadow-lg border border-edge/60 px-5 py-3 flex items-center gap-3 flex-wrap pointer-events-auto max-w-3xl w-full">
-          <span className="text-sm font-semibold text-heading shrink-0">
-            {selectedCount} {selectedCount === 1 ? 'producto seleccionado' : 'productos seleccionados'}
+        <div className="surface-elevated rounded-2xl shadow-2xl border border-edge/60 px-5 py-3 flex items-center gap-3 pointer-events-auto max-w-3xl w-full overflow-x-auto flex-nowrap">
+          <span className="text-sm font-semibold text-heading shrink-0 whitespace-nowrap">
+            {selectedCount} {selectedCount === 1 ? 'producto' : 'productos'}
           </span>
 
-          <div className="h-5 w-px bg-edge/60 hidden sm:block" />
+          <div className="h-5 w-px bg-edge/60 shrink-0" />
 
-          <div className="flex items-center gap-2 flex-wrap flex-1 min-w-0">
+          <div className="flex items-center gap-2 shrink-0">
             <Button
               variant="outline"
               size="sm"
-              className="rounded-lg text-xs gap-1.5"
+              className="rounded-lg text-xs gap-1.5 hover:bg-surface-alt"
               disabled={loading}
               onClick={onActivate}
             >
@@ -86,7 +86,7 @@ export default function BulkActionBar({
             <Button
               variant="outline"
               size="sm"
-              className="rounded-lg text-xs gap-1.5"
+              className="rounded-lg text-xs gap-1.5 hover:bg-surface-alt"
               disabled={loading}
               onClick={onDeactivate}
             >
@@ -99,7 +99,7 @@ export default function BulkActionBar({
                 <Button
                   variant="outline"
                   size="sm"
-                  className="rounded-lg text-xs gap-1.5"
+                  className="rounded-lg text-xs gap-1.5 hover:bg-surface-alt"
                   disabled={loading}
                 >
                   <Tag size={13} />
@@ -141,7 +141,7 @@ export default function BulkActionBar({
                 <Button
                   variant="outline"
                   size="sm"
-                  className="rounded-lg text-xs gap-1.5"
+                  className="rounded-lg text-xs gap-1.5 hover:bg-surface-alt"
                   disabled={loading}
                 >
                   <Stamp size={13} />
@@ -189,14 +189,6 @@ export default function BulkActionBar({
               Eliminar
             </Button>
           </div>
-
-          <button
-            type="button"
-            onClick={onClose}
-            className="text-hint hover:text-body transition-colors shrink-0 p-1"
-          >
-            <X size={16} />
-          </button>
         </div>
       </div>
 
