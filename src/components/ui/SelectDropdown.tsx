@@ -99,7 +99,7 @@ export default function SelectDropdown({ value, onChange, options, placeholder, 
         ref={buttonRef}
         type="button"
         onClick={() => setOpen(prev => !prev)}
-        className="h-9 w-full rounded-xl border border-edge bg-surface text-sm text-body px-3 flex items-center justify-between gap-2 transition-colors hover:bg-surface-alt"
+        className="h-9 w-full rounded-lg border border-input bg-card text-sm text-body px-3 flex items-center justify-between gap-2 transition-colors hover:bg-surface-alt dark:bg-input/30"
       >
         <span className="truncate">{selectedLabel}</span>
         <ChevronDown size={14} className={`shrink-0 text-subtle transition-transform ${open ? 'rotate-180' : ''}`} />

@@ -82,7 +82,7 @@ export default function SupplierSelectDropdown({ value, onChange, businessId, su
       <button
         type="button"
         onClick={() => setOpen(prev => !prev)}
-        className="w-full flex items-center justify-between h-10 px-3 rounded-xl border border-edge bg-input text-sm text-body hover:bg-hover-bg transition-colors"
+        className="w-full flex items-center justify-between h-9 px-3 rounded-lg border border-input bg-card text-sm text-body hover:bg-surface-alt transition-colors dark:bg-input/30"
       >
         <span className={selected ? 'text-heading' : 'text-hint'}>
           {selected ? selected.name : placeholder}

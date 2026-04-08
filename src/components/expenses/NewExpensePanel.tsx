@@ -147,7 +147,7 @@ export default function NewExpensePanel({ businessId, supabaseClient: supabase, 
             onChange={e => setNotes(e.target.value)}
             rows={3}
             placeholder="Información adicional..."
-            className="w-full rounded-xl border border-edge bg-input px-3 py-2 text-sm text-body placeholder:text-hint resize-none focus:outline-none focus:ring-2 focus:ring-primary/40"
+            className="w-full rounded-lg border border-input bg-card px-3 py-2 text-sm text-body placeholder:text-hint resize-none focus:outline-none focus:ring-2 focus:ring-primary/40 dark:bg-input/30"
           />
         </div>
 
