@@ -501,22 +501,6 @@ export default function CartPanel({ businessId, businessName, activePriceList, p
                             {item.product.name}
                           </p>
                           <div className="flex items-center gap-1.5 mt-0.5">
-                            {isEditingPrice ? (
-                              <input
-                                type="number"
-                                min={0}
-                                step="any"
-                                autoFocus
-                                value={editPriceValue}
-                                onChange={e => setEditPriceValue(e.target.value)}
-                                onBlur={() => commitPriceEdit(item.product.id)}
-                                onKeyDown={e => {
-                                  if (e.key === 'Enter') commitPriceEdit(item.product.id)
-                                  if (e.key === 'Escape') cancelPriceEdit()
-                                }}
-                                className="w-20 text-right text-xs bg-surface border border-primary rounded px-1 py-0.5 tabular-nums focus:outline-none"
-                              />
-                            ) : (
                               <div className="flex items-center gap-1">
                                 {originalPrice !== null && originalPrice !== effectivePrice && (
                                   <span className="text-[10px] text-muted-foreground line-through tabular-nums">
@@ -530,18 +514,7 @@ export default function CartPanel({ businessId, businessName, activePriceList, p
                                 >
                                   ${effectivePrice.toLocaleString('es-AR')} c/u
                                 </p>
-                                {canOverridePrice && (
-                                  <button
-                                    type="button"
-                                    onClick={() => startPriceEdit(item.product.id, effectivePrice)}
-                                    className="text-faint hover:text-primary transition-colors"
-                                    aria-label="Editar precio"
-                                  >
-                                    <Pencil size={12} />
-                                  </button>
-                                )}
                               </div>
-                            )}
                             {(() => {
                               const indicator = getStockIndicator(item.quantity, item.product.stock, item.product.min_stock)
                               if (!indicator) return null
@@ -577,15 +550,44 @@ export default function CartPanel({ businessId, businessName, activePriceList, p
                         </div>
 
                         <div className="text-right shrink-0 min-w-[60px]">
-                          <p className={`text-sm font-semibold tabular-nums ${item.priceIsManual ? 'text-primary' : 'text-heading'}`}>
-                            ${effectiveTotal.toLocaleString('es-AR')}
-                          </p>
-                          <button
-                            onClick={() => removeItem(item.product.id)}
-                            className="text-faint hover:text-red-400 transition-colors mt-1"
-                          >
-                            <Trash2 size={12} />
-                          </button>
+                          {isEditingPrice ? (
+                            <input
+                              type="number"
+                              min={0}
+                              step="any"
+                              autoFocus
+                              value={editPriceValue}
+                              onChange={e => setEditPriceValue(e.target.value)}
+                              onBlur={() => commitPriceEdit(item.product.id)}
+                              onKeyDown={e => {
+                                if (e.key === 'Enter') commitPriceEdit(item.product.id)
+                                if (e.key === 'Escape') cancelPriceEdit()
+                              }}
+                              className="w-20 text-right text-sm bg-surface border border-primary rounded px-1 py-0.5 tabular-nums focus:outline-none"
+                            />
+                          ) : (
+                            <p className={`text-sm font-semibold tabular-nums ${item.priceIsManual ? 'text-primary' : 'text-heading'}`}>
+                              ${effectiveTotal.toLocaleString('es-AR')}
+                            </p>
+                          )}
+                          <div className="flex items-center justify-end gap-1.5 mt-1">
+                            {canOverridePrice && !isEditingPrice && (
+                              <button
+                                type="button"
+                                onClick={() => startPriceEdit(item.product.id, effectivePrice)}
+                                className="text-faint hover:text-primary transition-colors"
+                                aria-label="Editar precio"
+                              >
+                                <Pencil size={12} />
+                              </button>
+                            )}
+                            <button
+                              onClick={() => removeItem(item.product.id)}
+                              className="text-faint hover:text-red-400 transition-colors"
+                            >
+                              <Trash2 size={12} />
+                            </button>
+                          </div>
                         </div>
                       </li>
                     )
