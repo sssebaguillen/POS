@@ -1,9 +1,10 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useRef } from 'react'
 import { Paperclip, Trash2, Loader2 } from 'lucide-react'
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { EXPENSE_CATEGORY_LABELS, type Expense } from './types'
+import { EXPENSE_CATEGORY_LABELS, type Expense, type ExpenseAttachmentType } from './types'
+import ExpenseAttachmentModal from './ExpenseAttachmentModal'
 
 /** Extracts the storage path from either a legacy full Supabase URL or a bare path. */
 function extractStoragePath(url: string): string {
@@ -27,6 +28,12 @@ export default function ExpensesTable({ expenses, businessId, supabaseClient, on
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [loadingAttachmentId, setLoadingAttachmentId] = useState<string | null>(null)
   const [attachmentError, setAttachmentError] = useState<string | null>(null)
+  const [modal, setModal] = useState<{
+    signedUrl: string
+    type: ExpenseAttachmentType | null
+    name: string | null
+  } | null>(null)
+  const latestRequestRef = useRef(0)
 
   async function handleDelete(id: string) {
     setDeletingId(id)
@@ -41,19 +48,26 @@ export default function ExpensesTable({ expenses, businessId, supabaseClient, on
     onDeleted(id)
   }
 
-  async function handleOpenAttachment(expenseId: string, rawUrl: string) {
+  async function handleOpenAttachment(
+    expenseId: string,
+    rawUrl: string,
+    type: ExpenseAttachmentType | null,
+    name: string | null,
+  ) {
+    const requestId = ++latestRequestRef.current
     setAttachmentError(null)
     setLoadingAttachmentId(expenseId)
     const path = extractStoragePath(rawUrl)
     const { data, error } = await supabase.storage
       .from('expense-receipts')
       .createSignedUrl(path, 3600)
+    if (requestId !== latestRequestRef.current) return
     setLoadingAttachmentId(null)
     if (error || !data?.signedUrl) {
       setAttachmentError('No se pudo cargar el documento. Intenta de nuevo.')
       return
     }
-    window.open(data.signedUrl, '_blank', 'noopener,noreferrer')
+    setModal({ signedUrl: data.signedUrl, type, name })
   }
 
   if (expenses.length === 0) {
@@ -66,6 +80,7 @@ export default function ExpensesTable({ expenses, businessId, supabaseClient, on
   }
 
   return (
+    <>
     <div className="surface-card overflow-hidden">
       {attachmentError && (
         <div className="px-4 py-2 text-xs text-destructive border-b border-edge/40 bg-destructive/5">
@@ -106,7 +121,7 @@ export default function ExpensesTable({ expenses, businessId, supabaseClient, on
                 {expense.attachment_url ? (
                   <button
                     type="button"
-                    onClick={() => handleOpenAttachment(expense.id, expense.attachment_url!)}
+                    onClick={() => handleOpenAttachment(expense.id, expense.attachment_url!, expense.attachment_type, expense.attachment_name)}
                     disabled={loadingAttachmentId === expense.id}
                     className="inline-flex items-center justify-center text-primary hover:text-primary/70 transition-colors disabled:opacity-50"
                     title={expense.attachment_name ?? 'Ver adjunto'}
@@ -136,5 +151,14 @@ export default function ExpensesTable({ expenses, businessId, supabaseClient, on
         </tbody>
       </table>
     </div>
+    {modal && (
+      <ExpenseAttachmentModal
+        signedUrl={modal.signedUrl}
+        type={modal.type}
+        name={modal.name}
+        onClose={() => setModal(null)}
+      />
+    )}
+  </>
   )
 }
