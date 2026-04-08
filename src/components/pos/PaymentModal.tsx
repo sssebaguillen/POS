@@ -104,6 +104,8 @@ export default function PaymentModal({
         quantity: item.quantity,
         unit_price: item.unit_price,
         total: item.total,
+        unit_price_override: item.unit_price_override,
+        override_reason: item.override_reason,
       })),
       p_payment_method: method,
       p_payment_amount: total,

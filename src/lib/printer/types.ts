@@ -5,6 +5,8 @@ export interface SaleItemInput {
   quantity: number
   unit_price: number
   total: number
+  unit_price_override: number | null
+  override_reason: string | null
 }
 
 export interface ReceiptItemInput extends SaleItemInput {

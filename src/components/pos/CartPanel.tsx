@@ -115,6 +115,8 @@ export default function CartPanel({ businessId, businessName, activePriceList, p
         quantity: item.quantity,
         unit_price: unitPrice,
         total: item.quantity * unitPrice,
+        unit_price_override: item.priceIsManual ? unitPrice : null,
+        override_reason: null,
       }
     })
   }, [items, activePriceList, priceListOverrides])
@@ -140,6 +142,8 @@ export default function CartPanel({ businessId, businessName, activePriceList, p
         quantity: item.quantity,
         unit_price: adjusted?.unit_price ?? item.unit_price,
         total: adjusted?.total ?? item.total,
+        unit_price_override: item.priceIsManual ? (adjusted?.unit_price ?? item.unit_price) : null,
+        override_reason: null,
       }
     })
   }, [adjustedByProductId, items])
