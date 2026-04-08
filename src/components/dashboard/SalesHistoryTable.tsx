@@ -10,6 +10,8 @@ import { buildReceiptData } from '@/lib/printer/receipt'
 import type { ReceiptData } from '@/lib/printer/types'
 import { createClient } from '@/lib/supabase/client'
 import { normalizePayment, PAYMENT_LABELS } from '@/lib/payments'
+import { useToast } from '@/hooks/useToast'
+import Toast from '@/components/shared/Toast'
 
 interface SaleItem {
   id: string
@@ -62,6 +64,7 @@ function SalesHistoryTable({ rows, businessId, businessName }: Props) {
   const [receiptError, setReceiptError] = useState('')
   const supabase = useMemo(() => createClient(), [])
   const queryClient = useQueryClient()
+  const { toast, showToast, dismissToast } = useToast()
 
   const filteredRows = useMemo(() => {
     return localRows.filter(row => {
@@ -191,6 +194,7 @@ function SalesHistoryTable({ rows, businessId, businessName }: Props) {
       setSaleDetails(prev => { const next = { ...prev }; delete next[saleId]; return next })
       if (expandedSaleId === saleId) setExpandedSaleId(null)
       void queryClient.invalidateQueries({ queryKey: ['expenses'] })
+      showToast({ message: 'Venta eliminada' })
     },
     onSettled: () => {
       setDeletingId(null)
@@ -251,6 +255,7 @@ function SalesHistoryTable({ rows, businessId, businessName }: Props) {
       })
       setEditingSale(null)
       void queryClient.invalidateQueries({ queryKey: ['expenses'] })
+      showToast({ message: 'Venta actualizada' })
     },
   })
 
@@ -494,6 +499,8 @@ function SalesHistoryTable({ rows, businessId, businessName }: Props) {
           onClose={() => setReceiptPreview(null)}
         />
       )}
+
+      {toast && <Toast message={toast.message} duration={toast.duration} onDismiss={dismissToast} />}
     </div>
   )
 }
