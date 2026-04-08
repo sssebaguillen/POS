@@ -89,7 +89,7 @@ export default function CartPanel({ businessId, businessName, activePriceList, p
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [receiptPreview, setReceiptPreview] = useState<ReceiptData | null>(null)
   const [receiptError, setReceiptError] = useState('')
-  const [editingPriceId, setEditingPriceId] = useState<string | null>(null)
+  const [editingPrice, setEditingPrice] = useState<{ productId: string; mode: 'unit' | 'total' } | null>(null)
   const [editPriceValue, setEditPriceValue] = useState('')
   const priceEditResolvedRef = useRef(false)
   const supabase = useMemo(() => createClient(), [])
@@ -363,27 +363,28 @@ export default function CartPanel({ businessId, businessName, activePriceList, p
     clearCart()
   }
 
-  function startPriceEdit(productId: string, currentPrice: number) {
+  function startPriceEdit(productId: string, currentValue: number, mode: 'unit' | 'total') {
     if (permissions?.price_override !== true) return
     priceEditResolvedRef.current = false
-    setEditingPriceId(productId)
-    setEditPriceValue(String(currentPrice))
+    setEditingPrice({ productId, mode })
+    setEditPriceValue(String(currentValue))
   }
 
-  function commitPriceEdit(productId: string) {
+  function commitPriceEdit(productId: string, quantity: number) {
     if (priceEditResolvedRef.current) return
     priceEditResolvedRef.current = true
     const parsed = parseFloat(editPriceValue)
     if (!isNaN(parsed) && parsed > 0) {
-      updatePrice(productId, parsed)
+      const unitPrice = editingPrice?.mode === 'total' ? parsed / quantity : parsed
+      updatePrice(productId, unitPrice)
     }
-    setEditingPriceId(null)
+    setEditingPrice(null)
     setEditPriceValue('')
   }
 
   function cancelPriceEdit() {
     priceEditResolvedRef.current = true
-    setEditingPriceId(null)
+    setEditingPrice(null)
     setEditPriceValue('')
   }
 
@@ -478,7 +479,8 @@ export default function CartPanel({ businessId, businessName, activePriceList, p
                   {items.map(item => {
                     const effectivePrice = adjustedByProductId.get(item.product.id)?.unit_price ?? item.unit_price
                     const effectiveTotal = adjustedByProductId.get(item.product.id)?.total ?? item.total
-                    const isEditingPrice = editingPriceId === item.product.id
+                    const isEditingUnit = editingPrice?.productId === item.product.id && editingPrice.mode === 'unit'
+                    const isEditingTotal = editingPrice?.productId === item.product.id && editingPrice.mode === 'total'
                     const canOverridePrice = permissions?.price_override === true
 
                     const originalPrice = item.priceIsManual
@@ -507,13 +509,42 @@ export default function CartPanel({ businessId, businessName, activePriceList, p
                                     ${originalPrice.toLocaleString('es-AR')}
                                   </span>
                                 )}
-                                <p
-                                  className={`text-xs tabular-nums ${
-                                    item.priceIsManual ? 'text-primary font-medium' : 'text-hint'
-                                  }`}
-                                >
-                                  ${effectivePrice.toLocaleString('es-AR')} c/u
-                                </p>
+                                {isEditingUnit ? (
+                                  <input
+                                    type="number"
+                                    min={0}
+                                    step="any"
+                                    autoFocus
+                                    value={editPriceValue}
+                                    onChange={e => setEditPriceValue(e.target.value)}
+                                    onBlur={() => commitPriceEdit(item.product.id, item.quantity)}
+                                    onKeyDown={e => {
+                                      if (e.key === 'Enter') commitPriceEdit(item.product.id, item.quantity)
+                                      if (e.key === 'Escape') cancelPriceEdit()
+                                    }}
+                                    className="w-20 text-right text-xs bg-surface border border-primary rounded px-1 py-0.5 tabular-nums focus:outline-none"
+                                  />
+                                ) : (
+                                  <>
+                                    <p
+                                      className={`text-xs tabular-nums ${
+                                        item.priceIsManual ? 'text-primary font-medium' : 'text-hint'
+                                      }`}
+                                    >
+                                      ${effectivePrice.toLocaleString('es-AR')} c/u
+                                    </p>
+                                    {canOverridePrice && (
+                                      <button
+                                        type="button"
+                                        onClick={() => startPriceEdit(item.product.id, effectivePrice, 'unit')}
+                                        className="text-faint hover:text-primary transition-colors"
+                                        aria-label="Editar precio unitario"
+                                      >
+                                        <Pencil size={10} />
+                                      </button>
+                                    )}
+                                  </>
+                                )}
                               </div>
                             {(() => {
                               const indicator = getStockIndicator(item.quantity, item.product.stock, item.product.min_stock)
@@ -550,7 +581,7 @@ export default function CartPanel({ businessId, businessName, activePriceList, p
                         </div>
 
                         <div className="text-right shrink-0 min-w-[60px]">
-                          {isEditingPrice ? (
+                          {isEditingTotal ? (
                             <input
                               type="number"
                               min={0}
@@ -558,9 +589,9 @@ export default function CartPanel({ businessId, businessName, activePriceList, p
                               autoFocus
                               value={editPriceValue}
                               onChange={e => setEditPriceValue(e.target.value)}
-                              onBlur={() => commitPriceEdit(item.product.id)}
+                              onBlur={() => commitPriceEdit(item.product.id, item.quantity)}
                               onKeyDown={e => {
-                                if (e.key === 'Enter') commitPriceEdit(item.product.id)
+                                if (e.key === 'Enter') commitPriceEdit(item.product.id, item.quantity)
                                 if (e.key === 'Escape') cancelPriceEdit()
                               }}
                               className="w-20 text-right text-sm bg-surface border border-primary rounded px-1 py-0.5 tabular-nums focus:outline-none"
@@ -571,12 +602,12 @@ export default function CartPanel({ businessId, businessName, activePriceList, p
                             </p>
                           )}
                           <div className="flex items-center justify-end gap-1.5 mt-1">
-                            {canOverridePrice && !isEditingPrice && (
+                            {canOverridePrice && !isEditingTotal && (
                               <button
                                 type="button"
-                                onClick={() => startPriceEdit(item.product.id, effectivePrice)}
+                                onClick={() => startPriceEdit(item.product.id, effectiveTotal, 'total')}
                                 className="text-faint hover:text-primary transition-colors"
-                                aria-label="Editar precio"
+                                aria-label="Editar total"
                               >
                                 <Pencil size={12} />
                               </button>
