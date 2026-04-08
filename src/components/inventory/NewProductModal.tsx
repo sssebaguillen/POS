@@ -631,7 +631,7 @@ export default function NewProductModal({ open, onClose, businessId, priceLists,
                                 setImageSource('url')
                               }
                             }}
-                            className="h-9 px-4 rounded-xl text-sm bg-primary hover:bg-primary/90 text-primary-foreground shrink-0"
+                            className="h-9 px-4 rounded-lg text-sm bg-primary hover:bg-primary/90 text-primary-foreground shrink-0"
                           >
                             Confirmar
                           </Button>
@@ -690,7 +690,7 @@ export default function NewProductModal({ open, onClose, businessId, priceLists,
             <Button
               type="submit"
               disabled={loading}
-              className="h-9 px-5 rounded-xl text-sm bg-primary hover:bg-primary/90 text-primary-foreground"
+              className="h-9 px-5 rounded-lg text-sm bg-primary hover:bg-primary/90 text-primary-foreground"
             >
               {loading ? 'Guardando…' : 'Crear producto'}
             </Button>

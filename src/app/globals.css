@@ -207,12 +207,12 @@
 
   /* Primary CTA button */
   .btn-primary-gradient {
-    @apply bg-primary text-primary-foreground rounded-2xl py-4 px-6 font-bold text-base transition-colors hover:opacity-90;
+    @apply bg-primary text-primary-foreground rounded-lg py-4 px-6 font-bold text-base transition-colors hover:opacity-90;
   }
 
   /* Destructive button */
   .btn-danger {
-    @apply bg-destructive text-destructive-foreground rounded-2xl py-4 px-6 font-bold text-base transition-colors hover:opacity-90;
+    @apply bg-destructive text-destructive-foreground rounded-lg py-4 px-6 font-bold text-base transition-colors hover:opacity-90;
   }
 
   /*
