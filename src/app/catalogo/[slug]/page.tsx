@@ -84,7 +84,7 @@ export default async function CatalogSlugPage({ params }: CatalogPageProps) {
   const categories = (categoriesResult.data ?? []) as CategoryRow[]
 
   return (
-    <main className="min-h-screen bg-background px-4 py-6 md:px-6 md:py-8">
+    <main className="h-screen overflow-y-auto bg-background px-4 py-6 md:px-6 md:py-8">
       <CatalogView
         business={{
           id: business.id,
