@@ -5,6 +5,7 @@ import { X } from 'lucide-react'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { DatePicker } from '@/components/ui/DatePicker'
 import SelectDropdown from '@/components/ui/SelectDropdown'
 import ExpenseAttachmentUploader from './ExpenseAttachmentUploader'
 import SupplierSelectDropdown from './SupplierSelectDropdown'
@@ -123,10 +124,10 @@ export default function NewExpensePanel({ businessId, supabaseClient: supabase, 
 
         <div className="space-y-1.5">
           <label className="text-sm font-medium text-body">Fecha</label>
-          <Input
-            type="date"
+          <DatePicker
             value={date}
-            onChange={e => setDate(e.target.value)}
+            onChange={setDate}
+            className="w-full"
           />
         </div>
 
