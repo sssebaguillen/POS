@@ -32,6 +32,7 @@ export async function proxy(request: NextRequest) {
     `img-src 'self' data: blob: https: ${supabaseUrl} https://*.supabase.co`,
     "font-src 'self' https://fonts.gstatic.com",
     `connect-src 'self' ${supabaseUrl} ${supabaseWs} https://*.supabase.co`,
+    "frame-src 'self' blob:",
     "frame-ancestors 'none'",
     "object-src 'none'",
     "base-uri 'self'",

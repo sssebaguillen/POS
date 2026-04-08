@@ -18,23 +18,69 @@ function AttachmentIcon({ type }: { type: ExpenseAttachmentType | null }) {
   return <FileText size={16} className="text-hint shrink-0" />
 }
 
+type PdfViewState =
+  | { kind: 'loading' }
+  | { kind: 'error' }
+  | { kind: 'fetched'; blobUrl: string; iframeReady: boolean }
+
 function PreviewContent({ signedUrl, type, name }: { signedUrl: string; type: ExpenseAttachmentType | null; name: string | null }) {
-  const [iframeLoading, setIframeLoading] = useState(true)
+  // PDFs are fetched as a blob and served via a local object URL.
+  // This avoids iframe CSP restrictions on cross-origin URLs and bypasses
+  // any X-Frame-Options headers that Supabase Storage may send.
+  const [pdfState, setPdfState] = useState<PdfViewState>({ kind: 'loading' })
+
+  useEffect(() => {
+    if (type !== 'pdf') return
+    let cancelled = false
+    let objectUrl: string | null = null
+
+    fetch(signedUrl)
+      .then(res => {
+        if (!res.ok) throw new Error(`HTTP ${res.status}`)
+        return res.blob()
+      })
+      .then(blob => {
+        if (cancelled) return
+        objectUrl = URL.createObjectURL(blob)
+        setPdfState({ kind: 'fetched', blobUrl: objectUrl, iframeReady: false })
+      })
+      .catch(() => {
+        if (!cancelled) setPdfState({ kind: 'error' })
+      })
+
+    return () => {
+      cancelled = true
+      if (objectUrl) URL.revokeObjectURL(objectUrl)
+    }
+  }, [signedUrl, type])
 
   if (type === 'pdf') {
+    if (pdfState.kind === 'error') {
+      return (
+        <div className="flex-1 min-h-0 flex flex-col items-center justify-center gap-3 p-8 bg-surface">
+          <FileText size={40} className="text-hint opacity-50" />
+          <p className="text-sm text-body text-center">No se pudo cargar el documento.</p>
+          <p className="text-xs text-hint text-center">
+            Usá el botón &ldquo;Abrir&rdquo; para verlo en una nueva pestaña.
+          </p>
+        </div>
+      )
+    }
     return (
       <div className="relative flex-1 min-h-0">
-        {iframeLoading && (
+        {(pdfState.kind !== 'fetched' || !pdfState.iframeReady) && (
           <div className="absolute inset-0 flex items-center justify-center bg-surface">
             <Loader2 size={24} className="animate-spin text-primary" />
           </div>
         )}
-        <iframe
-          src={signedUrl}
-          title={name ?? 'Adjunto'}
-          className="w-full h-full border-0"
-          onLoad={() => setIframeLoading(false)}
-        />
+        {pdfState.kind === 'fetched' && (
+          <iframe
+            src={pdfState.blobUrl}
+            title={name ?? 'Adjunto'}
+            className="w-full h-full border-0"
+            onLoad={() => setPdfState(s => s.kind === 'fetched' ? { ...s, iframeReady: true } : s)}
+          />
+        )}
       </div>
     )
   }
