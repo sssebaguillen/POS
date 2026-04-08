@@ -67,8 +67,7 @@ export default function OperatorList({ businessId, initialOperators }: Props) {
         </div>
         <Button
           type="button"
-          size="sm"
-          className="shrink-0 rounded-lg text-xs bg-primary hover:bg-primary/90 text-primary-foreground"
+          className="h-9 px-4 rounded-lg text-sm font-semibold bg-primary hover:bg-primary/90 text-primary-foreground shrink-0"
           onClick={() => setShowNewOperatorModal(true)}
         >
           + Nuevo operario

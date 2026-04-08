@@ -268,12 +268,11 @@ export default function PriceListsPanel({
       <PageHeader title="Listas de precios">
         {!readOnly && (
           <Button
-            size="sm"
-            className="rounded-lg text-xs bg-primary hover:bg-primary/90 text-primary-foreground"
+            className="h-9 px-4 rounded-lg text-sm font-semibold bg-primary hover:bg-primary/90 text-primary-foreground shrink-0"
             onClick={() => setShowNewListModal(true)}
             disabled={!businessId}
           >
-            Nueva lista
+            + Nueva lista
           </Button>
         )}
       </PageHeader>

@@ -168,8 +168,7 @@ export default function ExpensesView({
         {!showSuppliers && (
           <Button
             onClick={() => setPanelOpen(true)}
-            size="sm"
-            className="rounded-lg text-xs bg-primary hover:bg-primary/90 text-primary-foreground gap-2"
+            className="h-9 px-4 rounded-lg text-sm font-semibold bg-primary hover:bg-primary/90 text-primary-foreground gap-2 shrink-0"
           >
             <Plus size={15} />
             Nuevo gasto
