@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Minus, Plus, Printer, ShoppingCart, Trash2 } from 'lucide-react'
+import { Minus, Pencil, Plus, Printer, ShoppingCart, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { useCartStore } from '@/lib/store/cart.store'
@@ -91,7 +91,7 @@ export default function CartPanel({ businessId, businessName, activePriceList, p
   const [receiptError, setReceiptError] = useState('')
   const [editingPriceId, setEditingPriceId] = useState<string | null>(null)
   const [editPriceValue, setEditPriceValue] = useState('')
-  const priceEditHandledRef = useRef(false)
+  const priceEditResolvedRef = useRef(false)
   const supabase = useMemo(() => createClient(), [])
 
   const isEmpty = items.length === 0
@@ -365,14 +365,14 @@ export default function CartPanel({ businessId, businessName, activePriceList, p
 
   function startPriceEdit(productId: string, currentPrice: number) {
     if (permissions?.price_override !== true) return
-    priceEditHandledRef.current = false
+    priceEditResolvedRef.current = false
     setEditingPriceId(productId)
     setEditPriceValue(String(currentPrice))
   }
 
   function commitPriceEdit(productId: string) {
-    if (priceEditHandledRef.current) return
-    priceEditHandledRef.current = true
+    if (priceEditResolvedRef.current) return
+    priceEditResolvedRef.current = true
     const parsed = parseFloat(editPriceValue)
     if (!isNaN(parsed) && parsed > 0) {
       updatePrice(productId, parsed)
@@ -382,7 +382,7 @@ export default function CartPanel({ businessId, businessName, activePriceList, p
   }
 
   function cancelPriceEdit() {
-    priceEditHandledRef.current = true
+    priceEditResolvedRef.current = true
     setEditingPriceId(null)
     setEditPriceValue('')
   }
@@ -509,7 +509,7 @@ export default function CartPanel({ businessId, businessName, activePriceList, p
                                 autoFocus
                                 value={editPriceValue}
                                 onChange={e => setEditPriceValue(e.target.value)}
-                                onBlur={() => requestAnimationFrame(() => commitPriceEdit(item.product.id))}
+                                onBlur={() => commitPriceEdit(item.product.id)}
                                 onKeyDown={e => {
                                   if (e.key === 'Enter') commitPriceEdit(item.product.id)
                                   if (e.key === 'Escape') cancelPriceEdit()
@@ -524,13 +524,22 @@ export default function CartPanel({ businessId, businessName, activePriceList, p
                                   </span>
                                 )}
                                 <p
-                                  onDoubleClick={() => startPriceEdit(item.product.id, effectivePrice)}
-                                  className={`text-xs tabular-nums select-none ${
+                                  className={`text-xs tabular-nums ${
                                     item.priceIsManual ? 'text-primary font-medium' : 'text-hint'
-                                  } ${canOverridePrice ? 'cursor-pointer' : ''}`}
+                                  }`}
                                 >
                                   ${effectivePrice.toLocaleString('es-AR')} c/u
                                 </p>
+                                {canOverridePrice && (
+                                  <button
+                                    type="button"
+                                    onClick={() => startPriceEdit(item.product.id, effectivePrice)}
+                                    className="text-faint hover:text-primary transition-colors"
+                                    aria-label="Editar precio"
+                                  >
+                                    <Pencil size={12} />
+                                  </button>
+                                )}
                               </div>
                             )}
                             {(() => {
