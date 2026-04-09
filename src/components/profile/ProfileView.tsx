@@ -166,9 +166,9 @@ export default function ProfileView({ profile, email, business }: Props) {
                   onKeyDown={e => { if (e.key === 'Enter') saveName(); if (e.key === 'Escape') cancelEditName() }}
                 />
                 {nameError && <p className="text-sm text-destructive">{nameError}</p>}
-                <div className="flex gap-2">
+                <div className="flex gap-2 justify-end">
                   <Button variant="outline" size="sm" onClick={cancelEditName} disabled={nameSaving}>Cancelar</Button>
-                  <Button size="sm" className="btn-primary-gradient" onClick={saveName} disabled={nameSaving}>
+                  <Button size="sm" onClick={saveName} disabled={nameSaving}>
                     {nameSaving ? 'Guardando...' : 'Guardar'}
                   </Button>
                 </div>
@@ -213,9 +213,9 @@ export default function ProfileView({ profile, email, business }: Props) {
                     </p>
                   </div>
                   {emailError && <p className="text-sm text-destructive">{emailError}</p>}
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 justify-end">
                     <Button variant="outline" size="sm" onClick={cancelEditEmail} disabled={emailSaving}>Cancelar</Button>
-                    <Button size="sm" className="btn-primary-gradient" onClick={saveEmail} disabled={emailSaving || !emailInput.trim()}>
+                    <Button size="sm" onClick={saveEmail} disabled={emailSaving || !emailInput.trim()}>
                       {emailSaving ? 'Enviando...' : 'Confirmar cambio'}
                     </Button>
                   </div>
@@ -275,9 +275,9 @@ export default function ProfileView({ profile, email, business }: Props) {
                     />
                   </div>
                   {pwError && <p className="text-sm text-destructive">{pwError}</p>}
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 justify-end">
                     <Button variant="outline" size="sm" onClick={cancelEditPassword} disabled={pwSaving}>Cancelar</Button>
-                    <Button size="sm" className="btn-primary-gradient" onClick={savePassword} disabled={pwSaving}>
+                    <Button size="sm" onClick={savePassword} disabled={pwSaving}>
                       {pwSaving ? 'Guardando...' : 'Cambiar contraseña'}
                     </Button>
                   </div>
