@@ -30,11 +30,13 @@ function computeActiveText(hex: string): { light: string; dark: string } {
   }
 }
 
+interface AppLayoutProps {
+  children: React.ReactNode
+}
+
 export default async function AppLayout({
   children,
-}: {
-  children: React.ReactNode
-}) {
+}: AppLayoutProps) {
   const supabase = await createClient()
   const {
     data: { user },

@@ -39,7 +39,11 @@ export function useTheme() {
 
 // ─── Provider ────────────────────────────────────────────────────────────────
 
-export function ThemeProvider({ children }: { children: React.ReactNode }) {
+interface ThemeProviderProps {
+  children: React.ReactNode
+}
+
+export function ThemeProvider({ children }: ThemeProviderProps) {
   const [theme, setTheme] = useState<Theme>(getPreferredTheme)
 
   useEffect(() => {

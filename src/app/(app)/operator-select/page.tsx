@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import OperatorSelectView from '@/components/operator/OperatorSelectView'
 import { getBusinessIdByUserId } from '@/lib/business'
+import type { UserRole } from '@/lib/operator'
 
 interface Profile {
   id: string
@@ -14,7 +15,7 @@ interface Profile {
 interface OperatorRow {
   id: string
   name: string
-  role: 'manager' | 'cashier' | 'custom'
+  role: Exclude<UserRole, 'owner'>
 }
 
 function isOperatorRow(value: unknown): value is OperatorRow {

@@ -21,13 +21,11 @@ export default async function DashboardPage() {
       .select('id, name, category_id, stock, min_stock, is_active')
       .eq('business_id', businessId)
       .limit(5000),
-    businessId
-      ? supabase
-        .from('businesses')
-        .select('name')
-        .eq('id', businessId)
-        .single()
-      : Promise.resolve({ data: null }),
+    supabase
+      .from('businesses')
+      .select('name')
+      .eq('id', businessId)
+      .single(),
     supabase.rpc('get_business_balance', {
       p_business_id: businessId,
       p_from: null,

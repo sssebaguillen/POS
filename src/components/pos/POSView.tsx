@@ -8,14 +8,13 @@ import { useSidebar } from '@/components/shared/AppShell'
 import { useCartStore } from '@/lib/store/cart.store'
 import ProductPanel from '@/components/pos/ProductPanel'
 import CartPanel from '@/components/pos/CartPanel'
-import type { PosCategory, ProductWithCategory, ActiveFilter } from '@/components/pos/types'
+import type { ProductWithCategory, ActiveFilter } from '@/components/pos/types'
 import type { PriceList, PriceListOverride } from '@/lib/types'
 import type { ActiveOperator } from '@/lib/operator'
 import { OWNER_PERMISSIONS } from '@/lib/operator'
 
 interface Props {
   products: ProductWithCategory[]
-  categories: PosCategory[]
   businessId: string | null
   businessName: string
   priceLists: PriceList[]
@@ -433,7 +432,7 @@ export default function POSView({ products, businessId, businessName, priceLists
             businessName={businessName}
             activePriceList={activePriceList}
             priceListOverrides={priceListOverrides}
-            operatorId={activeOperator?.role === 'owner' || !activeOperator ? null : activeOperator.profile_id ?? null}
+            operatorId={activeOperator?.role === 'owner' || !activeOperator ? null : activeOperator.profile_id}
             permissions={activeOperator?.role === 'owner' || !activeOperator ? OWNER_PERMISSIONS : activeOperator.permissions}
           />
         </div>

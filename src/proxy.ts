@@ -15,7 +15,11 @@ function flashRedirect(destination: URL, csp: string): NextResponse {
 }
 
 export async function proxy(request: NextRequest) {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? ''
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  if (!supabaseUrl || !supabaseAnonKey) {
+    throw new Error('Missing Supabase env vars: NEXT_PUBLIC_SUPABASE_URL / NEXT_PUBLIC_SUPABASE_ANON_KEY')
+  }
   const supabaseWs = supabaseUrl.replace(/^https:\/\//, 'wss://')
   const isDev = process.env.NODE_ENV === 'development'
 
@@ -52,8 +56,8 @@ export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
 
   const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    supabaseUrl,
+    supabaseAnonKey,
     {
       cookies: {
         getAll() {
@@ -144,15 +148,13 @@ export async function proxy(request: NextRequest) {
     return flashRedirect(new URL('/pos', request.url), cspHeader)
   }
 
-  const isStockRoute =
-    pathname === '/stock' ||
-    pathname.startsWith('/stock/') ||
+  const isInventoryRoute =
     pathname === '/inventory' ||
     pathname.startsWith('/inventory/') ||
     pathname === '/products' ||
     pathname.startsWith('/products/')
 
-  if (isStockRoute && !hasPermission(operator, 'stock')) {
+  if (isInventoryRoute && !hasPermission(operator, 'stock')) {
     return flashRedirect(new URL('/pos', request.url), cspHeader)
   }
 

@@ -18,7 +18,6 @@ export default async function POSPage() {
   const [
     { data: business, error: businessError },
     { data: products, error: productsError },
-    { data: categories, error: categoriesError },
     { data: priceLists, error: priceListsError },
   ] = await Promise.all([
     supabase
@@ -33,12 +32,6 @@ export default async function POSPage() {
       .eq('is_active', true)
       .order('sales_count', { ascending: false }),
     supabase
-      .from('categories')
-      .select('id, business_id, name, icon, position, is_active')
-      .eq('business_id', businessId)
-      .eq('is_active', true)
-      .order('position'),
-    supabase
       .from('price_lists')
       .select('id, business_id, name, description, multiplier, is_default, created_at')
       .eq('business_id', businessId)
@@ -52,10 +45,6 @@ export default async function POSPage() {
 
   if (productsError) {
     throw new Error(productsError.message)
-  }
-
-  if (categoriesError) {
-    throw new Error(categoriesError.message)
   }
 
   if (priceListsError) {
@@ -89,11 +78,6 @@ export default async function POSPage() {
         image_url: product.image_url ?? null,
         image_source: product.image_source ?? null,
         categories: unwrapRelation(product.categories),
-      }))}
-      categories={(categories ?? []).map(c => ({
-        id: c.id,
-        name: c.name,
-        icon: c.icon,
       }))}
       businessId={businessId}
       businessName={business?.name ?? 'Negocio'}
