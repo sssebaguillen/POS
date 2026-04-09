@@ -1,13 +1,12 @@
 'use client'
 
-import Image from 'next/image'
 import { useRouter } from 'next/navigation'
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { LayoutGrid, LayoutList, Package, Pencil, SlidersHorizontal, X, CheckSquare } from 'lucide-react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { LayoutGrid, LayoutList, SlidersHorizontal, X, CheckSquare } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { Table, TableBody, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import PageHeader from '@/components/shared/PageHeader'
 import FilterSidebar from '@/components/inventory/FilterSidebar'
 import NewProductModal from '@/components/inventory/NewProductModal'
@@ -17,10 +16,13 @@ import BrandModal from './BrandModal'
 import ImportProductsModal from '@/components/inventory/ImportProductsModal'
 import ConfirmModal from '@/components/shared/ConfirmModal'
 import BulkActionBar from '@/components/inventory/BulkActionBar'
-import { Dialog, DialogContent } from '@/components/ui/dialog'
-import SelectDropdown from '@/components/ui/SelectDropdown'
+import QuickEditCategoryModal from '@/components/inventory/QuickEditCategoryModal'
+import QuickEditBrandModal from '@/components/inventory/QuickEditBrandModal'
+import ProductCard from '@/components/inventory/ProductCard'
+import ProductListRow from '@/components/inventory/ProductListRow'
 import type { PriceList, PriceListOverride } from '@/lib/types'
 import type { InventoryBrand, InventoryCategory, InventoryProduct, SortOption } from '@/components/inventory/types'
+import { getStatus } from '@/components/inventory/types'
 import { useToast } from '@/hooks/useToast'
 import Toast from '@/components/shared/Toast'
 
@@ -39,603 +41,10 @@ interface Props {
   brands: InventoryBrand[]
   priceLists: PriceList[]
   productOverrides: PriceListOverride[]
+  initialViewMode?: 'grid' | 'list'
 }
 
-function getStatus(product: InventoryProduct): 'ok' | 'low' | 'out' | 'discontinued' {
-  if (!product.is_active) return 'discontinued'
-  if (product.stock <= 0) return 'out'
-  if (product.stock <= product.min_stock) return 'low'
-  return 'ok'
-}
-
-const statusConfig = {
-  ok: {
-    label: 'EN STOCK',
-    border: 'border-emerald-300 dark:border-emerald-800/50',
-    hoverBorder: 'hover:border-emerald-300 dark:hover:border-emerald-800/50',
-    badge: 'bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/50',
-    bar: 'bg-emerald-500',
-  },
-  low: {
-    label: 'STOCK BAJO',
-    border: 'border-amber-300 dark:border-amber-800/50',
-    hoverBorder: 'hover:border-amber-300 dark:hover:border-amber-800/50',
-    badge: 'bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800/50',
-    bar: 'bg-amber-500',
-  },
-  out: {
-    label: 'SIN STOCK',
-    border: 'border-red-300 dark:border-red-800/50 border-dashed',
-    hoverBorder: 'hover:border-red-300 dark:hover:border-red-800/50',
-    badge: 'bg-red-50 dark:bg-red-950/30 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800/50',
-    bar: 'bg-red-500',
-  },
-  discontinued: {
-    label: 'DISCONTINUADO',
-    border: 'border-faint border-dashed',
-    hoverBorder: 'hover:border-muted-foreground/40',
-    badge: 'bg-muted text-muted-foreground',
-    bar: 'bg-muted-foreground',
-  },
-}
-
-interface QuickEditCategoryModalProps {
-  open: boolean
-  product: InventoryProduct | null
-  categories: InventoryCategory[]
-  businessId: string
-  operatorId: string | null
-  onSaved: (productId: string, categoryId: string | null, newCategory?: InventoryCategory) => void
-  onClose: () => void
-}
-
-function QuickEditCategoryModal({ open, product, categories, businessId, operatorId, onSaved, onClose }: QuickEditCategoryModalProps) {
-  const [selectedId, setSelectedId] = useState<string>(product?.category_id ?? '')
-  const [creating, setCreating] = useState(false)
-  const [newName, setNewName] = useState('')
-  const [newIcon, setNewIcon] = useState('📦')
-  const [saving, setSaving] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const supabase = useMemo(() => createClient(), [])
-
-  async function handleSave() {
-    if (!product) return
-    setSaving(true)
-    setError(null)
-
-    if (creating) {
-      if (!newName.trim()) { setError('El nombre es obligatorio'); setSaving(false); return }
-      const { data: rpcResult, error: rpcError } = await supabase.rpc('create_category_guarded', {
-        p_operator_id: operatorId,
-        p_business_id: businessId,
-        p_name: newName.trim(),
-        p_icon: newIcon.trim() || '📦',
-      })
-      const result = rpcResult as { success: boolean; error?: string } | null
-      if (rpcError || !result?.success) {
-        setError(result?.error ?? rpcError?.message ?? 'Error al crear la categoría')
-        setSaving(false)
-        return
-      }
-      const { data: fetched, error: fetchError } = await supabase
-        .from('categories')
-        .select('id, name, icon')
-        .eq('business_id', businessId)
-        .eq('name', newName.trim())
-        .limit(1)
-        .single()
-      if (fetchError || !fetched) { setError(fetchError?.message ?? 'Error al obtener la categoría creada'); setSaving(false); return }
-      const { error: updateError } = await supabase
-        .from('products')
-        .update({ category_id: fetched.id })
-        .eq('id', product.id)
-        .eq('business_id', businessId)
-      if (updateError) { setError(updateError.message); setSaving(false); return }
-      onSaved(product.id, fetched.id, { id: fetched.id, name: fetched.name, icon: fetched.icon })
-    } else {
-      const categoryId = selectedId === '' ? null : selectedId
-      const { error: updateError } = await supabase
-        .from('products')
-        .update({ category_id: categoryId })
-        .eq('id', product.id)
-        .eq('business_id', businessId)
-      if (updateError) { setError(updateError.message); setSaving(false); return }
-      onSaved(product.id, categoryId)
-    }
-
-    setSaving(false)
-    onClose()
-  }
-
-  const categoryOptions = [
-    { value: '', label: 'Sin categoría' },
-    ...categories.map(c => ({ value: c.id, label: `${c.icon} ${c.name}` })),
-  ]
-
-  return (
-    <Dialog open={open} onOpenChange={next => { if (!next) onClose() }}>
-      <DialogContent showCloseButton={false} className="max-w-sm gap-0 p-0 overflow-hidden rounded-2xl">
-        <div className="px-5 pt-4 pb-3 border-b border-edge/60">
-          <p className="font-semibold text-heading text-sm">Cambiar categoría</p>
-          <p className="text-xs text-subtle truncate mt-0.5">{product?.name}</p>
-        </div>
-        <div className="px-5 py-4 space-y-3">
-          {!creating ? (
-            <>
-              <SelectDropdown
-                value={selectedId}
-                onChange={setSelectedId}
-                options={categoryOptions}
-                placeholder="Sin categoría"
-                usePortal
-              />
-              <button type="button" onClick={() => setCreating(true)} className="text-xs text-primary hover:underline">
-                + Crear nueva categoría
-              </button>
-            </>
-          ) : (
-            <>
-              <div className="flex gap-2">
-                <Input
-                  value={newIcon}
-                  onChange={e => setNewIcon(e.target.value)}
-                  placeholder="📦"
-                  className="h-9 w-14 text-sm rounded-lg text-center shrink-0"
-                />
-                <Input
-                  value={newName}
-                  onChange={e => setNewName(e.target.value)}
-                  placeholder="Nombre de la categoría"
-                  className="h-9 text-sm rounded-lg flex-1"
-                  autoFocus
-                />
-              </div>
-              <button type="button" onClick={() => { setCreating(false); setNewName(''); setNewIcon('📦') }} className="text-xs text-subtle hover:text-body transition-colors">
-                ← Volver a seleccionar
-              </button>
-            </>
-          )}
-          {error && <p className="text-xs text-destructive">{error}</p>}
-        </div>
-        <div className="px-5 py-3 bg-muted/40 flex justify-end gap-2 border-t border-edge-soft">
-          <Button variant="outline" size="sm" className="rounded-lg" onClick={onClose} disabled={saving}>Cancelar</Button>
-          <Button size="sm" className="rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground" onClick={handleSave} disabled={saving || (creating && !newName.trim())}>
-            {saving ? 'Guardando...' : 'Guardar'}
-          </Button>
-        </div>
-      </DialogContent>
-    </Dialog>
-  )
-}
-
-interface QuickEditBrandModalProps {
-  open: boolean
-  product: InventoryProduct | null
-  brands: InventoryBrand[]
-  businessId: string
-  operatorId: string | null
-  onSaved: (productId: string, brandId: string | null, newBrand?: InventoryBrand) => void
-  onClose: () => void
-}
-
-function QuickEditBrandModal({ open, product, brands, businessId, operatorId, onSaved, onClose }: QuickEditBrandModalProps) {
-  const [selectedId, setSelectedId] = useState<string>(product?.brand_id ?? '')
-  const [creating, setCreating] = useState(false)
-  const [newName, setNewName] = useState('')
-  const [saving, setSaving] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const supabase = useMemo(() => createClient(), [])
-
-  async function handleSave() {
-    if (!product) return
-    setSaving(true)
-    setError(null)
-
-    if (creating) {
-      if (!newName.trim()) { setError('El nombre es obligatorio'); setSaving(false); return }
-      const { data: rpcResult, error: rpcError } = await supabase.rpc('create_brand_guarded', {
-        p_operator_id: operatorId,
-        p_business_id: businessId,
-        p_name: newName.trim(),
-      })
-      const result = rpcResult as { success: boolean; error?: string } | null
-      if (rpcError || !result?.success) {
-        setError(result?.error ?? rpcError?.message ?? 'Error al crear la marca')
-        setSaving(false)
-        return
-      }
-      const { data: fetched, error: fetchError } = await supabase
-        .from('brands')
-        .select('id, name')
-        .eq('business_id', businessId)
-        .eq('name', newName.trim())
-        .limit(1)
-        .single()
-      if (fetchError || !fetched) { setError(fetchError?.message ?? 'Error al obtener la marca creada'); setSaving(false); return }
-      const { error: updateError } = await supabase
-        .from('products')
-        .update({ brand_id: fetched.id })
-        .eq('id', product.id)
-        .eq('business_id', businessId)
-      if (updateError) { setError(updateError.message); setSaving(false); return }
-      onSaved(product.id, fetched.id, { id: fetched.id, name: fetched.name })
-    } else {
-      const brandId = selectedId === '' ? null : selectedId
-      const { error: updateError } = await supabase
-        .from('products')
-        .update({ brand_id: brandId })
-        .eq('id', product.id)
-        .eq('business_id', businessId)
-      if (updateError) { setError(updateError.message); setSaving(false); return }
-      onSaved(product.id, brandId)
-    }
-
-    setSaving(false)
-    onClose()
-  }
-
-  const brandOptions = [
-    { value: '', label: 'Sin marca' },
-    ...brands.map(b => ({ value: b.id, label: b.name })),
-  ]
-
-  return (
-    <Dialog open={open} onOpenChange={next => { if (!next) onClose() }}>
-      <DialogContent showCloseButton={false} className="max-w-sm gap-0 p-0 overflow-hidden rounded-2xl">
-        <div className="px-5 pt-4 pb-3 border-b border-edge/60">
-          <p className="font-semibold text-heading text-sm">Cambiar marca</p>
-          <p className="text-xs text-subtle truncate mt-0.5">{product?.name}</p>
-        </div>
-        <div className="px-5 py-4 space-y-3">
-          {!creating ? (
-            <>
-              <SelectDropdown
-                value={selectedId}
-                onChange={setSelectedId}
-                options={brandOptions}
-                placeholder="Sin marca"
-                usePortal
-              />
-              <button type="button" onClick={() => setCreating(true)} className="text-xs text-primary hover:underline">
-                + Crear nueva marca
-              </button>
-            </>
-          ) : (
-            <>
-              <Input
-                value={newName}
-                onChange={e => setNewName(e.target.value)}
-                placeholder="Nombre de la marca"
-                className="h-9 text-sm rounded-lg"
-                autoFocus
-              />
-              <button type="button" onClick={() => { setCreating(false); setNewName('') }} className="text-xs text-subtle hover:text-body transition-colors">
-                ← Volver a seleccionar
-              </button>
-            </>
-          )}
-          {error && <p className="text-xs text-destructive">{error}</p>}
-        </div>
-        <div className="px-5 py-3 bg-muted/40 flex justify-end gap-2 border-t border-edge-soft">
-          <Button variant="outline" size="sm" className="rounded-lg" onClick={onClose} disabled={saving}>Cancelar</Button>
-          <Button size="sm" className="rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground" onClick={handleSave} disabled={saving || (creating && !newName.trim())}>
-            {saving ? 'Guardando...' : 'Guardar'}
-          </Button>
-        </div>
-      </DialogContent>
-    </Dialog>
-  )
-}
-
-interface ProductCardProps {
-  product: InventoryProduct
-  readOnly: boolean
-  loadingId: string | null
-  selectionMode: boolean
-  isSelected: boolean
-  onToggleSelect: (id: string) => void
-  onEdit: (product: InventoryProduct) => void
-  onToggleActive: (product: InventoryProduct) => void
-  onDelete: (product: InventoryProduct) => void
-  onQuickCategory: (product: InventoryProduct) => void
-  onQuickBrand: (product: InventoryProduct) => void
-}
-
-function SelectionCheckbox({ checked, onClick }: { checked: boolean; onClick: (e: React.MouseEvent) => void }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="p-0.5"
-    >
-      <span className={`w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 transition-colors ${
-        checked ? 'bg-primary border-primary' : 'border-edge bg-surface'
-      }`}>
-        {checked && (
-          <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
-            <path d="M1 4L3.5 6.5L9 1" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        )}
-      </span>
-    </button>
-  )
-}
-
-const ProductCard = memo(function ProductCard({
-  product,
-  readOnly,
-  loadingId,
-  selectionMode,
-  isSelected,
-  onToggleSelect,
-  onEdit,
-  onToggleActive,
-  onDelete,
-  onQuickCategory,
-  onQuickBrand,
-}: ProductCardProps) {
-  const status = getStatus(product)
-  const config = statusConfig[status]
-  const margin = product.cost > 0 && product.price > 0
-    ? Math.round(((product.price - product.cost) / product.price) * 100)
-    : 0
-
-  return (
-    <article
-      className={`rounded-[20px] border-2 ${isSelected ? 'border-primary' : 'border-edge/30'} ${config.hoverBorder} bg-surface p-4 flex flex-col relative transition-all hover:shadow-md overflow-hidden group/card`}
-    >
-      <div className={`absolute top-3 left-3 z-10 ${selectionMode ? 'opacity-100' : 'opacity-0 group-hover/card:opacity-100'} transition-opacity`}>
-        <SelectionCheckbox
-          checked={isSelected}
-          onClick={(e) => { e.stopPropagation(); onToggleSelect(product.id) }}
-        />
-      </div>
-      <span className={`absolute top-3 right-3 z-10 text-[10px] font-bold px-2 py-0.5 rounded-full ${config.badge}`}>
-        {config.label}
-      </span>
-
-      {product.image_url ? (
-        <div className="relative -mx-4 -mt-4 mb-3 aspect-square">
-          <Image
-            src={product.image_url}
-            alt={product.name}
-            fill
-            sizes="(max-width: 768px) 50vw, 200px"
-            className="object-cover"
-            unoptimized={product.image_source === 'url'}
-          />
-        </div>
-      ) : (
-        <div className="-mx-4 -mt-4 mb-3 aspect-square bg-muted flex items-center justify-center">
-          <Package size={32} className="text-muted-foreground/40" />
-        </div>
-      )}
-
-      <h3
-        className="font-semibold text-heading text-sm leading-tight mb-2 truncate pr-16"
-        title={product.name}
-      >
-        {product.name}
-      </h3>
-
-      <div className="flex flex-col gap-0.5 mb-3">
-        <div
-          className={`group/catfield flex items-center gap-1 min-w-0 rounded px-1 -mx-1 ${!readOnly ? 'cursor-pointer hover:bg-primary/5' : ''}`}
-          onClick={!readOnly ? () => onQuickCategory(product) : undefined}
-        >
-          <p className="text-xs text-subtle truncate flex-1 min-w-0">
-            <span className="text-hint">Cat:</span> {product.categories?.name ?? '—'}
-          </p>
-          {!readOnly && (
-            <Pencil size={9} className="shrink-0 text-primary opacity-0 group-hover/catfield:opacity-50 transition-opacity" />
-          )}
-        </div>
-        <div
-          className={`group/brandfield flex items-center gap-1 min-w-0 rounded px-1 -mx-1 ${!readOnly ? 'cursor-pointer hover:bg-primary/5' : ''}`}
-          onClick={!readOnly ? () => onQuickBrand(product) : undefined}
-        >
-          <p className="text-xs text-subtle truncate flex-1 min-w-0">
-            <span className="text-hint">Marca:</span> {product.brand?.name ?? '—'}
-          </p>
-          {!readOnly && (
-            <Pencil size={9} className="shrink-0 text-primary opacity-0 group-hover/brandfield:opacity-50 transition-opacity" />
-          )}
-        </div>
-      </div>
-
-      <div className="grid grid-cols-2 gap-2 mb-3">
-        <div className="rounded-lg bg-surface-alt px-2 py-1.5">
-          <p className="text-label text-hint">Venta</p>
-          <p className="text-emphasis text-heading">
-            ${Number(product.price).toLocaleString('es-AR')}
-          </p>
-        </div>
-        <div className="rounded-lg bg-surface-alt px-2 py-1.5">
-          <p className="text-label text-hint">Costo</p>
-          <p className="text-body-sm text-subtle">
-            ${Number(product.cost).toLocaleString('es-AR')}
-          </p>
-        </div>
-      </div>
-
-      <div className="flex items-baseline justify-between mb-3">
-        <span className="text-emphasis text-heading">
-          {product.stock} <span className="text-xs font-normal text-hint">uds</span>
-        </span>
-        <div className="flex items-center gap-2">
-          <span className="text-[10px] text-hint">min. {product.min_stock}</span>
-          <span className={`text-[10px] font-semibold ${margin > 0 ? 'text-emerald-600 dark:text-emerald-400' : 'invisible'}`}>
-            +{margin}%
-          </span>
-        </div>
-      </div>
-
-      {!readOnly && (
-        <div className="flex flex-col gap-1.5 mt-auto">
-          <button
-            onClick={() => onEdit(product)}
-            disabled={loadingId === product.id}
-            className="w-full text-xs py-1.5 rounded-lg border border-edge text-body hover:bg-hover-bg transition-colors disabled:opacity-50"
-          >
-            Editar
-          </button>
-          <div className="grid grid-cols-2 gap-1.5">
-            <button
-              onClick={() => onToggleActive(product)}
-              disabled={loadingId === product.id}
-              className="text-xs py-1.5 rounded-lg border border-edge text-body hover:bg-hover-bg transition-colors disabled:opacity-50"
-            >
-              {product.is_active ? 'Baja' : 'Activar'}
-            </button>
-            <button
-              onClick={() => onDelete(product)}
-              disabled={loadingId === product.id}
-              className="text-xs py-1.5 rounded-lg bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800/50 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors disabled:opacity-50"
-            >
-              Eliminar
-            </button>
-          </div>
-        </div>
-      )}
-    </article>
-  )
-})
-
-const ProductListRow = memo(function ProductListRow({
-  product,
-  readOnly,
-  loadingId,
-  selectionMode,
-  isSelected,
-  onToggleSelect,
-  onEdit,
-  onToggleActive,
-  onDelete,
-  onQuickCategory,
-  onQuickBrand,
-}: ProductCardProps) {
-  const status = getStatus(product)
-  const config = statusConfig[status]
-  const margin = product.cost > 0 && product.price > 0
-    ? Math.round(((product.price - product.cost) / product.price) * 100)
-    : 0
-
-  return (
-    <TableRow className={`group/row ${isSelected ? 'bg-primary/5' : ''}`}>
-      <TableCell className={`w-10 ${selectionMode ? '' : 'opacity-0 group-hover/row:opacity-100'} transition-opacity`}>
-        <SelectionCheckbox
-          checked={isSelected}
-          onClick={(e) => { e.stopPropagation(); onToggleSelect(product.id) }}
-        />
-      </TableCell>
-      <TableCell>
-        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap ${config.badge}`}>
-          {config.label}
-        </span>
-      </TableCell>
-
-      <TableCell>
-        <div className="flex items-center gap-3">
-          {product.image_url ? (
-            <div className="relative w-12 h-12 rounded-md overflow-hidden shrink-0">
-              <Image
-                src={product.image_url}
-                alt={product.name}
-                fill
-                sizes="48px"
-                className="object-cover"
-                unoptimized={product.image_source === 'url'}
-              />
-            </div>
-          ) : (
-            <div className="w-12 h-12 rounded-md bg-muted flex items-center justify-center shrink-0">
-              <Package size={20} className="text-muted-foreground/40" />
-            </div>
-          )}
-          <div>
-            <p className="font-semibold text-sm text-heading">{product.name}</p>
-            <p className="text-xs text-subtle xl:hidden">
-              {product.categories?.name ?? '—'} · {product.brand?.name ?? '—'}
-            </p>
-          </div>
-        </div>
-      </TableCell>
-
-      <TableCell className="hidden xl:table-cell">
-        <div
-          className={`group/cat flex items-center gap-1 min-w-0 rounded px-1 -mx-1 ${!readOnly ? 'cursor-pointer hover:bg-primary/5' : ''}`}
-          onClick={!readOnly ? () => onQuickCategory(product) : undefined}
-        >
-          <p className="text-sm text-subtle truncate">{product.categories?.name ?? '—'}</p>
-          {!readOnly && (
-            <Pencil size={11} className="shrink-0 text-primary opacity-0 group-hover/cat:opacity-50 transition-opacity" />
-          )}
-        </div>
-      </TableCell>
-
-      <TableCell className="hidden xl:table-cell">
-        <div
-          className={`group/brand flex items-center gap-1 min-w-0 rounded px-1 -mx-1 ${!readOnly ? 'cursor-pointer hover:bg-primary/5' : ''}`}
-          onClick={!readOnly ? () => onQuickBrand(product) : undefined}
-        >
-          <p className="text-sm text-subtle truncate">{product.brand?.name ?? '—'}</p>
-          {!readOnly && (
-            <Pencil size={11} className="shrink-0 text-primary opacity-0 group-hover/brand:opacity-50 transition-opacity" />
-          )}
-        </div>
-      </TableCell>
-
-      <TableCell className="text-right hidden md:table-cell">
-        <p className="text-sm font-semibold text-heading tabular-nums">${Number(product.price).toLocaleString('es-AR')}</p>
-      </TableCell>
-
-      <TableCell className="text-right hidden lg:table-cell">
-        <p className="text-sm text-subtle tabular-nums">${Number(product.cost).toLocaleString('es-AR')}</p>
-      </TableCell>
-
-      <TableCell className="text-right hidden lg:table-cell">
-        <span className={`text-sm font-semibold ${margin > 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-hint'}`}>
-          {margin > 0 ? `+${margin}%` : '—'}
-        </span>
-      </TableCell>
-
-      <TableCell className="text-right">
-        <p className="text-sm font-semibold text-heading tabular-nums">{product.stock} <span className="text-xs font-normal text-hint">uds</span></p>
-        <p className="text-xs text-hint">min. {product.min_stock}</p>
-      </TableCell>
-
-      {!readOnly && (
-        <TableCell>
-          <div className="flex items-center justify-end gap-1.5">
-            <button
-              onClick={() => onEdit(product)}
-              disabled={loadingId === product.id}
-              className="text-xs px-3 py-1.5 rounded-lg border border-edge text-body hover:bg-hover-bg transition-colors disabled:opacity-50"
-            >
-              Editar
-            </button>
-            <button
-              onClick={() => onToggleActive(product)}
-              disabled={loadingId === product.id}
-              className="text-xs px-3 py-1.5 rounded-lg border border-edge text-body hover:bg-hover-bg transition-colors disabled:opacity-50"
-            >
-              {product.is_active ? 'Baja' : 'Activar'}
-            </button>
-            <button
-              onClick={() => onDelete(product)}
-              disabled={loadingId === product.id}
-              className="text-xs px-3 py-1.5 rounded-lg bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800/50 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors disabled:opacity-50"
-            >
-              Eliminar
-            </button>
-          </div>
-        </TableCell>
-      )}
-    </TableRow>
-  )
-})
-
-export default function InventoryPanel({ businessId, operatorId, readOnly, initialProducts, categories: initialCategories, brands: initialBrands, priceLists, productOverrides: initialProductOverrides }: Props) {
+export default function InventoryPanel({ businessId, operatorId, readOnly, initialProducts, categories: initialCategories, brands: initialBrands, priceLists, productOverrides: initialProductOverrides, initialViewMode = 'list' }: Props) {
   const defaultPriceList = priceLists.find(pl => pl.is_default) ?? null
   const [products, setProducts] = useState(initialProducts)
   const [categories, setCategories] = useState<InventoryCategory[]>(initialCategories)
@@ -659,7 +68,7 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
   const [sort, setSort] = useState<SortOption>({ field: 'name', dir: 'asc' })
   const [showInCatalogOnly, setShowInCatalogOnly] = useState(false)
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('list')
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>(initialViewMode)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [selectionMode, setSelectionMode] = useState(false)
   const [bulkLoading, setBulkLoading] = useState(false)
@@ -668,21 +77,7 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
   const scrollContainerRef = useRef<HTMLDivElement>(null)
   const router = useRouter()
 
-  useEffect(() => {
-    const saved = localStorage.getItem('inventory-view-mode')
-    if (saved === 'grid' || saved === 'list') setViewMode(saved)
-  }, [])
-
-
   const supabase = useMemo(() => createClient(), [])
-
-  useEffect(() => {
-    setCategories(initialCategories)
-  }, [initialCategories])
-
-  useEffect(() => {
-    setBrands(initialBrands)
-  }, [initialBrands])
 
   const activeFilterCount = selectedCategories.length + selectedBrands.length + (showInCatalogOnly ? 1 : 0)
 
@@ -1244,7 +639,7 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
           <div className="flex items-center gap-1 shrink-0 border border-edge rounded-lg p-0.5">
             <button
               type="button"
-              onClick={() => { setViewMode('list'); localStorage.setItem('inventory-view-mode', 'list') }}
+              onClick={() => { setViewMode('list'); document.cookie = 'inventory-view-mode=list; path=/; max-age=31536000; SameSite=Lax'; localStorage.setItem('inventory-view-mode', 'list') }}
               className={`p-1.5 rounded-md transition-colors ${viewMode === 'list' ? 'bg-primary text-primary-foreground' : 'text-subtle hover:text-body hover:bg-surface-alt'}`}
               title="Vista lista"
             >
@@ -1252,7 +647,7 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
             </button>
             <button
               type="button"
-              onClick={() => { setViewMode('grid'); localStorage.setItem('inventory-view-mode', 'grid') }}
+              onClick={() => { setViewMode('grid'); document.cookie = 'inventory-view-mode=grid; path=/; max-age=31536000; SameSite=Lax'; localStorage.setItem('inventory-view-mode', 'grid') }}
               className={`p-1.5 rounded-md transition-colors ${viewMode === 'grid' ? 'bg-primary text-primary-foreground' : 'text-subtle hover:text-body hover:bg-surface-alt'}`}
               title="Vista cuadricula"
             >
