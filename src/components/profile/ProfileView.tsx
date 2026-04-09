@@ -42,13 +42,6 @@ export default function ProfileView({ profile, email, business }: Props) {
   const [emailError, setEmailError] = useState<string | null>(null)
   const [emailSuccess, setEmailSuccess] = useState(false)
 
-  // --- Business name ---
-  const [businessName, setBusinessName] = useState(business.name)
-  const [editingBusinessName, setEditingBusinessName] = useState(false)
-  const [businessNameInput, setBusinessNameInput] = useState(business.name)
-  const [businessNameSaving, setBusinessNameSaving] = useState(false)
-  const [businessNameError, setBusinessNameError] = useState<string | null>(null)
-
   // --- Password ---
   const [editingPassword, setEditingPassword] = useState(false)
   const [currentPw, setCurrentPw] = useState('')
@@ -127,28 +120,6 @@ export default function ProfileView({ profile, email, business }: Props) {
     setPwError(null)
     setPwSuccess(false)
     setEditingPassword(false)
-  }
-
-  async function saveBusinessName() {
-    if (!businessNameInput.trim()) { setBusinessNameError('El nombre no puede estar vacío'); return }
-    setBusinessNameSaving(true)
-    setBusinessNameError(null)
-    const { error } = await supabase
-      .from('businesses')
-      .update({ name: businessNameInput.trim() })
-      .eq('id', profile.business_id)
-      .select('id')
-      .single()
-    setBusinessNameSaving(false)
-    if (error) { setBusinessNameError(error.message); return }
-    setBusinessName(businessNameInput.trim())
-    setEditingBusinessName(false)
-  }
-
-  function cancelEditBusinessName() {
-    setBusinessNameInput(businessName)
-    setBusinessNameError(null)
-    setEditingBusinessName(false)
   }
 
   return (
@@ -327,30 +298,7 @@ export default function ProfileView({ profile, email, business }: Props) {
         <div className="surface-elevated rounded-2xl divide-y divide-edge/40">
           <div className="px-5 py-4">
             <p className="text-xs text-hint mb-1.5 uppercase tracking-wide">Negocio</p>
-            {editingBusinessName ? (
-              <div className="space-y-2">
-                <Input
-                  value={businessNameInput}
-                  onChange={e => { setBusinessNameInput(e.target.value); setBusinessNameError(null) }}
-                  autoFocus
-                  onKeyDown={e => { if (e.key === 'Enter') saveBusinessName(); if (e.key === 'Escape') cancelEditBusinessName() }}
-                />
-                {businessNameError && <p className="text-sm text-destructive">{businessNameError}</p>}
-                <div className="flex gap-2 justify-end">
-                  <Button variant="outline" size="sm" onClick={cancelEditBusinessName} disabled={businessNameSaving}>Cancelar</Button>
-                  <Button size="sm" onClick={saveBusinessName} disabled={businessNameSaving}>
-                    {businessNameSaving ? 'Guardando...' : 'Guardar'}
-                  </Button>
-                </div>
-              </div>
-            ) : (
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium text-heading">{businessName}</span>
-                <button type="button" onClick={() => { setBusinessNameInput(businessName); setEditingBusinessName(true) }} className="text-sm text-hint hover:text-body transition-colors">
-                  Editar
-                </button>
-              </div>
-            )}
+            <span className="text-sm font-medium text-heading">{business.name}</span>
           </div>
           <div className="px-5 py-4">
             <p className="text-xs text-hint mb-1.5 uppercase tracking-wide">Plan</p>
