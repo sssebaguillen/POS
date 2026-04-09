@@ -11,6 +11,9 @@ export default async function InventoryPage() {
   const activeOperator = getActiveOperator(cookieStore)
   const businessId = await requireAuthenticatedBusinessId(supabase)
 
+  const viewModeCookie = cookieStore.get('inventory-view-mode')?.value
+  const initialViewMode: 'grid' | 'list' = viewModeCookie === 'grid' ? 'grid' : 'list'
+
   const [
     { data: products },
     { data: categories },
@@ -51,8 +54,12 @@ export default async function InventoryPage() {
         .not('product_id', 'is', null)
     : { data: [] }
 
+  const categoryIds = (categories ?? []).map(c => c.id).join(',')
+  const brandIds = (brands ?? []).map(b => b.id).join(',')
+
   return (
     <InventoryPanel
+      key={`${categoryIds}|${brandIds}`}
       businessId={businessId}
       operatorId={activeOperator?.profile_id ?? null}
       readOnly={activeOperator?.permissions.stock_write !== true}
@@ -70,6 +77,7 @@ export default async function InventoryPage() {
       brands={brands ?? []}
       priceLists={priceLists}
       productOverrides={(productOverridesData ?? []).map(normalizePriceListOverride)}
+      initialViewMode={initialViewMode}
     />
   )
 }
