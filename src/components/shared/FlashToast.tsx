@@ -9,13 +9,19 @@ const MESSAGES: Record<string, string> = {
 
 interface Props {
   message: string
+  variant?: 'warning' | 'error'
+}
+
+const VARIANT_CLASSES = {
+  warning: 'border-amber-200 bg-background text-amber-800 dark:border-amber-500/30 dark:bg-amber-950/80 dark:text-amber-200',
+  error: 'border-destructive/30 bg-background text-destructive dark:border-destructive/40 dark:bg-destructive/10 dark:text-red-300',
 }
 
 function clearFlashCookie() {
   document.cookie = 'flash_toast=; Max-Age=0; path=/; SameSite=Lax'
 }
 
-export default function FlashToast({ message }: Props) {
+export default function FlashToast({ message, variant = 'warning' }: Props) {
   const [visible, setVisible] = useState(true)
 
   useEffect(() => {
@@ -29,7 +35,7 @@ export default function FlashToast({ message }: Props) {
   return (
     <div
       role="alert"
-      className="fixed bottom-4 right-4 z-[60] flex items-center gap-3 rounded-lg border border-amber-200 bg-white px-4 py-2.5 shadow-lg text-sm text-amber-800 dark:border-amber-500/30 dark:bg-amber-950/80 dark:text-amber-200"
+      className={`fixed bottom-4 right-4 z-[60] flex items-center gap-3 rounded-lg border px-4 py-2.5 shadow-lg text-sm ${VARIANT_CLASSES[variant]}`}
     >
       <span>{MESSAGES[message] ?? message}</span>
       <button
@@ -39,7 +45,7 @@ export default function FlashToast({ message }: Props) {
           setVisible(false)
         }}
         aria-label="Cerrar notificacion"
-        className="ml-1 rounded p-0.5 hover:bg-amber-100 dark:hover:bg-amber-900 transition-colors"
+        className="ml-1 rounded p-0.5 hover:bg-muted transition-colors"
       >
         <X size={14} />
       </button>

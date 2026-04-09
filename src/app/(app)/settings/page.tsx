@@ -3,7 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import PageHeader from '@/components/shared/PageHeader'
 import SettingsForm from '@/components/settings/SettingsForm'
 import { isSettingsOperator, type SettingsBusiness, type SettingsOperator } from '@/components/settings/types'
-import { getBusinessIdByUserId } from '@/lib/business'
+import { requireAuthenticatedBusinessId } from '@/lib/business'
 
 export default async function SettingsPage() {
   const supabase = await createClient()
@@ -16,39 +16,7 @@ export default async function SettingsPage() {
     redirect('/login')
   }
 
-  let businessId: string | null = null
-
-  try {
-    businessId = await getBusinessIdByUserId(supabase, user.id)
-  } catch (error) {
-    return (
-      <div className="flex flex-col h-screen overflow-hidden">
-        <PageHeader title="Configuración" />
-        <div className="flex-1 overflow-y-auto p-6">
-          <div className="surface-card p-6">
-            <p className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
-              {error instanceof Error ? error.message : 'No se pudo obtener el negocio asociado al usuario actual.'}
-            </p>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  if (!businessId) {
-    return (
-      <div className="flex flex-col h-screen overflow-hidden">
-        <PageHeader title="Configuración" />
-        <div className="flex-1 overflow-y-auto p-6">
-          <div className="surface-card p-6">
-            <p className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
-              No se pudo obtener el negocio asociado al usuario actual.
-            </p>
-          </div>
-        </div>
-      </div>
-    )
-  }
+  const businessId = await requireAuthenticatedBusinessId(supabase)
 
   const [
     { data: business, error: businessError },
@@ -67,31 +35,11 @@ export default async function SettingsPage() {
   ])
 
   if (businessError || !business) {
-    return (
-      <div className="flex flex-col h-screen overflow-hidden">
-        <PageHeader title="Configuración" />
-        <div className="flex-1 overflow-y-auto p-6">
-          <div className="surface-card p-6">
-            <p className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
-              {businessError?.message ?? 'No se pudo cargar la configuración del negocio.'}
-            </p>
-          </div>
-        </div>
-      </div>
-    )
+    throw new Error(businessError?.message ?? 'No se pudo cargar la configuracion del negocio.')
   }
 
   if (operatorsError) {
-    return (
-      <div className="flex flex-col h-screen overflow-hidden">
-        <PageHeader title="Configuración" />
-        <div className="flex-1 overflow-y-auto p-6">
-          <div className="surface-card p-6">
-            <p className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">{operatorsError.message}</p>
-          </div>
-        </div>
-      </div>
-    )
+    throw new Error(operatorsError.message)
   }
 
   const parsedOperators: SettingsOperator[] = (operators ?? []).filter(isSettingsOperator)

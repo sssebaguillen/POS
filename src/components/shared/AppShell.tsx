@@ -37,6 +37,7 @@ export default function AppShell({ children, activeOperatorName, initialCollapse
     setCollapsed(prev => {
       const next = !prev
       document.cookie = `${STORAGE_KEY}=${next}; path=/; max-age=31536000; SameSite=Lax`
+      localStorage.setItem(STORAGE_KEY, String(next))
       return next
     })
   }, [])
