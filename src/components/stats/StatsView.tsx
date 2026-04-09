@@ -204,7 +204,7 @@ export default function StatsView({ kpis, evolution, breakdown, topProducts, per
                 <>
                   <div className="flex items-center gap-5 text-xs text-hint">
                     <span className="flex items-center gap-1.5">
-                      <svg width="16" height="3" viewBox="0 0 16 3"><line x1="0" y1="1.5" x2="16" y2="1.5" stroke="#1C4A3B" strokeWidth="2" /></svg>
+                      <svg width="16" height="3" viewBox="0 0 16 3"><line x1="0" y1="1.5" x2="16" y2="1.5" stroke="var(--primary)" strokeWidth="2" /></svg>
                       Período actual
                     </span>
                     <span className="flex items-center gap-1.5">
@@ -256,7 +256,7 @@ export default function StatsView({ kpis, evolution, breakdown, topProducts, per
                       <Line
                         type="monotone"
                         dataKey={evolutionMode === 'revenue' ? 'currentRevenue' : 'currentUnits'}
-                        stroke="#1C4A3B"
+                        stroke="var(--primary)"
                         strokeWidth={2}
                         dot={false}
                         name="Actual"
@@ -400,7 +400,7 @@ export default function StatsView({ kpis, evolution, breakdown, topProducts, per
                     width={50}
                   />
                   <Tooltip
-                    cursor={{ fill: 'rgba(28, 74, 59, 0.05)' }}
+                    cursor={{ fill: 'color-mix(in srgb, var(--primary) 5%, transparent)' }}
                     content={({ active, payload, label }) => {
                       if (!active || !payload?.length) return null
                       return (
@@ -411,7 +411,7 @@ export default function StatsView({ kpis, evolution, breakdown, topProducts, per
                       )
                     }}
                   />
-                  <Bar dataKey="revenue" fill="#1C4A3B" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="revenue" fill="var(--primary)" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             )}
