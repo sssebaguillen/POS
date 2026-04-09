@@ -3,6 +3,7 @@
 ## Stack
 
 - **Frontend:** Next.js 16+ (App Router), TypeScript (strict), Tailwind CSS, shadcn/ui
+- **Data fetching client-side:** React Query (staleTime 30s, gcTime 5min, retry 1) — provider en `providers/query-provider.tsx`
 - **Backend:** Supabase (PostgreSQL + Auth + RLS), project ID: `zrnthcznbrplzpmxmkwk` (sa-east-1)
 - **Deploy:** Vercel, proyecto: `pulsarpos`, repo: `github.com/sssebaguillen/POS` (master), región: `gru1 (São Paulo)`
 - **IMPORTANTE:** Next.js 16+ usa `proxy.ts` en la raíz, NO `middleware.ts`
@@ -30,6 +31,13 @@
 - Owner identificado por `operator?.role === 'owner'` o ausencia de cookie — nunca por DB lookup en proxy
 - Al registrar un nuevo usuario, el flujo llama a `/api/operator/logout` para limpiar cookies previas
 
+### Autenticación en Server Components
+- `lib/business.ts` exporta helpers para obtener el businessId del usuario autenticado:
+  - `getBusinessIdByUserId(supabase, userId)` → `string | null` (puede retornar null sin throw)
+  - `requireAuthenticatedBusinessId(supabase)` → `string` (throw si no hay user o businessId)
+  - `requireAuthenticatedBusinessContext(supabase)` → `{ userId, businessId }` (throw si falla)
+- Preferir `requireAuthenticatedBusinessId` en pages para simplificar el manejo de errores
+
 ### Sidebar collapse (CLS-free)
 - El estado collapsed del sidebar se inicializa desde la cookie `pos-sidebar-collapsed` leída en el Server Component `(app)/layout.tsx`
 - Se pasa como prop `initialCollapsed` a `AppShell` — sin `useEffect` post-hydration que cause layout shift
@@ -38,7 +46,13 @@
 ### Pantalla de selección de operador (`/operator-select`)
 - Muestra tarjeta "Administrador" (owner) al tope — autentica con contraseña de Supabase
 - Muestra tarjetas de operadores PIN debajo — incluye rol `'custom'`
-- Al cambiar de operador: botón en sidebar → logout route borra cookies y restaura sesión owner → redirige a `/operator-select`
+- Al cambiar de operador: botón en sidebar → logout route borra cookies → redirige a `/operator-select`
+
+### POS — Flujo de venta
+- La venta se crea atómicamente con el RPC `create_sale_transaction` (inserta sale + sale_items + payments)
+- El trigger `on_sale_item_inserted` descuenta stock automáticamente
+- El carrito (`lib/store/cart.store.ts`) guarda el precio base; `calculateProductPrice` se aplica en render y checkout
+- Soporte para override manual de precio por ítem (`unit_price_override`)
 
 ---
 
@@ -54,7 +68,7 @@
 | whatsapp | text nullable | solo números con código de país |
 | logo_url | text nullable | |
 | description | text nullable | visible en catálogo público |
-| settings | jsonb nullable | |
+| settings | jsonb nullable | incluye `primary_color` (hex) para theming |
 | created_at | timestamptz | |
 
 ### `profiles`
@@ -77,11 +91,11 @@
 | name | text | |
 | role | text | `'manager'`, `'cashier'`, o `'custom'` |
 | pin | text | bcrypt hasheado via extensions.crypt() |
-| permissions | jsonb | 8 campos — ver modelo de permisos |
+| permissions | jsonb | 9 campos — ver modelo de permisos |
 | is_active | bool | default true |
 | created_at | timestamptz | |
 
-**Modelo de permisos (8 campos):**
+**Modelo de permisos (9 campos):**
 | permiso | descripción | owner | manager | cashier |
 |---------|-------------|-------|---------|---------|
 | `sales` | Terminal de ventas | true | true | true |
@@ -92,6 +106,7 @@
 | `price_lists_write` | Modificar listas de precios | true | true | false |
 | `settings` | Configuración | true | false | false |
 | `expenses` | Ver y cargar gastos | true | true | false |
+| `price_override` | Editar precio por ítem en POS | true | true | false |
 
 Rol `'custom'`: cualquier combinación definida por el owner via toggles en Settings.
 
@@ -116,11 +131,14 @@ Rol `'custom'`: cualquier combinación definida por el owner via toggles en Sett
 | sku, barcode | text nullable | |
 | price, cost | numeric | |
 | stock, min_stock | int | |
-| image_url | text nullable | |
+| image_url | text nullable | HTTPS URL — bucket `product-images` o URL externa |
+| image_source | text nullable | `'upload'` o `'url'` — CHECK constraint, ambos null o ambos non-null |
 | is_active | bool | default true |
 | show_in_catalog | bool | default true |
 | sales_count | int nullable | |
 | created_at | timestamptz | |
+
+**Imágenes:** `image_source = 'upload'` → Supabase Storage, `image_source = 'url'` → URL externa HTTPS. Usar `next/image` con `unoptimized={image_source === 'url'}` (solo el host de Supabase está en `remotePatterns`).
 
 ### `categories`
 | columna | tipo | notas |
@@ -165,12 +183,13 @@ Rol `'custom'`: cualquier combinación definida por el owner via toggles en Sett
 ```
 precio_final = cost × (override_producto ?? override_marca ?? lista.multiplier)
 ```
+Si `cost = 0` y `price > 0`, se usa `price` directamente. Si ambos son 0, retorna 0.
 
 ### `sales`
 Estructura estándar + `price_list_id uuid nullable` FK → price_lists(id) ON DELETE SET NULL + `operator_id uuid nullable` FK → operators(id).
 
 ### `sale_items` / `payments`
-Estructura estándar.
+Estructura estándar. `sale_items` incluye `unit_price_override` para precios editados manualmente en POS.
 
 ### `inventory_movements`
 Tiene `created_by_operator` (FK → operators.id) y `created_by` (legacy).
@@ -225,6 +244,7 @@ Todas tienen `security definer` y `set search_path = public, extensions`.
 |---------|-------------|
 | `bootstrap_new_user(p_user_id, p_business_name, p_user_name)` | Crea businesses + profiles con permisos completos de owner |
 | `get_business_id()` | Retorna business_id del usuario actual, usada en RLS |
+| `create_sale_transaction(...)` | Inserta sale + sale_items + payments atómicamente. Stock descontado por trigger |
 | `create_operator(p_business_id, p_name, p_role, p_pin, p_permissions?)` | Inserta operador con PIN bcrypt. Retorna `{ success, operator_id?, error? }` |
 | `verify_operator_pin(p_business_id, p_operator_id, p_pin)` | Verifica PIN. Retorna `{ success, profile_id?, name?, role?, permissions?, error? }` |
 | `swap_default_price_list(p_price_list_id, p_business_id)` | Swap atómico de lista default |
@@ -242,6 +262,8 @@ Todas tienen `security definer` y `set search_path = public, extensions`.
 | `get_sales_by_category_detail(p_business_id, p_from?, p_to?, p_limit?, p_offset?)` | → `{ data: CategorySalesDetail[], total }` |
 | `get_sales_by_payment_detail(p_business_id, p_from?, p_to?)` | → `{ data: PaymentMethodDetail[] }` |
 | `get_sales_by_operator_detail(p_business_id, p_from?, p_to?)` | → `{ data: OperatorSalesDetail[] }` |
+| `get_catalog_products(p_slug)` | Productos del catálogo público (SECURITY DEFINER, anon) |
+| `get_catalog_categories(p_slug)` | Categorías del catálogo público (SECURITY DEFINER, anon) |
 
 **IMPORTANTE:** `create_operator` retorna JSON — siempre chequear `data.success`, no solo `error`.
 
@@ -259,19 +281,20 @@ const rows = (rpcResult as unknown as { data: RowType[] } | null)?.data ?? []
 |------|-------------|------------|
 | `/login` | Login | pública |
 | `/register` | Registro | pública |
-| `/catalogo/[slug]` | Catálogo público | pública (solo anon) |
+| `/catalogo/[slug]` | Catálogo público | pública (anon, usa RPCs) |
 | `/operator-select` | Selección de operador | requiere Supabase session |
 | `/pos` | Terminal de ventas | cualquier operador activo |
-| `/stock` | Inventario | `permissions.stock === true` |
+| `/inventory` | Inventario (lectura) | `permissions.stock === true` |
+| `/products` | Inventario (escritura) | `permissions.stock_write === true` (sin stock → redirect a /pos, sin stock_write → redirect a /inventory) |
 | `/price-lists` | Listas de precios | `permissions.price_lists === true` |
 | `/dashboard` | KPIs dashboard | `permissions.stats === true` |
 | `/stats` | Estadísticas | `permissions.stats === true` |
 | `/stats/top-products` | Detalle top productos | `permissions.stats === true` |
 | `/stats/breakdown` | Detalle por categoría/marca | `permissions.stats === true` |
-| `/stats/metodos-pago` | Detalle métodos de pago | `permissions.stats === true` |
-| `/stats/operadores` | Detalle por operador | `permissions.stats === true` |
-| `/gastos` | Módulo de gastos y proveedores | `permissions.expenses === true` |
-| `/profile` | Perfil del usuario | cualquier operador activo |
+| `/stats/payment-methods` | Detalle métodos de pago | `permissions.stats === true` |
+| `/stats/operators` | Detalle por operador | `permissions.stats === true` |
+| `/expenses` | Módulo de gastos y proveedores | `permissions.expenses === true` |
+| `/profile` | Perfil del usuario | solo owner (operadores redirigidos a /pos) |
 | `/settings` | Configuración | `permissions.settings === true` |
 
 **Edge Runtime** (`export const runtime = 'edge'`): `/pos`, `/dashboard`, `/stats`, `/operator-select`
@@ -289,10 +312,10 @@ ANÁLISIS
   Estadísticas → /stats (requires stats)
 
 FINANZAS
-  Gastos → /gastos (requires expenses)
+  Gastos → /expenses (requires expenses)
 
 GESTIÓN
-  Stock → /stock (requires stock)
+  Stock → /inventory (requires stock)
   Listas de precios → /price-lists (requires price_lists)
 
 SISTEMA
@@ -305,11 +328,27 @@ SISTEMA
 
 ```
 src/
-├── proxy.ts
+├── proxy.ts                              # Protección de rutas + CSP + cookies
+├── providers/
+│   └── query-provider.tsx                # React Query provider (staleTime 30s, gcTime 5min)
 ├── lib/
-│   ├── operator.ts                       # UserRole, OWNER_PERMISSIONS (8 permisos), getActiveOperator()
-│   ├── payments.ts                       # normalizePayment, PAYMENT_LABELS, PAYMENT_COLORS
+│   ├── business.ts                       # getBusinessIdByUserId, requireAuthenticatedBusinessId
+│   ├── operator.ts                       # UserRole, Permissions (9 campos), OWNER_PERMISSIONS, getActiveOperator()
+│   ├── payments.ts                       # normalizePayment, PAYMENT_LABELS, PAYMENT_COLORS, PAYMENT_OPTIONS
 │   ├── price-lists.ts                    # calculateProductPrice
+│   ├── date-utils.ts                     # DateRangePeriod, getDateRange, resolveDateRange, buildDateParams, etc.
+│   ├── format.ts                         # Formateo de números/moneda
+│   ├── mappers.ts                        # Normalización de datos (normalizePriceList, unwrapRelation)
+│   ├── validation.ts                     # Validaciones compartidas
+│   ├── utils.ts                          # cn() y utilidades generales
+│   ├── store/
+│   │   └── cart.store.ts                 # Estado del carrito POS (Zustand-like)
+│   ├── printer/
+│   │   ├── escpos.ts                     # Generación de comandos ESC/POS
+│   │   ├── receipt.ts                    # Lógica de impresión de tickets
+│   │   └── types.ts
+│   ├── types/
+│   │   └── index.ts                      # Tipos centrales: UserRole, Product, Sale, Payment, PriceList, Stats*, CartItem, etc.
 │   └── supabase/
 │       ├── client.ts
 │       └── server.ts
@@ -318,76 +357,115 @@ src/
 │   │   ├── login/page.tsx
 │   │   └── register/page.tsx
 │   ├── (app)/
-│   │   ├── layout.tsx                    # Lee cookie pos-sidebar-collapsed → initialCollapsed prop
-│   │   ├── operator-select/page.tsx
-│   │   ├── settings/page.tsx
+│   │   ├── layout.tsx                    # Lee cookie collapsed → AppShell, theme (primary_color), QueryProvider, FlashToast
+│   │   ├── operator-select/page.tsx      # edge
+│   │   ├── settings/
+│   │   │   ├── page.tsx                  # Usa requireAuthenticatedBusinessId, errores con throw
+│   │   │   ├── error.tsx                 # Error boundary para la ruta
+│   │   │   └── loading.tsx
 │   │   ├── inventory/page.tsx
+│   │   ├── products/page.tsx             # Ruta write separada de inventory
 │   │   ├── price-lists/page.tsx
-│   │   ├── dashboard/page.tsx
-│   │   ├── stats/page.tsx
-│   │   ├── stats/top-products/page.tsx
-│   │   ├── stats/breakdown/page.tsx
-│   │   ├── stats/metodos-pago/page.tsx
-│   │   ├── stats/operadores/page.tsx
-│   │   ├── gastos/page.tsx
+│   │   ├── dashboard/page.tsx            # edge
+│   │   ├── expenses/page.tsx
+│   │   ├── stats/
+│   │   │   ├── page.tsx                  # edge
+│   │   │   ├── top-products/page.tsx
+│   │   │   ├── breakdown/page.tsx
+│   │   │   ├── payment-methods/page.tsx
+│   │   │   └── operators/page.tsx
 │   │   ├── profile/page.tsx
-│   │   └── pos/page.tsx
+│   │   └── pos/page.tsx                  # edge
 │   ├── api/operator/
 │   │   ├── switch/route.ts
-│   │   └── logout/route.ts
-│   └── catalogo/[slug]/page.tsx
+│   │   └── logout/route.ts              # Solo borra cookies, NO restaura sesión owner
+│   └── catalogo/
+│       ├── layout.tsx                    # CatalogThemeProvider wrapper
+│       └── [slug]/page.tsx
 └── components/
     ├── shared/
-    │   ├── FlashToast.tsx
+    │   ├── AppShell.tsx                  # Layout shell con SidebarContext (toggle escribe cookie + localStorage)
+    │   ├── FlashToast.tsx                # Toast desde cookie, soporta variant: 'warning' | 'error'
     │   ├── PageHeader.tsx                # breadcrumbs?: { label: string; href: string }[]
-    │   ├── DateRangeFilter.tsx           # Filtro período reutilizable (URL-based)
-    │   └── ExportCSVButton.tsx
-    ├── ui/
-    │   └── SelectDropdown.tsx
-    ├── sidebar.tsx
+    │   ├── DateRangeFilter.tsx           # Filtro período (hoy/semana/mes/trimestre/año/personalizado)
+    │   ├── ExportCSVButton.tsx
+    │   ├── KPICard.tsx                   # Card reutilizable para métricas
+    │   ├── ConfirmModal.tsx              # Modal genérico de confirmación
+    │   ├── Toast.tsx                     # Toast imperativo (sistema separado de FlashToast)
+    │   └── theme.tsx                     # useTheme hook (light/dark toggle)
+    ├── ui/                               # Primitivos shadcn/ui
+    │   ├── SelectDropdown.tsx            # Reemplaza todos los <select> nativos
+    │   ├── DatePicker.tsx
+    │   ├── button.tsx, card.tsx, dialog.tsx, input.tsx, badge.tsx
+    │   ├── table.tsx, tabs.tsx, sheet.tsx, popover.tsx
+    │   ├── scroll-area.tsx, separator.tsx, alert-dialog.tsx
+    │   └── ...
+    ├── sidebar.tsx                       # 5 secciones: Ventas/Análisis/Finanzas/Gestión/Sistema
+    ├── pos/
+    │   ├── POSView.tsx                   # Vista principal POS
+    │   ├── ProductPanel.tsx              # Grid de productos con imagen (image_url + image_source)
+    │   ├── CartPanel.tsx                 # Carrito con edición de precio por ítem
+    │   ├── PaymentModal.tsx              # Selección de pago, llama create_sale_transaction RPC
+    │   ├── ReceiptPreviewModal.tsx       # Preview del ticket antes de imprimir
+    │   ├── ReceiptTemplate.tsx           # Template HTML del ticket
+    │   └── types.ts
     ├── operator/
     │   ├── OperatorSelectView.tsx
     │   └── OperatorSwitcher.tsx
-    ├── settings/
-    │   ├── SettingsForm.tsx
-    │   ├── OperatorList.tsx
-    │   ├── NewOperatorModal.tsx          # 8 toggles de permisos
-    │   └── types.ts
-    ├── stock/
-    │   ├── types.ts
-    │   ├── InventoryPanel.tsx
-    │   ├── NewProductModal.tsx
-    │   ├── EditProductModal.tsx
-    │   ├── CategoryModal.tsx
-    │   └── BrandModal.tsx
     ├── dashboard/
+    │   ├── DashboardView.tsx
     │   ├── SalesHistoryTable.tsx
-    │   └── BalanceWidget.tsx
+    │   ├── BalanceWidget.tsx
+    │   └── utils.ts                      # Re-export shim de date-utils
     ├── stats/
+    │   ├── StatsView.tsx
     │   ├── TopProductsDetailView.tsx
     │   ├── BreakdownDetailView.tsx
     │   ├── PaymentMethodDetailView.tsx
     │   └── OperatorSalesDetailView.tsx
+    ├── inventory/
+    │   ├── InventoryPanel.tsx
+    │   ├── NewProductModal.tsx            # Crear producto con imagen
+    │   ├── EditProductModal.tsx           # Editar producto con imagen
+    │   ├── ImportProductsModal.tsx        # Importación masiva de productos
+    │   ├── BulkActionBar.tsx             # Acciones en lote (delete, status, category, brand)
+    │   ├── FilterSidebar.tsx             # Filtros avanzados de inventario
+    │   ├── FieldGroup.tsx                # Agrupador de campos de formulario
+    │   ├── CategoryModal.tsx
+    │   ├── BrandModal.tsx
+    │   └── types.ts
+    ├── products/
+    │   └── ProductsPanel.tsx             # Panel write (separado de InventoryPanel read)
+    ├── price-lists/
+    │   ├── PriceListsPanel.tsx
+    │   ├── NewPriceListModal.tsx
+    │   ├── EditPriceListModal.tsx
+    │   ├── ProductOverrideModal.tsx
+    │   └── BrandOverrideModal.tsx
     ├── expenses/
-    │   ├── types.ts
-    │   ├── GastosView.tsx
-    │   ├── NewExpensePanel.tsx           # fixed right side panel, max-w-md
+    │   ├── types.ts                      # Expense, Supplier, EXPENSE_CATEGORY_LABELS
+    │   ├── ExpensesView.tsx              # Vista principal de gastos
+    │   ├── NewExpensePanel.tsx            # Fixed right side panel, max-w-md
     │   ├── ExpenseSummaryCards.tsx
     │   ├── ExpensesTable.tsx
     │   ├── ExpenseAttachmentUploader.tsx
+    │   ├── ExpenseAttachmentModal.tsx     # Modal para ver adjuntos
     │   ├── SupplierSelectDropdown.tsx
-    │   └── SuppliersPanel.tsx
+    │   └── SuppliersPanel.tsx            # Panel de gestión de proveedores
+    ├── settings/
+    │   ├── SettingsForm.tsx
+    │   ├── OperatorList.tsx
+    │   ├── NewOperatorModal.tsx           # 9 toggles de permisos
+    │   └── types.ts
     ├── profile/
-    │   ├── ProfileView.tsx
-    │   ├── EditEmailPanel.tsx
-    │   └── EditPasswordPanel.tsx
-    └── price-lists/
-        ├── types.ts
-        ├── PriceListsPanel.tsx
-        ├── NewPriceListModal.tsx
-        ├── EditPriceListModal.tsx
-        ├── ProductOverrideModal.tsx
-        └── BrandOverrideModal.tsx
+    │   └── ProfileView.tsx               # Edición de perfil (email, contraseña)
+    └── catalog/
+        ├── CatalogView.tsx
+        ├── CatalogHeader.tsx
+        ├── ProductGrid.tsx
+        ├── CartPanel.tsx                 # Carrito del catálogo público
+        ├── CatalogThemeProvider.tsx       # Aplica primary_color del negocio
+        └── types.ts
 ```
 
 ---
@@ -395,8 +473,34 @@ src/
 ## Catálogo público
 
 - URL: `/catalogo/[slug]`
-- Políticas RLS `public_read_*` restringidas a `auth.role() = 'anon'`
+- **NO** usa queries directas a `products` ni `categories` — siempre RPCs:
+  - `get_catalog_products(p_slug)` — SECURITY DEFINER, `GRANT EXECUTE TO anon`
+  - `get_catalog_categories(p_slug)` — SECURITY DEFINER, `GRANT EXECUTE TO anon`
+- `businesses` tiene policy permisiva de SELECT para anon (necesaria para resolución de slug dentro de los RPCs)
 - Solo productos con `is_active = true` AND `show_in_catalog = true`
+- El cliente usa anon key con `persistSession: false, autoRefreshToken: false`
+- `CatalogThemeProvider` aplica el `primary_color` del negocio
+
+---
+
+## Tipos centrales (`lib/types/index.ts`)
+
+```ts
+UserRole = 'owner' | 'manager' | 'cashier' | 'custom'
+Plan = 'free' | 'basic' | 'standard' | 'pro'
+
+// Entidades principales
+Business, Profile, Category, Product, Customer, CashSession
+Sale, SaleItem, Payment, PriceList, PriceListOverride
+
+// Stats (respuestas de RPCs)
+StatsKpis, StatsEvolution, StatsEvolutionPoint
+StatsBreakdown, StatsBreakdownCategory, StatsBreakdownBrand
+StatsBreakdownPayment, StatsBreakdownOperator, DayOfWeekEntry
+
+// Client-side
+CartItem { product, quantity, unit_price, total, priceIsManual? }
+```
 
 ---
 
@@ -418,8 +522,9 @@ src/
 
 ## Design system
 
-- **Background:** CSS var `--background`, **Surface:** CSS var `--surface`, **Primary:** `#1C4A3B` (dark green)
-- Cards: `rounded-xl` / `rounded-2xl`, border sutil
+- **Background:** CSS var `--background`, **Surface:** CSS var `--surface`, **Primary:** `#1C4A3B` (dark green, customizable via `businesses.settings.primary_color`)
+- Theme: light/dark toggle via `useTheme` hook (`components/shared/theme.tsx`)
+- Cards: `rounded-xl` / `rounded-2xl`, border sutil, clase `surface-card`
 - Dropdowns/popovers: clase `surface-elevated`
 - Sidebar: clase `surface-sidebar`
 - Filter chips: `pill-tabs` (container) / `pill-tab` (inactive) / `pill-tab-active` (active) — usar en TODOS los filtros
@@ -430,6 +535,13 @@ src/
 
 ### Breadcrumbs
 `PageHeader` acepta `breadcrumbs?: { label: string; href: string }[]`. Requerido en sub-rutas. No usar en rutas top-level.
+
+| Route | breadcrumbs | title |
+|---|---|---|
+| `/stats/top-products` | `[{ label: 'Estadísticas', href: '/stats' }]` | Top productos |
+| `/stats/breakdown` | `[{ label: 'Estadísticas', href: '/stats' }]` | Breakdown |
+| `/stats/payment-methods` | `[{ label: 'Estadísticas', href: '/stats' }]` | Métodos de pago |
+| `/stats/operators` | `[{ label: 'Estadísticas', href: '/stats' }]` | Operadores |
 
 ---
 
@@ -445,12 +557,12 @@ src/
 8. Cookie `operator_session`: httpOnly, sameSite: lax, secure en producción
 9. Owner identificado en proxy por `operator?.role === 'owner'` o ausencia de cookie — nunca por DB lookup
 10. `OWNER_PERMISSIONS` definido en `lib/operator.ts` — importado en todas partes, nunca duplicado
-11. `UserRole = 'owner' | 'manager' | 'cashier' | 'custom'` — exportado de `lib/operator.ts`
+11. `UserRole = 'owner' | 'manager' | 'cashier' | 'custom'` — exportado de `lib/types/index.ts`, re-exportado desde `lib/operator.ts`
 12. El precio final siempre se calcula con `calculateProductPrice` de `lib/price-lists.ts` — nunca inline
 13. La lista default se obtiene siempre desde `price_lists` donde `is_default = true` y `business_id` coincide
 14. La marca es siempre una entidad de `brands` — nunca texto libre
 15. Overrides: upsert con `onConflict: 'price_list_id,product_id'` o `onConflict: 'price_list_id,brand_id'`
-16. Políticas `public_read_*` solo aplican a `auth.role() = 'anon'`
+16. Catálogo público: NUNCA queries directas a `products`/`categories` — usar RPCs `get_catalog_products`/`get_catalog_categories`
 17. `normalizePayment`, `PAYMENT_LABELS`, `PAYMENT_COLORS` viven en `lib/payments.ts` — nunca duplicados
 18. `createClient()` siempre dentro de `useMemo(() => createClient(), [])` en Client Components
 19. Queries independientes en Server Components siempre con `Promise.all`
@@ -458,3 +570,6 @@ src/
 21. Al agregar un campo a `Permissions`: buscar en TODO el codebase y actualizar todos los archivos que construyen el objeto manualmente (sidebar.tsx, api/operator/switch/route.ts, etc.)
 22. Filter chips: siempre `pill-tabs` / `pill-tab` / `pill-tab-active` — nunca `flex gap-2` con borders custom
 23. Sidebar collapsed: inicializar desde cookie `pos-sidebar-collapsed` en Server Component — nunca con `useEffect` post-hydration
+24. Preferir `requireAuthenticatedBusinessId(supabase)` en pages — hace auth check + businessId en una línea
+25. Logout route (`/api/operator/logout`) solo borra cookies — NUNCA restaura sesión owner (vector de escalación de privilegios)
+26. Rutas de stats usan nombres en inglés: `/stats/payment-methods`, `/stats/operators`, `/stats/breakdown`, `/stats/top-products`

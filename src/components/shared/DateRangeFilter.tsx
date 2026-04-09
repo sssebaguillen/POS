@@ -19,13 +19,6 @@ const PERIOD_LABELS: Record<DateRangePeriod, string> = {
 
 const SIMPLE_PERIODS = ['hoy', 'semana', 'mes'] as const
 
-const QUARTER_RANGES: Record<string, { from: string; to: string; label: string }> = {
-  Q1: { from: `${new Date().getFullYear()}-01-01`, to: `${new Date().getFullYear()}-03-31`, label: 'Q1' },
-  Q2: { from: `${new Date().getFullYear()}-04-01`, to: `${new Date().getFullYear()}-06-30`, label: 'Q2' },
-  Q3: { from: `${new Date().getFullYear()}-07-01`, to: `${new Date().getFullYear()}-09-30`, label: 'Q3' },
-  Q4: { from: `${new Date().getFullYear()}-10-01`, to: `${new Date().getFullYear()}-12-31`, label: 'Q4' },
-}
-
 interface DateRangeFilterProps {
   value: DateRangePeriod
   from?: string
@@ -41,6 +34,14 @@ export default function DateRangeFilter({ value, from, to, onChange, useUrlParam
   const [localTo, setLocalTo] = useState(to ?? '')
   const [quarterOpen, setQuarterOpen] = useState(false)
   const [activeQuarter, setActiveQuarter] = useState<string | null>(null)
+
+  const year = new Date().getFullYear()
+  const QUARTER_RANGES: Record<string, { from: string; to: string; label: string }> = {
+    Q1: { from: `${year}-01-01`, to: `${year}-03-31`, label: 'Q1' },
+    Q2: { from: `${year}-04-01`, to: `${year}-06-30`, label: 'Q2' },
+    Q3: { from: `${year}-07-01`, to: `${year}-09-30`, label: 'Q3' },
+    Q4: { from: `${year}-10-01`, to: `${year}-12-31`, label: 'Q4' },
+  }
 
   function handleSelect(period: DateRangePeriod, newFrom?: string, newTo?: string) {
     if (useUrlParams) {
