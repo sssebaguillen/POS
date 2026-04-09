@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import PaymentMethodDetailView from '@/components/stats/PaymentMethodDetailView'
+import type { PaymentMethodRow } from '@/components/stats/PaymentMethodDetailView'
 import { requireAuthenticatedBusinessId } from '@/lib/business'
 
 interface SearchParams {
@@ -38,11 +39,4 @@ export default async function PaymentMethodsDetailPage({
       to={to}
     />
   )
-}
-
-interface PaymentMethodRow {
-  method: string
-  total_amount: number
-  transactions: number
-  avg_ticket: number
 }

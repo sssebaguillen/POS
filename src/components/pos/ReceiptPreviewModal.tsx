@@ -5,6 +5,7 @@ import { Mail, Printer, Send, Share2, X } from 'lucide-react'
 import ReceiptTemplate from '@/components/pos/ReceiptTemplate'
 import { Button } from '@/components/ui/button'
 import { PAYMENT_LABELS } from '@/lib/payments'
+import { formatMoney } from '@/lib/format'
 import { printReceiptEscPos, supportsWebSerial } from '@/lib/printer/escpos'
 import type { ReceiptData } from '@/lib/printer/types'
 
@@ -12,13 +13,6 @@ interface Props {
   receipt: ReceiptData
   onClose: () => void
   autoPrintOnOpen?: boolean
-}
-
-function formatMoney(value: number) {
-  return `$${value.toLocaleString('es-AR', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  })}`
 }
 
 export default function ReceiptPreviewModal({ receipt, onClose, autoPrintOnOpen = false }: Props) {

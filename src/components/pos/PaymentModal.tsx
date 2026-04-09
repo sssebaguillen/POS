@@ -6,6 +6,7 @@ import ReceiptPreviewModal from '@/components/pos/ReceiptPreviewModal'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import type { PaymentMethod, ReceiptData, ReceiptItemInput, SaleItemInput } from '@/lib/printer/types'
+import { formatMoney } from '@/lib/format'
 import { useCartStore } from '@/lib/store/cart.store'
 import { createClient } from '@/lib/supabase/client'
 import { PAYMENT_LABELS } from '@/lib/payments'
@@ -38,13 +39,6 @@ interface Props {
   operatorId: string | null
   onClose: () => void
   onSaleCompleted: (message: string) => void
-}
-
-function formatMoney(value: number) {
-  return `$${value.toLocaleString('es-AR', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  })}`
 }
 
 export default function PaymentModal({

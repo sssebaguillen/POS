@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import OperatorSalesDetailView from '@/components/stats/OperatorSalesDetailView'
+import type { OperatorSalesRow } from '@/components/stats/OperatorSalesDetailView'
 import { requireAuthenticatedBusinessId } from '@/lib/business'
 
 interface SearchParams {
@@ -38,14 +39,4 @@ export default async function OperatorsDetailPage({
       to={to}
     />
   )
-}
-
-interface OperatorSalesRow {
-  operator_id: string | null
-  operator_name: string
-  role: string
-  transactions: number
-  total_revenue: number
-  avg_ticket: number
-  units_sold: number
 }

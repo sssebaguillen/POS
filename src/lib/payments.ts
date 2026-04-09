@@ -19,3 +19,10 @@ export function normalizePayment(method: string | null): string {
   const key = method as keyof typeof PAYMENT_LABELS
   return PAYMENT_LABELS[key] ?? method
 }
+
+export const PAYMENT_OPTIONS: { value: string; label: string }[] = [
+  { value: 'cash', label: PAYMENT_LABELS.cash },
+  { value: 'card', label: PAYMENT_LABELS.card },
+  { value: 'mercadopago', label: PAYMENT_LABELS.mercadopago },
+  { value: 'transfer', label: PAYMENT_LABELS.transfer },
+]

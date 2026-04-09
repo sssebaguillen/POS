@@ -1,4 +1,5 @@
 import { PAYMENT_LABELS } from '@/lib/payments'
+import { formatMoney } from '@/lib/format'
 import type { ReceiptData } from '@/lib/printer/types'
 
 type SerialPortLike = {
@@ -21,13 +22,6 @@ function sanitizeText(value: string) {
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
     .replace(/[^\x20-\x7E\n]/g, '')
-}
-
-function formatMoney(value: number) {
-  return `$${value.toLocaleString('es-AR', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  })}`
 }
 
 function padRight(value: string, width: number) {

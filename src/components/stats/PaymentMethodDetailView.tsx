@@ -8,7 +8,7 @@ import ExportCSVButton from '@/components/shared/ExportCSVButton'
 import { PAYMENT_LABELS, PAYMENT_COLORS } from '@/lib/payments'
 import PageHeader from '@/components/shared/PageHeader'
 
-interface PaymentMethodRow {
+export interface PaymentMethodRow {
   method: string
   total_amount: number
   transactions: number

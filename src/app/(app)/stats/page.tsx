@@ -2,6 +2,7 @@ export const runtime = 'edge'
 
 import { createClient } from '@/lib/supabase/server'
 import StatsView from '@/components/stats/StatsView'
+import type { TopProductRow } from '@/components/stats/StatsView'
 import { requireAuthenticatedBusinessId } from '@/lib/business'
 import { resolveDateRange } from '@/lib/date-utils'
 import type { StatsKpis, StatsEvolution, StatsBreakdown } from '@/lib/types'
@@ -66,11 +67,4 @@ export default async function StatsPage({
       to={params.to}
     />
   )
-}
-
-interface TopProductRow {
-  id: string
-  name: string
-  units_sold: number
-  revenue: number
 }

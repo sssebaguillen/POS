@@ -19,7 +19,7 @@ type EvolutionMode = 'revenue' | 'units'
 type RankingMode = 'amount' | 'units'
 type BreakdownMode = 'category' | 'brand'
 
-interface TopProductRow {
+export interface TopProductRow {
   id: string
   name: string
   units_sold: number

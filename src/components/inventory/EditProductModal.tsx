@@ -10,6 +10,8 @@ import { Dialog, DialogContent } from '@/components/ui/dialog'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import type { PriceList, PriceListOverride } from '@/lib/types'
 import type { InventoryBrand, InventoryCategory, InventoryProduct } from '@/components/inventory/types'
+import { validateImageUrl } from '@/lib/validation'
+import FieldGroup from '@/components/inventory/FieldGroup'
 
 interface EditProductModalProps {
   open: boolean
@@ -21,34 +23,6 @@ interface EditProductModalProps {
   priceLists: PriceList[]
   existingOverrides: PriceListOverride[]
   onSaved: (updated: Partial<InventoryProduct>, nextOverrides: PriceListOverride[]) => void
-}
-
-function FieldGroup({
-  label,
-  badge,
-  required,
-  error,
-  children,
-}: {
-  label: string
-  badge?: React.ReactNode
-  required?: boolean
-  error?: string
-  children: React.ReactNode
-}) {
-  return (
-    <div className="flex flex-col gap-1">
-      <div className="flex items-center justify-between gap-2">
-        <label className="text-label text-subtle">
-          {label}
-          {required && <span className="text-red-400 ml-0.5">*</span>}
-        </label>
-        {badge}
-      </div>
-      {children}
-      {error && <p className="text-caption text-red-500">{error}</p>}
-    </div>
-  )
 }
 
 interface FormState {
@@ -139,22 +113,6 @@ export default function EditProductModal({
   function setField<K extends keyof FormState>(field: K, value: FormState[K]) {
     setForm(prev => ({ ...prev, [field]: value }))
     setErrors(prev => ({ ...prev, [field]: '' }))
-  }
-
-  function validateImageUrl(url: string): string {
-    if (!url) return ''
-    if (
-      url.startsWith('data:') ||
-      url.startsWith('javascript:') ||
-      url.startsWith('file:') ||
-      url.startsWith('blob:')
-    ) {
-      return 'URL no permitida'
-    }
-    if (!url.startsWith('https://')) {
-      return 'La URL debe comenzar con https://'
-    }
-    return ''
   }
 
   async function handleFileUpload(file: File) {

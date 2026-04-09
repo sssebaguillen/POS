@@ -13,27 +13,8 @@ import {
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import type { PriceList } from '@/lib/types'
 import type { InventoryBrand } from '@/components/inventory/types'
-
-function FieldGroup({ label, required, error, hint, children }: {
-  label: React.ReactNode
-  required?: boolean
-  error?: string
-  hint?: string
-  children: React.ReactNode
-}) {
-  return (
-    <div className="flex flex-col gap-1">
-      <div className="flex items-baseline justify-between">
-        <label className="text-label text-subtle">
-          {label}{required && <span className="text-red-400 ml-0.5">*</span>}
-        </label>
-        {hint && <span className="text-caption text-emerald-600 dark:text-emerald-400 font-medium">{hint}</span>}
-      </div>
-      {children}
-      {error && <p className="text-caption text-red-500">{error}</p>}
-    </div>
-  )
-}
+import { validateImageUrl } from '@/lib/validation'
+import FieldGroup from '@/components/inventory/FieldGroup'
 
 interface Category {
   id: string
@@ -121,22 +102,6 @@ export default function NewProductModal({ open, onClose, businessId, priceLists,
   function set(field: string, value: string | boolean) {
     setForm(prev => ({ ...prev, [field]: value }))
     setErrors(prev => ({ ...prev, [field]: '' }))
-  }
-
-  function validateImageUrl(url: string): string {
-    if (!url) return ''
-    if (
-      url.startsWith('data:') ||
-      url.startsWith('javascript:') ||
-      url.startsWith('file:') ||
-      url.startsWith('blob:')
-    ) {
-      return 'URL no permitida'
-    }
-    if (!url.startsWith('https://')) {
-      return 'La URL debe comenzar con https://'
-    }
-    return ''
   }
 
   async function handleFileUpload(file: File) {

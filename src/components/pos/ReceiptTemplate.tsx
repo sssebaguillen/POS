@@ -1,18 +1,12 @@
 'use client'
 
 import { PAYMENT_LABELS } from '@/lib/payments'
+import { formatMoney } from '@/lib/format'
 import type { ReceiptData } from '@/lib/printer/types'
 
 interface Props {
   receipt: ReceiptData
   showPreview?: boolean
-}
-
-function formatMoney(value: number) {
-  return `$${value.toLocaleString('es-AR', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  })}`
 }
 
 function ReceiptContent({ receipt }: { receipt: ReceiptData }) {

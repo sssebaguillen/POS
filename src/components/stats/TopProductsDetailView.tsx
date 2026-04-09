@@ -8,7 +8,7 @@ import { periodNeedsCustomDates, type DateRangePeriod } from '@/lib/date-utils'
 import ExportCSVButton from '@/components/shared/ExportCSVButton'
 import PageHeader from '@/components/shared/PageHeader'
 
-interface TopProductRow {
+export interface TopProductRow {
   id: string
   name: string
   sku: string | null

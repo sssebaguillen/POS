@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import TopProductsDetailView from '@/components/stats/TopProductsDetailView'
+import type { TopProductRow } from '@/components/stats/TopProductsDetailView'
 import { requireAuthenticatedBusinessId } from '@/lib/business'
 import { resolveDateRange } from '@/lib/date-utils'
 
@@ -47,18 +48,4 @@ export default async function TopProductsDetailPage({
       page={page}
     />
   )
-}
-
-interface TopProductRow {
-  id: string
-  name: string
-  sku: string | null
-  category_name: string | null
-  brand_name: string | null
-  price: number
-  cost: number
-  units_sold: number
-  revenue: number
-  gross_profit: number
-  transaction_count: number
 }

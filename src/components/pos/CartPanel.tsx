@@ -14,7 +14,7 @@ import { buildReceiptData } from '@/lib/printer/receipt'
 import type { ReceiptData, ReceiptItemInput } from '@/lib/printer/types'
 import { createClient } from '@/lib/supabase/client'
 import { calculateProductPrice } from '@/lib/price-lists'
-import { normalizePayment, PAYMENT_LABELS } from '@/lib/payments'
+import { normalizePayment, PAYMENT_OPTIONS } from '@/lib/payments'
 import type { PriceList, PriceListOverride } from '@/lib/types'
 import type { Permissions } from '@/lib/operator'
 import { useToast } from '@/hooks/useToast'
@@ -932,12 +932,6 @@ function EditSalePanel({
   onSave: (items: { product_id: string | null; quantity: number; unit_price: number }[], paymentMethod: string) => void
   onCancel: () => void
 }) {
-  const PAYMENT_OPTIONS: { value: string; label: string }[] = [
-    { value: 'cash', label: PAYMENT_LABELS.cash },
-    { value: 'card', label: PAYMENT_LABELS.card },
-    { value: 'mercadopago', label: PAYMENT_LABELS.mercadopago },
-    { value: 'transfer', label: PAYMENT_LABELS.transfer },
-  ]
   const [items, setItems] = useState(sale.items.map(i => ({ ...i })))
   const [paymentMethod, setPaymentMethod] = useState(sale.payment_method ?? 'cash')
 

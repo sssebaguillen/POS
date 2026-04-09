@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import BreakdownDetailView from '@/components/stats/BreakdownDetailView'
+import type { CategorySalesRow } from '@/components/stats/BreakdownDetailView'
 import { requireAuthenticatedBusinessId } from '@/lib/business'
 
 interface SearchParams {
@@ -43,13 +44,4 @@ export default async function BreakdownDetailPage({
       tab={tab}
     />
   )
-}
-
-interface CategorySalesRow {
-  category_id: string | null
-  category_name: string
-  revenue: number
-  units: number
-  transactions: number
-  distinct_products: number
 }

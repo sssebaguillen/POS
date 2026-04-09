@@ -7,7 +7,7 @@ import { periodNeedsCustomDates, type DateRangePeriod } from '@/lib/date-utils'
 import ExportCSVButton from '@/components/shared/ExportCSVButton'
 import PageHeader from '@/components/shared/PageHeader'
 
-interface CategorySalesRow {
+export interface CategorySalesRow {
   category_id: string | null
   category_name: string
   revenue: number

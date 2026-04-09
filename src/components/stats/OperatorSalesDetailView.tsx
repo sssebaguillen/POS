@@ -7,7 +7,7 @@ import { periodNeedsCustomDates, type DateRangePeriod } from '@/lib/date-utils'
 import ExportCSVButton from '@/components/shared/ExportCSVButton'
 import PageHeader from '@/components/shared/PageHeader'
 
-interface OperatorSalesRow {
+export interface OperatorSalesRow {
   operator_id: string | null
   operator_name: string
   role: string
