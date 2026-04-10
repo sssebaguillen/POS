@@ -2,14 +2,14 @@
 
 import { usePathname } from 'next/navigation'
 import Link from 'next/link'
-import { X, ShoppingCart, Package, ClipboardList, BarChart2, LineChart, Settings, Sun, Moon, User, LogOut, PanelLeftClose, PanelLeftOpen, Receipt } from 'lucide-react'
+import { X, ShoppingCart, Package, ClipboardList, BarChart2, LineChart, Settings, Sun, Moon, LogOut, PanelLeftClose, PanelLeftOpen, Receipt, Building2 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useState, useEffect, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
 import { useTheme } from '@/components/shared/theme'
 import OperatorSwitcher from '@/components/operator/OperatorSwitcher'
-import { parsePermissions, type Permissions } from '@/lib/operator'
+import { parsePermissions, type Permissions, type UserRole } from '@/lib/operator'
 
 interface NavLink {
   href: string
@@ -55,11 +55,21 @@ interface Props {
   open: boolean
   onClose: () => void
   activeOperatorName: string | null
+  activeOperatorRole: UserRole | null
+  businessName: string
   collapsed: boolean
   onToggleCollapse: () => void
 }
 
-export default function Sidebar({ open, onClose, activeOperatorName, collapsed, onToggleCollapse }: Props) {
+export default function Sidebar({
+  open,
+  onClose,
+  activeOperatorName,
+  activeOperatorRole,
+  businessName,
+  collapsed,
+  onToggleCollapse,
+}: Props) {
   const pathname = usePathname()
   const { theme, toggle } = useTheme()
   const router = useRouter()
@@ -97,6 +107,12 @@ export default function Sidebar({ open, onClose, activeOperatorName, collapsed, 
     onClose()
   }
 
+  const isOwnerSessionActive = activeOperatorRole === 'owner'
+  const hasActiveOperatorSession =
+    activeOperatorName !== null &&
+    activeOperatorRole !== null
+  const showBusinessSessionActions = isOwnerSessionActive
+
   async function handleLogout() {
     await supabase.auth.signOut()
     await fetch('/api/operator/logout', { method: 'POST' })
@@ -108,12 +124,15 @@ export default function Sidebar({ open, onClose, activeOperatorName, collapsed, 
       {/* Header */}
       <div
         className={cn(
-          'h-14 border-b border-edge/60 flex items-center shrink-0',
+          'border-b border-edge/60 flex items-center shrink-0 min-h-14',
           collapsed && !isMobileDrawer ? 'justify-center px-2' : 'justify-between px-4'
         )}
       >
         {(!collapsed || isMobileDrawer) && (
-          <span className="font-bold text-base text-heading tracking-tight">Pulsar POS</span>
+          <div className="min-w-0 py-3">
+            <p className="truncate font-bold text-base text-heading tracking-tight">{businessName}</p>
+            <p className="text-xs text-hint">powered by Pulsar</p>
+          </div>
         )}
         {isMobileDrawer ? (
           <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-hover-bg transition-colors ml-auto">
@@ -201,41 +220,43 @@ export default function Sidebar({ open, onClose, activeOperatorName, collapsed, 
           collapsed && !isMobileDrawer ? 'px-2 py-3 items-center' : 'px-3 py-3'
         )}
       >
-        {activeOperatorName && (!collapsed || isMobileDrawer) && (
-          <OperatorSwitcher operatorName={activeOperatorName} />
+        {hasActiveOperatorSession && activeOperatorName && activeOperatorRole !== null && (!collapsed || isMobileDrawer) && (
+          <OperatorSwitcher operatorName={activeOperatorName} operatorRole={activeOperatorRole} />
         )}
 
-        {/* Profile */}
-        <button
-          title={collapsed && !isMobileDrawer ? 'Perfil' : undefined}
-          className={cn(
-            'rounded-lg text-sm text-body hover:bg-hover-bg transition-colors',
-            collapsed && !isMobileDrawer
-              ? 'p-2.5 flex items-center justify-center w-full'
-              : 'flex items-center gap-2 px-3 py-2 text-left w-full'
-          )}
-          onClick={() => { router.push('/profile'); if (isMobileDrawer) onClose() }}
-        >
-          <User size={18} />
-          {(!collapsed || isMobileDrawer) && 'Perfil'}
-        </button>
+        {showBusinessSessionActions && (
+          <>
+            <button
+              title={collapsed && !isMobileDrawer ? businessName : undefined}
+              className={cn(
+                'rounded-lg text-sm text-body hover:bg-hover-bg transition-colors',
+                collapsed && !isMobileDrawer
+                  ? 'p-2.5 flex items-center justify-center w-full'
+                  : 'flex items-center gap-2 px-3 py-2 text-left w-full'
+              )}
+              onClick={() => { router.push('/profile'); if (isMobileDrawer) onClose() }}
+            >
+              <Building2 size={18} />
+              {(!collapsed || isMobileDrawer) && businessName}
+            </button>
 
-        {/* Logout */}
-        <button
-          type="button"
-          onClick={handleLogout}
-          title={collapsed && !isMobileDrawer ? 'Cerrar sesion' : undefined}
-          className={cn(
-            'rounded-lg text-red-500 hover:bg-red-50 hover:text-red-700 transition-colors',
-            collapsed && !isMobileDrawer
-              ? 'p-2.5 flex items-center justify-center w-full'
-              : 'flex items-center gap-2 px-3 py-2 text-left w-full text-sm'
-          )}
-          aria-label="Cerrar sesion"
-        >
-          <LogOut size={18} />
-          {(!collapsed || isMobileDrawer) && 'Cerrar sesion'}
-        </button>
+            <button
+              type="button"
+              onClick={handleLogout}
+              title={collapsed && !isMobileDrawer ? 'Cerrar sesion' : undefined}
+              className={cn(
+                'rounded-lg text-red-500 hover:bg-red-50 hover:text-red-700 transition-colors',
+                collapsed && !isMobileDrawer
+                  ? 'p-2.5 flex items-center justify-center w-full'
+                  : 'flex items-center gap-2 px-3 py-2 text-left w-full text-sm'
+              )}
+              aria-label="Cerrar sesion"
+            >
+              <LogOut size={18} />
+              {(!collapsed || isMobileDrawer) && 'Cerrar sesion'}
+            </button>
+          </>
+        )}
 
         {/* Theme toggle */}
         <button

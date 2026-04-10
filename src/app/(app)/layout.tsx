@@ -50,14 +50,19 @@ export default async function AppLayout({
   const sidebarCollapsed = cookieStore.get('pos-sidebar-collapsed')?.value === 'true'
 
   let primaryColor = '#1C4A3B'
+  let businessName = 'Negocio'
   const businessId = await getBusinessIdByUserId(supabase, user.id)
 
   if (businessId) {
     const { data: business } = await supabase
       .from('businesses')
-      .select('settings')
+      .select('name, settings')
       .eq('id', businessId)
       .maybeSingle()
+
+    if (typeof business?.name === 'string' && business.name.trim().length > 0) {
+      businessName = business.name
+    }
 
     const color = business?.settings?.primary_color
     if (typeof color === 'string' && /^#[0-9a-fA-F]{6}$/.test(color)) {
@@ -78,7 +83,12 @@ export default async function AppLayout({
           --primary-active-text: ${computeActiveText(primaryColor).dark};
         }
       `}</style>
-      <AppShell activeOperatorName={activeOperator?.name ?? null} initialCollapsed={sidebarCollapsed}>
+      <AppShell
+        activeOperatorName={activeOperator?.name ?? null}
+        activeOperatorRole={activeOperator?.role ?? null}
+        businessName={businessName}
+        initialCollapsed={sidebarCollapsed}
+      >
         <QueryProvider>
           {children}
         </QueryProvider>

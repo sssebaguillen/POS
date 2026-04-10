@@ -2,6 +2,7 @@
 
 import { createContext, useCallback, useContext, useMemo, useState } from 'react'
 import Sidebar from '@/components/sidebar'
+import type { UserRole } from '@/lib/operator'
 
 interface SidebarContextValue {
   open: boolean
@@ -14,6 +15,8 @@ interface SidebarContextValue {
 interface AppShellProps {
   children: React.ReactNode
   activeOperatorName: string | null
+  activeOperatorRole: UserRole | null
+  businessName: string
   initialCollapsed?: boolean
 }
 
@@ -29,7 +32,13 @@ export function useSidebar() {
 
 const STORAGE_KEY = 'pos-sidebar-collapsed'
 
-export default function AppShell({ children, activeOperatorName, initialCollapsed = false }: AppShellProps) {
+export default function AppShell({
+  children,
+  activeOperatorName,
+  activeOperatorRole,
+  businessName,
+  initialCollapsed = false,
+}: AppShellProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [collapsed, setCollapsed] = useState(initialCollapsed)
 
@@ -60,6 +69,8 @@ export default function AppShell({ children, activeOperatorName, initialCollapse
           open={sidebarOpen}
           onClose={() => setSidebarOpen(false)}
           activeOperatorName={activeOperatorName}
+          activeOperatorRole={activeOperatorRole}
+          businessName={businessName}
           collapsed={collapsed}
           onToggleCollapse={toggleCollapse}
         />
