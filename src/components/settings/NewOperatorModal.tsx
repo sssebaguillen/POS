@@ -8,7 +8,9 @@ import { Dialog, DialogContent } from '@/components/ui/dialog'
 import { isSettingsOperator, type SettingsOperator } from '@/components/settings/types'
 import type { Permissions } from '@/lib/operator'
 
-const PERMISSION_LABELS: { key: keyof Permissions; label: string }[] = [
+type VisiblePermissionKey = Exclude<keyof Permissions, 'operators_write'>
+
+const PERMISSION_LABELS: { key: VisiblePermissionKey; label: string }[] = [
   { key: 'sales',              label: 'Ventas' },
   { key: 'stock',              label: 'Ver inventario' },
   { key: 'stock_write',        label: 'Modificar inventario' },
@@ -21,8 +23,8 @@ const PERMISSION_LABELS: { key: keyof Permissions; label: string }[] = [
 ]
 
 const ROLE_DEFAULTS: Record<'manager' | 'cashier', Permissions> = {
-  manager: { sales: true, stock: true, stock_write: true,  stats: true,  expenses: true,  price_lists: true,  price_lists_write: true,  settings: false, price_override: false },
-  cashier: { sales: true, stock: true, stock_write: false, stats: false, expenses: false, price_lists: false, price_lists_write: false, settings: false, price_override: false },
+  manager: { sales: true, stock: true, stock_write: true,  stats: true,  expenses: true,  price_lists: true,  price_lists_write: true,  settings: false, operators_write: false, price_override: false },
+  cashier: { sales: true, stock: true, stock_write: false, stats: false, expenses: false, price_lists: false, price_lists_write: false, settings: false, operators_write: false, price_override: false },
 }
 
 function permissionsMatch(a: Permissions, b: Permissions): boolean {
@@ -61,7 +63,19 @@ export default function NewOperatorModal({ open, onClose, businessId, onCreated 
   }
 
   function togglePermission(key: keyof Permissions) {
-    setPermissions(prev => ({ ...prev, [key]: !prev[key] }))
+    setPermissions(prev => {
+      if (key === 'settings') {
+        const nextSettings = !prev.settings
+
+        return {
+          ...prev,
+          settings: nextSettings,
+          operators_write: nextSettings ? prev.operators_write : false,
+        }
+      }
+
+      return { ...prev, [key]: !prev[key] }
+    })
   }
 
   function normalizePin(value: string): string {
@@ -108,7 +122,7 @@ export default function NewOperatorModal({ open, onClose, businessId, onCreated 
     try {
       const { data: newOps } = await supabase
         .from('operators')
-        .select('id, name, role')
+        .select('id, name, role, permissions')
         .eq('business_id', businessId)
         .eq('name', trimmedName)
         .order('created_at', { ascending: false })
@@ -168,19 +182,38 @@ export default function NewOperatorModal({ open, onClose, businessId, onCreated 
             <p className="text-label text-muted-foreground">Permisos</p>
             <div className="rounded-lg border border-border/60 divide-y divide-border/60">
               {PERMISSION_LABELS.map(({ key, label }) => (
-                <div key={key} className="flex items-center justify-between px-3 py-2.5">
-                  <span className="text-sm text-foreground">{label}</span>
-                  <button
-                    type="button"
-                    role="switch"
-                    aria-checked={permissions[key]}
-                    onClick={() => togglePermission(key)}
-                    className={`relative w-9 h-5 rounded-full transition-colors cursor-pointer ${permissions[key] ? 'bg-primary' : 'bg-muted-foreground'}`}
-                  >
-                    <span
-                      className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-card shadow-sm transition-transform ${permissions[key] ? 'translate-x-4' : 'translate-x-0'}`}
-                    />
-                  </button>
+                <div key={key}>
+                  <div className="flex items-center justify-between px-3 py-2.5">
+                    <span className="text-sm text-foreground">{label}</span>
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={permissions[key]}
+                      onClick={() => togglePermission(key)}
+                      className={`relative w-9 h-5 rounded-full transition-colors cursor-pointer ${permissions[key] ? 'bg-primary' : 'bg-muted-foreground'}`}
+                    >
+                      <span
+                        className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-card shadow-sm transition-transform ${permissions[key] ? 'translate-x-4' : 'translate-x-0'}`}
+                      />
+                    </button>
+                  </div>
+
+                  {key === 'settings' && permissions.settings && (
+                    <div className="flex items-center justify-between border-t border-border/60 px-3 py-2.5 pl-8">
+                      <span className="text-sm text-muted-foreground">Gestionar operarios</span>
+                      <button
+                        type="button"
+                        role="switch"
+                        aria-checked={permissions.operators_write}
+                        onClick={() => togglePermission('operators_write')}
+                        className={`relative h-5 w-9 rounded-full transition-colors cursor-pointer ${permissions.operators_write ? 'bg-primary' : 'bg-muted-foreground'}`}
+                      >
+                        <span
+                          className={`absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-card shadow-sm transition-transform ${permissions.operators_write ? 'translate-x-4' : 'translate-x-0'}`}
+                        />
+                      </button>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>

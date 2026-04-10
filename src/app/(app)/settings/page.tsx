@@ -1,12 +1,16 @@
 import { redirect } from 'next/navigation'
+import { cookies } from 'next/headers'
 import { createClient } from '@/lib/supabase/server'
 import PageHeader from '@/components/shared/PageHeader'
 import SettingsForm from '@/components/settings/SettingsForm'
 import { isSettingsOperator, type SettingsBusiness, type SettingsOperator } from '@/components/settings/types'
 import { requireAuthenticatedBusinessId } from '@/lib/business'
+import { getActiveOperator } from '@/lib/operator'
 
 export default async function SettingsPage() {
   const supabase = await createClient()
+  const cookieStore = await cookies()
+  const activeOperator = getActiveOperator(cookieStore)
 
   const {
     data: { user },
@@ -29,7 +33,7 @@ export default async function SettingsPage() {
       .single<SettingsBusiness>(),
     supabase
       .from('operators')
-      .select('id, name, role')
+      .select('id, name, role, permissions')
       .eq('business_id', businessId)
       .order('name'),
   ])
@@ -43,12 +47,19 @@ export default async function SettingsPage() {
   }
 
   const parsedOperators: SettingsOperator[] = (operators ?? []).filter(isSettingsOperator)
+  const isOwner = activeOperator?.role === 'owner'
+  const canManageOperators = isOwner || activeOperator?.permissions.operators_write === true
 
   return (
     <div className="flex flex-col h-screen overflow-hidden">
       <PageHeader title="Configuración" />
       <div className="flex-1 overflow-y-auto p-6">
-        <SettingsForm business={business} operators={parsedOperators} />
+        <SettingsForm
+          business={business}
+          operators={parsedOperators}
+          isOwner={isOwner}
+          canManageOperators={canManageOperators}
+        />
       </div>
     </div>
   )

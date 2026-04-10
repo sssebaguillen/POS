@@ -10,6 +10,8 @@ import OperatorList from '@/components/settings/OperatorList'
 interface SettingsFormProps {
   business: SettingsBusiness
   operators: SettingsOperator[]
+  isOwner: boolean
+  canManageOperators: boolean
 }
 
 interface FormState {
@@ -29,7 +31,12 @@ function isValidHttpUrl(value: string): boolean {
   }
 }
 
-export default function SettingsForm({ business, operators }: SettingsFormProps) {
+export default function SettingsForm({
+  business,
+  operators,
+  isOwner,
+  canManageOperators,
+}: SettingsFormProps) {
   const [form, setForm] = useState<FormState>({
     name: business.name,
     description: business.description ?? '',
@@ -281,7 +288,12 @@ export default function SettingsForm({ business, operators }: SettingsFormProps)
         </form>
       </div>
 
-      <OperatorList businessId={business.id} initialOperators={operators} />
+      <OperatorList
+        businessId={business.id}
+        initialOperators={operators}
+        isOwner={isOwner}
+        canManageOperators={canManageOperators}
+      />
     </div>
   )
 }

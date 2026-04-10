@@ -10,10 +10,40 @@ export interface Permissions {
   price_lists_write: boolean
   settings: boolean
   expenses: boolean
+  operators_write: boolean
   price_override: boolean
 }
 
+export const DEFAULT_PERMISSIONS: Permissions = {
+  sales: false,
+  stock: false,
+  stock_write: false,
+  stats: false,
+  price_lists: false,
+  price_lists_write: false,
+  settings: false,
+  expenses: false,
+  operators_write: false,
+  price_override: false,
+}
+
+export const OPERATOR_MANAGEMENT_PERMISSION_KEYS = [
+  'sales',
+  'stock',
+  'stock_write',
+  'stats',
+  'price_lists',
+  'price_lists_write',
+  'expenses',
+  'settings',
+  'operators_write',
+] as const
+
+export type OperatorManagementPermissionKey = (typeof OPERATOR_MANAGEMENT_PERMISSION_KEYS)[number]
+export type OperatorManagementPermissions = Pick<Permissions, OperatorManagementPermissionKey>
+
 export const OWNER_PERMISSIONS: Permissions = {
+  ...DEFAULT_PERMISSIONS,
   sales: true,
   stock: true,
   stock_write: true,
@@ -22,6 +52,7 @@ export const OWNER_PERMISSIONS: Permissions = {
   price_lists_write: true,
   settings: true,
   expenses: true,
+  operators_write: true,
   price_override: true,
 }
 
@@ -60,6 +91,7 @@ export function parsePermissions(value: unknown): Permissions | null {
   }
 
   return {
+    ...DEFAULT_PERMISSIONS,
     sales: record.sales,
     stock: record.stock,
     stock_write: record.stock_write,
@@ -68,6 +100,7 @@ export function parsePermissions(value: unknown): Permissions | null {
     price_lists_write: record.price_lists_write,
     settings: record.settings,
     expenses: record.expenses,
+    operators_write: record.operators_write === true,
     // Soft default: old cookies without this field stay valid (defaults to false)
     price_override: record.price_override === true,
   }
@@ -75,6 +108,7 @@ export function parsePermissions(value: unknown): Permissions | null {
 
 export function normalizePermissions(value: Partial<Permissions> | null | undefined): Permissions {
   return {
+    ...DEFAULT_PERMISSIONS,
     sales: value?.sales === true,
     stock: value?.stock === true,
     stock_write: value?.stock_write === true,
@@ -83,7 +117,26 @@ export function normalizePermissions(value: Partial<Permissions> | null | undefi
     price_lists_write: value?.price_lists_write === true,
     settings: value?.settings === true,
     expenses: value?.expenses === true,
+    operators_write: value?.operators_write === true,
     price_override: value?.price_override === true,
+  }
+}
+
+export function toOperatorManagementPermissions(
+  value: Partial<Permissions> | null | undefined
+): OperatorManagementPermissions {
+  const permissions = normalizePermissions(value)
+
+  return {
+    sales: permissions.sales,
+    stock: permissions.stock,
+    stock_write: permissions.stock_write,
+    stats: permissions.stats,
+    price_lists: permissions.price_lists,
+    price_lists_write: permissions.price_lists_write,
+    expenses: permissions.expenses,
+    settings: permissions.settings,
+    operators_write: permissions.operators_write,
   }
 }
 

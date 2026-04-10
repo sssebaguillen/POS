@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { type OperatorRole, type SettingsOperator } from '@/components/settings/types'
 import NewOperatorModal from '@/components/settings/NewOperatorModal'
+import EditOperatorModal from '@/components/settings/EditOperatorModal'
 import ConfirmModal from '@/components/shared/ConfirmModal'
 import { useToast } from '@/hooks/useToast'
 import Toast from '@/components/shared/Toast'
@@ -14,6 +15,8 @@ type ConfirmState = { title: string; message: string; onConfirm: () => void } | 
 interface Props {
   businessId: string
   initialOperators: SettingsOperator[]
+  isOwner: boolean
+  canManageOperators: boolean
 }
 
 function roleLabel(role: OperatorRole): string {
@@ -22,10 +25,16 @@ function roleLabel(role: OperatorRole): string {
   return 'Cashier'
 }
 
-export default function OperatorList({ businessId, initialOperators }: Props) {
+export default function OperatorList({
+  businessId,
+  initialOperators,
+  isOwner,
+  canManageOperators,
+}: Props) {
   const supabase = useMemo(() => createClient(), [])
   const [operatorList, setOperatorList] = useState<SettingsOperator[]>(initialOperators)
   const [showNewOperatorModal, setShowNewOperatorModal] = useState(false)
+  const [editingOperator, setEditingOperator] = useState<SettingsOperator | null>(null)
   const [deletingOperatorId, setDeletingOperatorId] = useState<string | null>(null)
   const [pendingConfirm, setPendingConfirm] = useState<ConfirmState>(null)
   const { toast, showToast, dismissToast } = useToast()
@@ -84,15 +93,28 @@ export default function OperatorList({ businessId, initialOperators }: Props) {
               <p className="text-sm font-medium text-foreground">{operator.name}</p>
               <p className="text-xs uppercase tracking-wide text-muted-foreground">{roleLabel(operator.role)}</p>
             </div>
-            <Button
-              type="button"
-              variant="outline"
-              className="h-8 px-3 text-xs"
-              disabled={deletingOperatorId === operator.id}
-              onClick={() => handleDeleteOperator(operator)}
-            >
-              {deletingOperatorId === operator.id ? 'Eliminando...' : 'Eliminar'}
-            </Button>
+            <div className="flex items-center gap-2">
+              {(isOwner || canManageOperators) && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="h-8 px-3 text-xs"
+                  onClick={() => setEditingOperator(operator)}
+                >
+                  Editar
+                </Button>
+              )}
+
+              <Button
+                type="button"
+                variant="outline"
+                className="h-8 px-3 text-xs"
+                disabled={deletingOperatorId === operator.id}
+                onClick={() => handleDeleteOperator(operator)}
+              >
+                {deletingOperatorId === operator.id ? 'Eliminando...' : 'Eliminar'}
+              </Button>
+            </div>
           </div>
         ))}
       </div>
@@ -107,6 +129,25 @@ export default function OperatorList({ businessId, initialOperators }: Props) {
           )
         }}
       />
+
+      {editingOperator && (
+        <EditOperatorModal
+          operator={editingOperator}
+          businessId={businessId}
+          isOwner={isOwner}
+          canManageOperators={canManageOperators}
+          onClose={() => setEditingOperator(null)}
+          onUpdated={updatedOperator => {
+            setOperatorList(prev =>
+              prev
+                .map(operator => (operator.id === updatedOperator.id ? updatedOperator : operator))
+                .sort((a, b) => a.name.localeCompare(b.name))
+            )
+          }}
+          onSuccess={message => showToast({ message })}
+          onError={message => showToast({ message })}
+        />
+      )}
 
       <ConfirmModal
         open={pendingConfirm !== null}
