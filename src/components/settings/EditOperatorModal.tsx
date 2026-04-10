@@ -26,7 +26,7 @@ interface EditOperatorModalProps {
 }
 
 interface PermissionField {
-  key: Exclude<OperatorManagementPermissionKey, 'operators_write'>
+  key: Exclude<OperatorManagementPermissionKey, 'operators_write' | 'stock_write' | 'price_lists_write'>
   label: string
 }
 
@@ -41,10 +41,8 @@ interface PermissionToggleRowProps {
 const PERMISSION_FIELDS: PermissionField[] = [
   { key: 'sales', label: 'Ventas' },
   { key: 'stock', label: 'Ver inventario' },
-  { key: 'stock_write', label: 'Modificar inventario' },
   { key: 'stats', label: 'Estadisticas' },
   { key: 'price_lists', label: 'Ver listas de precios' },
-  { key: 'price_lists_write', label: 'Modificar listas de precios' },
   { key: 'expenses', label: 'Gastos' },
   { key: 'settings', label: 'Configuracion' },
 ]
@@ -131,6 +129,26 @@ export default function EditOperatorModal({
 
   function handleTogglePermission(key: OperatorManagementPermissionKey) {
     setPermissions(prev => {
+      if (key === 'stock') {
+        const nextStock = !prev.stock
+
+        return {
+          ...prev,
+          stock: nextStock,
+          stock_write: nextStock ? prev.stock_write : false,
+        }
+      }
+
+      if (key === 'price_lists') {
+        const nextPriceLists = !prev.price_lists
+
+        return {
+          ...prev,
+          price_lists: nextPriceLists,
+          price_lists_write: nextPriceLists ? prev.price_lists_write : false,
+        }
+      }
+
       if (key === 'settings') {
         const nextSettings = !prev.settings
 
@@ -321,6 +339,28 @@ export default function EditOperatorModal({
                       checked={permissions[key]}
                       onToggle={() => handleTogglePermission(key)}
                     />
+
+                    {key === 'stock' && permissions.stock && (
+                      <div className="border-t border-border/60">
+                        <PermissionToggleRow
+                          label="Modificar inventario"
+                          checked={permissions.stock_write}
+                          indented
+                          onToggle={() => handleTogglePermission('stock_write')}
+                        />
+                      </div>
+                    )}
+
+                    {key === 'price_lists' && permissions.price_lists && (
+                      <div className="border-t border-border/60">
+                        <PermissionToggleRow
+                          label="Modificar listas de precios"
+                          checked={permissions.price_lists_write}
+                          indented
+                          onToggle={() => handleTogglePermission('price_lists_write')}
+                        />
+                      </div>
+                    )}
 
                     {key === 'settings' && permissions.settings && (
                       <div className="border-t border-border/60">

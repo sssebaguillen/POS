@@ -8,16 +8,14 @@ import { Dialog, DialogContent } from '@/components/ui/dialog'
 import { isSettingsOperator, type SettingsOperator } from '@/components/settings/types'
 import type { Permissions } from '@/lib/operator'
 
-type VisiblePermissionKey = Exclude<keyof Permissions, 'operators_write'>
+type VisiblePermissionKey = Exclude<keyof Permissions, 'operators_write' | 'stock_write' | 'price_lists_write'>
 
 const PERMISSION_LABELS: { key: VisiblePermissionKey; label: string }[] = [
   { key: 'sales',              label: 'Ventas' },
   { key: 'stock',              label: 'Ver inventario' },
-  { key: 'stock_write',        label: 'Modificar inventario' },
   { key: 'stats',              label: 'Estadísticas' },
   { key: 'expenses',           label: 'Gastos' },
   { key: 'price_lists',        label: 'Ver listas de precios' },
-  { key: 'price_lists_write',  label: 'Modificar listas de precios' },
   { key: 'price_override',     label: 'Editar precio en venta' },
   { key: 'settings',           label: 'Configuración' },
 ]
@@ -64,6 +62,26 @@ export default function NewOperatorModal({ open, onClose, businessId, onCreated 
 
   function togglePermission(key: keyof Permissions) {
     setPermissions(prev => {
+      if (key === 'stock') {
+        const nextStock = !prev.stock
+
+        return {
+          ...prev,
+          stock: nextStock,
+          stock_write: nextStock ? prev.stock_write : false,
+        }
+      }
+
+      if (key === 'price_lists') {
+        const nextPriceLists = !prev.price_lists
+
+        return {
+          ...prev,
+          price_lists: nextPriceLists,
+          price_lists_write: nextPriceLists ? prev.price_lists_write : false,
+        }
+      }
+
       if (key === 'settings') {
         const nextSettings = !prev.settings
 
@@ -197,6 +215,40 @@ export default function NewOperatorModal({ open, onClose, businessId, onCreated 
                       />
                     </button>
                   </div>
+
+                  {key === 'stock' && permissions.stock && (
+                    <div className="flex items-center justify-between border-t border-border/60 px-3 py-2.5 pl-8">
+                      <span className="text-sm text-muted-foreground">Modificar inventario</span>
+                      <button
+                        type="button"
+                        role="switch"
+                        aria-checked={permissions.stock_write}
+                        onClick={() => togglePermission('stock_write')}
+                        className={`relative h-5 w-9 rounded-full transition-colors cursor-pointer ${permissions.stock_write ? 'bg-primary' : 'bg-muted-foreground'}`}
+                      >
+                        <span
+                          className={`absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-card shadow-sm transition-transform ${permissions.stock_write ? 'translate-x-4' : 'translate-x-0'}`}
+                        />
+                      </button>
+                    </div>
+                  )}
+
+                  {key === 'price_lists' && permissions.price_lists && (
+                    <div className="flex items-center justify-between border-t border-border/60 px-3 py-2.5 pl-8">
+                      <span className="text-sm text-muted-foreground">Modificar listas de precios</span>
+                      <button
+                        type="button"
+                        role="switch"
+                        aria-checked={permissions.price_lists_write}
+                        onClick={() => togglePermission('price_lists_write')}
+                        className={`relative h-5 w-9 rounded-full transition-colors cursor-pointer ${permissions.price_lists_write ? 'bg-primary' : 'bg-muted-foreground'}`}
+                      >
+                        <span
+                          className={`absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-card shadow-sm transition-transform ${permissions.price_lists_write ? 'translate-x-4' : 'translate-x-0'}`}
+                        />
+                      </button>
+                    </div>
+                  )}
 
                   {key === 'settings' && permissions.settings && (
                     <div className="flex items-center justify-between border-t border-border/60 px-3 py-2.5 pl-8">
