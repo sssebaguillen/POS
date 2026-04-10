@@ -1,7 +1,7 @@
 -- =============================================================================
 -- PULSAR POS — DATABASE SCHEMA
 -- Supabase project: zrnthcznbrplzpmxmkwk (sa-east-1)
--- Generated: 2026-04-10
+-- Generated: 2026-04-11
 -- =============================================================================
 -- Solo estructura: tablas, tipos, constraints, índices, triggers, RLS, funciones.
 -- No incluye datos.
@@ -78,7 +78,7 @@ CREATE TABLE public.operators (
   name        text        NOT NULL,
   role        text        NOT NULL DEFAULT 'cashier',
   pin         text        NOT NULL,
-  permissions jsonb       NOT NULL DEFAULT '{"sales": true, "stock": false, "stock_write": false, "stats": false, "price_lists": false, "price_lists_write": false, "settings": false, "expenses": false}'::jsonb,
+  permissions jsonb       NOT NULL DEFAULT '{"sales": true, "stock": false, "stock_write": false, "stats": false, "price_lists": false, "price_lists_write": false, "settings": false, "operators_write": false, "expenses": false}'::jsonb,
   is_active   boolean              DEFAULT true,
   created_at  timestamptz          DEFAULT now(),
   CONSTRAINT operators_pkey PRIMARY KEY (id),
@@ -560,18 +560,21 @@ DECLARE
 BEGIN
   v_default_permissions := CASE p_role
     WHEN 'manager' THEN
-      '{"sales": true, "stock": true, "stock_write": true, "stats": true, "price_lists": true, "price_lists_write": true, "settings": false, "expenses": false}'::jsonb
+      '{"sales": true, "stock": true, "stock_write": true, "stats": true, "price_lists": true, "price_lists_write": true, "settings": false, "operators_write": false, "expenses": false}'::jsonb
     WHEN 'cashier' THEN
-      '{"sales": true, "stock": true, "stock_write": false, "stats": false, "price_lists": false, "price_lists_write": false, "settings": false, "expenses": false}'::jsonb
+      '{"sales": true, "stock": true, "stock_write": false, "stats": false, "price_lists": false, "price_lists_write": false, "settings": false, "operators_write": false, "expenses": false}'::jsonb
     ELSE
-      '{"sales": true, "stock": false, "stock_write": false, "stats": false, "price_lists": false, "price_lists_write": false, "settings": false, "expenses": false}'::jsonb
+      '{"sales": true, "stock": false, "stock_write": false, "stats": false, "price_lists": false, "price_lists_write": false, "settings": false, "operators_write": false, "expenses": false}'::jsonb
   END;
 
   v_final_permissions := COALESCE(p_permissions, v_default_permissions);
 
-  -- Garantizar que expenses siempre existe
+  -- Garantizar campos obligatorios aunque se pase p_permissions parcial
   IF (v_final_permissions->>'expenses') IS NULL THEN
     v_final_permissions := v_final_permissions || '{"expenses": false}'::jsonb;
+  END IF;
+  IF (v_final_permissions->>'operators_write') IS NULL THEN
+    v_final_permissions := v_final_permissions || '{"operators_write": false}'::jsonb;
   END IF;
 
   INSERT INTO operators (business_id, name, role, pin, permissions)
@@ -1448,6 +1451,160 @@ $$;
 -- get_sales_by_operator_detail, get_sales_by_payment_detail
 -- (funciones de analytics — ver definiciones completas en Supabase Dashboard > Database > Functions)
 
+
+-- update_operator
+CREATE OR REPLACE FUNCTION public.update_operator(
+  p_operator_id uuid,
+  p_name        text    DEFAULT NULL,
+  p_new_pin     text    DEFAULT NULL,
+  p_permissions jsonb   DEFAULT NULL
+)
+RETURNS json
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO 'public', 'extensions'
+AS $$
+DECLARE
+  v_caller_id            uuid;
+  v_business_id          uuid;
+  v_operator_business_id uuid;
+BEGIN
+  v_caller_id := auth.uid();
+
+  SELECT business_id INTO v_business_id
+  FROM profiles WHERE id = v_caller_id;
+
+  IF v_business_id IS NULL THEN
+    RETURN json_build_object('success', false, 'error', 'caller_not_found');
+  END IF;
+
+  SELECT business_id INTO v_operator_business_id
+  FROM operators WHERE id = p_operator_id;
+
+  IF v_operator_business_id IS NULL THEN
+    RETURN json_build_object('success', false, 'error', 'operator_not_found');
+  END IF;
+
+  IF v_operator_business_id <> v_business_id THEN
+    RETURN json_build_object('success', false, 'error', 'unauthorized');
+  END IF;
+
+  UPDATE operators
+  SET
+    name        = COALESCE(p_name, name),
+    pin         = CASE
+                    WHEN p_new_pin IS NOT NULL
+                    THEN extensions.crypt(p_new_pin, extensions.gen_salt('bf'))
+                    ELSE pin
+                  END,
+    permissions = CASE
+                    WHEN p_permissions IS NOT NULL
+                    THEN permissions || p_permissions
+                    ELSE permissions
+                  END
+  WHERE id = p_operator_id;
+
+  RETURN json_build_object('success', true);
+EXCEPTION
+  WHEN others THEN
+    RETURN json_build_object('success', false, 'error', sqlerrm);
+END;
+$$;
+
+-- get_operator_stats
+CREATE OR REPLACE FUNCTION public.get_operator_stats(
+  p_operator_id uuid,
+  p_date_from   timestamptz DEFAULT NULL,
+  p_date_to     timestamptz DEFAULT NULL
+)
+RETURNS json
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO 'public'
+AS $$
+DECLARE
+  v_caller_id            uuid;
+  v_business_id          uuid;
+  v_operator_business_id uuid;
+  v_total_sales          int;
+  v_total_revenue        numeric;
+  v_top_products         json;
+  v_sale_history         json;
+BEGIN
+  v_caller_id := auth.uid();
+
+  SELECT business_id INTO v_business_id
+  FROM profiles WHERE id = v_caller_id;
+
+  IF v_business_id IS NULL THEN
+    RETURN json_build_object('success', false, 'error', 'caller_not_found');
+  END IF;
+
+  SELECT business_id INTO v_operator_business_id
+  FROM operators WHERE id = p_operator_id;
+
+  IF v_operator_business_id <> v_business_id THEN
+    RETURN json_build_object('success', false, 'error', 'unauthorized');
+  END IF;
+
+  SELECT COUNT(*)::int, COALESCE(SUM(total), 0)
+  INTO v_total_sales, v_total_revenue
+  FROM sales
+  WHERE operator_id = p_operator_id
+    AND business_id = v_business_id
+    AND status = 'completed'
+    AND (p_date_from IS NULL OR created_at >= p_date_from)
+    AND (p_date_to   IS NULL OR created_at <= p_date_to);
+
+  SELECT json_agg(t) INTO v_top_products
+  FROM (
+    SELECT
+      p.name AS product_name,
+      SUM(si.quantity)::int AS total_quantity,
+      SUM(si.quantity * si.unit_price) AS total_revenue
+    FROM sale_items si
+    JOIN sales s    ON s.id  = si.sale_id
+    JOIN products p ON p.id  = si.product_id
+    WHERE s.operator_id  = p_operator_id
+      AND s.business_id  = v_business_id
+      AND s.status       = 'completed'
+      AND (p_date_from IS NULL OR s.created_at >= p_date_from)
+      AND (p_date_to   IS NULL OR s.created_at <= p_date_to)
+    GROUP BY p.id, p.name
+    ORDER BY total_quantity DESC
+    LIMIT 5
+  ) t;
+
+  SELECT json_agg(t) INTO v_sale_history
+  FROM (
+    SELECT
+      s.id,
+      s.total,
+      s.created_at,
+      s.status,
+      (SELECT COUNT(*) FROM sale_items si WHERE si.sale_id = s.id)::int AS items_count
+    FROM sales s
+    WHERE s.operator_id = p_operator_id
+      AND s.business_id = v_business_id
+      AND s.status      = 'completed'
+      AND (p_date_from IS NULL OR s.created_at >= p_date_from)
+      AND (p_date_to   IS NULL OR s.created_at <= p_date_to)
+    ORDER BY s.created_at DESC
+    LIMIT 50
+  ) t;
+
+  RETURN json_build_object(
+    'success',       true,
+    'total_sales',   v_total_sales,
+    'total_revenue', v_total_revenue,
+    'top_products',  COALESCE(v_top_products, '[]'::json),
+    'sale_history',  COALESCE(v_sale_history, '[]'::json)
+  );
+EXCEPTION
+  WHEN others THEN
+    RETURN json_build_object('success', false, 'error', sqlerrm);
+END;
+$$;
 
 -- ---------------------------------------------------------------------------
 -- TRIGGERS
