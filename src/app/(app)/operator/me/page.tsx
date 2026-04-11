@@ -112,18 +112,45 @@ export default async function OperatorMePage({
   }[] = []
 
   if (activeOperator.role === 'owner') {
-    const { data: ownerProfile, error } = await supabase
+    const { data: ownerProfile, error: profileError } = await supabase
       .from('profiles')
       .select('id, name, created_at')
       .eq('id', activeOperator.profile_id)
       .single<OwnerProfileRow>()
 
-    if (error || !ownerProfile) {
-      throw new Error(error?.message ?? 'No se pudo cargar el perfil del owner.')
+    if (profileError || !ownerProfile) {
+      throw new Error(profileError?.message ?? 'No se pudo cargar el perfil del owner.')
+    }
+
+    const { data: statsRaw, error: statsError } = await supabase.rpc('get_owner_stats', {
+      p_date_from: from ? `${from}T00:00:00` : null,
+      p_date_to:   to   ? `${to}T23:59:59`   : null,
+    })
+
+    if (statsError) throw new Error(statsError.message)
+
+    const stats = statsRaw as unknown as OperatorStatsResult | null
+
+    if (!stats || stats.success !== true) {
+      throw new Error('No se pudieron cargar las estadísticas.')
     }
 
     operatorName = ownerProfile.name
     memberSince = formatMemberSince(ownerProfile.created_at)
+    totalSales = Number(stats.total_sales ?? 0)
+    totalRevenue = Number(stats.total_revenue ?? 0)
+    topProducts = (stats.top_products ?? []).map(p => ({
+      product_name: p.product_name,
+      total_quantity: Number(p.total_quantity ?? 0),
+      total_revenue: Number(p.total_revenue ?? 0),
+    }))
+    saleHistory = (stats.sale_history ?? []).map(s => ({
+      id: s.id,
+      total: Number(s.total ?? 0),
+      created_at: s.created_at,
+      status: s.status,
+      items_count: Number(s.items_count ?? 0),
+    }))
   } else {
     const [{ data: operator, error: operatorError }, { data: statsRaw, error: statsError }] =
       await Promise.all([
@@ -135,8 +162,8 @@ export default async function OperatorMePage({
           .single<OperatorProfileRow>(),
         supabase.rpc('get_operator_stats', {
           p_operator_id: activeOperator.profile_id,
-          p_date_from: from,
-          p_date_to: to,
+          p_date_from: from ? `${from}T00:00:00` : null,
+          p_date_to:   to   ? `${to}T23:59:59`   : null,
         }),
       ])
 
