@@ -6,22 +6,22 @@ import DateRangeFilter from '@/components/shared/DateRangeFilter'
 import { periodNeedsCustomDates, type DateRangePeriod } from '@/lib/date-utils'
 import ExportCSVButton from '@/components/shared/ExportCSVButton'
 import PageHeader from '@/components/shared/PageHeader'
+import { OPERATOR_ROLE_LABELS, PROFILE_ROLE_LABELS } from '@/lib/constants/domain'
+import type { UserRole } from '@/lib/operator'
 
 export interface OperatorSalesRow {
   operator_id: string | null
   operator_name: string
-  role: string
+  role: UserRole
   transactions: number
   total_revenue: number
   avg_ticket: number
   units_sold: number
 }
 
-const ROLE_LABELS: Record<string, string> = {
-  owner: 'Propietario',
-  manager: 'Gerente',
-  cashier: 'Cajero',
-  custom: 'Personalizado',
+function roleLabel(role: UserRole): string {
+  if (role === 'owner') return PROFILE_ROLE_LABELS.owner
+  return OPERATOR_ROLE_LABELS[role]
 }
 
 interface Props {
@@ -51,7 +51,7 @@ export default function OperatorSalesDetailView({ rows, period, from, to }: Prop
   const csvData = useMemo(() =>
     sorted.map(r => ({
       Operador: r.operator_name,
-      Rol: ROLE_LABELS[r.role] ?? r.role,
+      Rol: roleLabel(r.role),
       Transacciones: r.transactions,
       'Ingresos totales': r.total_revenue,
       'Ticket promedio': r.avg_ticket,
@@ -96,7 +96,7 @@ export default function OperatorSalesDetailView({ rows, period, from, to }: Prop
                   sorted.map(row => (
                     <tr key={row.operator_id ?? row.operator_name} className="border-b border-edge/40 hover:bg-hover-bg transition-colors">
                       <td className="px-4 py-3 font-medium text-heading">{row.operator_name}</td>
-                      <td className="px-4 py-3 text-body hidden md:table-cell">{ROLE_LABELS[row.role] ?? row.role}</td>
+                      <td className="px-4 py-3 text-body hidden md:table-cell">{roleLabel(row.role)}</td>
                       <td className="px-4 py-3 text-right font-semibold">${(row.total_revenue ?? 0).toLocaleString('es-AR')}</td>
                       <td className="px-4 py-3 text-right hidden md:table-cell">{row.transactions ?? 0}</td>
                       <td className="px-4 py-3 text-right hidden lg:table-cell">

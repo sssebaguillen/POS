@@ -5,11 +5,12 @@ import { useRouter } from 'next/navigation'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { OPERATOR_ROLE_LABELS, PROFILE_ROLE_LABELS, type OperatorRole } from '@/lib/constants/domain'
 
 interface OperatorListItem {
   id: string
   name: string
-  role: string
+  role: OperatorRole
 }
 
 interface OwnerProfile {
@@ -38,13 +39,6 @@ function getInitials(name: string): string {
     .slice(0, 2)
     .map(part => part.charAt(0).toUpperCase())
     .join('')
-}
-
-function roleLabel(role: string): string {
-  if (role === 'owner') return 'Owner'
-  if (role === 'manager') return 'Manager'
-  if (role === 'cashier') return 'Cashier'
-  return role
 }
 
 const OWNER_CARD_ID = '__owner__'
@@ -148,7 +142,7 @@ export default function OperatorSelectView({ ownerProfile, operators, availableO
                 <div className="min-w-0">
                   <p className="truncate text-sm font-medium text-foreground">{ownerProfile.name}</p>
                   <Badge variant="secondary" className="mt-1 text-[10px] uppercase tracking-wide">
-                    OWNER
+                    {PROFILE_ROLE_LABELS.owner}
                   </Badge>
                 </div>
               </div>
@@ -175,7 +169,7 @@ export default function OperatorSelectView({ ownerProfile, operators, availableO
                     <div className="min-w-0">
                       <p className="truncate text-sm font-medium text-foreground">{operator.name}</p>
                       <Badge variant="secondary" className="mt-1 text-[10px] uppercase tracking-wide">
-                        {roleLabel(operator.role)}
+                        {OPERATOR_ROLE_LABELS[operator.role]}
                       </Badge>
                     </div>
                   </div>

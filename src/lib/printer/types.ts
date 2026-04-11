@@ -1,4 +1,6 @@
-export type PaymentMethod = 'cash' | 'card' | 'transfer' | 'mercadopago' | 'credit'
+import type { PaymentMethod } from '@/lib/constants/domain'
+
+export type { PaymentMethod }
 
 export interface SaleItemInput {
   product_id: string | null

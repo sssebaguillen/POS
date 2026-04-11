@@ -1,4 +1,5 @@
 import { parsePermissions, type Permissions } from '@/lib/operator'
+import { OPERATOR_ROLES, type OperatorRole } from '@/lib/constants/domain'
 
 export interface SettingsBusiness {
   id: string
@@ -9,8 +10,6 @@ export interface SettingsBusiness {
   slug: string
   settings: { primary_color?: string } | null
 }
-
-export type OperatorRole = 'manager' | 'cashier' | 'custom'
 
 export interface SettingsOperator {
   id: string
@@ -31,7 +30,7 @@ export function isSettingsOperator(value: unknown): value is SettingsOperator {
   return (
     typeof operator.id === 'string' &&
     typeof operator.name === 'string' &&
-    (operator.role === 'manager' || operator.role === 'cashier' || operator.role === 'custom') &&
+    OPERATOR_ROLES.includes(operator.role as OperatorRole) &&
     permissions !== null
   )
 }

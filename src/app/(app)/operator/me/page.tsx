@@ -5,6 +5,7 @@ import OperatorMeView from '@/components/operator/OperatorMeView'
 import { createClient } from '@/lib/supabase/server'
 import { resolveDateRange, type DateRangePeriod } from '@/lib/date-utils'
 import { getActiveOperator, type UserRole } from '@/lib/operator'
+import type { OperatorRole } from '@/lib/constants/domain'
 import { requireAuthenticatedBusinessId } from '@/lib/business'
 
 interface SearchParams {
@@ -16,7 +17,7 @@ interface SearchParams {
 interface OperatorProfileRow {
   id: string
   name: string
-  role: 'manager' | 'cashier' | 'custom'
+  role: OperatorRole
   created_at: string
 }
 

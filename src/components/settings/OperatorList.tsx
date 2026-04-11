@@ -3,7 +3,8 @@
 import { useMemo, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
-import { type OperatorRole, type SettingsOperator } from '@/components/settings/types'
+import { type SettingsOperator } from '@/components/settings/types'
+import { OPERATOR_ROLE_LABELS } from '@/lib/constants/domain'
 import NewOperatorModal from '@/components/settings/NewOperatorModal'
 import EditOperatorModal from '@/components/settings/EditOperatorModal'
 import ConfirmModal from '@/components/shared/ConfirmModal'
@@ -17,12 +18,6 @@ interface Props {
   initialOperators: SettingsOperator[]
   isOwner: boolean
   canManageOperators: boolean
-}
-
-function roleLabel(role: OperatorRole): string {
-  if (role === 'manager') return 'Manager'
-  if (role === 'custom') return 'Custom'
-  return 'Cashier'
 }
 
 export default function OperatorList({
@@ -91,7 +86,7 @@ export default function OperatorList({
           >
             <div>
               <p className="text-sm font-medium text-foreground">{operator.name}</p>
-              <p className="text-xs uppercase tracking-wide text-muted-foreground">{roleLabel(operator.role)}</p>
+              <p className="text-xs uppercase tracking-wide text-muted-foreground">{OPERATOR_ROLE_LABELS[operator.role]}</p>
             </div>
             <div className="flex items-center gap-2">
               {(isOwner || canManageOperators) && (

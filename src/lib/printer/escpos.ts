@@ -1,4 +1,4 @@
-import { PAYMENT_LABELS } from '@/lib/payments'
+import { normalizePayment } from '@/lib/payments'
 import { formatMoney } from '@/lib/format'
 import type { ReceiptData } from '@/lib/printer/types'
 
@@ -143,7 +143,7 @@ function buildReceiptBuffer(receipt: ReceiptData) {
   bold(false)
   separator()
 
-  pushText(`Pago: ${PAYMENT_LABELS[receipt.paymentMethod] ?? receipt.paymentMethod}`)
+  pushText(`Pago: ${normalizePayment(receipt.paymentMethod)}`)
   lineBreak()
   if (receipt.paymentMethod === 'cash' && receipt.cashReceived !== null) {
     pushText(`Recibido: ${formatMoney(receipt.cashReceived)}`)

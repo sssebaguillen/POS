@@ -15,7 +15,8 @@ import { buildReceiptData } from '@/lib/printer/receipt'
 import type { ReceiptData, ReceiptItemInput } from '@/lib/printer/types'
 import { createClient } from '@/lib/supabase/client'
 import { calculateProductPrice } from '@/lib/price-lists'
-import { normalizePayment, PAYMENT_OPTIONS } from '@/lib/payments'
+import type { PaymentMethod } from '@/lib/constants/domain'
+import { isPaymentMethod, normalizePayment } from '@/lib/payments'
 import type { PriceList, PriceListOverride } from '@/lib/types'
 import type { Permissions } from '@/lib/operator'
 import { useToast } from '@/hooks/useToast'
@@ -42,7 +43,7 @@ interface SaleRow {
   created_at: string
   total: number
   status: string | null
-  payment_method: string | null
+  payment_method: PaymentMethod | null
 }
 
 interface SaleItem {
@@ -171,7 +172,7 @@ export default function CartPanel({ businessId, businessName, activePriceList, p
         .order('created_at', { ascending: false })
 
       const saleIds = (sales ?? []).map(sale => sale.id)
-      let paymentsBySaleId: Record<string, string> = {}
+      let paymentsBySaleId: Record<string, PaymentMethod> = {}
 
       if (saleIds.length > 0) {
         const { data: payments } = await supabase
@@ -180,8 +181,8 @@ export default function CartPanel({ businessId, businessName, activePriceList, p
           .in('sale_id', saleIds)
           .order('created_at', { ascending: false })
 
-        paymentsBySaleId = (payments ?? []).reduce<Record<string, string>>((acc, payment) => {
-          if (!acc[payment.sale_id]) {
+        paymentsBySaleId = (payments ?? []).reduce<Record<string, PaymentMethod>>((acc, payment) => {
+          if (!acc[payment.sale_id] && isPaymentMethod(payment.method)) {
             acc[payment.sale_id] = payment.method
           }
           return acc
@@ -240,7 +241,7 @@ export default function CartPanel({ businessId, businessName, activePriceList, p
 
     const detail: SaleDetail = {
       ...sale,
-      payment_method: data.payment_method ?? null,
+      payment_method: isPaymentMethod(data.payment_method) ? data.payment_method : null,
       operator_name: data.operator_name ?? null,
       items: (data.items ?? []).map((row: SaleItemQueryRow) => ({
         id: row.id,
@@ -319,7 +320,7 @@ export default function CartPanel({ businessId, businessName, activePriceList, p
   async function handleUpdateSale(
     saleId: string,
     items: { product_id: string | null; quantity: number; unit_price: number }[],
-    paymentMethod: string
+    paymentMethod: PaymentMethod
   ) {
     if (!businessId) return
     const { data, error } = await supabase.rpc('update_sale', {

@@ -10,6 +10,7 @@ import Toast from '@/components/shared/Toast'
 import { useToast } from '@/hooks/useToast'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import type { UserRole } from '@/lib/operator'
+import { OPERATOR_ROLE_LABELS, PROFILE_ROLE_LABELS } from '@/lib/constants/domain'
 
 interface OperatorTopProduct {
   product_name: string
@@ -46,10 +47,8 @@ function normalizePin(value: string): string {
 }
 
 function roleLabel(role: UserRole): string {
-  if (role === 'owner') return 'Owner'
-  if (role === 'manager') return 'Manager'
-  if (role === 'custom') return 'Custom'
-  return 'Cashier'
+  if (role === 'owner') return PROFILE_ROLE_LABELS.owner
+  return OPERATOR_ROLE_LABELS[role]
 }
 
 function formatMoney(value: number): string {

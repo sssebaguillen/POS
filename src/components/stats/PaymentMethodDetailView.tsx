@@ -5,11 +5,12 @@ import { useRouter, usePathname } from 'next/navigation'
 import DateRangeFilter from '@/components/shared/DateRangeFilter'
 import { periodNeedsCustomDates, type DateRangePeriod } from '@/lib/date-utils'
 import ExportCSVButton from '@/components/shared/ExportCSVButton'
-import { PAYMENT_LABELS, PAYMENT_COLORS } from '@/lib/payments'
+import type { PaymentMethod } from '@/lib/constants/domain'
+import { PAYMENT_COLORS, isPaymentMethod, normalizePayment } from '@/lib/payments'
 import PageHeader from '@/components/shared/PageHeader'
 
 export interface PaymentMethodRow {
-  method: string
+  method: PaymentMethod
   total_amount: number
   transactions: number
   avg_ticket: number
@@ -42,7 +43,7 @@ export default function PaymentMethodDetailView({ rows, period, from, to }: Prop
 
   const csvData = useMemo(() =>
     sorted.map(r => ({
-      'Método de pago': PAYMENT_LABELS[r.method as keyof typeof PAYMENT_LABELS] ?? r.method,
+      'Método de pago': normalizePayment(r.method),
       'Total cobrado': r.total_amount ?? 0,
       Transacciones: r.transactions ?? 0,
       'Ticket promedio': r.avg_ticket ?? 0,
@@ -71,8 +72,8 @@ export default function PaymentMethodDetailView({ rows, period, from, to }: Prop
             {sorted.map(row => (
               <div key={row.method} className="surface-card p-4 space-y-2">
                 <div className="flex items-center gap-2">
-                  <span className={`h-2.5 w-2.5 rounded-full ${PAYMENT_COLORS[row.method as keyof typeof PAYMENT_COLORS] ?? 'bg-hint'}`} />
-                  <span className="text-sm font-medium text-body">{PAYMENT_LABELS[row.method as keyof typeof PAYMENT_LABELS] ?? row.method}</span>
+                  <span className={`h-2.5 w-2.5 rounded-full ${isPaymentMethod(row.method) ? PAYMENT_COLORS[row.method] : 'bg-hint'}`} />
+                  <span className="text-sm font-medium text-body">{normalizePayment(row.method)}</span>
                 </div>
                 <p className="text-xl font-bold text-heading">${(row.total_amount ?? 0).toLocaleString('es-AR')}</p>
                 <p className="text-xs text-hint">
@@ -103,8 +104,8 @@ export default function PaymentMethodDetailView({ rows, period, from, to }: Prop
                     <tr key={row.method} className="border-b border-edge/40 hover:bg-hover-bg transition-colors">
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2">
-                          <span className={`h-2.5 w-2.5 rounded-full shrink-0 ${PAYMENT_COLORS[row.method as keyof typeof PAYMENT_COLORS] ?? 'bg-hint'}`} />
-                          <span className="font-medium text-heading">{PAYMENT_LABELS[row.method as keyof typeof PAYMENT_LABELS] ?? row.method}</span>
+                          <span className={`h-2.5 w-2.5 rounded-full shrink-0 ${isPaymentMethod(row.method) ? PAYMENT_COLORS[row.method] : 'bg-hint'}`} />
+                          <span className="font-medium text-heading">{normalizePayment(row.method)}</span>
                         </div>
                       </td>
                       <td className="px-4 py-3 text-right font-semibold">${(row.total_amount ?? 0).toLocaleString('es-AR')}</td>

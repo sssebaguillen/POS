@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Mail, Printer, Send, Share2, X } from 'lucide-react'
 import ReceiptTemplate from '@/components/pos/ReceiptTemplate'
 import { Button } from '@/components/ui/button'
-import { PAYMENT_LABELS } from '@/lib/payments'
+import { normalizePayment } from '@/lib/payments'
 import { formatMoney } from '@/lib/format'
 import { printReceiptEscPos, supportsWebSerial } from '@/lib/printer/escpos'
 import type { ReceiptData } from '@/lib/printer/types'
@@ -63,7 +63,7 @@ export default function ReceiptPreviewModal({ receipt, onClose, autoPrintOnOpen 
     }
 
     lines.push(`Total: ${formatMoney(currentReceipt.total)}`)
-    lines.push(`Pago: ${PAYMENT_LABELS[currentReceipt.paymentMethod] ?? currentReceipt.paymentMethod}`)
+    lines.push(`Pago: ${normalizePayment(currentReceipt.paymentMethod)}`)
 
     if (currentReceipt.paymentMethod === 'cash' && currentReceipt.cashReceived !== null) {
       lines.push(`Recibido: ${formatMoney(currentReceipt.cashReceived)}`)

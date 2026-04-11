@@ -6,9 +6,11 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Dialog, DialogContent } from '@/components/ui/dialog'
 import { isSettingsOperator, type SettingsOperator } from '@/components/settings/types'
+import { OPERATOR_ROLES, OPERATOR_ROLE_LABELS, type OperatorRole } from '@/lib/constants/domain'
 import type { Permissions } from '@/lib/operator'
 
 type VisiblePermissionKey = Exclude<keyof Permissions, 'operators_write' | 'stock_write' | 'price_lists_write'>
+type BaseRole = Exclude<OperatorRole, 'custom'>
 
 const PERMISSION_LABELS: { key: VisiblePermissionKey; label: string }[] = [
   { key: 'sales',              label: 'Ventas' },
@@ -20,10 +22,12 @@ const PERMISSION_LABELS: { key: VisiblePermissionKey; label: string }[] = [
   { key: 'settings',           label: 'Configuración' },
 ]
 
-const ROLE_DEFAULTS: Record<'manager' | 'cashier', Permissions> = {
+const ROLE_DEFAULTS: Record<BaseRole, Permissions> = {
   manager: { sales: true, stock: true, stock_write: true,  stats: true,  expenses: true,  price_lists: true,  price_lists_write: true,  settings: false, operators_write: false, price_override: false },
   cashier: { sales: true, stock: true, stock_write: false, stats: false, expenses: false, price_lists: false, price_lists_write: false, settings: false, operators_write: false, price_override: false },
 }
+
+const BASE_ROLES: BaseRole[] = OPERATOR_ROLES.filter((role): role is BaseRole => role !== 'custom')
 
 function permissionsMatch(a: Permissions, b: Permissions): boolean {
   return (Object.keys(a) as (keyof Permissions)[]).every(key => a[key] === b[key])
@@ -38,7 +42,7 @@ interface NewOperatorModalProps {
 
 export default function NewOperatorModal({ open, onClose, businessId, onCreated }: NewOperatorModalProps) {
   const [name, setName] = useState('')
-  const [baseRole, setBaseRole] = useState<'manager' | 'cashier'>('cashier')
+  const [baseRole, setBaseRole] = useState<BaseRole>('cashier')
   const [permissions, setPermissions] = useState<Permissions>(ROLE_DEFAULTS.cashier)
   const [pin, setPin] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -55,7 +59,7 @@ export default function NewOperatorModal({ open, onClose, businessId, onCreated 
     setError(null)
   }, [open])
 
-  function handleRoleSelect(role: 'manager' | 'cashier') {
+  function handleRoleSelect(role: BaseRole) {
     setBaseRole(role)
     setPermissions(ROLE_DEFAULTS[role])
   }
@@ -179,7 +183,7 @@ export default function NewOperatorModal({ open, onClose, businessId, onCreated 
           <div className="space-y-1.5">
             <p className="text-label text-muted-foreground">Rol base</p>
             <div className="flex gap-2">
-              {(['cashier', 'manager'] as const).map(role => (
+              {BASE_ROLES.map(role => (
                 <button
                   key={role}
                   type="button"
@@ -190,7 +194,7 @@ export default function NewOperatorModal({ open, onClose, businessId, onCreated 
                       : 'bg-transparent text-foreground border-border hover:bg-muted/40'
                   }`}
                 >
-                  {role === 'cashier' ? 'Cashier' : 'Manager'}
+                  {OPERATOR_ROLE_LABELS[role]}
                 </button>
               ))}
             </div>

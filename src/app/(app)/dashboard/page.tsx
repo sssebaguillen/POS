@@ -3,6 +3,7 @@ export const runtime = 'edge'
 import { createClient } from '@/lib/supabase/server'
 import DashboardView from '@/components/dashboard/DashboardView'
 import type { BusinessBalance } from '@/components/expenses/types'
+import type { PaymentMethod } from '@/lib/constants/domain'
 import { requireAuthenticatedBusinessId } from '@/lib/business'
 
 export default async function DashboardPage() {
@@ -39,7 +40,7 @@ export default async function DashboardPage() {
 
   const saleIds = (sales ?? []).map(sale => sale.id)
 
-  let payments: Array<{ sale_id: string; method: string; amount: number; created_at: string }> = []
+  let payments: Array<{ sale_id: string; method: PaymentMethod; amount: number; created_at: string }> = []
   let saleItems: Array<{ sale_id: string; product_id: string | null; quantity: number; total: number }> = []
 
   if (saleIds.length > 0) {
@@ -58,7 +59,7 @@ export default async function DashboardPage() {
 
     payments = (paymentsData ?? []).map(payment => ({
       sale_id: payment.sale_id,
-      method: payment.method,
+      method: payment.method as PaymentMethod,
       amount: Number(payment.amount),
       created_at: payment.created_at,
     }))

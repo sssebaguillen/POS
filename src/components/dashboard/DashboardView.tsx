@@ -7,6 +7,7 @@ import { type DateRangePeriod } from '@/lib/date-utils'
 import KPICard from '@/components/shared/KPICard'
 import Link from 'next/link'
 import { isCompletedSale, getDateRange, getPreviousPeriodRange } from '@/lib/date-utils'
+import type { PaymentMethod } from '@/lib/constants/domain'
 import { normalizePayment } from '@/lib/payments'
 import SalesHistoryTable from '@/components/dashboard/SalesHistoryTable'
 import BalanceWidget from '@/components/dashboard/BalanceWidget'
@@ -23,7 +24,7 @@ interface SaleRecord {
 
 interface PaymentRecord {
   sale_id: string
-  method: string
+  method: PaymentMethod
   amount: number
   created_at: string
 }
@@ -33,6 +34,10 @@ interface SaleItemRecord {
   product_id: string | null
   quantity: number
   total: number
+}
+
+interface SaleHistoryRow extends SaleRecord {
+  method: PaymentMethod | 'sin dato'
 }
 
 interface ProductRecord {
@@ -80,7 +85,7 @@ export default function DashboardView({ sales, payments, saleItems, products, bu
   const productsById = useMemo(() => new Map(products.map(p => [p.id, p])), [products])
 
   const paymentsBySaleId = useMemo(() => {
-    const map = new Map<string, string>()
+    const map = new Map<string, PaymentMethod>()
     const ordered = [...payments].sort((a, b) => +new Date(a.created_at) - +new Date(b.created_at))
     ordered.forEach(p => { if (!map.has(p.sale_id)) map.set(p.sale_id, p.method) })
     return map
@@ -208,7 +213,7 @@ export default function DashboardView({ sales, payments, saleItems, products, bu
     transactions: computeTrend(transactions, prevCompletedSales.length, trendLabel, prevPeriodRange !== null),
   }), [totalSold, prevTotalSold, trendLabel, transactions, prevCompletedSales, prevPeriodRange])
 
-  const historyRows = useMemo(() =>
+  const historyRows = useMemo<SaleHistoryRow[]>(() =>
     filteredSales.map(s => ({ ...s, method: paymentsBySaleId.get(s.id) ?? 'sin dato' })),
     [filteredSales, paymentsBySaleId])
 

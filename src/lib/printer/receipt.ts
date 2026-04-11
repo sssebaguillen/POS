@@ -1,4 +1,5 @@
-import type { PaymentMethod, ReceiptData, ReceiptItemInput } from '@/lib/printer/types'
+import type { ReceiptData, ReceiptItemInput } from '@/lib/printer/types'
+import { isPaymentMethod } from '@/lib/payments'
 
 interface ReceiptSaleItemSource {
   product_id: string | null
@@ -15,10 +16,6 @@ interface ReceiptSaleSource {
   discount: number
   total: number
   paymentMethod: string | null
-}
-
-function isPaymentMethod(value: string | null): value is PaymentMethod {
-  return value === 'cash' || value === 'card' || value === 'transfer' || value === 'mercadopago'
 }
 
 interface BuildReceiptDataParams {

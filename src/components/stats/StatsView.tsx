@@ -7,7 +7,7 @@ import Link from 'next/link'
 import PageHeader from '@/components/shared/PageHeader'
 import DateRangeFilter from '@/components/shared/DateRangeFilter'
 import { buildDateParams, periodNeedsCustomDates, type DateRangePeriod } from '@/lib/date-utils'
-import { PAYMENT_LABELS, PAYMENT_COLORS } from '@/lib/payments'
+import { PAYMENT_COLORS, isPaymentMethod, normalizePayment } from '@/lib/payments'
 import type {
   StatsKpis, StatsEvolution, StatsBreakdown,
 } from '@/lib/types'
@@ -290,11 +290,11 @@ export default function StatsView({ kpis, evolution, breakdown, topProducts, per
                 paymentBreakdown.map(row => (
                   <div key={row.method} className="space-y-1.5">
                     <div className="flex justify-between text-sm">
-                      <span className="text-body font-medium">{PAYMENT_LABELS[row.method as keyof typeof PAYMENT_LABELS] ?? row.method}</span>
+                      <span className="text-body font-medium">{normalizePayment(row.method)}</span>
                       <span className="text-subtle text-xs">{row.percent.toFixed(0)}%</span>
                     </div>
                     <div className="h-2 rounded-full bg-surface-alt">
-                      <div className={`h-2 rounded-full ${PAYMENT_COLORS[row.method as keyof typeof PAYMENT_COLORS] ?? 'bg-hint'}`} style={{ width: `${row.percent}%` }} />
+                      <div className={`h-2 rounded-full ${isPaymentMethod(row.method) ? PAYMENT_COLORS[row.method] : 'bg-hint'}`} style={{ width: `${row.percent}%` }} />
                     </div>
                   </div>
                 ))

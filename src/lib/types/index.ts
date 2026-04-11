@@ -1,4 +1,6 @@
-export type UserRole = 'owner' | 'manager' | 'cashier' | 'custom'
+import type { OperatorRole, PaymentMethod } from '@/lib/constants/domain'
+
+export type UserRole = 'owner' | OperatorRole
 
 export type Plan = 'free' | 'basic' | 'standard' | 'pro'
 
@@ -100,7 +102,7 @@ export interface SaleItem {
 export interface Payment {
   id: string
   sale_id: string
-  method: 'cash' | 'card' | 'transfer' | 'mercadopago' | 'credit'
+  method: PaymentMethod
   amount: number
   reference: string | null
   status: 'completed' | 'failed' | 'pending'
@@ -185,7 +187,7 @@ export interface StatsBreakdownBrand {
 }
 
 export interface StatsBreakdownPayment {
-  method: string
+  method: PaymentMethod
   revenue: number
   count: number
 }

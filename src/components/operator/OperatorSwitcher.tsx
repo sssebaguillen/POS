@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import type { UserRole } from '@/lib/operator'
+import { OPERATOR_ROLE_LABELS, PROFILE_ROLE_LABELS } from '@/lib/constants/domain'
 import { useSidebar } from '@/components/shared/AppShell'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 
@@ -16,10 +17,8 @@ interface LogoutResponse {
 }
 
 function roleLabel(role: UserRole): string {
-  if (role === 'owner') return 'Owner'
-  if (role === 'manager') return 'Manager'
-  if (role === 'custom') return 'Custom'
-  return 'Cashier'
+  if (role === 'owner') return PROFILE_ROLE_LABELS.owner
+  return OPERATOR_ROLE_LABELS[role]
 }
 
 export default function OperatorSwitcher({ operatorName, operatorRole }: OperatorSwitcherProps) {

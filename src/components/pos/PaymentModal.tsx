@@ -6,24 +6,21 @@ import ReceiptPreviewModal from '@/components/pos/ReceiptPreviewModal'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import type { PaymentMethod, ReceiptData, ReceiptItemInput, SaleItemInput } from '@/lib/printer/types'
+import { PAYMENT_METHOD_LABELS, PAYMENT_METHODS } from '@/lib/constants/domain'
 import { formatMoney } from '@/lib/format'
 import { useCartStore } from '@/lib/store/cart.store'
 import { createClient } from '@/lib/supabase/client'
-import { PAYMENT_LABELS } from '@/lib/payments'
 
 const PAYMENT_ICONS: Record<PaymentMethod, string> = {
   cash: '$',
   card: 'TC',
   transfer: 'TR',
   mercadopago: 'MP',
-  credit: 'CR',
 }
 
-const POS_METHODS: PaymentMethod[] = ['cash', 'card', 'transfer', 'mercadopago']
-
-const PAYMENT_METHOD_OPTIONS = POS_METHODS.map(id => ({
+const PAYMENT_METHOD_OPTIONS = PAYMENT_METHODS.map(id => ({
   id,
-  label: PAYMENT_LABELS[id],
+  label: PAYMENT_METHOD_LABELS[id],
   icon: PAYMENT_ICONS[id],
 }))
 

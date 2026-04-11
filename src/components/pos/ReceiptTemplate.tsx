@@ -1,6 +1,6 @@
 'use client'
 
-import { PAYMENT_LABELS } from '@/lib/payments'
+import { normalizePayment } from '@/lib/payments'
 import { formatMoney } from '@/lib/format'
 import type { ReceiptData } from '@/lib/printer/types'
 
@@ -66,7 +66,7 @@ function ReceiptContent({ receipt }: { receipt: ReceiptData }) {
       <div style={{ display: 'grid', gap: '4px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between' }}>
           <span>Pago</span>
-          <span>{PAYMENT_LABELS[receipt.paymentMethod] ?? receipt.paymentMethod}</span>
+          <span>{normalizePayment(receipt.paymentMethod)}</span>
         </div>
 
         {receipt.paymentMethod === 'cash' && receipt.cashReceived !== null && (

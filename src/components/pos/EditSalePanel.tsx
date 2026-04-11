@@ -3,7 +3,8 @@
 import { useState } from 'react'
 import { Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { PAYMENT_OPTIONS } from '@/lib/payments'
+import type { PaymentMethod } from '@/lib/constants/domain'
+import { isPaymentMethod, PAYMENT_OPTIONS } from '@/lib/payments'
 
 interface SaleItem {
   id: string
@@ -21,14 +22,14 @@ interface SaleDetail {
   created_at: string
   total: number
   status: string | null
-  payment_method: string | null
+  payment_method: PaymentMethod | null
   items: SaleItem[]
   operator_name: string | null
 }
 
 interface EditSalePanelProps {
   sale: SaleDetail
-  onSave: (items: { product_id: string | null; quantity: number; unit_price: number }[], paymentMethod: string) => void
+  onSave: (items: { product_id: string | null; quantity: number; unit_price: number }[], paymentMethod: PaymentMethod) => void
   onCancel: () => void
 }
 
@@ -38,7 +39,9 @@ export default function EditSalePanel({
   onCancel,
 }: EditSalePanelProps) {
   const [items, setItems] = useState(sale.items.map(i => ({ ...i })))
-  const [paymentMethod, setPaymentMethod] = useState(sale.payment_method ?? 'cash')
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(
+    isPaymentMethod(sale.payment_method) ? sale.payment_method : 'cash'
+  )
 
   function updateQty(itemId: string, qty: number) {
     if (qty < 1) return

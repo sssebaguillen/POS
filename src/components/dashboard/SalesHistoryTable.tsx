@@ -10,7 +10,8 @@ import { Input } from '@/components/ui/input'
 import { buildReceiptData } from '@/lib/printer/receipt'
 import type { ReceiptData } from '@/lib/printer/types'
 import { createClient } from '@/lib/supabase/client'
-import { normalizePayment, PAYMENT_OPTIONS } from '@/lib/payments'
+import type { PaymentMethod } from '@/lib/constants/domain'
+import { isPaymentMethod, normalizePayment, PAYMENT_OPTIONS } from '@/lib/payments'
 import { useToast } from '@/hooks/useToast'
 import Toast from '@/components/shared/Toast'
 
@@ -30,7 +31,7 @@ interface SaleRow {
   created_at: string
   total: number
   status: string | null
-  method: string
+  method: PaymentMethod | 'sin dato'
 }
 
 interface SaleDetail extends SaleRow {
@@ -45,6 +46,14 @@ interface SaleItemQueryRow {
   product_icon: string | null
   quantity: number
   unit_price: number
+}
+
+interface SaleDetailRpcResult {
+  success: boolean
+  status: string | null
+  payment_method: string | null
+  operator_name: string | null
+  items: SaleItemQueryRow[] | null
 }
 
 interface Props {
@@ -104,10 +113,11 @@ function SalesHistoryTable({ rows, businessId, businessName }: Props) {
     }
 
     setLoadingDetailId(saleId)
-    const { data, error } = await supabase.rpc('get_sale_detail', {
+    const { data: detailResult, error } = await supabase.rpc('get_sale_detail', {
       p_sale_id: saleId,
       p_business_id: businessId,
     })
+    const data = detailResult as SaleDetailRpcResult | null
     if (error || !data?.success) {
       setLoadingDetailId(null)
       setReceiptError(error?.message ?? 'No se pudo cargar el detalle de la venta.')
@@ -121,7 +131,7 @@ function SalesHistoryTable({ rows, businessId, businessName }: Props) {
     const detail: SaleDetail = {
       ...row,
       status: data.status ?? row.status,
-      method: data.payment_method ?? row.method,
+      method: isPaymentMethod(data.payment_method) ? data.payment_method : row.method,
       operator_name: data.operator_name ?? null,
       items: (data.items ?? []).map((item: SaleItemQueryRow) => ({
         id: item.id,
@@ -206,7 +216,7 @@ function SalesHistoryTable({ rows, businessId, businessName }: Props) {
     mutationFn: async (vars: {
       saleId: string
       items: { product_id: string; quantity: number; unit_price: number }[]
-      paymentMethod: string
+      paymentMethod: PaymentMethod
       status: string
     }) => {
       const { data, error } = await supabase.rpc('update_sale', {
@@ -270,7 +280,7 @@ function SalesHistoryTable({ rows, businessId, businessName }: Props) {
   function handleUpdateSale(
     saleId: string,
     updatedItems: { product_id: string; quantity: number; unit_price: number }[],
-    paymentMethod: string,
+    paymentMethod: PaymentMethod,
     status: string
   ) {
     if (!businessId) return
@@ -525,11 +535,11 @@ function EditSalePanel({
   onCancel,
 }: {
   sale: SaleDetail
-  onSave: (items: { product_id: string; quantity: number; unit_price: number }[], paymentMethod: string, status: string) => void
+  onSave: (items: { product_id: string; quantity: number; unit_price: number }[], paymentMethod: PaymentMethod, status: string) => void
   onCancel: () => void
 }) {
   const [items, setItems] = useState(sale.items.map(i => ({ ...i })))
-  const [paymentMethod, setPaymentMethod] = useState(sale.method)
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(isPaymentMethod(sale.method) ? sale.method : 'cash')
   const [saleStatus, setSaleStatus] = useState(sale.status ?? 'completed')
 
   function updateQty(productId: string, qty: number) {
