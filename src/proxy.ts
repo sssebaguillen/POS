@@ -46,6 +46,12 @@ export async function proxy(request: NextRequest) {
 
   const withCsp = (res: NextResponse) => {
     res.headers.set('Content-Security-Policy', cspHeader)
+
+    res.headers.set(
+      'Permissions-Policy',
+      'camera=(), microphone=(), geolocation=(), payment=(), usb=(), magnetometer=(), gyroscope=(), accelerometer=()'
+    )
+
     return res
   }
 
