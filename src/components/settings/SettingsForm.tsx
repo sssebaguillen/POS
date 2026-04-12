@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import Image from 'next/image'
 import { type SettingsBusiness, type SettingsOperator } from '@/components/settings/types'
 import OperatorList from '@/components/settings/OperatorList'
 
@@ -212,11 +213,14 @@ export default function SettingsForm({
 
           {canPreviewLogo && !logoPreviewError && (
             <div className="mt-2 inline-flex items-center gap-3 rounded-lg border border-border bg-muted/30 px-3 py-2">
-              <img
+              <Image
                 src={normalizedLogoUrl}
                 alt="Vista previa del logo"
-                className="h-12 w-12 rounded-md object-cover border border-border"
+                width={48}
+                height={48}
+                className="rounded-md object-cover border border-border"
                 onError={() => setLogoPreviewError(true)}
+                unoptimized
               />
               <span className="text-xs text-muted-foreground">Vista previa del logo</span>
             </div>

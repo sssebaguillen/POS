@@ -1,7 +1,7 @@
 'use client'
 
-import { useState } from 'react'
-import { Trash2, Power, PowerOff, Tag, Stamp, X } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { Trash2, Power, PowerOff, Tag, Stamp } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import SelectDropdown from '@/components/ui/SelectDropdown'
@@ -18,7 +18,6 @@ interface BulkActionBarProps {
   onDeactivate: () => void
   onChangeCategory: (categoryId: string | null) => void
   onChangeBrand: (brandId: string | null) => void
-  onClose: () => void
 }
 
 export default function BulkActionBar({
@@ -31,13 +30,19 @@ export default function BulkActionBar({
   onDeactivate,
   onChangeCategory,
   onChangeBrand,
-  onClose,
 }: BulkActionBarProps) {
+  const [visible, setVisible] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [categoryOpen, setCategoryOpen] = useState(false)
   const [brandOpen, setBrandOpen] = useState(false)
   const [selectedCategoryId, setSelectedCategoryId] = useState('')
   const [selectedBrandId, setSelectedBrandId] = useState('')
+
+  // Slide-in al montar
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => setVisible(true))
+    return () => cancelAnimationFrame(frame)
+  }, [])
 
   const categoryOptions = [
     { value: '__none__', label: 'Sin categoria' },
@@ -64,7 +69,11 @@ export default function BulkActionBar({
   return (
     <>
       <div className="fixed bottom-14 inset-x-0 z-40 flex items-center justify-center px-4 pointer-events-none">
-        <div className="surface-elevated rounded-2xl shadow-2xl border border-edge/60 px-5 py-3 flex items-center gap-3 pointer-events-auto max-w-3xl w-full overflow-x-auto flex-nowrap">
+        <div
+          className={`surface-elevated rounded-2xl shadow-2xl border border-edge/60 px-5 py-3 flex items-center gap-3 pointer-events-auto overflow-x-auto flex-nowrap transition-all duration-300 ease-out ${
+            visible ? 'translate-y-0 opacity-100' : 'translate-y-8 opacity-0'
+          }`}
+        >
           <span className="text-sm font-semibold text-heading shrink-0 whitespace-nowrap">
             {selectedCount} {selectedCount === 1 ? 'producto' : 'productos'}
           </span>

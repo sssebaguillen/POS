@@ -1,7 +1,7 @@
 import Image from 'next/image'
 import { memo } from 'react'
 import { Package, Pencil } from 'lucide-react'
-import type { ProductCardProps, InventoryProduct } from '@/components/inventory/types'
+import type { ProductCardProps } from '@/components/inventory/types'
 import { getStatus, statusConfig } from '@/components/inventory/types'
 
 export function SelectionCheckbox({ checked, onClick }: { checked: boolean; onClick: (e: React.MouseEvent) => void }) {
