@@ -8,6 +8,7 @@ import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import PageHeader from '@/components/shared/PageHeader'
 import DateRangeFilter from '@/components/shared/DateRangeFilter'
+import { usePillIndicator } from '@/hooks/usePillIndicator'
 import { resolveDateRange, buildDateParams, periodNeedsCustomDates, type DateRangePeriod } from '@/lib/date-utils'
 import ExportCSVButton from '@/components/shared/ExportCSVButton'
 import ExpenseSummaryCards from './ExpenseSummaryCards'
@@ -58,6 +59,7 @@ export default function ExpensesView({
   const [selectedCategory, setSelectedCategory] = useState<ExpenseCategory | undefined>(undefined)
   const [suppliers, setSuppliers] = useState<Supplier[]>(initialSuppliers)
   const [mountedAt] = useState(() => Date.now())
+  const { setRef, indicator } = usePillIndicator(selectedCategory ?? 'todos')
 
   const isInitialPeriod = period === initialPeriod && from === initialFrom && to === initialTo
 
@@ -181,7 +183,7 @@ export default function ExpensesView({
           {!showSuppliers && (
             <>
               <DateRangeFilter
-                key={`${period}:${from ?? ''}:${to ?? ''}`}
+                key="expenses-date-filter"
                 value={period}
                 from={from}
                 to={to}
@@ -189,8 +191,18 @@ export default function ExpensesView({
               />
 
               {/* Category filter */}
-              <div className="pill-tabs flex-wrap">
+              <div className="pill-tabs flex-wrap relative">
+                {indicator && (
+                  <span
+                    className="pill-tab-indicator"
+                    style={{
+                      transform: `translateX(${indicator.left}px)`,
+                      width: indicator.width,
+                    }}
+                  />
+                )}
                 <button
+                  ref={setRef('todos')}
                   onClick={() => setSelectedCategory(undefined)}
                   className={`pill-tab${!selectedCategory ? ' pill-tab-active' : ''}`}
                 >
@@ -199,6 +211,7 @@ export default function ExpensesView({
                 {EXPENSE_CATEGORIES.map(cat => (
                   <button
                     key={cat}
+                    ref={setRef(cat)}
                     onClick={() => setSelectedCategory(cat)}
                     className={`pill-tab${selectedCategory === cat ? ' pill-tab-active' : ''}`}
                   >

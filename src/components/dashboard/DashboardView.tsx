@@ -11,6 +11,7 @@ import type { PaymentMethod } from '@/lib/constants/domain'
 import { normalizePayment } from '@/lib/payments'
 import SalesHistoryTable from '@/components/dashboard/SalesHistoryTable'
 import BalanceWidget from '@/components/dashboard/BalanceWidget'
+import { usePillIndicator } from '@/hooks/usePillIndicator'
 import type { BusinessBalance } from '@/components/expenses/types'
 
 interface SaleRecord {
@@ -81,6 +82,8 @@ export default function DashboardView({ sales, payments, saleItems, products, bu
   const [showHistory, setShowHistory] = useState(false)
   const [fromDate, setFromDate] = useState('')
   const [toDate, setToDate] = useState('')
+
+  const { setRef, indicator } = usePillIndicator(showHistory ? 'history' : 'overview')
 
   const productsById = useMemo(() => new Map(products.map(p => [p.id, p])), [products])
 
@@ -248,13 +251,33 @@ export default function DashboardView({ sales, payments, saleItems, products, bu
               }}
             />
 
-            <button
-              type="button"
-              onClick={() => setShowHistory(prev => !prev)}
-              className={`pill-tab${showHistory ? ' pill-tab-active' : ''}`}
-            >
-              Historial de ventas
-            </button>
+            <div className="pill-tabs">
+              {indicator && (
+                <span
+                  className="pill-tab-indicator"
+                  style={{
+                    transform: `translateX(${indicator.left}px)`,
+                    width: indicator.width,
+                  }}
+                />
+              )}
+              <button
+                type="button"
+                ref={setRef('overview')}
+                onClick={() => setShowHistory(false)}
+                className={`pill-tab${!showHistory ? ' pill-tab-active' : ''}`}
+              >
+                Resumen
+              </button>
+              <button
+                type="button"
+                ref={setRef('history')}
+                onClick={() => setShowHistory(true)}
+                className={`pill-tab${showHistory ? ' pill-tab-active' : ''}`}
+              >
+                Historial de ventas
+              </button>
+            </div>
           </div>
 
           {showHistory ? (

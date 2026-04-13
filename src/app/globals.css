@@ -326,13 +326,21 @@
 
   /* Pill-style tab/filter container */
   .pill-tabs {
-    @apply inline-flex items-center bg-surface-alt rounded-full p-1 gap-0.5;
+    @apply inline-flex items-center bg-surface-alt rounded-full p-1 gap-0.5 relative;
   }
   .pill-tab {
-    @apply px-4 py-1.5 text-sm font-medium rounded-full transition-all duration-150 text-body hover:text-heading;
+    @apply relative z-10 px-4 py-1.5 text-sm font-medium rounded-full text-body hover:text-heading;
   }
   .pill-tab-active {
-    @apply bg-surface text-heading font-semibold shadow-sm;
+    @apply text-heading font-semibold;
+  }
+  .pill-tab-indicator {
+    @apply absolute bg-surface shadow-sm rounded-full pointer-events-none;
+    top: 4px;
+    height: calc(100% - 8px);
+    transition: transform 200ms cubic-bezier(0.4, 0, 0.2, 1),
+                width 200ms cubic-bezier(0.4, 0, 0.2, 1);
+    will-change: transform, width;
   }
 
   /* Hide scrollbar while keeping scroll functionality */

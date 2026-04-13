@@ -5,6 +5,7 @@ import { useState } from 'react'
 import { DatePicker } from '@/components/ui/DatePicker'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import type { DateRangePeriod } from '@/lib/date-utils'
+import { usePillIndicator } from '@/hooks/usePillIndicator'
 
 export type { DateRangePeriod } from '@/lib/date-utils'
 
@@ -34,6 +35,8 @@ export default function DateRangeFilter({ value, from, to, onChange, useUrlParam
   const [localTo, setLocalTo] = useState(to ?? '')
   const [quarterOpen, setQuarterOpen] = useState(false)
   const [activeQuarter, setActiveQuarter] = useState<string | null>(null)
+
+  const { setRef, indicator } = usePillIndicator(value)
 
   const year = new Date().getFullYear()
   const QUARTER_RANGES: Record<string, { from: string; to: string; label: string }> = {
@@ -74,9 +77,19 @@ export default function DateRangeFilter({ value, from, to, onChange, useUrlParam
   return (
     <div className="space-y-2">
       <div className="pill-tabs">
+        {indicator && (
+          <span
+            className="pill-tab-indicator"
+            style={{
+              transform: `translateX(${indicator.left}px)`,
+              width: indicator.width,
+            }}
+          />
+        )}
         {SIMPLE_PERIODS.map(p => (
           <button
             key={p}
+            ref={setRef(p)}
             onClick={() => handleSelect(p)}
             className={`pill-tab${value === p ? ' pill-tab-active' : ''}`}
           >
@@ -86,7 +99,10 @@ export default function DateRangeFilter({ value, from, to, onChange, useUrlParam
 
         <Popover open={quarterOpen} onOpenChange={setQuarterOpen}>
           <PopoverTrigger asChild>
-            <button className={`pill-tab${value === 'trimestre' ? ' pill-tab-active' : ''}`}>
+            <button
+              ref={setRef('trimestre')}
+              className={`pill-tab${value === 'trimestre' ? ' pill-tab-active' : ''}`}
+            >
               {quarterLabel}
             </button>
           </PopoverTrigger>
@@ -106,6 +122,7 @@ export default function DateRangeFilter({ value, from, to, onChange, useUrlParam
         </Popover>
 
         <button
+          ref={setRef('año')}
           onClick={handleYearSelect}
           className={`pill-tab${value === 'año' ? ' pill-tab-active' : ''}`}
         >
@@ -113,6 +130,7 @@ export default function DateRangeFilter({ value, from, to, onChange, useUrlParam
         </button>
 
         <button
+          ref={setRef('personalizado')}
           onClick={() => handleSelect('personalizado')}
           className={`pill-tab${value === 'personalizado' ? ' pill-tab-active' : ''}`}
         >

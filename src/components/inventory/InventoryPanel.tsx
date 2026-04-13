@@ -24,6 +24,7 @@ import type { PriceList, PriceListOverride } from '@/lib/types'
 import type { InventoryBrand, InventoryCategory, InventoryProduct, SortOption } from '@/components/inventory/types'
 import { getStatus } from '@/components/inventory/types'
 import { useToast } from '@/hooks/useToast'
+import { usePillIndicator } from '@/hooks/usePillIndicator'
 import Toast from '@/components/shared/Toast'
 
 const PAGE_SIZE = 60
@@ -77,6 +78,7 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
   const router = useRouter()
 
   const supabase = useMemo(() => createClient(), [])
+  const { setRef, indicator } = usePillIndicator(statusFilter)
 
   const activeFilterCount = selectedCategories.length + selectedBrands.length + (showInCatalogOnly ? 1 : 0)
 
@@ -599,6 +601,15 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
           </button>
 
           <div className="pill-tabs shrink-0">
+            {indicator && (
+              <span
+                className="pill-tab-indicator"
+                style={{
+                  transform: `translateX(${indicator.left}px)`,
+                  width: indicator.width,
+                }}
+              />
+            )}
             {([
               { key: 'all', label: 'Todos' },
               { key: 'low', label: 'Stock bajo' },
@@ -607,6 +618,7 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
             ] as const).map(s => (
               <button
                 key={s.key}
+                ref={setRef(s.key)}
                 onClick={() => setStatusFilter(s.key)}
                 className={`pill-tab${statusFilter === s.key ? ' pill-tab-active' : ''}`}
               >
