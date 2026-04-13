@@ -313,6 +313,14 @@
     background-color: var(--faint);
     box-shadow: none;
   }
+  .dark .pill-tab-indicator {
+    @apply bg-faint;
+    top: 4px;
+    height: calc(100% - 8px);
+    transition: transform 200ms cubic-bezier(0.4, 0, 0.2, 1),
+                width 200ms cubic-bezier(0.4, 0, 0.2, 1);
+    will-change: transform, width;
+  }
 
   /*
    * Typography utilities
