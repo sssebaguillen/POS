@@ -130,7 +130,7 @@ export default function Sidebar({
       >
         {(!collapsed || isMobileDrawer) && (
           <div className="min-w-0 py-3">
-            <p className="truncate font-bold text-base text-heading tracking-tight">{businessName}</p>
+            <p className="truncate font-bold text-base text-heading font-display tracking-tight">{businessName}</p>
             <p className="text-xs text-hint">powered by Pulsar</p>
           </div>
         )}

@@ -310,7 +310,7 @@ export default function DashboardView({ sales, payments, saleItems, products, bu
               />
 
               <div className="surface-card p-6 animate-fade-in" style={{ animationDelay: '80ms' }}>
-                <p className="font-semibold text-heading mb-4">
+                <p className="font-semibold text-heading mb-4 font-display">
                   Ventas por {period === 'hoy' ? 'hora' : 'día'} — {period === 'hoy' ? 'hoy' : period === 'semana' ? 'esta semana' : 'período'}
                 </p>
                 {chartData.every(d => d.value === 0) ? (
@@ -340,7 +340,7 @@ export default function DashboardView({ sales, payments, saleItems, products, bu
               <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
                 <div className="surface-card p-6">
                   <div className="flex items-center justify-between mb-4">
-                    <p className="font-semibold text-heading">Productos más vendidos</p>
+                    <p className="font-semibold text-heading font-display">Productos más vendidos</p>
                     <Link href="/stats/top-products" className="text-xs text-primary font-medium hover:underline">
                       Ver más →
                     </Link>
@@ -365,7 +365,7 @@ export default function DashboardView({ sales, payments, saleItems, products, bu
 
                 <div className="surface-card p-6">
                   <div className="flex items-center justify-between mb-4">
-                    <p className="font-semibold text-heading">Alertas de stock</p>
+                    <p className="font-semibold text-heading font-display">Alertas de stock</p>
                     <Link href="/inventory" className="text-xs text-primary font-medium hover:underline">
                       Ver stock →
                     </Link>

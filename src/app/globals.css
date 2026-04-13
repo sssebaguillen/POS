@@ -4,6 +4,7 @@
 
 @theme {
   --font-sans: var(--font-dm-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-sora), ui-sans-serif, system-ui, sans-serif;
 
   /* shadcn standard tokens */
   --color-background: var(--background);
@@ -41,82 +42,104 @@
 }
 
 :root {
-  /* Layout background — warm linen */
-  --app-bg: #F0ECE7;
-  --background: #F0ECE7;
+  /* Layout background — warm ivory */
+  --app-bg: #fbfaf2;
+  --background: #fbfaf2;
 
-  /* Typography — deep slate hierarchy */
-  --foreground: #0F172A;
+  /* Typography — deep warm brown hierarchy */
+  --foreground: #1c1008;
   --card: #ffffff;
-  --card-foreground: #0F172A;
+  --card-foreground: #1c1008;
   --popover: #ffffff;
-  --popover-foreground: #0F172A;
+  --popover-foreground: #1c1008;
 
-  /* Brand primary — dark green */
-  --primary: #1C4A3B;
+  /* Brand primary — warm brown ink */
+  --primary: #7a3e10;
   --primary-foreground: #ffffff;
 
   /* Neutral surfaces — warm sand tones */
-  --secondary: #E8E3DD;
-  --secondary-foreground: #0F172A;
-  --muted: #E8E3DD;
-  --muted-foreground: #6B6460;
-  --accent: #EAE5DF;
-  --accent-foreground: #0F172A;
+  --secondary: #ede6dc;
+  --secondary-foreground: #1c1008;
+  --muted: #ede6dc;
+  --muted-foreground: #8a6848;
+  --accent: #f0e8de;
+  --accent-foreground: #1c1008;
 
   /* Semantic */
-  --destructive: #ef4444;
+  --destructive: #c0392b;
   --destructive-foreground: #ffffff;
 
-  /* Borders & inputs — warm slate */
-  --border: #DDD7CF;
-  --input: #DDD7CF;
-  --ring: #1C4A3B;
+  /* Borders & inputs */
+  --border: #e0d4c0;
+  --input: #e0d4c0;
+  --ring: #7a3e10;
 
   /* Extended palette */
-  --body-color: #5C5550;
-  --hint: #9A918A;
-  --faint: #C8C1B9;
-  --edge-soft: #E8E3DD;
+  --body-color: #8a6848;
+  --hint: #b09880;
+  --faint: #d4c8b8;
+  --edge-soft: #ede6dc;
 
   /* Sidebar dimensions */
   --sidebar-width: 256px;
   --sidebar-collapsed-width: 72px;
 
   /* Frosted surface — noise grain + tint for depth */
-  --surface-tint: #f5f2ee;
+  --surface-tint: #f5f0e8;
   --noise: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)'/%3E%3C/svg%3E");
 }
 
 .dark {
-  --app-bg: #141414;
-  --background: #141414;
-  --foreground: #ededed;
-  --card: #1f1f1f;
-  --card-foreground: #ededed;
-  --popover: #252525;
-  --popover-foreground: #ededed;
-  --primary: #34D399;
-  --primary-foreground: #022c22;
-  --secondary: #1c1c1c;
-  --secondary-foreground: #ededed;
-  --muted: #1c1c1c;
-  --muted-foreground: #a1a1a1;
-  --accent: #252525;
-  --accent-foreground: #ededed;
-  --destructive: #ef4444;
-  --destructive-foreground: #ffffff;
-  --border: #303030;
-  --input: #383838;
-  --ring: #34D399;
+  /* Layout background — near-black, minimal warmth */
+  --app-bg: #111110;
+  --background: #0e0e0d;
 
-  --body-color: #c4c4c4;
-  --hint: #737373;
-  --faint: #404040;
-  --edge-soft: #1c1c1c;
+  /*
+   * Foreground — neutral off-white with the slightest warm tint.
+   * NOT amber/orange — that belongs only to --primary.
+   * #e8e6e1 reads as clean white in context but avoids the cold
+   * blue cast of pure #ffffff or #ededed.
+   */
+  --foreground: #f1dbbf;
+  --card: #161614;
+  --card-foreground: #e8e6e1;
+  --popover: #1e1e1c;
+  --popover-foreground: #e8e6e1;
+
+  /* Brand primary — warm amber, sole carrier of brand warmth */
+  --primary: #c8843a;
+  --primary-foreground: #ffffff;
+
+  /* Surfaces — near-neutral, barely warm undertone */
+  --secondary: #1a1a18;
+  --secondary-foreground: #e8e6e1;
+  --muted: #1e1e1c;
+  --muted-foreground: #a89880;
+  --accent: #222220;
+  --accent-foreground: #e8e6e1;
+
+  /* Semantic */
+  --destructive: #e05a40;
+  --destructive-foreground: #ffffff;
+
+  /* Borders & inputs — very subtle, just enough to separate layers */
+  --border: #2a2926;
+  --input: #252422;
+  --ring: #c8843a;
+
+  /*
+   * Extended palette — three distinct levels:
+   * body-color: readable secondary text
+   * hint:       visible but receding (timestamps, metadata)
+   * faint:      barely visible (dividers, skeleton bg, scrollbar)
+   */
+  --body-color: #a89880;
+  --hint: #6a6560;
+  --faint: #323028;
+  --edge-soft: #1e1e1c;
 
   /* Frosted surface */
-  --surface-tint: #181818;
+  --surface-tint: #131312;
 }
 
 @layer base {
@@ -131,6 +154,16 @@
     background-color: var(--color-background);
     color: var(--color-foreground);
     overflow: hidden;
+  }
+
+  /*
+   * Sora for all semantic heading tags.
+   * Covers PageHeader titles, modal headers, section headings.
+   * Components using <p> or <div> with font-semibold are NOT affected
+   * — those remain DM Sans unless they use .text-emphasis or font-display.
+   */
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-display);
   }
 
   /* Thin styled scrollbars */
@@ -217,8 +250,8 @@
 
   /*
    * modal-header — clean diagonal gradient, no noise texture.
-   * Light: card (#fff) → accent (#EAE5DF) = visible warm tint.
-   * Dark:  card (#1f1f1f) → accent (#252525) = subtle lift.
+   * Light: card (#fff) → accent (#f0e8de) = warm tint.
+   * Dark:  card (#161614) → accent (#222220) = subtle lift.
    */
   .modal-header {
     background: linear-gradient(150deg, var(--card) 0%, var(--accent) 100%);
@@ -230,15 +263,15 @@
     background-image: var(--noise), linear-gradient(145deg, var(--card) 0%, var(--surface-tint) 100%);
     background-blend-mode: overlay, normal;
     box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.05),
-      0 4px 6px rgba(0, 0, 0, 0.2),
-      0 20px 40px rgba(0, 0, 0, 0.3);
+      inset 0 1px 0 rgba(255, 255, 255, 0.04),
+      0 4px 6px rgba(0, 0, 0, 0.25),
+      0 20px 40px rgba(0, 0, 0, 0.35);
   }
 
   .dark .surface-card {
     background-image: var(--noise), linear-gradient(145deg, var(--card) 0%, var(--surface-tint) 100%);
     background-blend-mode: overlay, normal;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15), 0 10px 30px rgba(0, 0, 0, 0.2);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2), 0 10px 30px rgba(0, 0, 0, 0.25);
     border-color: transparent;
   }
 
@@ -246,9 +279,8 @@
     @apply border-edge;
     background-image: var(--noise), linear-gradient(180deg, var(--card) 0%, var(--surface-tint) 100%);
     background-blend-mode: overlay, normal;
-    box-shadow: 4px 0 32px rgba(0, 0, 0, 0.3);
+    box-shadow: 4px 0 32px rgba(0, 0, 0, 0.35);
   }
-
 
   /* Dark mode — restore pill tab contrast (muted vs card are near-identical in dark) */
   .dark .pill-tabs {
@@ -259,10 +291,15 @@
     box-shadow: none;
   }
 
+  /*
+   * Typography utilities
+   * .text-label / .text-caption / .text-body-sm → DM Sans (UI, tables, forms)
+   * .text-emphasis → Sora (prominent values, KPI numbers, highlighted text)
+   */
   .text-label    { font-size: 10px; font-weight: 500; letter-spacing: 0.06em; text-transform: uppercase; }
   .text-caption  { font-size: 11px; font-weight: 400; }
   .text-body-sm  { font-size: 13px; font-weight: 400; }
-  .text-emphasis { font-size: 15px; font-weight: 600; }
+  .text-emphasis { font-size: 15px; font-weight: 600; font-family: var(--font-display); }
 
   /* Pill-style tab/filter container */
   .pill-tabs {

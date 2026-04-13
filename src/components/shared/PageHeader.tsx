@@ -30,7 +30,7 @@ export default function PageHeader({ title, breadcrumbs, children }: Props) {
         <Menu size={20} className="text-body" />
       </button>
       {breadcrumbs && breadcrumbs.length > 0 ? (
-        <nav className="flex items-center gap-1 text-sm text-muted-foreground" aria-label="Breadcrumb">
+        <nav className="flex items-center gap-1 text-sm text-muted-foreground font-display font-bold" aria-label="Breadcrumb">
           {breadcrumbs.map((crumb, i) => (
             <Fragment key={i}>
               {i > 0 && <ChevronRight size={14} className="shrink-0" />}
@@ -40,10 +40,10 @@ export default function PageHeader({ title, breadcrumbs, children }: Props) {
             </Fragment>
           ))}
           <ChevronRight size={14} className="shrink-0" />
-          <span className="font-semibold text-heading">{title}</span>
+          <span className="font-bold text-heading font-display">{title}</span>
         </nav>
       ) : (
-        <h1 className="text-lg font-bold text-heading">{title}</h1>
+        <h1 className="text-lg font-bold text-heading font-display">{title}</h1>
       )}
       {children && (
         <div className="flex-1 flex items-center justify-end gap-3">

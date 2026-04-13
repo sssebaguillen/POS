@@ -65,7 +65,7 @@ export default function BreakdownDetailView({ rows, period, from, to, tab }: Pro
 
   return (
     <div className="flex flex-col h-screen overflow-hidden">
-      <PageHeader title="Breakdown" breadcrumbs={[{ label: 'Estadísticas', href: '/stats' }]}>
+      <PageHeader title="Desglose" breadcrumbs={[{ label: 'Estadísticas', href: '/stats' }]}>
         <ExportCSVButton data={csvData} filename={`breakdown-${tab}`} />
       </PageHeader>
 

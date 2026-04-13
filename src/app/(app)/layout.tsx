@@ -49,7 +49,7 @@ export default async function AppLayout({
   const activeOperator = getActiveOperator(cookieStore)
   const sidebarCollapsed = cookieStore.get('pos-sidebar-collapsed')?.value === 'true'
 
-  let primaryColor = '#1C4A3B'
+  let primaryColor = '#7a3e10'
   let businessName = 'Negocio'
   const businessId = await getBusinessIdByUserId(supabase, user.id)
 

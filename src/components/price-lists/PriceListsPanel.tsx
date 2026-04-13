@@ -336,7 +336,7 @@ export default function PriceListsPanel({
         ) : (
           <div className="surface-card p-2">
             <div className="px-2 pb-2 flex flex-wrap items-center gap-2">
-              <h2 className="text-sm font-semibold text-heading">{activeList.name}</h2>
+              <h2 className="text-sm font-semibold text-heading font-display">{activeList.name}</h2>
               {activeList.description && <span className="text-xs text-hint">{activeList.description}</span>}
               <div className="relative ml-auto">
                 <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-hint pointer-events-none" />

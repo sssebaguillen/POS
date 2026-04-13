@@ -74,7 +74,7 @@ export default function BulkActionBar({
             visible ? 'translate-y-0 opacity-100' : 'translate-y-8 opacity-0'
           }`}
         >
-          <span className="text-sm font-semibold text-heading shrink-0 whitespace-nowrap">
+          <span className="text-sm font-semibold text-heading shrink-0 whitespace-nowrap text-display">
             {selectedCount} {selectedCount === 1 ? 'producto' : 'productos'}
           </span>
 

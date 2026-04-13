@@ -268,7 +268,7 @@ export default function POSView({ products, businessId, businessName, priceLists
         >
           <Menu size={20} className="text-body" />
         </button>
-        <span className="text-lg font-bold text-heading shrink-0">Ventas</span>
+        <span className="text-lg font-bold text-heading shrink-0 font-display">Ventas</span>
 
         <div className="flex-1 max-w-lg mx-auto">
           <div className="relative">
@@ -378,7 +378,7 @@ export default function POSView({ products, businessId, businessName, priceLists
                   Todos
                 </button>
                 {topCategories.length > 0 && (
-                  <span className="shrink-0 w-px h-3.5 bg-edge/60 mx-0.5" />
+                  <span className="shrink-0 w-px bg-edge/60 mx-0.5" />
                 )}
                 {topCategories.map(cat => (
                   <button
@@ -396,7 +396,7 @@ export default function POSView({ products, businessId, businessName, priceLists
                   </button>
                 ))}
                 {topBrands.length > 0 && (
-                  <span className="shrink-0 w-px h-3.5 bg-edge/60 mx-0.5" />
+                  <span className="shrink-0 w-px bg-edge/60 mx-0.5" />
                 )}
                 {topBrands.map(brand => (
                   <button

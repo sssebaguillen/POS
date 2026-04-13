@@ -298,7 +298,7 @@ function SalesHistoryTable({ rows, businessId, businessName }: Props) {
     <div className="relative surface-card overflow-hidden">
       {/* Filters + summary */}
       <div className="p-4 border-b border-edge-soft space-y-3">
-        <p className="font-semibold text-heading">Historial detallado</p>
+        <p className="font-semibold text-heading font-display">Historial detallado</p>
         <div className="flex flex-wrap gap-2">
           <Input
             value={searchQuery}

@@ -43,7 +43,7 @@ export default function SettingsForm({
     description: business.description ?? '',
     whatsapp: business.whatsapp ?? '',
     logoUrl: business.logo_url ?? '',
-    primaryColor: business.settings?.primary_color ?? '#1C4A3B',
+    primaryColor: business.settings?.primary_color ?? '#7a3e10',
   })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -261,7 +261,7 @@ export default function SettingsForm({
             </span>
             <button
               type="button"
-              onClick={() => setField('primaryColor', '#1C4A3B')}
+              onClick={() => setField('primaryColor', '#7a3e10')}
               className="text-xs text-muted-foreground hover:text-foreground transition-colors ml-auto"
             >
               Restablecer

@@ -155,8 +155,8 @@ export default function OperatorMeView({
       <div className="flex-1 overflow-y-auto p-6">
         <div className="mx-auto flex max-w-6xl flex-col gap-6">
           <section className="surface-card p-6">
-            <p className="text-xs uppercase tracking-wide text-muted-foreground">Operario activo</p>
-            <h1 className="mt-2 text-3xl font-semibold text-foreground">{operatorName}</h1>
+            <p className="text-[10px] font-medium tracking-widest text-muted-foreground uppercase">Operario activo</p>
+            <h1 className="mt-2 text-3xl font-semibold text-foreground font-display">{operatorName}</h1>
             <div className="mt-3 flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
               <span>{roleLabel(operatorRole)}</span>
               <span className="text-border">•</span>
@@ -225,7 +225,7 @@ export default function OperatorMeView({
           <section className="space-y-4">
             <div className="flex flex-col gap-3">
               <div>
-                <h2 className="text-base font-semibold text-foreground">Estadísticas personales</h2>
+                <h2 className="text-base font-semibold text-foreground font-display">Estadísticas personales</h2>
                 <p className="mt-1 text-sm text-muted-foreground">
                   Revisá tus ventas, productos más vendidos e historial reciente.
                 </p>
@@ -236,18 +236,18 @@ export default function OperatorMeView({
             <div className="grid gap-4 md:grid-cols-2">
               <div className="surface-card p-5">
                 <p className="text-xs uppercase tracking-wide text-muted-foreground">Ventas realizadas</p>
-                <p className="mt-3 text-3xl font-semibold text-foreground">{totalSales.toLocaleString('es-AR')}</p>
+                <p className="mt-3 text-3xl font-semibold text-foreground font-display tracking-tight">{totalSales.toLocaleString('es-AR')}</p>
               </div>
               <div className="surface-card p-5">
                 <p className="text-xs uppercase tracking-wide text-muted-foreground">Monto total</p>
-                <p className="mt-3 text-3xl font-semibold text-foreground">{formatMoney(totalRevenue)}</p>
+                <p className="mt-3 text-3xl font-semibold text-foreground font-display tracking-tight">{formatMoney(totalRevenue)}</p>
               </div>
             </div>
 
             <div className="grid gap-6 xl:grid-cols-[1.1fr,1.4fr]">
               <section className="surface-card overflow-hidden">
                 <div className="border-b border-edge-soft px-5 py-4">
-                  <h3 className="text-base font-semibold text-foreground">Top productos</h3>
+                  <h3 className="text-base font-semibold text-foreground font-display">Top productos</h3>
                 </div>
                 <div className="p-4">
                   <Table>
@@ -285,7 +285,7 @@ export default function OperatorMeView({
 
               <section className="surface-card overflow-hidden">
                 <div className="border-b border-edge-soft px-5 py-4">
-                  <h3 className="text-base font-semibold text-foreground">Historial de ventas</h3>
+                  <h3 className="text-base font-semibold text-foreground font-display">Historial de ventas</h3>
                 </div>
                 <div className="p-4">
                   <Table>

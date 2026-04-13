@@ -181,7 +181,7 @@ export default function StatsView({ kpis, evolution, breakdown, topProducts, per
             {/* Evolution chart */}
             <div className="surface-card p-6 space-y-3">
               <div className="flex items-center justify-between">
-                <p className="font-semibold text-heading">Evolución</p>
+                <p className="font-semibold text-heading font-display">Evolución</p>
                 <div className="flex gap-1.5">
                   <button
                     onClick={() => setEvolutionMode('revenue')}
@@ -279,7 +279,7 @@ export default function StatsView({ kpis, evolution, breakdown, topProducts, per
             {/* Payment methods */}
             <div className="surface-card p-6 space-y-4">
               <div className="flex items-center gap-3">
-                <p className="font-semibold text-heading">Métodos de pago</p>
+                <p className="font-semibold text-heading font-display">Métodos de pago</p>
                 <Link href="/stats/payment-methods" className="text-xs text-primary font-medium hover:underline">
                   Ver más →
                 </Link>
@@ -308,7 +308,7 @@ export default function StatsView({ kpis, evolution, breakdown, topProducts, per
             <div className="surface-card p-6 space-y-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <p className="font-semibold text-heading">Ranking de productos</p>
+                  <p className="font-semibold text-heading dont-display">Ranking de productos</p>
                   <Link href="/stats/top-products" className="text-xs text-primary font-medium hover:underline">
                     Ver más →
                   </Link>
@@ -347,7 +347,7 @@ export default function StatsView({ kpis, evolution, breakdown, topProducts, per
             <div className="surface-card p-6 space-y-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <p className="font-semibold text-heading">Breakdown</p>
+                  <p className="font-semibold text-heading font-display">Desglose</p>
                   <Link href="/stats/breakdown" className="text-xs text-primary font-medium hover:underline">
                     Ver más →
                   </Link>
@@ -386,7 +386,7 @@ export default function StatsView({ kpis, evolution, breakdown, topProducts, per
           </div>
           {/* Day of week distribution */}
           <div className="surface-card p-6 space-y-3">
-            <p className="font-semibold text-heading">Ventas por día de la semana</p>
+            <p className="font-semibold text-heading font-display">Ventas por día de la semana</p>
             {dayOfWeekData.length === 0 || totalSales === 0 ? (
               <p className="text-sm text-hint h-32 flex items-center justify-center">Sin datos para el período</p>
             ) : (
