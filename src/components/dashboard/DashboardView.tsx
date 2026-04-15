@@ -21,6 +21,7 @@ interface SaleRecord {
   total: number
   created_at: string
   status: string | null
+  operator_name: string | null
 }
 
 interface PaymentRecord {
@@ -39,6 +40,7 @@ interface SaleItemRecord {
 
 interface SaleHistoryRow extends SaleRecord {
   method: PaymentMethod | 'sin dato'
+  product_names: string[]
 }
 
 interface ProductRecord {
@@ -86,6 +88,24 @@ export default function DashboardView({ sales, payments, saleItems, products, bu
   const { setRef, indicator } = usePillIndicator(showHistory ? 'history' : 'overview')
 
   const productsById = useMemo(() => new Map(products.map(p => [p.id, p])), [products])
+
+  const productNamesBySaleId = useMemo(() => {
+    const map = new Map<string, string[]>()
+    saleItems.forEach(item => {
+      if (!item.product_id) return
+      // Get product name from the products map
+      const product = productsById.get(item.product_id)
+      const name = product?.name ?? null
+      if (!name) return
+      const current = map.get(item.sale_id)
+      if (current) {
+        if (!current.includes(name)) current.push(name)
+      } else {
+        map.set(item.sale_id, [name])
+      }
+    })
+    return map
+  }, [saleItems, productsById])
 
   const paymentsBySaleId = useMemo(() => {
     const map = new Map<string, PaymentMethod>()
@@ -217,8 +237,12 @@ export default function DashboardView({ sales, payments, saleItems, products, bu
   }), [totalSold, prevTotalSold, trendLabel, transactions, prevCompletedSales, prevPeriodRange])
 
   const historyRows = useMemo<SaleHistoryRow[]>(() =>
-    filteredSales.map(s => ({ ...s, method: paymentsBySaleId.get(s.id) ?? 'sin dato' })),
-    [filteredSales, paymentsBySaleId])
+    filteredSales.map(s => ({
+      ...s,
+      method: paymentsBySaleId.get(s.id) ?? 'sin dato',
+      product_names: productNamesBySaleId.get(s.id) ?? [],
+    })),
+    [filteredSales, paymentsBySaleId, productNamesBySaleId])
 
   const historyTableKey = useMemo(
     () => `${period}:${fromDate}:${toDate}`,

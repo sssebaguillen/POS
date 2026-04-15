@@ -13,7 +13,7 @@ export default async function DashboardPage() {
   const [{ data: sales }, { data: products }, { data: business }, balanceResult] = await Promise.all([
     supabase
       .from('sales')
-      .select('id, subtotal, discount, total, created_at, status')
+      .select('id, subtotal, discount, total, created_at, status, operator_id, operators(name)')
       .eq('business_id', businessId)
       .order('created_at', { ascending: false })
       .limit(3000),
@@ -74,14 +74,20 @@ export default async function DashboardPage() {
 
   return (
     <DashboardView
-      sales={(sales ?? []).map(sale => ({
-        id: sale.id,
-        subtotal: Number(sale.subtotal),
-        discount: Number(sale.discount ?? 0),
-        total: Number(sale.total),
-        created_at: sale.created_at,
-        status: sale.status,
-      }))}
+      sales={(sales ?? []).map(sale => {
+        const operatorName = sale.operators && typeof sale.operators === 'object' && 'name' in sale.operators 
+          ? (sale.operators.name as string)
+          : null
+        return {
+          id: sale.id,
+          subtotal: Number(sale.subtotal),
+          discount: Number(sale.discount ?? 0),
+          total: Number(sale.total),
+          created_at: sale.created_at,
+          status: sale.status,
+          operator_name: operatorName,
+        }
+      })}
       payments={payments}
       saleItems={saleItems}
       products={(products ?? []).map(product => ({

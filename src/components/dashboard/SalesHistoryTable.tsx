@@ -32,6 +32,8 @@ interface SaleRow {
   total: number
   status: string | null
   method: PaymentMethod | 'sin dato'
+  product_names: string[]
+  operator_name: string | null
 }
 
 interface SaleDetail extends SaleRow {
@@ -63,7 +65,7 @@ interface Props {
 }
 
 function SalesHistoryTable({ rows, businessId, businessName }: Props) {
-  const [localRows, setLocalRows] = useState<SaleRow[]>(rows)
+  const [deletedIds, setDeletedIds] = useState<Set<string>>(new Set())
   const [expandedSaleId, setExpandedSaleId] = useState<string | null>(null)
   const [saleDetails, setSaleDetails] = useState<Record<string, SaleDetail>>({})
   const [loadingDetailId, setLoadingDetailId] = useState<string | null>(null)
@@ -76,22 +78,32 @@ function SalesHistoryTable({ rows, businessId, businessName }: Props) {
   const queryClient = useQueryClient()
   const { toast, showToast, dismissToast } = useToast()
 
+  // Filter out deleted items
+  const visibleRows = useMemo(() => rows.filter(r => !deletedIds.has(r.id)), [rows, deletedIds])
+
   const filteredRows = useMemo(() => {
-    return localRows.filter(row => {
+    return visibleRows.filter(row => {
       const q = searchQuery.trim().toLowerCase()
       if (!q) return true
-      const detail = saleDetails[row.id]
+      const normalizedMethod = normalizePayment(row.method).toLowerCase()
       const matchesBasic =
         row.id.toLowerCase().includes(q) ||
         row.method.toLowerCase().includes(q) ||
+        normalizedMethod.includes(q) ||
         row.total.toString().includes(q)
+      // Search in denormalized product names — no fetch needed
+      const matchesProducts = row.product_names.some(name => name.toLowerCase().includes(q))
+      // Search in denormalized operator name — no fetch needed
+      const matchesOperator = row.operator_name ? row.operator_name.toLowerCase().includes(q) : false
+      // Still support searching in detail items if already loaded
+      const detail = saleDetails[row.id]
       const matchesDetail = detail
         ? detail.items.some(i => i.product_name.toLowerCase().includes(q)) ||
           (detail.operator_name?.toLowerCase().includes(q) ?? false)
         : false
-      return matchesBasic || matchesDetail
+      return matchesBasic || matchesProducts || matchesOperator || matchesDetail
     })
-  }, [localRows, searchQuery, saleDetails])
+  }, [visibleRows, searchQuery, saleDetails])
 
   const summaryTotal = useMemo(
     () => filteredRows.reduce((acc, r) => acc + r.total, 0),
@@ -123,7 +135,7 @@ function SalesHistoryTable({ rows, businessId, businessName }: Props) {
       setReceiptError(error?.message ?? 'No se pudo cargar el detalle de la venta.')
       return null
     }
-    const row = localRows.find(s => s.id === saleId)
+    const row = rows.find(s => s.id === saleId)
     if (!row) {
       setLoadingDetailId(null)
       return null
@@ -201,7 +213,7 @@ function SalesHistoryTable({ rows, businessId, businessName }: Props) {
       setDeletingId(saleId)
     },
     onSuccess: (saleId) => {
-      setLocalRows(prev => prev.filter(s => s.id !== saleId))
+      setDeletedIds(prev => new Set([...prev, saleId]))
       setSaleDetails(prev => { const next = { ...prev }; delete next[saleId]; return next })
       if (expandedSaleId === saleId) setExpandedSaleId(null)
       void queryClient.invalidateQueries({ queryKey: ['expenses'] })
@@ -232,13 +244,7 @@ function SalesHistoryTable({ rows, businessId, businessName }: Props) {
       return { ...vars, total: Number(data.total) }
     },
     onSuccess: (result) => {
-      setLocalRows(prev =>
-        prev.map(s =>
-          s.id === result.saleId
-            ? { ...s, subtotal: result.total, total: result.total, method: result.paymentMethod, status: result.status }
-            : s
-        )
-      )
+      // Update saleDetails for immediate UI feedback; main data updates via parent revalidation
       setSaleDetails(prev => {
         const existing = prev[result.saleId]
         if (!existing) return prev
