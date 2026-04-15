@@ -108,7 +108,7 @@ export function DatePicker({ value, onChange, className, placeholder = 'dd/mm/aa
         <PopoverPrimitive.Content
           align="start"
           sideOffset={6}
-          className="z-[100] w-64 rounded-xl bg-popover p-3 shadow-lg ring-1 ring-black/10 dark:ring-white/10 text-popover-foreground"
+          className="surface-elevated z-[100] w-64 rounded-xl bg-popover p-3 shadow-lg ring-1 ring-black/10 dark:ring-white/10 text-popover-foreground"
         >
           {/* Month navigation */}
           <div className="flex items-center justify-between mb-3">

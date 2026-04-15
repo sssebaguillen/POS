@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Dialog, DialogContent } from '@/components/ui/dialog'
+import { X } from 'lucide-react'
 import { isSettingsOperator, type SettingsOperator } from '@/components/settings/types'
 import { OPERATOR_ROLES, OPERATOR_ROLE_LABELS, type OperatorRole } from '@/lib/constants/domain'
 import type { Permissions } from '@/lib/operator'
@@ -164,12 +165,22 @@ export default function NewOperatorModal({ open, onClose, businessId, onCreated 
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-sm">
-        <h2 className="text-base font-semibold text-foreground">Nuevo operario</h2>
+      <DialogContent className="sm:max-w-sm p-0 gap-0 overflow-hidden bg-card flex flex-col" showCloseButton={false}>
+        <div className="flex items-center justify-between px-5 py-4 border-b border-edge">
+          <h2 className="text-base font-semibold text-heading">Nuevo operario</h2>
+          <button
+            onClick={onClose}
+            className="p-1.5 rounded-lg hover:bg-hover-bg transition-colors text-hint"
+            aria-label="Cerrar"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
 
-        <form onSubmit={handleSubmit} className="space-y-5">
+        <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
+          <div className="overflow-y-auto px-5 py-4 flex-1 space-y-5">
           <div className="space-y-1.5">
-            <label className="text-label text-muted-foreground">
+            <label className="text-label text-subtle">
               Nombre <span className="text-destructive">*</span>
             </label>
             <Input
@@ -181,7 +192,7 @@ export default function NewOperatorModal({ open, onClose, businessId, onCreated 
           </div>
 
           <div className="space-y-1.5">
-            <p className="text-label text-muted-foreground">Rol base</p>
+            <p className="text-label text-subtle">Rol base</p>
             <div className="flex gap-2">
               {BASE_ROLES.map(role => (
                 <button
@@ -191,7 +202,7 @@ export default function NewOperatorModal({ open, onClose, businessId, onCreated 
                   className={`flex-1 rounded-lg border px-3 py-2 text-sm font-medium transition-colors ${
                     baseRole === role
                       ? 'bg-primary text-primary-foreground border-primary'
-                      : 'bg-transparent text-foreground border-border hover:bg-muted/40'
+                      : 'bg-transparent text-body border-edge hover:bg-hover-bg'
                   }`}
                 >
                   {OPERATOR_ROLE_LABELS[role]}
@@ -201,12 +212,12 @@ export default function NewOperatorModal({ open, onClose, businessId, onCreated 
           </div>
 
           <div className="space-y-1.5">
-            <p className="text-label text-muted-foreground">Permisos</p>
-            <div className="rounded-lg border border-border/60 divide-y divide-border/60">
+            <p className="text-label text-subtle">Permisos</p>
+            <div className="rounded-lg border border-edge divide-y divide-edge">
               {PERMISSION_LABELS.map(({ key, label }) => (
                 <div key={key}>
                   <div className="flex items-center justify-between px-3 py-2.5">
-                    <span className="text-sm text-foreground">{label}</span>
+                    <span className="text-sm text-body">{label}</span>
                     <button
                       type="button"
                       role="switch"
@@ -221,8 +232,8 @@ export default function NewOperatorModal({ open, onClose, businessId, onCreated 
                   </div>
 
                   {key === 'stock' && permissions.stock && (
-                    <div className="flex items-center justify-between border-t border-border/60 px-3 py-2.5 pl-8">
-                      <span className="text-sm text-muted-foreground">Modificar inventario</span>
+                    <div className="flex items-center justify-between border-t border-edge px-3 py-2.5 pl-8">
+                      <span className="text-sm text-subtle">Modificar inventario</span>
                       <button
                         type="button"
                         role="switch"
@@ -238,8 +249,8 @@ export default function NewOperatorModal({ open, onClose, businessId, onCreated 
                   )}
 
                   {key === 'price_lists' && permissions.price_lists && (
-                    <div className="flex items-center justify-between border-t border-border/60 px-3 py-2.5 pl-8">
-                      <span className="text-sm text-muted-foreground">Modificar listas de precios</span>
+                    <div className="flex items-center justify-between border-t border-edge px-3 py-2.5 pl-8">
+                      <span className="text-sm text-subtle">Modificar listas de precios</span>
                       <button
                         type="button"
                         role="switch"
@@ -255,8 +266,8 @@ export default function NewOperatorModal({ open, onClose, businessId, onCreated 
                   )}
 
                   {key === 'settings' && permissions.settings && (
-                    <div className="flex items-center justify-between border-t border-border/60 px-3 py-2.5 pl-8">
-                      <span className="text-sm text-muted-foreground">Gestionar operarios</span>
+                    <div className="flex items-center justify-between border-t border-edge px-3 py-2.5 pl-8">
+                      <span className="text-sm text-subtle">Gestionar operarios</span>
                       <button
                         type="button"
                         role="switch"
@@ -276,7 +287,7 @@ export default function NewOperatorModal({ open, onClose, businessId, onCreated 
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-label text-muted-foreground">
+            <label className="text-label text-subtle">
               PIN <span className="text-destructive">*</span>
             </label>
             <Input
@@ -291,17 +302,18 @@ export default function NewOperatorModal({ open, onClose, businessId, onCreated 
             />
           </div>
 
-          {error && (
-            <p className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
-              {error}
-            </p>
-          )}
+            {error && (
+              <p className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
+                {error}
+              </p>
+            )}
+          </div>
 
-          <div className="flex justify-end gap-2">
-            <Button type="button" variant="outline" onClick={onClose} disabled={loading}>
+          <div className="border-t border-edge px-5 py-4 flex items-center justify-end gap-2.5">
+            <Button type="button" variant="cancel" onClick={onClose} disabled={loading} className="h-9 rounded-lg text-sm">
               Cancelar
             </Button>
-            <Button type="submit" disabled={loading}>
+            <Button type="submit" disabled={loading} className="h-9 rounded-lg text-sm bg-primary hover:bg-primary/90 text-primary-foreground">
               {loading ? 'Creando...' : 'Crear operario'}
             </Button>
           </div>

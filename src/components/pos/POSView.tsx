@@ -333,7 +333,7 @@ export default function POSView({ products, businessId, businessName, priceLists
               {canSelectList && <ChevronDown size={14} className="text-hint" />}
             </button>
             {listDropdownOpen && (
-              <div className="absolute top-full right-0 mt-1 surface-elevated z-30 py-1 min-w-[180px]">
+              <div className="absolute top-full right-0 mt-1 surface-elevated z-30 py-1 min-w-[180px] rounded-lg overflow-hidden">
                 {priceLists.map(pl => (
                   <button
                     key={pl.id}

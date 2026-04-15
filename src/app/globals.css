@@ -277,10 +277,15 @@
   .dark .surface-elevated {
     background-image: var(--noise), linear-gradient(145deg, var(--card) 0%, var(--surface-tint) 100%);
     background-blend-mode: overlay, normal;
-    box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.04),
-      0 4px 6px rgba(0, 0, 0, 0.25),
-      0 20px 40px rgba(0, 0, 0, 0.35);
+    box-shadow: inset 0 1px 0 0    var(--dm-hi-peak),
+                inset 0 0 0 1px    var(--dm-ring-high),
+                      0 0 0 1px    rgba(0,0,0,0.20),
+                      0 1px 1px -0.5px var(--dm-drop),
+                      0 3px 3px -1.5px var(--dm-drop),
+                      0 6px 6px   -3px var(--dm-drop),
+                      0 12px 12px  -6px var(--dm-drop),
+                      0 24px 24px -12px var(--dm-drop),
+                      0 48px 48px -24px var(--dm-drop);
   }
 
   .dark .surface-card {

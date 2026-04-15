@@ -288,13 +288,14 @@ export default function NewProductModal({ open, onClose, businessId, priceLists,
 
   return (
     <Dialog open={open} onOpenChange={v => !v && handleClose()}>
-      <DialogContent className="sm:max-w-[640px] p-0 gap-0 rounded-2xl overflow-hidden bg-app-bg" showCloseButton={false}>
+      <DialogContent className="sm:max-w-[640px] p-0 gap-0 overflow-hidden bg-card" showCloseButton={false}>
         {/* Header */}
-        <div className="modal-header px-6 py-4 flex items-center justify-between">
-          <h2 className="text-base font-semibold text-foreground">Nuevo producto</h2>
+        <div className="flex items-center justify-between px-5 py-4 border-b border-edge shrink-0">
+          <h2 className="text-base font-semibold text-heading">Nuevo producto</h2>
           <button
             onClick={handleClose}
-            className="text-muted-foreground hover:text-foreground transition-colors p-0.5"
+            className="p-1.5 rounded-lg hover:bg-hover-bg transition-colors text-hint"
+            aria-label="Cerrar"
           >
             <X className="w-4 h-4" />
           </button>
@@ -642,7 +643,7 @@ export default function NewProductModal({ open, onClose, businessId, priceLists,
           </div>
 
           {/* Footer */}
-          <div className="border-t border-edge-soft bg-surface-alt/80 px-6 py-3.5 flex items-center justify-end gap-2.5">
+          <div className="border-t border-edge px-5 py-4 flex items-center justify-end gap-2.5">
             <Button
               type="button"
               variant="cancel"

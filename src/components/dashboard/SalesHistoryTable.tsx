@@ -395,7 +395,7 @@ function SalesHistoryTable({ rows, businessId, businessName }: Props) {
                   <div className="flex items-center gap-1.5 mt-1 flex-wrap">
                     <span className={`inline-flex items-center text-[11px] px-2 py-0.5 rounded-full border font-medium ${
                       isExpanded
-                        ? 'bg-primary/10 border-primary/20 text-primary dark:bg-primary/20 dark:border-primary/30'
+                        ? 'bg-primary/10 border-primary/20 text-body dark:bg-primary/20 dark:border-primary/30'
                         : 'bg-surface-alt border-edge text-body'
                     }`}>
                       {normalizePayment(sale.method)}
@@ -488,7 +488,7 @@ function SalesHistoryTable({ rows, businessId, businessName }: Props) {
       )}
 
       <Dialog open={!!editingSale} onOpenChange={nextOpen => !nextOpen && setEditingSale(null)}>
-        <DialogContent className="sm:max-w-md p-0 gap-0 overflow-hidden bg-card" showCloseButton={false}>
+        <DialogContent className="sm:max-w-md p-0 gap-0 overflow-hidden bg-card max-h-[90vh] flex flex-col" showCloseButton={false}>
           {editingSale && (
             <>
               <div className="flex items-center justify-between px-5 py-4 border-b border-edge shrink-0">
@@ -497,7 +497,7 @@ function SalesHistoryTable({ rows, businessId, businessName }: Props) {
                 </span>
                 <button
                   onClick={() => setEditingSale(null)}
-                  className="text-hint hover:text-body transition-colors p-0.5"
+                  className="p-1.5 rounded-lg hover:bg-hover-bg transition-colors text-hint"
                   aria-label="Cerrar"
                 >
                   <X className="w-4 h-4" />
@@ -560,8 +560,8 @@ function EditSalePanel({
   const total = items.reduce((sum, i) => sum + i.quantity * i.unit_price, 0)
 
   return (
-    <div className="flex flex-col">
-      <div className="overflow-y-auto px-5 py-3 space-y-1" style={{ maxHeight: '50vh' }}>
+    <div className="flex flex-col h-full">
+      <div className="overflow-y-auto px-5 py-3 space-y-1 flex-1 min-h-0">
         {items.map(item => (
           <div key={item.product_id} className="flex items-center gap-3 py-2 border-b border-edge-soft">
             <div className="flex-1 min-w-0">

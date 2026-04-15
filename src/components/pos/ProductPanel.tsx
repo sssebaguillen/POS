@@ -210,7 +210,7 @@ const ProductCard = memo(function ProductCard({
 
       {/* Stock badge */}
       {product.stock === 0 && (
-        <span className="absolute top-2 right-2 text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-red-100 text-red-600">
+        <span className="absolute top-2 right-2 text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-red-100 text-red-600 dark:bg-red-900/50 dark:text-red-400">
           Sin stock
         </span>
       )}
