@@ -1,7 +1,7 @@
 'use client'
 
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
-import { Pencil, Plus, Search } from 'lucide-react'
+import { Download, Pencil, Plus, Search } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import PageHeader from '@/components/shared/PageHeader'
 import { Button } from '@/components/ui/button'
@@ -17,8 +17,10 @@ import NewPriceListModal from '@/components/price-lists/NewPriceListModal'
 import EditPriceListModal from '@/components/price-lists/EditPriceListModal'
 import ProductOverrideModal from '@/components/price-lists/ProductOverrideModal'
 import BrandOverrideModal from '@/components/price-lists/BrandOverrideModal'
+import ExportPriceListModal from '@/components/price-lists/ExportPriceListModal'
 import type { PriceList, PriceListOverride } from '@/lib/types'
 import type { PriceListProduct } from '@/components/price-lists/types'
+import type { PriceListExportItem } from '@/components/price-lists/ExportPriceListModal'
 import { calculateProductPrice } from '@/lib/price-lists'
 
 interface PriceListsPanelProps {
@@ -65,6 +67,7 @@ export default function PriceListsPanel({
   const [editingListId, setEditingListId] = useState<string | null>(null)
   const [overrideProductId, setOverrideProductId] = useState<string | null>(null)
   const [overrideBrandId, setOverrideBrandId] = useState<string | null>(null)
+  const [showExportModal, setShowExportModal] = useState(false)
   const [savingDefaultId, setSavingDefaultId] = useState<string | null>(null)
   const [crudError, setCrudError] = useState<string | null>(null)
   const [search, setSearch] = useState('')
@@ -173,6 +176,23 @@ export default function PriceListsPanel({
 
     return Array.from(groups.values())
   }, [filteredRows, activeListOverrides])
+
+  const exportItems = useMemo<PriceListExportItem[]>(() => {
+    return productRows.map(row => ({
+      productId: row.product.id,
+      productName: row.product.name,
+      brandId: row.product.brand_id ?? null,
+      brandName: row.product.brand?.name ?? null,
+      categoryId: row.product.category_id ?? null,
+      categoryName: row.product.categories?.name ?? null,
+      cost: row.product.cost,
+      basePrice: row.product.price,
+      listPrice: row.finalPrice,
+      marginPercent: row.margin,
+      multiplier: row.activeMultiplier,
+      hasOverride: Boolean(row.productOverride ?? row.brandOverride),
+    }))
+  }, [productRows])
 
   function handleCreated(list: PriceList) {
     setLists(prev => {
@@ -353,6 +373,16 @@ export default function PriceListsPanel({
                 variant="outline"
                 size="sm"
                 className="rounded-lg text-xs"
+                onClick={() => setShowExportModal(true)}
+                disabled={exportItems.length === 0}
+              >
+                <Download size={14} />
+                Exportar
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="rounded-lg text-xs"
                 onClick={() => setEditingListId(activeList.id)}
                 disabled={readOnly}
               >
@@ -437,6 +467,16 @@ export default function PriceListsPanel({
           existingOverride={selectedBrandOverride}
           onSaved={override => handleSavedBrandOverride(overrideBrandId, override)}
           onDeleted={() => handleDeletedBrandOverride(overrideBrandId)}
+        />
+      )}
+
+      {activeList && showExportModal && (
+        <ExportPriceListModal
+          key={activeList.id}
+          open={showExportModal}
+          onClose={() => setShowExportModal(false)}
+          priceListName={activeList.name}
+          items={exportItems}
         />
       )}
     </div>

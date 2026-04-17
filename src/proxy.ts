@@ -86,7 +86,13 @@ export async function proxy(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser()
 
-  const isAuthRoute = pathname.startsWith('/login') || pathname.startsWith('/register')
+  const isUpdatePasswordRoute =
+    pathname.startsWith('/update-password') ||
+    pathname.startsWith('/auth/update-password')
+  const isAuthRoute =
+    pathname.startsWith('/login') ||
+    pathname.startsWith('/register') ||
+    isUpdatePasswordRoute
   const isCatalogRoute = pathname.startsWith('/catalogo')
   const isOperatorSelectRoute = pathname.startsWith('/operator-select')
 
@@ -94,11 +100,15 @@ export async function proxy(request: NextRequest) {
     return withCsp(NextResponse.redirect(new URL('/login', request.url)))
   }
 
-  if (user && isAuthRoute) {
+  if (user && isAuthRoute && !isUpdatePasswordRoute) {
     return withCsp(NextResponse.redirect(new URL('/pos', request.url)))
   }
 
   if (!user || isCatalogRoute) {
+    return withCsp(supabaseResponse)
+  }
+
+  if (isUpdatePasswordRoute) {
     return withCsp(supabaseResponse)
   }
 

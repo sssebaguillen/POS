@@ -16,6 +16,9 @@ export default function LoginPage() {
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [forgotLoading, setForgotLoading] = useState(false)
+  const [forgotSent, setForgotSent] = useState(false)
+  const [forgotError, setForgotError] = useState('')
   const router = useRouter()
   const supabase = useMemo(() => createClient(), [])
 
@@ -29,6 +32,29 @@ export default function LoginPage() {
       return
     }
     router.push('/')
+  }
+
+  async function handleForgotPassword() {
+    const normalizedEmail = email.trim()
+
+    if (!normalizedEmail) {
+      setForgotError('Ingresá tu email primero')
+      return
+    }
+
+    setForgotLoading(true)
+    setForgotError('')
+
+    try {
+      await supabase.auth.resetPasswordForEmail(normalizedEmail, {
+        redirectTo: 'https://pulsarpos.vercel.app/auth/update-password',
+      })
+      setForgotSent(true)
+    } catch {
+      setForgotError('Ocurrió un error, intentá de nuevo')
+    } finally {
+      setForgotLoading(false)
+    }
   }
 
   return (
@@ -63,6 +89,23 @@ export default function LoginPage() {
             Registrá tu negocio
           </Link>
         </p>
+
+        <p className="text-center text-sm text-muted-foreground mt-2">
+          <button
+            type="button"
+            onClick={handleForgotPassword}
+            className="text-primary hover:underline disabled:opacity-50"
+            disabled={forgotLoading || forgotSent}
+          >
+            {forgotSent ? 'Revisá tu email' : '¿Olvidaste tu contraseña?'}
+          </button>
+        </p>
+
+        {forgotError && (
+          <p className="mt-2 rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
+            {forgotError}
+          </p>
+        )}
       </div>
     </div>
   )

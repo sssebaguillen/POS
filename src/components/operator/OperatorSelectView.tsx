@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { createClient } from '@/lib/supabase/client'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -50,6 +51,10 @@ export default function OperatorSelectView({ ownerProfile, operators, availableO
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [forgotLoading, setForgotLoading] = useState(false)
+  const [forgotSent, setForgotSent] = useState(false)
+  const [forgotError, setForgotError] = useState('')
+  const supabase = useMemo(() => createClient(), [])
 
   const selectedOperator = useMemo(
     () => operators.find(operator => operator.id === selectedOperatorId) ?? null,
@@ -63,6 +68,9 @@ export default function OperatorSelectView({ ownerProfile, operators, availableO
     setPin('')
     setPassword('')
     setError('')
+    setForgotError('')
+    setForgotLoading(false)
+    setForgotSent(false)
   }
 
   function handlePinChange(value: string) {
@@ -112,6 +120,36 @@ export default function OperatorSelectView({ ownerProfile, operators, availableO
   function handleGoToSettings() {
     router.push('/settings')
     router.refresh()
+  }
+
+  async function handleForgotPassword() {
+    if (!isOwnerSelected) {
+      return
+    }
+
+    setForgotLoading(true)
+    setForgotError('')
+
+    try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+
+      if (!user?.email) {
+        setForgotError('Ingresá tu email primero')
+        return
+      }
+
+      await supabase.auth.resetPasswordForEmail(user.email, {
+        redirectTo: 'https://pulsarpos.vercel.app/auth/update-password',
+      })
+
+      setForgotSent(true)
+    } catch {
+      setForgotError('Ocurrió un error, intentá de nuevo')
+    } finally {
+      setForgotLoading(false)
+    }
   }
 
   return (
@@ -234,6 +272,26 @@ export default function OperatorSelectView({ ownerProfile, operators, availableO
             {loading ? 'Validando...' : 'Iniciar turno'}
           </Button>
         </form>
+
+        {isOwnerSelected && error && (
+          <div className="mt-3 max-w-xs space-y-3">
+            <p className="text-center text-sm text-muted-foreground">
+              <button
+                type="button"
+                onClick={handleForgotPassword}
+                className="text-primary hover:underline disabled:opacity-50"
+                disabled={forgotLoading || forgotSent}
+              >
+                {forgotSent ? 'Revisá tu email' : '¿Olvidaste tu contraseña?'}
+              </button>
+            </p>
+            {forgotError && (
+              <p className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
+                {forgotError}
+              </p>
+            )}
+          </div>
+        )}
       </div>
     </div>
   )

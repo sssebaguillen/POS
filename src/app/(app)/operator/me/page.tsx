@@ -50,6 +50,7 @@ interface OperatorStatsResult {
 }
 
 const VALID_PERIODS: DateRangePeriod[] = ['hoy', 'semana', 'mes', 'trimestre', 'año', 'personalizado']
+const BUSINESS_TIMEZONE_OFFSET = '-03:00'
 
 function getPeriod(value: string | undefined): DateRangePeriod {
   if (value && VALID_PERIODS.includes(value as DateRangePeriod)) {
@@ -65,6 +66,13 @@ function formatMemberSince(value: string): string {
     month: 'long',
     year: 'numeric',
   })
+}
+
+function toRangeTimestamps(from: string | null, to: string | null): { from: string | null; to: string | null } {
+  return {
+    from: from ? `${from}T00:00:00${BUSINESS_TIMEZONE_OFFSET}` : null,
+    to: to ? `${to}T23:59:59.999${BUSINESS_TIMEZONE_OFFSET}` : null,
+  }
 }
 
 export default async function OperatorMePage({
@@ -92,6 +100,7 @@ export default async function OperatorMePage({
   const businessId = await requireAuthenticatedBusinessId(supabase)
   const period = getPeriod(params.period)
   const { from, to } = resolveDateRange(period, params.from, params.to)
+  const statsRange = toRangeTimestamps(from, to)
 
   let operatorName = activeOperator.name
   let operatorRole: UserRole = activeOperator.role
@@ -123,8 +132,8 @@ export default async function OperatorMePage({
     }
 
     const { data: statsRaw, error: statsError } = await supabase.rpc('get_owner_stats', {
-      p_date_from: from ? `${from}T00:00:00` : null,
-      p_date_to:   to   ? `${to}T23:59:59`   : null,
+      p_date_from: statsRange.from,
+      p_date_to: statsRange.to,
     })
 
     if (statsError) throw new Error(statsError.message)
@@ -162,8 +171,8 @@ export default async function OperatorMePage({
           .single<OperatorProfileRow>(),
         supabase.rpc('get_operator_stats', {
           p_operator_id: activeOperator.profile_id,
-          p_date_from: from ? `${from}T00:00:00` : null,
-          p_date_to:   to   ? `${to}T23:59:59`   : null,
+          p_date_from: statsRange.from,
+          p_date_to: statsRange.to,
         }),
       ])
 
