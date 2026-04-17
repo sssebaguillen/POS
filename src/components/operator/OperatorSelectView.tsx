@@ -141,7 +141,7 @@ export default function OperatorSelectView({ ownerProfile, operators, availableO
       }
 
       await supabase.auth.resetPasswordForEmail(user.email, {
-        redirectTo: 'https://pulsarpos.vercel.app/auth/callback?type=recovery',
+        redirectTo: 'https://pulsarpos.vercel.app/auth/update-password',
       })
 
       setForgotSent(true)

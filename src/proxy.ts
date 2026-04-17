@@ -93,6 +93,7 @@ export async function proxy(request: NextRequest) {
     pathname.startsWith('/login') ||
     pathname.startsWith('/register') ||
     isUpdatePasswordRoute
+    pathname.startsWith('/auth/callback')
   const isCatalogRoute = pathname.startsWith('/catalogo')
   const isOperatorSelectRoute = pathname.startsWith('/operator-select')
 

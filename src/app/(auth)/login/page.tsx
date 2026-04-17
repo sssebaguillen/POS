@@ -47,7 +47,7 @@ export default function LoginPage() {
 
     try {
       await supabase.auth.resetPasswordForEmail(normalizedEmail, {
-        redirectTo: 'https://pulsarpos.vercel.app/auth/callback?type=recovery',
+        redirectTo: 'https://pulsarpos.vercel.app/auth/update-password',
       })
       setForgotSent(true)
     } catch {

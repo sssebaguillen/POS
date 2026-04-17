@@ -111,7 +111,8 @@ export default function Sidebar({
   const hasActiveOperatorSession =
     activeOperatorName !== null &&
     activeOperatorRole !== null
-  const showBusinessSessionActions = isOwnerSessionActive
+  const isOperatorSelectRoute = pathname === '/operator-select'
+  const showBusinessSessionActions = isOwnerSessionActive || isOperatorSelectRoute
 
   async function handleLogout() {
     await supabase.auth.signOut()
