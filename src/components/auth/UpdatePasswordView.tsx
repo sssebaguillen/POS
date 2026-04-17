@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -9,26 +9,10 @@ export default function UpdatePasswordView() {
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [loading, setLoading] = useState(false)
-  const [recoveryReady, setRecoveryReady] = useState(false)
   const [error, setError] = useState('')
   const [successMessage, setSuccessMessage] = useState('')
 
   const supabase = useMemo(() => createClient(), [])
-
-  useEffect(() => {
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(event => {
-      if (event === 'PASSWORD_RECOVERY') {
-        setRecoveryReady(true)
-        setError('')
-      }
-    })
-
-    return () => {
-      subscription.unsubscribe()
-    }
-  }, [supabase])
 
   async function handleUpdatePassword() {
     if (newPassword.length < 8) {
@@ -51,7 +35,7 @@ export default function UpdatePasswordView() {
     setLoading(false)
 
     if (updateError) {
-      setError(updateError.message)
+      setError('No se pudo actualizar la contraseña. El enlace puede haber expirado.')
       return
     }
 
@@ -69,57 +53,49 @@ export default function UpdatePasswordView() {
           Definí una nueva contraseña para tu cuenta.
         </p>
 
-        {!recoveryReady ? (
-          <div className="rounded-lg border border-border bg-muted/20 px-4 py-3 text-sm text-muted-foreground">
-            Verificando enlace...
-          </div>
-        ) : (
-          <div className="space-y-3">
-            <Input
-              type="password"
-              placeholder="Nueva contraseña"
-              value={newPassword}
-              onChange={event => {
-                setNewPassword(event.target.value)
-                setError('')
-              }}
-            />
-            <Input
-              type="password"
-              placeholder="Confirmar contraseña"
-              value={confirmPassword}
-              onChange={event => {
-                setConfirmPassword(event.target.value)
-                setError('')
-              }}
-              onKeyDown={event => {
-                if (event.key === 'Enter') {
-                  handleUpdatePassword()
-                }
-              }}
-            />
+        <div className="space-y-3">
+          <Input
+            type="password"
+            placeholder="Nueva contraseña (mín. 8 caracteres)"
+            value={newPassword}
+            onChange={event => {
+              setNewPassword(event.target.value)
+              setError('')
+            }}
+          />
+          <Input
+            type="password"
+            placeholder="Confirmar contraseña"
+            value={confirmPassword}
+            onChange={event => {
+              setConfirmPassword(event.target.value)
+              setError('')
+            }}
+            onKeyDown={event => {
+              if (event.key === 'Enter') handleUpdatePassword()
+            }}
+          />
 
-            {error && (
-              <p className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
-                {error}
-              </p>
-            )}
+          {error && (
+            <p className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
+              {error}
+            </p>
+          )}
 
-            {successMessage && (
-              <p className="rounded-lg border border-emerald-500/30 bg-emerald-500/5 px-3 py-2 text-sm text-emerald-700 dark:text-emerald-300">
-                {successMessage}
-              </p>
-            )}
+          {successMessage && (
+            <p className="rounded-lg border border-emerald-500/30 bg-emerald-500/5 px-3 py-2 text-sm text-emerald-700 dark:text-emerald-300">
+              {successMessage}
+            </p>
+          )}
 
-            <Button
-              className="w-full"
-              onClick={handleUpdatePassword}
-              disabled={loading || Boolean(successMessage)}
-            >
-              {loading ? 'Actualizando...' : 'Actualizar contraseña'}
-            </Button>
-          </div>
-        )}
+          <Button
+            className="w-full"
+            onClick={handleUpdatePassword}
+            disabled={loading || Boolean(successMessage)}
+          >
+            {loading ? 'Actualizando...' : 'Actualizar contraseña'}
+          </Button>
+        </div>
       </div>
     </div>
   )
