@@ -1,12 +1,16 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { useQueryClient } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import Image from 'next/image'
 import { type SettingsBusiness, type SettingsOperator } from '@/components/settings/types'
 import OperatorList from '@/components/settings/OperatorList'
+
+const BUSINESS_SLUG_REGEX = /^[a-z0-9][a-z0-9-]{1,48}[a-z0-9]$/
 
 interface SettingsFormProps {
   business: SettingsBusiness
@@ -48,18 +52,29 @@ export default function SettingsForm({
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
+  const [businessSlug, setBusinessSlug] = useState(business.slug)
+  const [slugLoading, setSlugLoading] = useState(false)
+  const [slugError, setSlugError] = useState('')
+  const [slugSuccess, setSlugSuccess] = useState('')
   const [logoPreviewError, setLogoPreviewError] = useState(false)
   const [copySuccess, setCopySuccess] = useState(false)
   const [copyError, setCopyError] = useState('')
   const copyTimeoutRef = useRef<number | null>(null)
+  const router = useRouter()
+  const queryClient = useQueryClient()
 
   const supabase = useMemo(() => createClient(), [])
 
   const normalizedLogoUrl = form.logoUrl.trim()
+  const normalizedBusinessSlug = businessSlug.trim()
   const hasLogoUrl = normalizedLogoUrl.length > 0
   const publicCatalogUrl = useMemo(
-    () => `${typeof window !== 'undefined' ? window.location.origin : ''}/catalogo/${business.slug}`,
-    [business.slug]
+    () => `${typeof window !== 'undefined' ? window.location.origin : ''}/catalogo/${normalizedBusinessSlug}`,
+    [normalizedBusinessSlug]
+  )
+  const catalogPreviewUrl = useMemo(
+    () => `puls.ar/${normalizedBusinessSlug}`,
+    [normalizedBusinessSlug]
   )
 
   const canPreviewLogo = useMemo(() => {
@@ -83,6 +98,14 @@ export default function SettingsForm({
     if (field === 'logoUrl') {
       setLogoPreviewError(false)
     }
+  }
+
+  async function invalidateBusinessQueries() {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ['profile'] }),
+      queryClient.invalidateQueries({ queryKey: ['business'] }),
+    ])
+    router.refresh()
   }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -119,10 +142,34 @@ export default function SettingsForm({
       return
     }
 
-    setSuccess('Configuración guardada. Aplicando cambios...')
-    setTimeout(() => {
-      window.location.reload()
-    }, 800)
+    setSuccess('Configuración guardada.')
+    await invalidateBusinessQueries()
+  }
+
+  async function handleSlugSubmit() {
+    const slug = normalizedBusinessSlug
+
+    if (!BUSINESS_SLUG_REGEX.test(slug)) {
+      setSlugError('El slug debe usar solo letras minúsculas, números o guiones, y tener entre 3 y 50 caracteres.')
+      setSlugSuccess('')
+      return
+    }
+
+    setSlugLoading(true)
+    setSlugError('')
+    setSlugSuccess('')
+
+    const { error: slugUpdateError } = await supabase.rpc('update_business_slug', { p_slug: slug })
+
+    setSlugLoading(false)
+
+    if (slugUpdateError) {
+      setSlugError(slugUpdateError.message)
+      return
+    }
+
+    setSlugSuccess('URL del catálogo actualizada.')
+    await invalidateBusinessQueries()
   }
 
   async function handleCopyPublicUrl() {
@@ -229,6 +276,45 @@ export default function SettingsForm({
           {canPreviewLogo && logoPreviewError && (
             <p className="text-xs text-destructive">No se pudo cargar la imagen desde esa URL.</p>
           )}
+        </div>
+
+        <div className="space-y-1.5">
+          <label htmlFor="business-slug" className="text-xs uppercase tracking-wide text-muted-foreground">
+            URL de tu catálogo
+          </label>
+          <Input
+            id="business-slug"
+            value={businessSlug}
+            onChange={event => {
+              setBusinessSlug(event.target.value)
+              setSlugError('')
+              setSlugSuccess('')
+            }}
+            placeholder="mi-negocio"
+            disabled={!isOwner || slugLoading}
+          />
+          <p className="text-xs text-muted-foreground">
+            Vista previa: <span className="font-mono">{catalogPreviewUrl}</span>
+          </p>
+          {!isOwner && (
+            <p className="text-xs text-muted-foreground">Solo el owner puede cambiar esta URL.</p>
+          )}
+          {slugError && <p className="text-xs text-destructive">{slugError}</p>}
+          {slugSuccess && (
+            <p className="rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-700 dark:border-green-500/30 dark:bg-green-500/10 dark:text-green-400">
+              {slugSuccess}
+            </p>
+          )}
+          <div className="flex justify-end">
+            <Button
+              type="button"
+              className="h-9 px-4"
+              onClick={handleSlugSubmit}
+              disabled={!isOwner || slugLoading || normalizedBusinessSlug === business.slug}
+            >
+              {slugLoading ? 'Guardando...' : 'Guardar'}
+            </Button>
+          </div>
         </div>
 
         <div className="space-y-1.5">

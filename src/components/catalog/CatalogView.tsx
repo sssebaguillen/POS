@@ -11,15 +11,6 @@ type SortBy = 'name-asc' | 'name-desc' | 'price-asc' | 'price-desc'
 
 const VIEW_MODE_KEY = 'catalog-view-mode'
 
-function getStoredViewMode(): ViewMode {
-  if (typeof window === 'undefined') {
-    return 'grid'
-  }
-
-  const stored = localStorage.getItem(VIEW_MODE_KEY)
-  return stored === 'list' ? 'list' : 'grid'
-}
-
 function getStoredCartItems(
   cartKey: string,
   products: CatalogProduct[]
@@ -53,7 +44,8 @@ export default function CatalogView({ business, products, categories }: CatalogV
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
   const [isMobileCartOpen, setIsMobileCartOpen] = useState(false)
   const [cartItems, setCartItems] = useState<CatalogCartItem[]>(() => getStoredCartItems(cartKey, products))
-  const [viewMode, setViewMode] = useState<ViewMode>(getStoredViewMode)
+  const [viewMode, setViewMode] = useState<ViewMode>('grid')
+  const [hasLoadedViewMode, setHasLoadedViewMode] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [sortBy, setSortBy] = useState<SortBy>('name-asc')
 
@@ -62,8 +54,19 @@ export default function CatalogView({ business, products, categories }: CatalogV
   }, [cartItems, cartKey])
 
   useEffect(() => {
+    const stored = localStorage.getItem(VIEW_MODE_KEY)
+    if (stored === 'list' || stored === 'grid') {
+      setViewMode(stored)
+    }
+    setHasLoadedViewMode(true)
+  }, [])
+
+  useEffect(() => {
+    if (!hasLoadedViewMode) {
+      return
+    }
     localStorage.setItem(VIEW_MODE_KEY, viewMode)
-  }, [viewMode])
+  }, [viewMode, hasLoadedViewMode])
 
   const cartCount = useMemo(
     () => cartItems.reduce((acc, item) => acc + item.quantity, 0),

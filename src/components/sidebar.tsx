@@ -75,6 +75,7 @@ export default function Sidebar({
   const router = useRouter()
   const supabase = useMemo(() => createClient(), [])
   const [toast, setToast] = useState<string | null>(null)
+  const [themeToggleMounted, setThemeToggleMounted] = useState(false)
   const permissions: Permissions | null = (() => {
     if (typeof document === 'undefined') {
       return null
@@ -98,6 +99,12 @@ export default function Sidebar({
     const timer = setTimeout(() => setToast(null), 3000)
     return () => clearTimeout(timer)
   }, [toast])
+
+  useEffect(() => {
+    setThemeToggleMounted(true)
+  }, [])
+
+  const themeForUi = themeToggleMounted ? theme : 'light'
 
   const isRestricted = (check: (p: Permissions) => boolean): boolean =>
     permissions !== null && !check(permissions)
@@ -263,7 +270,7 @@ export default function Sidebar({
         <button
           onClick={toggle}
           title={collapsed && !isMobileDrawer
-            ? (theme === 'dark' ? 'Modo claro' : 'Modo oscuro')
+            ? (themeForUi === 'dark' ? 'Modo claro' : 'Modo oscuro')
             : undefined}
           className={cn(
             'rounded-lg hover:bg-hover-bg transition-colors text-subtle',
@@ -272,8 +279,8 @@ export default function Sidebar({
               : 'flex items-center gap-2 px-3 py-2 text-sm w-full'
           )}
         >
-          {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
-          {(!collapsed || isMobileDrawer) && (theme === 'dark' ? 'Modo claro' : 'Modo oscuro')}
+          {themeForUi === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+          {(!collapsed || isMobileDrawer) && (themeForUi === 'dark' ? 'Modo claro' : 'Modo oscuro')}
         </button>
 
         {(!collapsed || isMobileDrawer) && (
