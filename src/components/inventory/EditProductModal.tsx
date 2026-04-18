@@ -142,7 +142,7 @@ export default function EditProductModal({
     setErrors(prev => ({ ...prev, price: '' }))
 
     if (suggestedPrice === null) {
-      setIsPriceEdited(false)
+      setIsPriceEdited(true)
       setSelectedListIds(new Set(existingOverrides.map(o => o.price_list_id)))
       return
     }

@@ -94,6 +94,11 @@ export default function PriceListsPanel({
     return overrides.filter(override => override.price_list_id === activeList.id)
   }, [overrides, activeList])
 
+  const editingListOverrides = useMemo(() => {
+    if (!editingListId) return []
+    return overrides.filter(o => o.price_list_id === editingListId)
+  }, [overrides, editingListId])
+
   const selectedBrandOverride = useMemo(() => {
     if (!overrideBrandId) return null
     return activeListOverrides.find(override => {
@@ -194,19 +199,54 @@ export default function PriceListsPanel({
     }))
   }, [productRows])
 
-  function handleCreated(list: PriceList) {
+  function handleCreated(
+    list: PriceList,
+    newOverrides: { price_list_id: string; product_id: string; brand_id: null; multiplier: number }[]
+  ) {
     setLists(prev => {
       const base = list.is_default
         ? prev.map(l => ({ ...l, is_default: false }))
         : prev
       return [...base, list]
     })
+
+    if (newOverrides.length > 0) {
+      setOverrides(prev => [
+        ...prev,
+        ...newOverrides.map((o, i) => ({
+          id: `auto-${list.id}-${i}`,  // temp id — replaced on next page load
+          price_list_id: o.price_list_id,
+          product_id: o.product_id,
+          brand_id: o.brand_id,
+          multiplier: o.multiplier,
+        })),
+      ])
+    }
+
     setActiveListId(list.id)
     setShowNewListModal(false)
   }
 
-  function handleSaved(updated: PriceList) {
+  function handleSaved(
+    updated: PriceList,
+    upsertedOverrides: PriceListOverride[],
+    deletedOverrideIds: string[]
+  ) {
     setLists(prev => prev.map(list => (list.id === updated.id ? updated : list)))
+
+    setOverrides(prev => {
+      let next = prev.filter(o => !deletedOverrideIds.includes(o.id))
+      for (const upserted of upsertedOverrides) {
+        const idx = next.findIndex(o => o.id === upserted.id)
+        if (idx >= 0) {
+          next = next.map(o => (o.id === upserted.id ? upserted : o))
+        } else {
+          next = [...next, upserted]
+        }
+      }
+      return next
+    })
+
     setEditingListId(null)
   }
 
@@ -419,6 +459,7 @@ export default function PriceListsPanel({
           onClose={() => setShowNewListModal(false)}
           businessId={businessId}
           hasDefault={lists.some(l => l.is_default)}
+          products={products}
           onCreated={handleCreated}
         />
       )}
@@ -429,6 +470,8 @@ export default function PriceListsPanel({
           open={Boolean(editingList)}
           onClose={() => setEditingListId(null)}
           list={editingList}
+          products={products}
+          existingOverrides={editingListOverrides}
           onSaved={handleSaved}
           onDeleted={handleDeleted}
         />

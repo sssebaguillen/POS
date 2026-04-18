@@ -153,7 +153,7 @@ export default function NewProductModal({ open, onClose, businessId, priceLists,
     setForm(prev => ({ ...prev, price: value }))
 
     if (suggestedPrice === null) {
-      setIsPriceEdited(false)
+      setIsPriceEdited(true)
       setSelectedListIds(defaultSelectedIds())
       return
     }
