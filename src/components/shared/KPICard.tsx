@@ -1,4 +1,4 @@
-import { memo } from 'react'
+import { memo, type ReactNode } from 'react'
 import { TrendingDown, TrendingUp } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -16,9 +16,11 @@ interface Props {
   iconColor: string
   trend?: Trend
   subtitle?: string
+  sparkline?: number[]
+  children?: ReactNode
 }
 
-function KPICard({ label, value, icon, iconBg, iconColor, trend, subtitle }: Props) {
+function KPICard({ label, value, icon, iconBg, iconColor, trend, subtitle, sparkline, children }: Props) {
   return (
     <div className="surface-card p-5 flex flex-col gap-3">
       <div className="flex items-start justify-between">
@@ -48,7 +50,42 @@ function KPICard({ label, value, icon, iconBg, iconColor, trend, subtitle }: Pro
         {(subtitle ?? trend?.label) && (
           <p className="text-xs text-hint mt-1.5">{subtitle ?? trend?.label}</p>
         )}
+        {children}
       </div>
+      {sparkline && sparkline.length > 1 && (() => {
+        const vals = sparkline
+        const min = Math.min(...vals)
+        const max = Math.max(...vals)
+        const range = max - min || 1
+        const W = 100
+        const H = 28
+        const pad = 2
+        const points = vals.map((v, i) => {
+          const x = pad + (i / (vals.length - 1)) * (W - pad * 2)
+          const y = H - pad - ((v - min) / range) * (H - pad * 2)
+          return `${x.toFixed(1)},${y.toFixed(1)}`
+        }).join(' ')
+        return (
+          <svg
+            viewBox={`0 0 ${W} ${H}`}
+            width="100%"
+            height="28"
+            preserveAspectRatio="none"
+            className="mt-3 overflow-visible"
+          >
+            <polyline
+              points={points}
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              vectorEffect="non-scaling-stroke"
+              strokeLinejoin="round"
+              strokeLinecap="round"
+              className="text-primary/60"
+            />
+          </svg>
+        )
+      })()}
     </div>
   )
 }
