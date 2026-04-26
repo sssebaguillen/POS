@@ -110,7 +110,14 @@ export default function ExpensesTable({ expenses, businessId, supabaseClient, on
                   {EXPENSE_CATEGORY_LABELS[expense.category]}
                 </span>
               </td>
-              <td className="px-4 py-3 text-body max-w-[200px] truncate">{expense.description}</td>
+              <td className="px-4 py-3 max-w-[200px]">
+                <span className="text-body truncate block">{expense.description}</span>
+                {expense.category === 'mercaderia' && (expense.item_count ?? 0) > 0 && (
+                  <span className="text-xs text-muted-foreground">
+                    {expense.item_count} producto{expense.item_count !== 1 ? 's' : ''}
+                  </span>
+                )}
+              </td>
               <td className="px-4 py-3 text-hint hidden md:table-cell">
                 {expense.supplier?.name ?? '—'}
               </td>

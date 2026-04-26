@@ -32,6 +32,7 @@ interface Props {
   period: DateRangePeriod
   from?: string
   to?: string
+  canUpdateStock?: boolean
 }
 
 interface ExpensesQueryData {
@@ -47,6 +48,7 @@ export default function ExpensesView({
   period: initialPeriod,
   from: initialFrom,
   to: initialTo,
+  canUpdateStock = false,
 }: Props) {
   const pathname = usePathname()
   const queryClient = useQueryClient()
@@ -271,6 +273,7 @@ export default function ExpensesView({
           supabaseClient={supabase}
           onCreated={handleExpenseCreated}
           onClose={() => setPanelOpen(false)}
+          canUpdateStock={canUpdateStock}
         />
       )}
     </div>

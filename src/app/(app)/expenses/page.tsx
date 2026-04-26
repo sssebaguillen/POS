@@ -1,8 +1,10 @@
+import { cookies } from 'next/headers'
 import { createClient } from '@/lib/supabase/server'
 import ExpensesView from '@/components/expenses/ExpensesView'
 import type { Expense, Supplier, BusinessBalance } from '@/components/expenses/types'
 import { requireAuthenticatedBusinessId } from '@/lib/business'
 import { resolveDateRange, type DateRangePeriod } from '@/lib/date-utils'
+import { getActiveOperator } from '@/lib/operator'
 
 interface SearchParams {
   period?: string
@@ -17,6 +19,8 @@ export default async function ExpensesPage({
 }) {
   const params = await searchParams
   const supabase = await createClient()
+  const cookieStore = await cookies()
+  const activeOperator = getActiveOperator(cookieStore)
   const businessId = await requireAuthenticatedBusinessId(supabase)
 
   const period: DateRangePeriod =
@@ -72,6 +76,7 @@ export default async function ExpensesPage({
       period={period}
       from={from}
       to={to}
+      canUpdateStock={activeOperator?.permissions.stock_write ?? true}
     />
   )
 }

@@ -25,6 +25,16 @@ export interface Expense {
   created_at: string
   updated_at: string
   supplier?: { id: string; name: string } | null
+  item_count?: number
+}
+
+export interface MercaderiaItem {
+  product_id: string
+  product_name: string
+  quantity: number
+  unit_cost: number
+  update_cost: boolean
+  _original_cost: number
 }
 
 export interface Supplier {

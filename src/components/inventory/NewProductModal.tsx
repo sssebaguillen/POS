@@ -52,6 +52,8 @@ interface Props {
   onCreated: (product: NewProduct) => void
   /** Called after a successful create (in addition to onCreated). */
   onSuccess?: (product: NewProduct) => void
+  /** Pre-fill the product name field. */
+  initialName?: string
 }
 
 const EMPTY_FORM = {
@@ -77,8 +79,9 @@ export default function NewProductModal({
   brands,
   onCreated,
   onSuccess,
+  initialName,
 }: Props) {
-  const [form, setForm] = useState(EMPTY_FORM)
+  const [form, setForm] = useState(() => initialName ? { ...EMPTY_FORM, name: initialName } : EMPTY_FORM)
   const [loading, setLoading] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [isPriceEdited, setIsPriceEdited] = useState(false)
