@@ -18,6 +18,8 @@ import type { PriceList } from '@/lib/types'
 import type { InventoryBrand } from '@/components/inventory/types'
 import type { SupportedCurrencyCode } from '@/lib/constants/currencies'
 import OnboardingWizard, { type OnboardingWizardProfile } from '@/components/onboarding/OnboardingWizard'
+import { DollarSign, Receipt, AlertTriangle } from 'lucide-react'
+import { ResponsiveContainer, BarChart, Bar, XAxis, Tooltip } from 'recharts'
 
 interface SaleRecord {
   id: string
@@ -238,8 +240,6 @@ export default function DashboardView({
       }))
   }, [completedSales, period])
 
-  const maxChartValue = useMemo(() => Math.max(...chartData.map(d => d.value), 1), [chartData])
-
   const outOfStock = useMemo(
     () => lowStockProducts.filter(p => p.stock <= 0).sort((a, b) => a.stock - b.stock),
     [lowStockProducts]
@@ -305,14 +305,6 @@ export default function DashboardView({
         created_at: s.created_at,
       })),
     [completedSales, paymentsBySaleId]
-  )
-
-  const yLabels = useMemo(() =>
-    Array.from({ length: 5 }, (_, i) => {
-      const val = maxChartValue * (1 - i / 4)
-      return val >= 1000 ? `$${(val / 1000).toFixed(0)}k` : `$${Math.round(val)}`
-    }),
-    [maxChartValue]
   )
 
   const periodLabel =
@@ -428,28 +420,28 @@ export default function DashboardView({
               {/* KPI Cards */}
               <div className="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-3 gap-4 animate-fade-in">
                 <KPICard
-                  icon="$"
+                  icon={<DollarSign size={18} />}
                   iconBg="bg-emerald-100 dark:bg-emerald-950/50"
                   iconColor="text-emerald-700 dark:text-emerald-400"
-                  label="TOTAL VENDIDO"
+                  label="Total vendido"
                   value={`$${totalSold.toLocaleString('es-AR')}`}
                   trend={trendLabel ? kpiTrends.total : undefined}
                   sparkline={chartData.map(point => point.value)}
                 />
                 <KPICard
-                  icon="T"
+                  icon={<Receipt size={18} />}
                   iconBg="bg-amber-100 dark:bg-amber-950/50"
                   iconColor="text-amber-700 dark:text-amber-400"
-                  label="TRANSACCIONES"
+                  label="Transacciones"
                   value={String(transactions)}
                   trend={trendLabel ? kpiTrends.transactions : undefined}
                   sparkline={transactionsChartData.map(point => point.transactions)}
                 />
                 <KPICard
-                  icon="!"
+                  icon={<AlertTriangle size={18} />}
                   iconBg="bg-red-100 dark:bg-red-950/50"
                   iconColor="text-red-600 dark:text-red-400"
-                  label="STOCK CRÍTICO"
+                  label="Stock crítico"
                   value={String(lowStockProducts.length)}
                   subtitle={`${outOfStockCount} sin stock · ${lowStockCount} stock bajo`}
                 >
@@ -489,38 +481,58 @@ export default function DashboardView({
               </div>
 
               <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-                <div className="surface-card p-6 animate-fade-in" style={{ animationDelay: '80ms' }}>
+                <div className="surface-card p-6 animate-fade-in flex flex-col" style={{ animationDelay: '80ms' }}>
                   <p className="font-semibold text-heading mb-4 font-display">
                     {chartTitle}
                   </p>
                   {chartData.every(d => d.value === 0) ? (
-                    <p className="text-sm text-hint h-48 flex items-center justify-center">Sin datos para el período</p>
+                    <p className="text-sm text-hint flex-1 flex items-center justify-center">Sin datos para el período</p>
                   ) : (
-                    <div className="flex h-56">
-                      <div className="flex flex-col justify-between pr-3 text-xs text-hint py-1 shrink-0">
-                        {yLabels.map(l => <span key={l}>{l}</span>)}
-                      </div>
-                      <div className="flex-1 flex items-end gap-1.5 pl-2 pb-1">
-                        {chartData.map(bar => (
-                          <div key={bar.label} className="flex-1 flex flex-col items-center justify-end h-full">
-                            <div
-                              className="w-full max-w-[32px] bg-primary/80 hover:bg-primary rounded-t-lg transition-all mx-auto"
-                              style={{ height: `${maxChartValue > 0 ? (bar.value / maxChartValue) * 100 : 0}%`, minHeight: bar.value > 0 ? 4 : 0 }}
-                            />
-                            <span className="text-[11px] text-hint mt-1.5 truncate w-full text-center">
-                              {bar.label}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
+                    <div className="flex-1 min-h-0">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={chartData} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
+                        <XAxis
+                          dataKey="label"
+                          height={20}
+                          tick={{ fontSize: 10, fill: 'var(--color-hint, #9ca3af)' }}
+                          axisLine={false}
+                          tickLine={false}
+                          interval={chartData.length > 10 ? Math.floor(chartData.length / 6) : 0}
+                        />
+                        <Tooltip
+                          cursor={{ fill: 'currentColor', fillOpacity: 0.04 }}
+                          content={({ active, payload, label }) => {
+                            if (!active || !payload?.length) return null
+                            return (
+                              <div className="surface-card rounded-lg px-3 py-2 text-xs shadow-sm border border-edge/40">
+                                <p className="text-hint mb-0.5">{label}</p>
+                                <p className="font-semibold text-heading">
+                                  ${Number(payload[0]?.value ?? 0).toLocaleString('es-AR')}
+                                </p>
+                              </div>
+                            )
+                          }}
+                        />
+                        <Bar
+                          dataKey="value"
+                          fill="var(--color-primary)"
+                          fillOpacity={0.8}
+                          radius={[4, 4, 0, 0]}
+                          maxBarSize={32}
+                        />
+                      </BarChart>
+                    </ResponsiveContainer>
                     </div>
                   )}
                 </div>
 
                 <div className="surface-card p-6">
                   <div className="flex items-center justify-between mb-4">
-                    <p className="font-semibold text-heading font-display">Alertas de stock</p>
-                    <Link href="/inventory" className="text-xs text-primary font-medium hover:underline">
+                    <div>
+                      <p className="font-semibold text-heading font-display">Alertas de stock</p>
+                      <p className="text-xs text-hint mt-0.5">En tiempo real · no afectado por el filtro</p>
+                    </div>
+                    <Link href="/inventory" className="text-xs text-primary font-medium hover:underline shrink-0">
                       Ver stock →
                     </Link>
                   </div>

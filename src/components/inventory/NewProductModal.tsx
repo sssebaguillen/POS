@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -82,6 +82,12 @@ export default function NewProductModal({
   initialName,
 }: Props) {
   const [form, setForm] = useState(() => initialName ? { ...EMPTY_FORM, name: initialName } : EMPTY_FORM)
+
+  useEffect(() => {
+    if (open && initialName) {
+      setForm(prev => ({ ...prev, name: initialName }))
+    }
+  }, [open, initialName])
   const [loading, setLoading] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [isPriceEdited, setIsPriceEdited] = useState(false)

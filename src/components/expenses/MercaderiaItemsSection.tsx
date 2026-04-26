@@ -3,6 +3,7 @@
 import { useCallback, useMemo, useRef, useState } from 'react'
 import { Trash2 } from 'lucide-react'
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { cn } from '@/lib/utils'
 import type { MercaderiaItem } from './types'
 import ProductSearchInput from './ProductSearchInput'
 import type { PriceList } from '@/lib/types'
@@ -42,7 +43,6 @@ export default function MercaderiaItemsSection({
   firstItemCostRef,
   totalRef,
 }: Props) {
-  const supabase = useMemo(() => supabaseClient, [supabaseClient])
   const [newProductOpen, setNewProductOpen] = useState(false)
   const [newProductInitialName, setNewProductInitialName] = useState('')
   const [priceLists, setPriceLists] = useState<PriceList[]>([])
@@ -58,19 +58,19 @@ export default function MercaderiaItemsSection({
   async function fetchModalData() {
     if (modalDataFetchedRef.current) return
     const [plResult, catResult, brandResult] = await Promise.all([
-      supabase
+      supabaseClient
         .from('price_lists')
         .select('id, business_id, name, description, multiplier, is_default, created_at')
         .eq('business_id', businessId)
         .eq('is_active', true)
         .order('name'),
-      supabase
+      supabaseClient
         .from('categories')
         .select('id, business_id, name, icon')
         .eq('business_id', businessId)
         .eq('is_active', true)
         .order('position'),
-      supabase
+      supabaseClient
         .from('brands')
         .select('id, name')
         .eq('business_id', businessId)
@@ -129,7 +129,7 @@ export default function MercaderiaItemsSection({
       <div ref={searchInputRef as React.RefObject<HTMLDivElement>}>
         <ProductSearchInput
           businessId={businessId}
-          supabaseClient={supabase}
+          supabaseClient={supabaseClient}
           onSelect={addProductToItems}
           onCreateNew={handleCreateNew}
         />
@@ -198,9 +198,10 @@ export default function MercaderiaItemsSection({
 
               <div className="flex items-center justify-between">
                 <label
-                  className={`flex items-center gap-2 select-none ${
+                  className={cn(
+                    'flex items-center gap-2 select-none',
                     canUpdateStock ? 'cursor-pointer' : 'opacity-50 cursor-not-allowed'
-                  }`}
+                  )}
                   title={!canUpdateStock ? 'Sin permiso de escritura' : undefined}
                 >
                   <button
@@ -211,16 +212,16 @@ export default function MercaderiaItemsSection({
                     onClick={() =>
                       canUpdateStock && updateItem(index, { update_cost: !item.update_cost })
                     }
-                    className={`relative w-8 h-4 rounded-full transition-colors shrink-0 disabled:cursor-not-allowed ${
-                      item.update_cost && canUpdateStock
-                        ? 'bg-primary'
-                        : 'bg-muted-foreground/40'
-                    }`}
+                    className={cn(
+                      'relative w-8 h-4 rounded-full transition-colors shrink-0 disabled:cursor-not-allowed',
+                      item.update_cost && canUpdateStock ? 'bg-primary' : 'bg-muted-foreground/40'
+                    )}
                   >
                     <span
-                      className={`absolute top-0.5 left-0.5 w-3 h-3 rounded-full bg-white shadow-sm transition-transform ${
+                      className={cn(
+                        'absolute top-0.5 left-0.5 w-3 h-3 rounded-full bg-white shadow-sm transition-transform',
                         item.update_cost && canUpdateStock ? 'translate-x-4' : 'translate-x-0'
-                      }`}
+                      )}
                     />
                   </button>
                   <span className="text-xs text-hint">Actualizar costo</span>

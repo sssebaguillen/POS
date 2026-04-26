@@ -11,7 +11,7 @@ interface Trend {
 interface Props {
   label: string
   value: string
-  icon: string
+  icon: ReactNode
   iconBg: string
   iconColor: string
   trend?: Trend
@@ -24,7 +24,7 @@ function KPICard({ label, value, icon, iconBg, iconColor, trend, subtitle, spark
   return (
     <div className="surface-card p-5 flex flex-col gap-3">
       <div className="flex items-start justify-between">
-        <span className={cn('h-10 w-10 rounded-xl flex items-center justify-center text-xs font-bold shrink-0', iconBg, iconColor)}>
+        <span className={cn('h-10 w-10 rounded-xl flex items-center justify-center shrink-0', iconBg, iconColor)}>
           {icon}
         </span>
         {trend && (
@@ -45,7 +45,7 @@ function KPICard({ label, value, icon, iconBg, iconColor, trend, subtitle, spark
         )}
       </div>
       <div>
-        <p className="text-label text-hint mb-1">{label}</p>
+        <p className="text-xs font-medium text-hint mb-1">{label}</p>
         <p className="text-2xl font-bold text-heading leading-none">{value}</p>
         {(subtitle ?? trend?.label) && (
           <p className="text-xs text-hint mt-1.5">{subtitle ?? trend?.label}</p>

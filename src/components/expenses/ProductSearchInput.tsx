@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Plus, Search } from 'lucide-react'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { Input } from '@/components/ui/input'
@@ -27,7 +27,6 @@ export default function ProductSearchInput({
   onCreateNew,
   placeholder = 'Buscar producto por nombre o código de barras...',
 }: Props) {
-  const supabase = useMemo(() => supabaseClient, [supabaseClient])
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<ProductResult[]>([])
   const [open, setOpen] = useState(false)
@@ -43,7 +42,7 @@ export default function ProductSearchInput({
         return
       }
       setLoading(true)
-      const { data } = await supabase
+      const { data } = await supabaseClient
         .from('products')
         .select('id, name, stock, cost')
         .eq('business_id', businessId)
@@ -57,7 +56,7 @@ export default function ProductSearchInput({
         setOpen(true)
       }
     },
-    [supabase, businessId]
+    [supabaseClient, businessId]
   )
 
   function handleChange(value: string) {

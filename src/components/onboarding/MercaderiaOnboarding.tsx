@@ -77,6 +77,16 @@ export default function MercaderiaOnboarding({
     return totalRef as React.RefObject<HTMLElement | null>
   }
 
+  function advance() {
+    const next = stepIndex + 1
+    if (next >= STEPS.length) {
+      onComplete()
+      return
+    }
+    setTargetRect(null)
+    setStepIndex(next)
+  }
+
   useEffect(() => {
     if (!active || !currentStep) return
     if (currentStep.requiresItems && !hasItems) return
@@ -92,8 +102,12 @@ export default function MercaderiaOnboarding({
     }
 
     measure()
-    const id = setInterval(measure, 200)
-    return () => clearInterval(id)
+    const intervalId = setInterval(measure, 200)
+    window.addEventListener('resize', measure, { passive: true })
+    return () => {
+      clearInterval(intervalId)
+      window.removeEventListener('resize', measure)
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [active, stepIndex, hasItems])
 
@@ -121,15 +135,10 @@ export default function MercaderiaOnboarding({
   }
   if (left < 8) left = 8
 
-  function advance() {
-    const next = stepIndex + 1
-    if (next >= STEPS.length) {
-      onComplete()
-      return
-    }
-    setTargetRect(null)
-    setStepIndex(next)
-  }
+  const arrowLeft = Math.max(4, Math.min(
+    targetRect.left + targetRect.width / 2 - left - 4,
+    TOOLTIP_WIDTH - 16
+  ))
 
   return createPortal(
     <div
@@ -140,13 +149,13 @@ export default function MercaderiaOnboarding({
       {arrowUp && (
         <span
           className="absolute -top-[6px] border-4 border-transparent border-b-primary"
-          style={{ left: Math.min(targetRect.left + targetRect.width / 2 - left - 4, TOOLTIP_WIDTH - 16) }}
+          style={{ left: arrowLeft }}
         />
       )}
       {!arrowUp && (
         <span
           className="absolute -bottom-[6px] border-4 border-transparent border-t-primary"
-          style={{ left: Math.min(targetRect.left + targetRect.width / 2 - left - 4, TOOLTIP_WIDTH - 16) }}
+          style={{ left: arrowLeft }}
         />
       )}
 
