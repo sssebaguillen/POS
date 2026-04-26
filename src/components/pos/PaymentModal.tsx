@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import type { PaymentMethod, ReceiptData, ReceiptItemInput, SaleItemInput } from '@/lib/printer/types'
 import { PAYMENT_METHOD_LABELS, PAYMENT_METHODS } from '@/lib/constants/domain'
-import { formatMoney } from '@/lib/format'
+import { useCurrency, useFormatMoney } from '@/lib/context/CurrencyContext'
 import { useCartStore } from '@/lib/store/cart.store'
 import { createClient } from '@/lib/supabase/client'
 
@@ -58,6 +58,8 @@ export default function PaymentModal({
   const [receipt, setReceipt] = useState<ReceiptData | null>(null)
   const { clearCart } = useCartStore()
   const supabase = useMemo(() => createClient(), [])
+  const formatMoney = useFormatMoney()
+  const currency = useCurrency()
 
   const parsedCashReceived = Number(cashReceived)
   const validCashReceived = Number.isFinite(parsedCashReceived) ? parsedCashReceived : 0
@@ -123,6 +125,7 @@ export default function PaymentModal({
       paymentMethod: method,
       cashReceived: method === 'cash' ? validCashReceived : null,
       change,
+      currency,
     }
 
     onSaleCompleted('Venta registrada')

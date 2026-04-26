@@ -8,6 +8,7 @@ import { Dialog, DialogContent } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { buildReceiptData } from '@/lib/printer/receipt'
+import { useCurrency } from '@/lib/context/CurrencyContext'
 import type { ReceiptData } from '@/lib/printer/types'
 import { createClient } from '@/lib/supabase/client'
 import type { PaymentMethod } from '@/lib/constants/domain'
@@ -65,6 +66,7 @@ interface Props {
 }
 
 function SalesHistoryTable({ rows, businessId, businessName }: Props) {
+  const currency = useCurrency()
   const [deletedIds, setDeletedIds] = useState<Set<string>>(new Set())
   const [expandedSaleId, setExpandedSaleId] = useState<string | null>(null)
   const [saleDetails, setSaleDetails] = useState<Record<string, SaleDetail>>({})
@@ -187,6 +189,7 @@ function SalesHistoryTable({ rows, businessId, businessName }: Props) {
           paymentMethod: detail.method,
         },
         items: detail.items,
+        currency,
       }))
     } catch (receiptBuildError) {
       console.error(receiptBuildError)

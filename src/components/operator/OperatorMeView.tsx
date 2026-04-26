@@ -11,6 +11,7 @@ import { useToast } from '@/hooks/useToast'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import type { UserRole } from '@/lib/operator'
 import { OPERATOR_ROLE_LABELS, PROFILE_ROLE_LABELS } from '@/lib/constants/domain'
+import { useFormatMoney } from '@/lib/context/CurrencyContext'
 
 interface OperatorTopProduct {
   product_name: string
@@ -51,10 +52,6 @@ function roleLabel(role: UserRole): string {
   return OPERATOR_ROLE_LABELS[role]
 }
 
-function formatMoney(value: number): string {
-  return `$${value.toLocaleString('es-AR')}`
-}
-
 function formatDateTime(value: string): string {
   return new Date(value).toLocaleString('es-AR', {
     day: '2-digit',
@@ -86,6 +83,7 @@ export default function OperatorMeView({
   topProducts,
   saleHistory,
 }: OperatorMeViewProps) {
+  const formatMoney = useFormatMoney()
   const supabase = useMemo(() => createClient(), [])
   const [currentPin, setCurrentPin] = useState('')
   const [newPin, setNewPin] = useState('')

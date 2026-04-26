@@ -26,6 +26,7 @@ import { getStatus } from '@/components/inventory/types'
 import { useToast } from '@/hooks/useToast'
 import { usePillIndicator } from '@/hooks/usePillIndicator'
 import Toast from '@/components/shared/Toast'
+import { useFormatMoney } from '@/lib/context/CurrencyContext'
 
 const PAGE_SIZE = 60
 
@@ -73,6 +74,7 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
   const [selectionMode, setSelectionMode] = useState(false)
   const [bulkLoading, setBulkLoading] = useState(false)
   const { toast, showToast, dismissToast } = useToast()
+  const formatMoney = useFormatMoney()
 
   const scrollContainerRef = useRef<HTMLDivElement>(null)
   const router = useRouter()
@@ -932,7 +934,7 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
           {activeProducts.length} productos activos
         </span>
         <span>{totalStock} uds en stock</span>
-        <span>Valor inventario ${inventoryValue.toLocaleString('es-AR')}</span>
+        <span>Valor inventario {formatMoney(inventoryValue)}</span>
         <span>Margen promedio {avgMargin.toFixed(0)}%</span>
         <span className="flex items-center gap-1.5">
           <span className="w-2 h-2 rounded-full bg-red-500" />

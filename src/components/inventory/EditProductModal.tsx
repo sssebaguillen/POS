@@ -10,6 +10,8 @@ import type { PriceList, PriceListOverride } from '@/lib/types'
 import type { InventoryBrand, InventoryCategory, InventoryProduct } from '@/components/inventory/types'
 import { validateImageUrl } from '@/lib/validation'
 import FieldGroup from '@/components/inventory/FieldGroup'
+import { useCurrency } from '@/lib/context/CurrencyContext'
+import { getCurrencySymbol } from '@/lib/format'
 
 interface EditProductModalProps {
   open: boolean
@@ -94,6 +96,8 @@ export default function EditProductModal({
   const [imgError, setImgError] = useState(false)
 
   const supabase = useMemo(() => createClient(), [])
+  const currency = useCurrency()
+  const currencySymbol = getCurrencySymbol(currency)
 
   const suggestedPrice = useMemo(() => {
     const cost = Number(form.cost)
@@ -486,7 +490,7 @@ export default function EditProductModal({
                 <div className="grid grid-cols-2 gap-3.5">
                   <FieldGroup label="Costo" error={errors.cost}>
                     <div className="relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-hint">$</span>
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-hint">{currencySymbol}</span>
                       <Input
                         type="number"
                         min="0"
@@ -499,7 +503,7 @@ export default function EditProductModal({
                     </div>
                     {margin !== null && (
                       <p className="text-caption text-emerald-600 dark:text-emerald-400 font-medium">
-                        Margen: {margin}% · Ganancia por unidad: ${(Number(form.price) - Number(form.cost)).toFixed(2)}
+                        Margen: {margin}% · Ganancia por unidad: {currencySymbol}{(Number(form.price) - Number(form.cost)).toFixed(2)}
                       </p>
                     )}
                   </FieldGroup>
@@ -515,7 +519,7 @@ export default function EditProductModal({
                     error={errors.price}
                   >
                     <div className="relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-hint">$</span>
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-hint">{currencySymbol}</span>
                       <Input
                         type="number"
                         min="0"

@@ -317,7 +317,7 @@ export default function POSView({ products, businessId, businessName, priceLists
         </div>
 
         {priceLists.length > 0 && (
-          <div ref={listDropdownRef} className="relative shrink-0">
+          <div ref={listDropdownRef} className="relative shrink-0" data-tour="pos-price-list-selector">
             <button
               disabled={!canSelectList}
               onClick={() => canSelectList && setListDropdownOpen(prev => !prev)}
@@ -426,7 +426,7 @@ export default function POSView({ products, businessId, businessName, priceLists
             />
           </div>
         </div>
-        <div className="w-[380px] shrink-0 bg-surface border-l border-edge/60 flex flex-col">
+        <div className="w-[380px] shrink-0 bg-surface border-l border-edge/60 flex flex-col" data-tour="pos-cart">
           <CartPanel
             businessId={businessId}
             businessName={businessName}

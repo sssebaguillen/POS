@@ -7,6 +7,7 @@ import { calculateProductPrice } from '@/lib/price-lists'
 import type { Product } from '@/lib/types'
 import type { ProductWithCategory, ActiveFilter } from '@/components/pos/types'
 import type { PriceList, PriceListOverride } from '@/lib/types'
+import { useFormatMoney } from '@/lib/context/CurrencyContext'
 
 const PAGE_SIZE = 80
 
@@ -20,6 +21,7 @@ interface Props {
 
 export default function ProductPanel({ products, search, activeFilter, activePriceList, priceListOverrides }: Props) {
   const addItem = useCartStore(s => s.addItem)
+  const formatMoney = useFormatMoney()
 
   // IntersectionObserver — load more when sentinel comes into view
   const filtered = useMemo(() => {
@@ -66,6 +68,7 @@ export default function ProductPanel({ products, search, activeFilter, activePri
                 activePriceList={activePriceList}
                 priceListOverrides={priceListOverrides}
                 onAdd={handleAdd}
+                formatMoney={formatMoney}
               />
             ))}
           </div>
@@ -91,6 +94,7 @@ export default function ProductPanel({ products, search, activeFilter, activePri
             activePriceList={activePriceList}
             priceListOverrides={priceListOverrides}
             onAdd={handleAdd}
+            formatMoney={formatMoney}
           />
         )}
       </section>
@@ -103,6 +107,7 @@ interface PaginatedProductGridProps {
   activePriceList: PriceList | null
   priceListOverrides: PriceListOverride[]
   onAdd: (product: Product) => void
+  formatMoney: (v: number) => string
 }
 
 function PaginatedProductGrid({
@@ -110,6 +115,7 @@ function PaginatedProductGrid({
   activePriceList,
   priceListOverrides,
   onAdd,
+  formatMoney,
 }: PaginatedProductGridProps) {
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
   const sentinelRef = useRef<HTMLDivElement>(null)
@@ -147,6 +153,7 @@ function PaginatedProductGrid({
             activePriceList={activePriceList}
             priceListOverrides={priceListOverrides}
             onAdd={onAdd}
+            formatMoney={formatMoney}
           />
         ))}
       </div>
@@ -165,11 +172,13 @@ const ProductCard = memo(function ProductCard({
   activePriceList,
   priceListOverrides,
   onAdd,
+  formatMoney,
 }: {
   product: ProductWithCategory
   activePriceList: PriceList | null
   priceListOverrides: PriceListOverride[]
   onAdd: (p: Product) => void
+  formatMoney: (v: number) => string
 }) {
   const displayPrice = activePriceList
     ? calculateProductPrice(product.cost, product.price, product.id, product.brand_id, activePriceList, priceListOverrides)
@@ -205,7 +214,7 @@ const ProductCard = memo(function ProductCard({
 
       {/* Price */}
       <p className="text-sm font-bold text-heading">
-        ${displayPrice.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
+        {formatMoney(displayPrice)}
       </p>
 
       {/* Stock badge */}

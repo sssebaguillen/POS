@@ -22,9 +22,10 @@ interface BuildReceiptDataParams {
   businessName: string
   sale: ReceiptSaleSource
   items: ReceiptSaleItemSource[]
+  currency?: string
 }
 
-export function buildReceiptData({ businessName, sale, items }: BuildReceiptDataParams): ReceiptData {
+export function buildReceiptData({ businessName, sale, items, currency }: BuildReceiptDataParams): ReceiptData {
   if (!isPaymentMethod(sale.paymentMethod)) {
     throw new Error('No se pudo identificar el metodo de pago de la venta.')
   }
@@ -51,5 +52,6 @@ export function buildReceiptData({ businessName, sale, items }: BuildReceiptData
     paymentMethod: sale.paymentMethod,
     cashReceived: null,
     change: 0,
+    currency: currency ?? 'ARS',
   }
 }

@@ -18,6 +18,7 @@ interface AppShellProps {
   activeOperatorRole: UserRole | null
   businessName: string
   initialCollapsed?: boolean
+  showOnboardingResume?: boolean
 }
 
 const SidebarContext = createContext<SidebarContextValue | undefined>(undefined)
@@ -38,6 +39,7 @@ export default function AppShell({
   activeOperatorRole,
   businessName,
   initialCollapsed = false,
+  showOnboardingResume = false,
 }: AppShellProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [collapsed, setCollapsed] = useState(initialCollapsed)
@@ -73,6 +75,7 @@ export default function AppShell({
           businessName={businessName}
           collapsed={collapsed}
           onToggleCollapse={toggleCollapse}
+          showOnboardingResume={showOnboardingResume}
         />
         {/* Desktop: static offset matching sidebar width. Mobile: no offset (drawer overlay). */}
         <main

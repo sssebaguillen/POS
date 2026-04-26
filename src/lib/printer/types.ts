@@ -27,4 +27,5 @@ export interface ReceiptData {
   paymentMethod: PaymentMethod
   cashReceived: number | null
   change: number
+  currency?: string
 }

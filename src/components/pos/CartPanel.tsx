@@ -20,6 +20,7 @@ import { isPaymentMethod, normalizePayment } from '@/lib/payments'
 import type { PriceList, PriceListOverride } from '@/lib/types'
 import type { Permissions } from '@/lib/operator'
 import { useToast } from '@/hooks/useToast'
+import { useCurrency } from '@/lib/context/CurrencyContext'
 import Toast from '@/components/shared/Toast'
 
 function getStockIndicator(
@@ -79,6 +80,7 @@ interface Props {
 }
 
 export default function CartPanel({ businessId, businessName, activePriceList, priceListOverrides, operatorId, permissions }: Props) {
+  const currency = useCurrency()
   const router = useRouter()
   const { items, removeItem, updateQuantity, updatePrice, discount, clearCart } = useCartStore()
   const [showPayment, setShowPayment] = useState(false)
@@ -285,6 +287,7 @@ export default function CartPanel({ businessId, businessName, activePriceList, p
           paymentMethod: detail.payment_method,
         },
         items: detail.items,
+        currency,
       }))
     } catch (receiptBuildError) {
       console.error(receiptBuildError)

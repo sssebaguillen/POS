@@ -1,6 +1,7 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import PageHeader from '@/components/shared/PageHeader'
 import DateRangeFilter from '@/components/shared/DateRangeFilter'
 import { type DateRangePeriod } from '@/lib/date-utils'
@@ -8,12 +9,15 @@ import KPICard from '@/components/shared/KPICard'
 import Link from 'next/link'
 import { isCompletedSale, getDateRange, getPreviousPeriodRange } from '@/lib/date-utils'
 import type { PaymentMethod } from '@/lib/constants/domain'
-import { normalizePayment } from '@/lib/payments'
 import SalesHistoryTable from '@/components/dashboard/SalesHistoryTable'
 import BalanceWidget from '@/components/dashboard/BalanceWidget'
 import RecentActivityWidget from '@/components/dashboard/RecentActivityWidget'
 import { usePillIndicator } from '@/hooks/usePillIndicator'
 import type { BusinessBalance } from '@/components/expenses/types'
+import type { PriceList } from '@/lib/types'
+import type { InventoryBrand } from '@/components/inventory/types'
+import type { SupportedCurrencyCode } from '@/lib/constants/currencies'
+import OnboardingWizard, { type OnboardingWizardProfile } from '@/components/onboarding/OnboardingWizard'
 
 interface SaleRecord {
   id: string
@@ -68,6 +72,15 @@ interface Props {
   businessId: string | null
   businessName: string
   balance: BusinessBalance
+  onboardingProfile: OnboardingWizardProfile | null
+  showOnboardingWizard: boolean
+  initialBusinessSettings: Record<string, unknown> | null
+  initialCurrency: SupportedCurrencyCode
+  operatorId: string | null
+  stockWriteAllowed: boolean
+  wizardCategories: { id: string; name: string; icon: string }[]
+  wizardBrands: InventoryBrand[]
+  wizardPriceLists: PriceList[]
 }
 
 function computeTrend(
@@ -87,11 +100,38 @@ function computeTrend(
   }
 }
 
-export default function DashboardView({ sales, payments, saleItems, products, businessId, businessName, balance }: Props) {
+export default function DashboardView({
+  sales,
+  payments,
+  saleItems,
+  products,
+  businessId,
+  businessName,
+  balance,
+  onboardingProfile,
+  showOnboardingWizard,
+  initialBusinessSettings,
+  initialCurrency,
+  operatorId,
+  stockWriteAllowed,
+  wizardCategories,
+  wizardBrands,
+  wizardPriceLists,
+}: Props) {
+  const router = useRouter()
   const [period, setPeriod] = useState<DateRangePeriod>('hoy')
   const [showHistory, setShowHistory] = useState(false)
   const [fromDate, setFromDate] = useState('')
   const [toDate, setToDate] = useState('')
+  const [suppressWizardLocal, setSuppressWizardLocal] = useState(false)
+
+  useEffect(() => {
+    if (!showOnboardingWizard) {
+      setSuppressWizardLocal(false)
+    }
+  }, [showOnboardingWizard])
+
+  const wizardOpen = showOnboardingWizard && !suppressWizardLocal
 
   const { setRef, indicator } = usePillIndicator(showHistory ? 'history' : 'overview')
 
@@ -139,9 +179,6 @@ export default function DashboardView({ sales, payments, saleItems, products, bu
     [filteredSales]
   )
 
-  const filteredSaleIds = useMemo(() => new Set(completedSales.map(s => s.id)), [completedSales])
-  const filteredItems = useMemo(() => saleItems.filter(i => filteredSaleIds.has(i.sale_id)), [saleItems, filteredSaleIds])
-
   const totalSold = useMemo(
     () => completedSales.reduce((acc, s) => acc + Number(s.total), 0),
     [completedSales]
@@ -153,33 +190,6 @@ export default function DashboardView({ sales, payments, saleItems, products, bu
   )
   const outOfStockCount = useMemo(() => lowStockProducts.filter(p => p.stock <= 0).length, [lowStockProducts])
   const lowStockCount = useMemo(() => lowStockProducts.filter(p => p.stock > 0).length, [lowStockProducts])
-
-  const mostUsedPayment = useMemo(() => {
-    const counts: Record<string, number> = {}
-    completedSales.forEach(s => {
-      const m = paymentsBySaleId.get(s.id) ?? 'sin dato'
-      counts[m] = (counts[m] ?? 0) + 1
-    })
-    const winner = Object.entries(counts).sort((a, b) => b[1] - a[1])[0]
-    return winner ? { method: winner[0], count: winner[1] } : null
-  }, [completedSales, paymentsBySaleId])
-
-  const paymentDistribution = useMemo(() => {
-    const totals: Record<string, number> = {}
-    completedSales.forEach(s => {
-      const m = paymentsBySaleId.get(s.id) ?? 'sin dato'
-      totals[m] = (totals[m] ?? 0) + 1
-    })
-    const total = Object.values(totals).reduce((a, b) => a + b, 0)
-    if (total === 0) return []
-    return Object.entries(totals)
-      .sort((a, b) => b[1] - a[1])
-      .map(([method, count]) => ({
-        method,
-        count,
-        pct: Math.round((count / total) * 100),
-      }))
-  }, [completedSales, paymentsBySaleId])
 
   // Vertical bar chart data
   const chartData = useMemo(() => {
@@ -229,20 +239,6 @@ export default function DashboardView({ sales, payments, saleItems, products, bu
   }, [completedSales, period])
 
   const maxChartValue = useMemo(() => Math.max(...chartData.map(d => d.value), 1), [chartData])
-
-  const topProducts = useMemo(() => {
-    const map: Record<string, { name: string; qty: number; amount: number; icon: string }> = {}
-    filteredItems.forEach(item => {
-      if (!item.product_id) return
-      const product = productsById.get(item.product_id)
-      if (!map[item.product_id]) {
-        map[item.product_id] = { name: product?.name ?? 'Eliminado', qty: 0, amount: 0, icon: 'CAT' }
-      }
-      map[item.product_id].qty += Number(item.quantity)
-      map[item.product_id].amount += Number(item.total)
-    })
-    return Object.values(map).sort((a, b) => b.qty - a.qty).slice(0, 5)
-  }, [filteredItems, productsById])
 
   const outOfStock = useMemo(
     () => lowStockProducts.filter(p => p.stock <= 0).sort((a, b) => a.stock - b.stock),
@@ -337,8 +333,44 @@ export default function DashboardView({ sales, payments, saleItems, products, bu
       ? 'Balance de este mes'
       : 'Balance del período'
 
+  const chartTitle = useMemo(() => {
+    switch (period) {
+      case 'hoy':
+        return 'Ventas por hora — hoy'
+      case 'semana':
+        return 'Ventas por día — esta semana'
+      case 'mes':
+        return `Ventas por día — ${periodRange.from.toLocaleDateString('es-AR', { month: 'long', year: 'numeric' })}`
+      case 'trimestre':
+        return `Ventas por día — ${periodLabel}`
+      case 'año':
+        return `Ventas por mes — ${periodRange.from.getFullYear()}`
+      case 'personalizado':
+        return `Ventas por día — ${periodLabel}`
+      default:
+        return 'Ventas por período'
+    }
+  }, [period, periodRange, periodLabel])
+
   return (
     <div className="flex flex-col h-screen overflow-hidden">
+      {wizardOpen && onboardingProfile && businessId && (
+        <OnboardingWizard
+          profile={onboardingProfile}
+          businessId={businessId}
+          initialBusinessName={businessName}
+          initialBusinessSettings={initialBusinessSettings}
+          initialCurrency={initialCurrency}
+          operatorId={operatorId}
+          stockWriteAllowed={stockWriteAllowed}
+          priceLists={wizardPriceLists}
+          categories={wizardCategories}
+          brands={wizardBrands}
+          onFinishedWizard={() => {
+            setSuppressWizardLocal(true)
+          }}
+        />
+      )}
       <PageHeader title="Dashboard" />
 
       <div className="flex-1 overflow-y-auto">
@@ -394,7 +426,7 @@ export default function DashboardView({ sales, payments, saleItems, products, bu
           ) : (
             <>
               {/* KPI Cards */}
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 animate-fade-in">
+              <div className="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-3 gap-4 animate-fade-in">
                 <KPICard
                   icon="$"
                   iconBg="bg-emerald-100 dark:bg-emerald-950/50"
@@ -437,33 +469,6 @@ export default function DashboardView({ sales, payments, saleItems, products, bu
                     </div>
                   )}
                 </KPICard>
-                <KPICard
-                  icon="PM"
-                  iconBg="bg-violet-100 dark:bg-violet-950/50"
-                  iconColor="text-violet-700 dark:text-violet-400"
-                  label="PAGO MÁS USADO"
-                  value={mostUsedPayment ? normalizePayment(mostUsedPayment.method) : '—'}
-                  subtitle={mostUsedPayment ? `${mostUsedPayment.count} de ${transactions} transacciones` : undefined}
-                >
-                  {paymentDistribution.length > 0 && (
-                    <div className="mt-3 space-y-1.5">
-                      {paymentDistribution.slice(0, 3).map(({ method, pct }) => (
-                        <div key={method} className="space-y-0.5">
-                          <div className="flex justify-between text-xs text-foreground/60">
-                            <span>{normalizePayment(method)}</span>
-                            <span>{pct}%</span>
-                          </div>
-                          <div className="h-1 w-full rounded-full bg-border/30 overflow-hidden">
-                            <div
-                              className="h-full rounded-full bg-foreground/20"
-                              style={{ width: `${pct}%` }}
-                            />
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </KPICard>
               </div>
 
               <div className="grid grid-cols-1 xl:grid-cols-4 gap-4 items-stretch">
@@ -484,29 +489,32 @@ export default function DashboardView({ sales, payments, saleItems, products, bu
               </div>
 
               <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-                <div className="surface-card p-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <p className="font-semibold text-heading font-display">Productos más vendidos</p>
-                    <Link href="/stats/top-products" className="text-xs text-primary font-medium hover:underline">
-                      Ver más →
-                    </Link>
-                  </div>
-                  <div className="space-y-3">
-                    {topProducts.length === 0 ? (
-                      <p className="text-sm text-hint">Sin datos</p>
-                    ) : (
-                      topProducts.map((row, i) => (
-                        <div key={row.name + i} className="flex items-center gap-3">
-                          <span className="text-xs text-hint w-5 shrink-0">#{i + 1}</span>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-heading truncate">{row.name}</p>
-                            <p className="text-xs text-hint">${row.amount.toLocaleString('es-AR')} recaudado</p>
+                <div className="surface-card p-6 animate-fade-in" style={{ animationDelay: '80ms' }}>
+                  <p className="font-semibold text-heading mb-4 font-display">
+                    {chartTitle}
+                  </p>
+                  {chartData.every(d => d.value === 0) ? (
+                    <p className="text-sm text-hint h-48 flex items-center justify-center">Sin datos para el período</p>
+                  ) : (
+                    <div className="flex h-56">
+                      <div className="flex flex-col justify-between pr-3 text-xs text-hint py-1 shrink-0">
+                        {yLabels.map(l => <span key={l}>{l}</span>)}
+                      </div>
+                      <div className="flex-1 flex items-end gap-1.5 pl-2 pb-1">
+                        {chartData.map(bar => (
+                          <div key={bar.label} className="flex-1 flex flex-col items-center justify-end h-full">
+                            <div
+                              className="w-full max-w-[32px] bg-primary/80 hover:bg-primary rounded-t-lg transition-all mx-auto"
+                              style={{ height: `${maxChartValue > 0 ? (bar.value / maxChartValue) * 100 : 0}%`, minHeight: bar.value > 0 ? 4 : 0 }}
+                            />
+                            <span className="text-[11px] text-hint mt-1.5 truncate w-full text-center">
+                              {bar.label}
+                            </span>
                           </div>
-                          <span className="text-sm font-semibold text-body shrink-0">{row.qty} uds</span>
-                        </div>
-                      ))
-                    )}
-                  </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 <div className="surface-card p-6">
@@ -549,34 +557,6 @@ export default function DashboardView({ sales, payments, saleItems, products, bu
                     </div>
                   )}
                 </div>
-              </div>
-
-              <div className="surface-card p-6 animate-fade-in" style={{ animationDelay: '80ms' }}>
-                <p className="font-semibold text-heading mb-4 font-display">
-                  Ventas por {period === 'hoy' ? 'hora' : 'día'} — {period === 'hoy' ? 'hoy' : period === 'semana' ? 'esta semana' : 'período'}
-                </p>
-                {chartData.every(d => d.value === 0) ? (
-                  <p className="text-sm text-hint h-48 flex items-center justify-center">Sin datos para el período</p>
-                ) : (
-                  <div className="flex h-56">
-                    <div className="flex flex-col justify-between pr-3 text-xs text-hint py-1 shrink-0">
-                      {yLabels.map(l => <span key={l}>{l}</span>)}
-                    </div>
-                    <div className="flex-1 flex items-end gap-1.5 pl-2 pb-1">
-                      {chartData.map(bar => (
-                        <div key={bar.label} className="flex-1 flex flex-col items-center justify-end h-full">
-                          <div
-                            className="w-full max-w-[32px] bg-primary/80 hover:bg-primary rounded-t-lg transition-all mx-auto"
-                            style={{ height: `${maxChartValue > 0 ? (bar.value / maxChartValue) * 100 : 0}%`, minHeight: bar.value > 0 ? 4 : 0 }}
-                          />
-                          <span className="text-[11px] text-hint mt-1.5 truncate w-full text-center">
-                            {bar.label}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
               </div>
             </>
           )}

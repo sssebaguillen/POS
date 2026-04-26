@@ -35,13 +35,23 @@ function permissionsMatch(a: Permissions, b: Permissions): boolean {
 }
 
 interface NewOperatorModalProps {
-  open: boolean
+  /** When true, renders only the form (no Dialog). */
+  embedded?: boolean
+  open?: boolean
   onClose: () => void
   businessId: string
   onCreated: (operator: SettingsOperator) => void
+  onSuccess?: (operator: SettingsOperator) => void
 }
 
-export default function NewOperatorModal({ open, onClose, businessId, onCreated }: NewOperatorModalProps) {
+export default function NewOperatorModal({
+  embedded = false,
+  open = false,
+  onClose,
+  businessId,
+  onCreated,
+  onSuccess,
+}: NewOperatorModalProps) {
   const [name, setName] = useState('')
   const [baseRole, setBaseRole] = useState<BaseRole>('cashier')
   const [permissions, setPermissions] = useState<Permissions>(ROLE_DEFAULTS.cashier)
@@ -52,13 +62,14 @@ export default function NewOperatorModal({ open, onClose, businessId, onCreated 
   const supabase = useMemo(() => createClient(), [])
 
   useEffect(() => {
+    if (embedded) return
     if (!open) return
     setName('')
     setBaseRole('cashier')
     setPermissions(ROLE_DEFAULTS.cashier)
     setPin('')
     setError(null)
-  }, [open])
+  }, [open, embedded])
 
   function handleRoleSelect(role: BaseRole) {
     setBaseRole(role)
@@ -154,29 +165,23 @@ export default function NewOperatorModal({ open, onClose, businessId, onCreated 
       const created = newOps?.[0]
       if (created && isSettingsOperator(created)) {
         onCreated(created)
+        onSuccess?.(created)
       }
-    } catch {
-      // re-query failed — operator was created, just couldn't fetch it
+    } catch (refetchError) {
+      console.error('Failed to refetch created operator', refetchError)
     } finally {
       setLoading(false)
-      onClose()
+      if (!embedded) {
+        onClose()
+      }
     }
   }
 
-  return (
-    <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-sm p-0 gap-0 overflow-hidden bg-card flex flex-col" showCloseButton={false}>
-        <div className="flex items-center justify-between px-5 py-4 border-b border-edge">
-          <h2 className="text-base font-semibold text-heading">Nuevo operario</h2>
-          <button
-            onClick={onClose}
-            className="p-1.5 rounded-lg hover:bg-hover-bg transition-colors text-hint"
-            aria-label="Cerrar"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
+  if (!embedded && !open) {
+    return null
+  }
 
+  const formBody = (
         <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
           <div className="overflow-y-auto px-5 py-4 flex-1 space-y-5">
           <div className="space-y-1.5">
@@ -310,14 +315,40 @@ export default function NewOperatorModal({ open, onClose, businessId, onCreated 
           </div>
 
           <div className="border-t border-edge px-5 py-4 flex items-center justify-end gap-2.5">
-            <Button type="button" variant="cancel" onClick={onClose} disabled={loading} className="h-9 rounded-lg text-sm">
-              Cancelar
-            </Button>
+            {!embedded && (
+              <Button type="button" variant="cancel" onClick={onClose} disabled={loading} className="h-9 rounded-lg text-sm">
+                Cancelar
+              </Button>
+            )}
             <Button type="submit" disabled={loading} className="h-9 rounded-lg text-sm bg-primary hover:bg-primary/90 text-primary-foreground">
               {loading ? 'Creando...' : 'Crear operario'}
             </Button>
           </div>
         </form>
+  )
+
+  if (embedded) {
+    return (
+      <div className="max-h-[min(70vh,520px)] overflow-y-auto rounded-xl border border-edge bg-surface">
+        {formBody}
+      </div>
+    )
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent className="sm:max-w-sm p-0 gap-0 overflow-hidden bg-card flex flex-col" showCloseButton={false}>
+        <div className="flex items-center justify-between px-5 py-4 border-b border-edge">
+          <h2 className="text-base font-semibold text-heading">Nuevo operario</h2>
+          <button
+            onClick={onClose}
+            className="p-1.5 rounded-lg hover:bg-hover-bg transition-colors text-hint"
+            aria-label="Cerrar"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+        {formBody}
       </DialogContent>
     </Dialog>
   )

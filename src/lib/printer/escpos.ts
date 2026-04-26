@@ -120,25 +120,34 @@ function buildReceiptBuffer(receipt: ReceiptData) {
   for (const item of receipt.items) {
     const titleLines = wrapText(`${item.quantity}x ${item.name}`, detailColumnWidth)
     titleLines.forEach((line, index) => {
-      const amount = index === 0 ? padLeft(formatMoney(item.total), amountColumnWidth) : ' '.repeat(amountColumnWidth)
+      const amount =
+        index === 0
+          ? padLeft(formatMoney(item.total, receipt.currency ?? 'ARS'), amountColumnWidth)
+          : ' '.repeat(amountColumnWidth)
       pushText(`${padRight(line, detailColumnWidth)}${amount}`)
       lineBreak()
     })
 
-    pushText(padRight(`   ${formatMoney(item.unit_price)} c/u`, DEFAULT_COLUMNS))
+    pushText(padRight(`   ${formatMoney(item.unit_price, receipt.currency ?? 'ARS')} c/u`, DEFAULT_COLUMNS))
     lineBreak()
   }
 
   separator()
-  pushText(`${padRight('Subtotal', detailColumnWidth)}${padLeft(formatMoney(receipt.subtotal), amountColumnWidth)}`)
+  pushText(
+    `${padRight('Subtotal', detailColumnWidth)}${padLeft(formatMoney(receipt.subtotal, receipt.currency ?? 'ARS'), amountColumnWidth)}`
+  )
   lineBreak()
   if (receipt.discount > 0) {
-    pushText(`${padRight('Descuento', detailColumnWidth)}${padLeft(`-${formatMoney(receipt.discount)}`, amountColumnWidth)}`)
+    pushText(
+      `${padRight('Descuento', detailColumnWidth)}${padLeft(`-${formatMoney(receipt.discount, receipt.currency ?? 'ARS')}`, amountColumnWidth)}`
+    )
     lineBreak()
   }
 
   bold(true)
-  pushText(`${padRight('TOTAL', detailColumnWidth)}${padLeft(formatMoney(receipt.total), amountColumnWidth)}`)
+  pushText(
+    `${padRight('TOTAL', detailColumnWidth)}${padLeft(formatMoney(receipt.total, receipt.currency ?? 'ARS'), amountColumnWidth)}`
+  )
   lineBreak()
   bold(false)
   separator()
@@ -146,9 +155,9 @@ function buildReceiptBuffer(receipt: ReceiptData) {
   pushText(`Pago: ${normalizePayment(receipt.paymentMethod)}`)
   lineBreak()
   if (receipt.paymentMethod === 'cash' && receipt.cashReceived !== null) {
-    pushText(`Recibido: ${formatMoney(receipt.cashReceived)}`)
+    pushText(`Recibido: ${formatMoney(receipt.cashReceived, receipt.currency ?? 'ARS')}`)
     lineBreak()
-    pushText(`Vuelto: ${formatMoney(receipt.change)}`)
+    pushText(`Vuelto: ${formatMoney(receipt.change, receipt.currency ?? 'ARS')}`)
     lineBreak()
   }
 

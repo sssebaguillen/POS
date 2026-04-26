@@ -3,6 +3,7 @@ import { memo } from 'react'
 import { Package, Pencil } from 'lucide-react'
 import type { ProductCardProps } from '@/components/inventory/types'
 import { getStatus, statusConfig } from '@/components/inventory/types'
+import { useFormatMoney } from '@/lib/context/CurrencyContext'
 
 export function SelectionCheckbox({ checked, onClick }: { checked: boolean; onClick: (e: React.MouseEvent) => void }) {
   return (
@@ -37,6 +38,7 @@ const ProductCard = memo(function ProductCard({
   onQuickCategory,
   onQuickBrand,
 }: ProductCardProps) {
+  const formatMoney = useFormatMoney()
   const status = getStatus(product)
   const config = statusConfig[status]
   const margin = product.cost > 0 && product.price > 0
@@ -110,13 +112,13 @@ const ProductCard = memo(function ProductCard({
         <div className="rounded-lg bg-surface-alt px-2 py-1.5">
           <p className="text-label text-hint">Venta</p>
           <p className="text-emphasis text-heading">
-            ${Number(product.price).toLocaleString('es-AR')}
+            {formatMoney(Number(product.price))}
           </p>
         </div>
         <div className="rounded-lg bg-surface-alt px-2 py-1.5">
           <p className="text-label text-hint">Costo</p>
           <p className="text-body-sm text-subtle">
-            ${Number(product.cost).toLocaleString('es-AR')}
+            {formatMoney(Number(product.cost))}
           </p>
         </div>
       </div>

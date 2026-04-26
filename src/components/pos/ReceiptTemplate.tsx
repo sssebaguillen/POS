@@ -1,15 +1,15 @@
 'use client'
 
 import { normalizePayment } from '@/lib/payments'
-import { formatMoney } from '@/lib/format'
 import type { ReceiptData } from '@/lib/printer/types'
+import { useFormatMoney } from '@/lib/context/CurrencyContext'
 
 interface Props {
   receipt: ReceiptData
   showPreview?: boolean
 }
 
-function ReceiptContent({ receipt }: { receipt: ReceiptData }) {
+function ReceiptContent({ receipt, formatMoney }: { receipt: ReceiptData; formatMoney: (value: number) => string }) {
   const createdAt = new Date(receipt.createdAt)
 
   return (
@@ -93,6 +93,7 @@ function ReceiptContent({ receipt }: { receipt: ReceiptData }) {
 }
 
 export default function ReceiptTemplate({ receipt, showPreview = false }: Props) {
+  const formatMoney = useFormatMoney()
 
   return (
     <div aria-hidden="true" className="pointer-events-none">
@@ -149,13 +150,13 @@ export default function ReceiptTemplate({ receipt, showPreview = false }: Props)
               lineHeight: 1.35,
             }}
           >
-            <ReceiptContent receipt={receipt} />
+            <ReceiptContent receipt={receipt} formatMoney={formatMoney} />
           </div>
         </div>
       )}
 
       <div className="receipt-print-root">
-        <ReceiptContent receipt={receipt} />
+        <ReceiptContent receipt={receipt} formatMoney={formatMoney} />
       </div>
     </div>
   )

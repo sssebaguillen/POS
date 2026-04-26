@@ -1,16 +1,34 @@
 export const runtime = 'edge'
 
+import { redirect } from 'next/navigation'
+import { cookies } from 'next/headers'
 import { createClient } from '@/lib/supabase/server'
 import DashboardView from '@/components/dashboard/DashboardView'
 import type { BusinessBalance } from '@/components/expenses/types'
 import type { PaymentMethod } from '@/lib/constants/domain'
 import { requireAuthenticatedBusinessId } from '@/lib/business'
+import { getActiveOperator } from '@/lib/operator'
+import { normalizePriceList } from '@/lib/mappers'
+import type { PriceList } from '@/lib/types'
+import type { InventoryBrand } from '@/components/inventory/types'
+import { CURRENCIES, type SupportedCurrencyCode } from '@/lib/constants/currencies'
+import { parseOnboardingState } from '@/components/onboarding/onboarding-types'
 
 export default async function DashboardPage() {
   const supabase = await createClient()
+  const cookieStore = await cookies()
+  const activeOperator = getActiveOperator(cookieStore)
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) {
+    redirect('/login')
+  }
+
   const businessId = await requireAuthenticatedBusinessId(supabase)
 
-  const [{ data: sales }, { data: products }, { data: business }, balanceResult] = await Promise.all([
+  const [{ data: sales }, { data: products }, { data: business }, balanceResult, { data: profile }] = await Promise.all([
     supabase
       .from('sales')
       .select('id, subtotal, discount, total, created_at, status, operator_id, operators(name)')
@@ -24,7 +42,7 @@ export default async function DashboardPage() {
       .limit(5000),
     supabase
       .from('businesses')
-      .select('name')
+      .select('name, settings')
       .eq('id', businessId)
       .single(),
     supabase.rpc('get_business_balance', {
@@ -32,6 +50,7 @@ export default async function DashboardPage() {
       p_from: null,
       p_to: null,
     }),
+    supabase.from('profiles').select('id, role, onboarding_state').eq('id', user.id).single(),
   ])
 
   const balance = (balanceResult.data as unknown as BusinessBalance | null) ?? {
@@ -42,6 +61,50 @@ export default async function DashboardPage() {
 
   let payments: Array<{ sale_id: string; method: PaymentMethod; amount: number; created_at: string }> = []
   let saleItems: Array<{ sale_id: string; product_id: string | null; quantity: number; total: number }> = []
+
+  const onboarding = parseOnboardingState(profile?.onboarding_state)
+  const isOwnerProfile = profile?.role === 'owner'
+  const showOnboardingWizard =
+    isOwnerProfile &&
+    !onboarding.completed &&
+    !onboarding.tour_done &&
+    !onboarding.wizard_suppressed &&
+    onboarding.wizard_step < 5
+
+  const needOnboardingExtras = isOwnerProfile && !onboarding.completed && !onboarding.tour_done
+
+  let wizardCategories: { id: string; name: string; icon: string }[] = []
+  let wizardBrands: InventoryBrand[] = []
+  let wizardPriceLists: PriceList[] = []
+
+  if (needOnboardingExtras) {
+    const [{ data: categories }, { data: brands }, { data: priceListsData }] = await Promise.all([
+      supabase
+        .from('categories')
+        .select('id, name, icon')
+        .eq('business_id', businessId)
+        .eq('is_active', true)
+        .order('position'),
+      supabase.from('brands').select('id, name').eq('business_id', businessId).order('name'),
+      supabase
+        .from('price_lists')
+        .select('id, business_id, name, description, multiplier, is_default, created_at')
+        .eq('business_id', businessId)
+        .order('created_at'),
+    ])
+    wizardCategories = (categories ?? []).map(c => ({
+      id: c.id,
+      name: c.name,
+      icon: c.icon ?? '📦',
+    }))
+    wizardBrands = brands ?? []
+    wizardPriceLists = (priceListsData ?? []).map(normalizePriceList)
+  }
+
+  const settingsRecord = (business?.settings ?? null) as Record<string, unknown> | null
+  const rawCurrency = settingsRecord && typeof settingsRecord.currency === 'string' ? settingsRecord.currency : null
+  const initialCurrency: SupportedCurrencyCode =
+    rawCurrency && CURRENCIES.some(c => c.code === rawCurrency) ? (rawCurrency as SupportedCurrencyCode) : 'ARS'
 
   if (saleIds.length > 0) {
     const [{ data: paymentsData }, { data: saleItemsData }] = await Promise.all([
@@ -101,6 +164,23 @@ export default async function DashboardPage() {
       businessId={businessId}
       businessName={business?.name ?? ''}
       balance={balance}
+      onboardingProfile={
+        profile && typeof profile.id === 'string' && typeof profile.role === 'string'
+          ? {
+              id: profile.id,
+              role: profile.role,
+              onboarding_state: profile.onboarding_state,
+            }
+          : null
+      }
+      showOnboardingWizard={showOnboardingWizard}
+      initialBusinessSettings={settingsRecord}
+      initialCurrency={initialCurrency}
+      operatorId={activeOperator?.profile_id ?? null}
+      stockWriteAllowed={activeOperator?.permissions.stock_write === true}
+      wizardCategories={wizardCategories}
+      wizardBrands={wizardBrands}
+      wizardPriceLists={wizardPriceLists}
     />
   )
 }

@@ -9,6 +9,8 @@ import { Input } from '@/components/ui/input'
 import Image from 'next/image'
 import { type SettingsBusiness, type SettingsOperator } from '@/components/settings/types'
 import OperatorList from '@/components/settings/OperatorList'
+import { CURRENCIES, type SupportedCurrencyCode } from '@/lib/constants/currencies'
+import { Upload } from 'lucide-react'
 
 const BUSINESS_SLUG_REGEX = /^[a-z0-9][a-z0-9-]{1,48}[a-z0-9]$/
 
@@ -19,12 +21,23 @@ interface SettingsFormProps {
   canManageOperators: boolean
 }
 
+const LOGO_ALLOWED_TYPES = new Set([
+  'image/jpeg',
+  'image/jpg',
+  'image/png',
+  'image/webp',
+  'image/svg+xml',
+])
+
+const LOGO_MAX_BYTES = 2 * 1024 * 1024
+
 interface FormState {
   name: string
   description: string
   whatsapp: string
   logoUrl: string
   primaryColor: string
+  currencyCode: SupportedCurrencyCode
 }
 
 function isValidHttpUrl(value: string): boolean {
@@ -42,12 +55,21 @@ export default function SettingsForm({
   isOwner,
   canManageOperators,
 }: SettingsFormProps) {
+  const initialCurrency = (() => {
+    const raw = business.settings?.currency
+    if (typeof raw === 'string' && CURRENCIES.some(c => c.code === raw)) {
+      return raw as SupportedCurrencyCode
+    }
+    return 'ARS'
+  })()
+
   const [form, setForm] = useState<FormState>({
     name: business.name,
     description: business.description ?? '',
     whatsapp: business.whatsapp ?? '',
     logoUrl: business.logo_url ?? '',
     primaryColor: business.settings?.primary_color ?? '#7a3e10',
+    currencyCode: initialCurrency,
   })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -57,6 +79,11 @@ export default function SettingsForm({
   const [slugError, setSlugError] = useState('')
   const [slugSuccess, setSlugSuccess] = useState('')
   const [logoPreviewError, setLogoPreviewError] = useState(false)
+  const [logoInputTab, setLogoInputTab] = useState<'upload' | 'url'>('url')
+  const [logoUploading, setLogoUploading] = useState(false)
+  const [logoUploadError, setLogoUploadError] = useState('')
+  const [currencyInput, setCurrencyInput] = useState('')
+  const [showCurrencyOptions, setShowCurrencyOptions] = useState(false)
   const [copySuccess, setCopySuccess] = useState(false)
   const [copyError, setCopyError] = useState('')
   const copyTimeoutRef = useRef<number | null>(null)
@@ -82,6 +109,19 @@ export default function SettingsForm({
     return isValidHttpUrl(normalizedLogoUrl)
   }, [hasLogoUrl, normalizedLogoUrl])
 
+  const filteredCurrencies = useMemo(() => {
+    const q = currencyInput.trim().toLowerCase()
+    if (!q) return [...CURRENCIES]
+    return CURRENCIES.filter(
+      c => c.code.toLowerCase().includes(q) || c.label.toLowerCase().includes(q)
+    )
+  }, [currencyInput])
+
+  const selectedCurrencyLabel = useMemo(
+    () => CURRENCIES.find(c => c.code === form.currencyCode)?.label ?? '',
+    [form.currencyCode]
+  )
+
   useEffect(() => {
     return () => {
       if (copyTimeoutRef.current !== null) {
@@ -98,6 +138,48 @@ export default function SettingsForm({
     if (field === 'logoUrl') {
       setLogoPreviewError(false)
     }
+  }
+
+  async function handleLogoFileUpload(file: File) {
+    setLogoUploadError('')
+    if (!LOGO_ALLOWED_TYPES.has(file.type)) {
+      setLogoUploadError('Formato no permitido. Usá JPEG, PNG, WebP o SVG.')
+      return
+    }
+    if (file.size > LOGO_MAX_BYTES) {
+      setLogoUploadError('El archivo supera el máximo de 2 MB.')
+      return
+    }
+
+    setLogoUploading(true)
+    const extFromName = file.name.split('.').pop()?.toLowerCase()
+    const ext =
+      extFromName && /^[a-z0-9]{1,8}$/.test(extFromName)
+        ? extFromName
+        : file.type === 'image/png'
+          ? 'png'
+          : file.type === 'image/webp'
+            ? 'webp'
+            : file.type === 'image/svg+xml'
+              ? 'svg'
+              : 'jpg'
+
+    const path = `${business.id}/${Date.now()}.${ext}`
+
+    const { error: uploadError } = await supabase.storage.from('business-logos').upload(path, file, {
+      upsert: true,
+      contentType: file.type,
+    })
+
+    if (uploadError) {
+      setLogoUploadError(uploadError.message)
+      setLogoUploading(false)
+      return
+    }
+
+    const { data: urlData } = supabase.storage.from('business-logos').getPublicUrl(path)
+    setField('logoUrl', urlData.publicUrl)
+    setLogoUploading(false)
   }
 
   async function invalidateBusinessQueries() {
@@ -129,8 +211,9 @@ export default function SettingsForm({
         whatsapp: form.whatsapp.trim() || null,
         logo_url: normalizedLogoUrl || null,
         settings: {
-          ...(business.settings ?? {}),
+          ...(business.settings as Record<string, unknown> | null | undefined),
           primary_color: form.primaryColor,
+          currency: form.currencyCode,
         },
       })
       .eq('id', business.id)
@@ -244,21 +327,137 @@ export default function SettingsForm({
         </div>
 
         <div className="space-y-1.5">
-          <label htmlFor="business-logo-url" className="text-xs uppercase tracking-wide text-muted-foreground">
-            URL del logo
-          </label>
-          <Input
-            id="business-logo-url"
-            value={form.logoUrl}
-            onChange={event => setField('logoUrl', event.target.value)}
-            placeholder="https://..."
-          />
+          <label className="text-xs uppercase tracking-wide text-muted-foreground">Moneda</label>
+          <div className="relative">
+            <Input
+              id="business-currency"
+              value={currencyInput || form.currencyCode}
+              onFocus={() => setShowCurrencyOptions(true)}
+              onBlur={() => {
+                window.setTimeout(() => {
+                  setShowCurrencyOptions(false)
+                  setCurrencyInput('')
+                }, 120)
+              }}
+              onChange={event => {
+                const next = event.target.value
+                setCurrencyInput(next)
+                setShowCurrencyOptions(true)
+                const exact = CURRENCIES.find(
+                  c => c.code.toLowerCase() === next.trim().toLowerCase()
+                )
+                if (exact) {
+                  setForm(prev => ({ ...prev, currencyCode: exact.code }))
+                }
+              }}
+              placeholder="Seleccionar moneda"
+              className="font-mono"
+              autoComplete="off"
+            />
+            {showCurrencyOptions && (
+              <div className="absolute z-20 mt-1 w-full max-h-52 overflow-y-auto rounded-lg border border-border bg-popover shadow-md">
+                {filteredCurrencies.length === 0 ? (
+                  <div className="px-3 py-2 text-xs text-muted-foreground">Sin resultados</div>
+                ) : (
+                  filteredCurrencies.map(c => (
+                    <button
+                      key={c.code}
+                      type="button"
+                      className="w-full px-3 py-2 text-left text-sm hover:bg-muted/50 transition-colors"
+                      onMouseDown={event => {
+                        event.preventDefault()
+                        setForm(prev => ({ ...prev, currencyCode: c.code }))
+                        setCurrencyInput('')
+                        setShowCurrencyOptions(false)
+                      }}
+                    >
+                      {c.code} — {c.label}
+                    </button>
+                  ))
+                )}
+              </div>
+            )}
+          </div>
+          {selectedCurrencyLabel && (
+            <p className="text-xs text-muted-foreground">{selectedCurrencyLabel}</p>
+          )}
+        </div>
 
-          {hasLogoUrl && !canPreviewLogo && (
+        <div className="space-y-1.5">
+          <span className="text-xs uppercase tracking-wide text-muted-foreground">Logo</span>
+          <div className="rounded-lg border border-border overflow-hidden">
+            <div className="flex border-b border-border">
+              <button
+                type="button"
+                onClick={() => {
+                  setLogoInputTab('upload')
+                  setLogoUploadError('')
+                }}
+                className={`flex-1 px-4 py-2 text-xs font-medium transition-colors ${
+                  logoInputTab === 'upload'
+                    ? 'bg-background text-foreground border-b-2 border-primary'
+                    : 'bg-muted/30 text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                Subir archivo
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setLogoInputTab('url')
+                  setLogoUploadError('')
+                }}
+                className={`flex-1 px-4 py-2 text-xs font-medium transition-colors ${
+                  logoInputTab === 'url'
+                    ? 'bg-background text-foreground border-b-2 border-primary'
+                    : 'bg-muted/30 text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                URL externa
+              </button>
+            </div>
+            <div className="p-3 space-y-3">
+              {logoInputTab === 'upload' && (
+                <>
+                  <label className="flex flex-col items-center gap-2 cursor-pointer rounded-lg border border-dashed border-border bg-muted/20 px-4 py-5 hover:border-primary/40 transition-colors">
+                    <Upload className="h-5 w-5 text-muted-foreground" />
+                    <span className="text-xs text-muted-foreground">
+                      {logoUploading ? 'Subiendo...' : 'Arrastrá o hacé clic para seleccionar'}
+                    </span>
+                    <span className="text-[10px] text-muted-foreground">
+                      JPEG, PNG, WebP, SVG · máx. 2 MB
+                    </span>
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/jpg,image/png,image/webp,image/svg+xml"
+                      className="sr-only"
+                      disabled={logoUploading}
+                      onChange={e => {
+                        const file = e.target.files?.[0]
+                        if (file) void handleLogoFileUpload(file)
+                        e.target.value = ''
+                      }}
+                    />
+                  </label>
+                  {logoUploadError && <p className="text-xs text-destructive">{logoUploadError}</p>}
+                </>
+              )}
+              {logoInputTab === 'url' && (
+                <Input
+                  id="business-logo-url"
+                  value={form.logoUrl}
+                  onChange={event => setField('logoUrl', event.target.value)}
+                  placeholder="https://..."
+                />
+              )}
+            </div>
+          </div>
+
+          {hasLogoUrl && !canPreviewLogo && logoInputTab === 'url' && (
             <p className="text-xs text-destructive">Ingresá una URL válida con http:// o https://.</p>
           )}
 
-          {canPreviewLogo && !logoPreviewError && (
+          {hasLogoUrl && canPreviewLogo && !logoPreviewError && (
             <div className="mt-2 inline-flex items-center gap-3 rounded-lg border border-border bg-muted/30 px-3 py-2">
               <Image
                 src={normalizedLogoUrl}

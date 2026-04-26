@@ -13,6 +13,8 @@ import type { PriceList } from '@/lib/types'
 import type { InventoryBrand } from '@/components/inventory/types'
 import { validateImageUrl } from '@/lib/validation'
 import FieldGroup from '@/components/inventory/FieldGroup'
+import { useCurrency } from '@/lib/context/CurrencyContext'
+import { getCurrencySymbol } from '@/lib/format'
 
 interface Category {
   id: string
@@ -39,13 +41,17 @@ interface NewProduct {
 }
 
 interface Props {
-  open: boolean
+  /** When true, renders only the form (no Dialog). Used by onboarding wizard. */
+  embedded?: boolean
+  open?: boolean
   onClose: () => void
   businessId: string | null
   priceLists: PriceList[]
   categories: Category[]
   brands: InventoryBrand[]
   onCreated: (product: NewProduct) => void
+  /** Called after a successful create (in addition to onCreated). */
+  onSuccess?: (product: NewProduct) => void
 }
 
 const EMPTY_FORM = {
@@ -61,7 +67,17 @@ const EMPTY_FORM = {
   is_active: true,
 }
 
-export default function NewProductModal({ open, onClose, businessId, priceLists, categories, brands, onCreated }: Props) {
+export default function NewProductModal({
+  embedded = false,
+  open = false,
+  onClose,
+  businessId,
+  priceLists,
+  categories,
+  brands,
+  onCreated,
+  onSuccess,
+}: Props) {
   const [form, setForm] = useState(EMPTY_FORM)
   const [loading, setLoading] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
@@ -79,6 +95,8 @@ export default function NewProductModal({ open, onClose, businessId, priceLists,
   const [imageUploading, setImageUploading] = useState(false)
   const [imgError, setImgError] = useState(false)
   const supabase = useMemo(() => createClient(), [])
+  const currency = useCurrency()
+  const currencySymbol = getCurrencySymbol(currency)
 
   const defaultPriceList = priceLists.find(pl => pl.is_default) ?? null
 
@@ -105,6 +123,23 @@ export default function NewProductModal({ open, onClose, businessId, priceLists,
     if (!Number.isFinite(parsedCost) || parsedCost <= 0) return null
     return parsedCost * defaultPriceList.multiplier
   })()
+
+  function resetFormState() {
+    setForm(EMPTY_FORM)
+    setBrandInput('')
+    setShowBrandOptions(false)
+    setCategoryInput('')
+    setShowCategoryOptions(false)
+    setErrors({})
+    setIsPriceEdited(false)
+    setSelectedListIds(defaultSelectedIds())
+    setImageUrl(null)
+    setImageSource(null)
+    setImageTab('upload')
+    setExternalUrlInput('')
+    setUrlError('')
+    setShowAdvanced(false)
+  }
 
   function set(field: string, value: string | boolean) {
     setForm(prev => ({ ...prev, [field]: value }))
@@ -260,38 +295,15 @@ export default function NewProductModal({ open, onClose, businessId, priceLists,
     }
 
     onCreated(created)
-    setForm(EMPTY_FORM)
-    setBrandInput('')
-    setShowBrandOptions(false)
-    setCategoryInput('')
-    setShowCategoryOptions(false)
-    setErrors({})
-    setIsPriceEdited(false)
-    setSelectedListIds(defaultSelectedIds())
-    setImageUrl(null)
-    setImageSource(null)
-    setImageTab('upload')
-    setExternalUrlInput('')
-    setUrlError('')
-    setShowAdvanced(false)
-    onClose()
+    onSuccess?.(created)
+    resetFormState()
+    if (!embedded) {
+      onClose()
+    }
   }
 
   function handleClose() {
-    setForm(EMPTY_FORM)
-    setBrandInput('')
-    setShowBrandOptions(false)
-    setCategoryInput('')
-    setShowCategoryOptions(false)
-    setErrors({})
-    setIsPriceEdited(false)
-    setSelectedListIds(defaultSelectedIds())
-    setImageUrl(null)
-    setImageSource(null)
-    setImageTab('upload')
-    setExternalUrlInput('')
-    setUrlError('')
-    setShowAdvanced(false)
+    resetFormState()
     onClose()
   }
 
@@ -299,21 +311,11 @@ export default function NewProductModal({ open, onClose, businessId, priceLists,
     ? Math.round(((Number(form.price) - Number(form.cost)) / Number(form.price)) * 100)
     : null
 
-  return (
-    <Dialog open={open} onOpenChange={v => !v && handleClose()}>
-      <DialogContent className="sm:max-w-[640px] p-0 gap-0 overflow-hidden bg-card" showCloseButton={false}>
-        {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-edge shrink-0">
-          <h2 className="text-base font-semibold text-heading">Nuevo producto</h2>
-          <button
-            onClick={handleClose}
-            className="p-1.5 rounded-lg hover:bg-hover-bg transition-colors text-hint"
-            aria-label="Cerrar"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
+  if (!embedded && !open) {
+    return null
+  }
 
+  const formInner = (
         <form onSubmit={handleSubmit} className="flex flex-col">
           <div className="px-6 py-4">
             {errors._global && (
@@ -455,10 +457,10 @@ export default function NewProductModal({ open, onClose, businessId, priceLists,
                   <FieldGroup
                     label="Costo"
                     error={errors.cost}
-                    hint={margin !== null ? `Margen: ${margin}% · Ganancia por unidad: $${(Number(form.price) - Number(form.cost)).toFixed(2)}` : undefined}
+                    hint={margin !== null ? `Margen: ${margin}% · Ganancia por unidad: ${currencySymbol}${(Number(form.price) - Number(form.cost)).toFixed(2)}` : undefined}
                   >
                     <div className="relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-hint">$</span>
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-hint">{currencySymbol}</span>
                       <Input
                         type="number"
                         min="0"
@@ -486,7 +488,7 @@ export default function NewProductModal({ open, onClose, businessId, priceLists,
                     error={errors.price}
                   >
                     <div className="relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-hint">$</span>
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-hint">{currencySymbol}</span>
                       <Input
                         type="number"
                         min="0"
@@ -757,15 +759,17 @@ export default function NewProductModal({ open, onClose, businessId, priceLists,
               <span className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-card shadow-sm transition-transform ${form.is_active ? 'translate-x-4' : 'translate-x-0'}`} />
             </button>
             <span className="text-xs text-subtle mr-auto">{form.is_active ? 'Producto activo' : 'Producto inactivo'}</span>
-            <Button
-              type="button"
-              variant="cancel"
-              onClick={handleClose}
-              disabled={loading}
-              className="h-9 px-5 rounded-xl text-sm"
-            >
-              Cancelar
-            </Button>
+            {!embedded && (
+              <Button
+                type="button"
+                variant="cancel"
+                onClick={handleClose}
+                disabled={loading}
+                className="h-9 px-5 rounded-xl text-sm"
+              >
+                Cancelar
+              </Button>
+            )}
             <Button
               type="submit"
               disabled={loading}
@@ -775,6 +779,30 @@ export default function NewProductModal({ open, onClose, businessId, priceLists,
             </Button>
           </div>
         </form>
+  )
+
+  if (embedded) {
+    return (
+      <div className="max-h-[min(70vh,560px)] overflow-y-auto rounded-xl border border-edge bg-surface">
+        {formInner}
+      </div>
+    )
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={v => !v && handleClose()}>
+      <DialogContent className="sm:max-w-[640px] p-0 gap-0 overflow-hidden bg-card" showCloseButton={false}>
+        <div className="flex items-center justify-between px-5 py-4 border-b border-edge shrink-0">
+          <h2 className="text-base font-semibold text-heading">Nuevo producto</h2>
+          <button
+            onClick={handleClose}
+            className="p-1.5 rounded-lg hover:bg-hover-bg transition-colors text-hint"
+            aria-label="Cerrar"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+        {formInner}
       </DialogContent>
     </Dialog>
   )

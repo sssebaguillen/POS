@@ -67,6 +67,7 @@ CREATE TABLE public.profiles (
   created_at  timestamptz          DEFAULT now(),
   permissions jsonb       NOT NULL DEFAULT '{"sales": true, "stats": true, "stock": true, "settings": false}'::jsonb,
   avatar_url  text,
+  onboarding_state jsonb NOT NULL DEFAULT '{"completed": false, "wizard_step": 0, "steps_done": [], "tour_done": false, "wizard_suppressed": false}'::jsonb,
   CONSTRAINT profiles_pkey PRIMARY KEY (id),
   CONSTRAINT profiles_business_id_fkey FOREIGN KEY (business_id) REFERENCES public.businesses (id) ON DELETE CASCADE
 );

@@ -2,13 +2,14 @@
 
 import { usePathname } from 'next/navigation'
 import Link from 'next/link'
-import { X, ShoppingCart, Package, ClipboardList, BarChart2, LineChart, Settings, Sun, Moon, LogOut, PanelLeftClose, PanelLeftOpen, Receipt, Building2 } from 'lucide-react'
+import { X, ShoppingCart, Package, ClipboardList, BarChart2, LineChart, Settings, Sun, Moon, LogOut, PanelLeftClose, PanelLeftOpen, Receipt, Building2, Sparkles } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useState, useEffect, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
 import { useTheme } from '@/components/shared/theme'
 import OperatorSwitcher from '@/components/operator/OperatorSwitcher'
+import OnboardingChecklist from '@/components/onboarding/OnboardingChecklist'
 import { parsePermissions, type Permissions, type UserRole } from '@/lib/operator'
 
 interface NavLink {
@@ -23,7 +24,7 @@ const NAV_LINKS: NavLink[] = [
   { href: '/dashboard',   label: 'Dashboard',         icon: BarChart2,     check: (p) => p.stats === true },
   { href: '/stats',       label: 'Estadísticas',      icon: LineChart,     check: (p) => p.stats === true },
   { href: '/expenses',    label: 'Gastos',            icon: Receipt,       check: (p) => p.expenses === true },
-  { href: '/inventory',   label: 'Stock',             icon: Package,       check: (p) => p.stock === true },
+  { href: '/inventory',   label: 'Inventario',        icon: Package,       check: (p) => p.stock === true },
   { href: '/price-lists', label: 'Listas de precios', icon: ClipboardList, check: (p) => p.price_lists === true },
   { href: '/settings',    label: 'Configuración',     icon: Settings,      check: (p) => p.settings === true },
 ]
@@ -51,6 +52,13 @@ const NAV_SECTIONS = [
   },
 ]
 
+const TOUR_ATTR_BY_HREF: Record<string, string> = {
+  '/inventory': 'sidebar-inventory',
+  '/expenses': 'sidebar-gastos',
+  '/price-lists': 'sidebar-price-lists',
+  '/pos': 'sidebar-pos',
+}
+
 interface Props {
   open: boolean
   onClose: () => void
@@ -59,6 +67,7 @@ interface Props {
   businessName: string
   collapsed: boolean
   onToggleCollapse: () => void
+  showOnboardingResume?: boolean
 }
 
 export default function Sidebar({
@@ -69,6 +78,7 @@ export default function Sidebar({
   businessName,
   collapsed,
   onToggleCollapse,
+  showOnboardingResume = false,
 }: Props) {
   const pathname = usePathname()
   const { theme, toggle } = useTheme()
@@ -162,6 +172,15 @@ export default function Sidebar({
 
       {/* Nav */}
       <nav className={cn('flex-1 py-3 overflow-y-auto', collapsed && !isMobileDrawer ? 'px-2' : 'px-3')}>
+        {collapsed && !isMobileDrawer && showOnboardingResume && (
+          <Link
+            href="/dashboard"
+            title="Retomar configuración inicial"
+            className="flex items-center justify-center p-2.5 rounded-xl text-primary hover:bg-primary/10 transition-colors mb-2"
+          >
+            <Sparkles size={18} />
+          </Link>
+        )}
         {NAV_SECTIONS.map(section => {
           const links = NAV_LINKS.filter(l => section.hrefs.includes(l.href))
           return (
@@ -173,6 +192,7 @@ export default function Sidebar({
                 {links.map(({ href, label, icon: Icon, check }) => {
                   const restricted = isRestricted(check)
                   const isActive = pathname === href
+                  const tourTarget = TOUR_ATTR_BY_HREF[href]
 
                   if (restricted) {
                     return (
@@ -198,6 +218,7 @@ export default function Sidebar({
                     <Link
                       key={href}
                       href={href}
+                      data-tour={tourTarget}
                       onClick={isMobileDrawer ? onClose : undefined}
                       title={collapsed && !isMobileDrawer ? label : undefined}
                       className={cn(
@@ -219,6 +240,12 @@ export default function Sidebar({
             </div>
           )
         })}
+
+        {(!collapsed || isMobileDrawer) && (
+          <div className="mt-1">
+            <OnboardingChecklist />
+          </div>
+        )}
       </nav>
 
       {/* Footer */}

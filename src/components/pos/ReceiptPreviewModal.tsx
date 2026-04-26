@@ -5,7 +5,7 @@ import { Mail, Printer, Send, Share2, X } from 'lucide-react'
 import ReceiptTemplate from '@/components/pos/ReceiptTemplate'
 import { Button } from '@/components/ui/button'
 import { normalizePayment } from '@/lib/payments'
-import { formatMoney } from '@/lib/format'
+import { useFormatMoney } from '@/lib/context/CurrencyContext'
 import { printReceiptEscPos, supportsWebSerial } from '@/lib/printer/escpos'
 import type { ReceiptData } from '@/lib/printer/types'
 
@@ -16,6 +16,7 @@ interface Props {
 }
 
 export default function ReceiptPreviewModal({ receipt, onClose, autoPrintOnOpen = false }: Props) {
+  const formatMoney = useFormatMoney()
   const [error, setError] = useState('')
   const [printingBrowser, setPrintingBrowser] = useState(false)
   const [printingDirect, setPrintingDirect] = useState(false)

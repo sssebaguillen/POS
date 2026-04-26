@@ -8,7 +8,7 @@ export interface SettingsBusiness {
   whatsapp: string | null
   logo_url: string | null
   slug: string
-  settings: { primary_color?: string } | null
+  settings: { primary_color?: string; currency?: string } | null
 }
 
 export interface SettingsOperator {

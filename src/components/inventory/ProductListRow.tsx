@@ -5,6 +5,7 @@ import { TableCell, TableRow } from '@/components/ui/table'
 import type { ProductCardProps } from '@/components/inventory/types'
 import { getStatus, statusConfig } from '@/components/inventory/types'
 import { SelectionCheckbox } from '@/components/inventory/ProductCard'
+import { useFormatMoney } from '@/lib/context/CurrencyContext'
 
 const ProductListRow = memo(function ProductListRow({
   product,
@@ -19,6 +20,7 @@ const ProductListRow = memo(function ProductListRow({
   onQuickCategory,
   onQuickBrand,
 }: ProductCardProps) {
+  const formatMoney = useFormatMoney()
   const status = getStatus(product)
   const config = statusConfig[status]
   const margin = product.cost > 0 && product.price > 0
@@ -91,11 +93,11 @@ const ProductListRow = memo(function ProductListRow({
       </TableCell>
 
       <TableCell className="text-right hidden md:table-cell">
-        <p className="text-sm font-semibold text-heading tabular-nums">${Number(product.price).toLocaleString('es-AR')}</p>
+        <p className="text-sm font-semibold text-heading tabular-nums">{formatMoney(Number(product.price))}</p>
       </TableCell>
 
       <TableCell className="text-right hidden lg:table-cell">
-        <p className="text-sm text-subtle tabular-nums">${Number(product.cost).toLocaleString('es-AR')}</p>
+        <p className="text-sm text-subtle tabular-nums">{formatMoney(Number(product.cost))}</p>
       </TableCell>
 
       <TableCell className="text-right hidden lg:table-cell">
