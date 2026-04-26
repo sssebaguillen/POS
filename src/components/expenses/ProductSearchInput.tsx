@@ -72,12 +72,19 @@ export default function ProductSearchInput({
   }
 
   useEffect(() => {
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!open) return
     function handleMouseDown(e: MouseEvent) {
       if (!containerRef.current?.contains(e.target as Node)) setOpen(false)
     }
     document.addEventListener('mousedown', handleMouseDown)
     return () => document.removeEventListener('mousedown', handleMouseDown)
-  }, [])
+  }, [open])
 
   function handleSelect(product: ProductResult) {
     onSelect(product)

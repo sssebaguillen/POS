@@ -15,13 +15,6 @@ interface Category {
   icon: string
 }
 
-interface ProductSearchResult {
-  id: string
-  name: string
-  stock: number
-  cost: number
-}
-
 interface NewProductResult {
   id: string
   name: string
@@ -64,7 +57,6 @@ export default function MercaderiaItemsSection({
 
   async function fetchModalData() {
     if (modalDataFetchedRef.current) return
-    modalDataFetchedRef.current = true
     const [plResult, catResult, brandResult] = await Promise.all([
       supabase
         .from('price_lists')
@@ -84,6 +76,9 @@ export default function MercaderiaItemsSection({
         .eq('business_id', businessId)
         .order('name'),
     ])
+    if (!plResult.error && !catResult.error && !brandResult.error) {
+      modalDataFetchedRef.current = true
+    }
     if (plResult.data) setPriceLists(plResult.data as PriceList[])
     if (catResult.data) setCategories(catResult.data as Category[])
     if (brandResult.data) setBrands(brandResult.data as InventoryBrand[])
@@ -112,13 +107,9 @@ export default function MercaderiaItemsSection({
     }
   }
 
-  function handleProductSelect(product: ProductSearchResult) {
-    addProductToItems(product)
-  }
-
-  function handleCreateNew(initialName: string) {
+  async function handleCreateNew(initialName: string) {
     setNewProductInitialName(initialName)
-    void fetchModalData()
+    await fetchModalData()
     setNewProductOpen(true)
   }
 
@@ -139,7 +130,7 @@ export default function MercaderiaItemsSection({
         <ProductSearchInput
           businessId={businessId}
           supabaseClient={supabase}
-          onSelect={handleProductSelect}
+          onSelect={addProductToItems}
           onCreateNew={handleCreateNew}
         />
       </div>

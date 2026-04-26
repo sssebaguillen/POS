@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { X } from 'lucide-react'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { Button } from '@/components/ui/button'
@@ -10,7 +10,7 @@ import SelectDropdown from '@/components/ui/SelectDropdown'
 import ExpenseAttachmentUploader from './ExpenseAttachmentUploader'
 import SupplierSelectDropdown from './SupplierSelectDropdown'
 import MercaderiaItemsSection from './MercaderiaItemsSection'
-import MercaderiaOnboarding from '@/components/onboarding/MercaderiaOnboarding'
+import MercaderiaOnboarding, { MERCADERIA_ONBOARDING_KEY } from '@/components/onboarding/MercaderiaOnboarding'
 import {
   EXPENSE_CATEGORY_LABELS,
   EXPENSE_CATEGORIES,
@@ -59,18 +59,13 @@ export default function NewExpensePanel({
 
   const isMercaderia = category === 'mercaderia'
 
-  const mercaderiaTotal = useMemo(
-    () => mercaderiaItems.reduce((sum, i) => sum + i.quantity * i.unit_cost, 0),
-    [mercaderiaItems]
-  )
-
   const searchInputRef = useRef<HTMLDivElement>(null)
   const firstItemCostRef = useRef<HTMLInputElement>(null)
   const totalRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     if (category === 'mercaderia') {
-      const done = localStorage.getItem('pulsar_onboarding_mercaderia_done')
+      const done = localStorage.getItem(MERCADERIA_ONBOARDING_KEY)
       if (!done) setShowOnboarding(true)
     }
   }, [category])
@@ -208,16 +203,6 @@ export default function NewExpensePanel({
             </div>
           )}
 
-          {isMercaderia && mercaderiaItems.length > 0 && (
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium text-body">Monto total</label>
-              <div className="h-9 flex items-center px-3 rounded-lg border border-input bg-muted text-sm text-hint select-none">
-                ${mercaderiaTotal.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                <span className="ml-2 text-xs opacity-70">(calculado automáticamente)</span>
-              </div>
-            </div>
-          )}
-
           <div className="space-y-1.5">
             <label className="text-sm font-medium text-body">
               Descripción <span className="text-destructive">*</span>
@@ -304,7 +289,7 @@ export default function NewExpensePanel({
           totalRef={totalRef}
           hasItems={mercaderiaItems.length > 0}
           onComplete={() => {
-            localStorage.setItem('pulsar_onboarding_mercaderia_done', 'true')
+            localStorage.setItem(MERCADERIA_ONBOARDING_KEY, 'true')
             setShowOnboarding(false)
           }}
         />

@@ -3,6 +3,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 
+export const MERCADERIA_ONBOARDING_KEY = 'pulsar_onboarding_mercaderia_done'
+
 interface Props {
   active: boolean
   searchInputRef: React.RefObject<HTMLDivElement | null>
@@ -51,6 +53,10 @@ const STEPS: Step[] = [
   },
 ]
 
+function rectsEqual(a: TooltipRect | null, b: TooltipRect): boolean {
+  return a !== null && a.top === b.top && a.left === b.left && a.width === b.width && a.height === b.height
+}
+
 export default function MercaderiaOnboarding({
   active,
   searchInputRef,
@@ -80,8 +86,9 @@ export default function MercaderiaOnboarding({
 
     function measure() {
       if (!el) return
-      const rect = el.getBoundingClientRect()
-      setTargetRect({ top: rect.top, left: rect.left, width: rect.width, height: rect.height })
+      const r = el.getBoundingClientRect()
+      const next: TooltipRect = { top: r.top, left: r.left, width: r.width, height: r.height }
+      setTargetRect(prev => (rectsEqual(prev, next) ? prev : next))
     }
 
     measure()
@@ -89,15 +96,6 @@ export default function MercaderiaOnboarding({
     return () => clearInterval(id)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [active, stepIndex, hasItems])
-
-  useEffect(() => {
-    if (!currentStep?.requiresItems || !hasItems || !active) return
-    const el = getRef(currentStep.refKey).current
-    if (!el) return
-    const rect = el.getBoundingClientRect()
-    setTargetRect({ top: rect.top, left: rect.left, width: rect.width, height: rect.height })
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hasItems])
 
   if (!active || !currentStep) return null
   if (currentStep.requiresItems && !hasItems) return null
@@ -134,57 +132,49 @@ export default function MercaderiaOnboarding({
   }
 
   return createPortal(
-    <>
-      <div
-        className="fixed inset-0 z-[9998]"
-        style={{ pointerEvents: 'none' }}
-        aria-hidden
-      />
+    <div
+      ref={tooltipRef}
+      className="fixed z-[9999] rounded-xl bg-primary text-primary-foreground shadow-lg p-4 flex flex-col gap-2"
+      style={{ top, left, width: TOOLTIP_WIDTH }}
+    >
+      {arrowUp && (
+        <span
+          className="absolute -top-[6px] border-4 border-transparent border-b-primary"
+          style={{ left: Math.min(targetRect.left + targetRect.width / 2 - left - 4, TOOLTIP_WIDTH - 16) }}
+        />
+      )}
+      {!arrowUp && (
+        <span
+          className="absolute -bottom-[6px] border-4 border-transparent border-t-primary"
+          style={{ left: Math.min(targetRect.left + targetRect.width / 2 - left - 4, TOOLTIP_WIDTH - 16) }}
+        />
+      )}
 
-      <div
-        ref={tooltipRef}
-        className="fixed z-[9999] rounded-xl bg-primary text-primary-foreground shadow-lg p-4 flex flex-col gap-2"
-        style={{ top, left, width: TOOLTIP_WIDTH }}
-      >
-        {arrowUp && (
-          <span
-            className="absolute -top-[6px] border-4 border-transparent border-b-primary"
-            style={{ left: Math.min(targetRect.left + targetRect.width / 2 - left - 4, TOOLTIP_WIDTH - 16) }}
-          />
-        )}
-        {!arrowUp && (
-          <span
-            className="absolute -bottom-[6px] border-4 border-transparent border-t-primary"
-            style={{ left: Math.min(targetRect.left + targetRect.width / 2 - left - 4, TOOLTIP_WIDTH - 16) }}
-          />
-        )}
+      <p className="text-sm font-semibold leading-snug">{currentStep.title}</p>
+      <p className="text-xs leading-relaxed opacity-90">{currentStep.body}</p>
 
-        <p className="text-sm font-semibold leading-snug">{currentStep.title}</p>
-        <p className="text-xs leading-relaxed opacity-90">{currentStep.body}</p>
-
-        <div className="flex items-center justify-between mt-1">
-          <span className="text-[10px] opacity-60">
-            {stepIndex + 1} / {STEPS.length}
-          </span>
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={onComplete}
-              className="text-[11px] opacity-70 hover:opacity-100 transition-opacity underline underline-offset-2"
-            >
-              Saltar
-            </button>
-            <button
-              type="button"
-              onClick={advance}
-              className="h-7 px-3 rounded-lg bg-primary-foreground text-primary text-xs font-semibold hover:opacity-90 transition-opacity"
-            >
-              {currentStep.buttonLabel}
-            </button>
-          </div>
+      <div className="flex items-center justify-between mt-1">
+        <span className="text-[10px] opacity-60">
+          {stepIndex + 1} / {STEPS.length}
+        </span>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={onComplete}
+            className="text-[11px] opacity-70 hover:opacity-100 transition-opacity underline underline-offset-2"
+          >
+            Saltar
+          </button>
+          <button
+            type="button"
+            onClick={advance}
+            className="h-7 px-3 rounded-lg bg-primary-foreground text-primary text-xs font-semibold hover:opacity-90 transition-opacity"
+          >
+            {currentStep.buttonLabel}
+          </button>
         </div>
       </div>
-    </>,
+    </div>,
     document.body
   )
 }
