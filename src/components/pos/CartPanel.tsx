@@ -82,7 +82,7 @@ interface Props {
 export default function CartPanel({ businessId, businessName, activePriceList, priceListOverrides, operatorId, permissions }: Props) {
   const currency = useCurrency()
   const router = useRouter()
-  const { items, removeItem, updateQuantity, updatePrice, discount, clearCart } = useCartStore()
+  const { items, removeItem, updateQuantity, updatePrice, discount, clearCart, restoreCart } = useCartStore()
   const [showPayment, setShowPayment] = useState(false)
   const { toast, showToast, dismissToast } = useToast()
   const [activeTab, setActiveTab] = useState<RightTab>('current')
@@ -92,6 +92,8 @@ export default function CartPanel({ businessId, businessName, activePriceList, p
   const [loadingDetailId, setLoadingDetailId] = useState<string | null>(null)
   const [editingSale, setEditingSale] = useState<SaleDetail | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [confirmingDeleteId, setConfirmingDeleteId] = useState<string | null>(null)
+  const confirmDeleteTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [receiptPreview, setReceiptPreview] = useState<ReceiptData | null>(null)
   const [receiptError, setReceiptError] = useState('')
   const [editingPrice, setEditingPrice] = useState<{ productId: string; mode: 'unit' | 'total' } | null>(null)
@@ -299,6 +301,18 @@ export default function CartPanel({ businessId, businessName, activePriceList, p
     }
   }
 
+  function requestDeleteSale(saleId: string) {
+    if (confirmingDeleteId === saleId) {
+      if (confirmDeleteTimerRef.current) clearTimeout(confirmDeleteTimerRef.current)
+      setConfirmingDeleteId(null)
+      void handleDeleteSale(saleId)
+      return
+    }
+    if (confirmDeleteTimerRef.current) clearTimeout(confirmDeleteTimerRef.current)
+    setConfirmingDeleteId(saleId)
+    confirmDeleteTimerRef.current = setTimeout(() => setConfirmingDeleteId(null), 3000)
+  }
+
   async function handleDeleteSale(saleId: string) {
     if (!businessId) return
     setDeletingId(saleId)
@@ -374,7 +388,14 @@ export default function CartPanel({ businessId, businessName, activePriceList, p
   }
 
   function handleCancelSale() {
+    const snapshot = items.slice()
+    const discountSnapshot = discount
     clearCart()
+    showToast({
+      message: 'Carrito vaciado',
+      duration: 5500,
+      onUndo: () => restoreCart(snapshot, discountSnapshot),
+    })
   }
 
   function startPriceEdit(productId: string, currentValue: number, mode: 'unit' | 'total') {
@@ -446,13 +467,18 @@ export default function CartPanel({ businessId, businessName, activePriceList, p
           <div className="grid grid-cols-2">
             <button
               onClick={() => setActiveTab('current')}
-              className={`h-11 text-sm font-medium border-b-2 transition-colors ${
+              className={`h-11 text-sm font-medium border-b-2 transition-colors inline-flex items-center justify-center gap-2 ${
                 activeTab === 'current'
                   ? 'text-[var(--primary-active-text)] border-primary'
                   : 'text-hint border-transparent hover:text-body'
               }`}
             >
               Venta actual
+              {items.length > 0 && (
+                <span className="rounded-full bg-primary/10 text-[var(--primary-active-text)] text-[10px] px-1.5 py-0.5 font-semibold tabular-nums leading-none">
+                  {items.length}
+                </span>
+              )}
             </button>
             <button
               onClick={() => setActiveTab('history')}
@@ -469,16 +495,8 @@ export default function CartPanel({ businessId, businessName, activePriceList, p
 
         {activeTab === 'current' ? (
           <>
-            {/* Sub-header */}
-            <div className="px-4 pt-3 pb-2 flex items-center justify-between">
-              <h2 className="text-base font-semibold text-heading">Venta actual</h2>
-              <span className="rounded-full bg-primary/10 text-[var(--primary-active-text)] text-xs px-2.5 py-1 font-medium">
-                {items.length} items
-              </span>
-            </div>
-
             {/* Items */}
-            <div className="flex-1 overflow-y-auto border-t border-edge-soft">
+            <div className="flex-1 overflow-y-auto">
               {isEmpty ? (
                 <div className="flex flex-col items-center justify-center h-full text-faint select-none px-6 text-center">
                   <ShoppingCart size={48} className="mb-3 opacity-30" />
@@ -579,16 +597,18 @@ export default function CartPanel({ businessId, businessName, activePriceList, p
                         <div className="flex items-center gap-1.5 shrink-0">
                           <button
                             onClick={() => updateQuantity(item.product.id, item.quantity - 1)}
-                            className="w-6 h-6 rounded-md bg-surface-alt hover:bg-hover-bg flex items-center justify-center transition-colors"
+                            aria-label={`Quitar una unidad de ${item.product.name}`}
+                            className="w-8 h-8 rounded-md bg-surface-alt hover:bg-hover-bg flex items-center justify-center transition-colors"
                           >
                             <Minus size={12} />
                           </button>
-                          <span className="text-sm font-semibold w-6 text-center tabular-nums">
+                          <span className="text-sm font-semibold w-6 text-center tabular-nums" aria-label={`${item.quantity} unidades`}>
                             {item.quantity}
                           </span>
                           <button
                             onClick={() => updateQuantity(item.product.id, item.quantity + 1)}
-                            className="w-6 h-6 rounded-md bg-surface-alt hover:bg-hover-bg flex items-center justify-center transition-colors"
+                            aria-label={`Agregar una unidad de ${item.product.name}`}
+                            className="w-8 h-8 rounded-md bg-surface-alt hover:bg-hover-bg flex items-center justify-center transition-colors"
                           >
                             <Plus size={12} />
                           </button>
@@ -628,6 +648,7 @@ export default function CartPanel({ businessId, businessName, activePriceList, p
                             )}
                             <button
                               onClick={() => removeItem(item.product.id)}
+                              aria-label={`Quitar ${item.product.name} del carrito`}
                               className="text-faint hover:text-red-400 transition-colors"
                             >
                               <Trash2 size={12} />
@@ -664,6 +685,11 @@ export default function CartPanel({ businessId, businessName, activePriceList, p
                 </div>
               </div>
 
+              {hasStockWarning && (
+                <p className="text-xs text-amber-600 dark:text-amber-400 text-center">
+                  Hay ítems con stock insuficiente
+                </p>
+              )}
               <div className="grid grid-cols-2 gap-2">
                 <Button
                   variant="cancel"
@@ -671,7 +697,7 @@ export default function CartPanel({ businessId, businessName, activePriceList, p
                   disabled={isEmpty}
                   onClick={handleCancelSale}
                 >
-                  Cancelar
+                  Vaciar
                 </Button>
                 <Button
                   className={`h-10 rounded-xl text-sm font-semibold text-primary-foreground transition-colors ${
@@ -700,7 +726,7 @@ export default function CartPanel({ businessId, businessName, activePriceList, p
               <Input
                 value={historyQuery}
                 onChange={e => setHistoryQuery(e.target.value)}
-                placeholder="Buscar por id o método..."
+                placeholder="Filtrar por método de pago..."
                 className="h-9 text-sm rounded-lg"
               />
               <p className="text-xs text-subtle">
@@ -715,7 +741,11 @@ export default function CartPanel({ businessId, businessName, activePriceList, p
               {historyLoading ? (
                 <div className="h-full flex items-center justify-center text-sm text-hint">Cargando historial...</div>
               ) : filteredHistory.length === 0 ? (
-                <div className="h-full flex items-center justify-center text-sm text-hint">No hay ventas para mostrar</div>
+                <div className="h-full flex items-center justify-center text-sm text-hint px-6 text-center">
+                  {historyQuery.trim()
+                    ? 'Ninguna venta coincide con ese filtro'
+                    : 'Aún no hay ventas hoy'}
+                </div>
               ) : (
                 <ul className="p-3 space-y-1.5">
                   {filteredHistory.map((sale, index) => {
@@ -823,11 +853,15 @@ export default function CartPanel({ businessId, businessName, activePriceList, p
                                   Editar
                                 </button>
                                 <button
-                                  onClick={() => handleDeleteSale(sale.id)}
+                                  onClick={() => requestDeleteSale(sale.id)}
                                   disabled={isDeleting}
-                                  className="text-[11px] px-2.5 py-1 rounded-lg border border-red-200 text-red-500 bg-surface hover:bg-red-50 dark:border-red-500/30 dark:text-red-400 dark:bg-transparent dark:hover:bg-red-500/10 transition-colors disabled:opacity-50"
+                                  className={`text-[11px] px-2.5 py-1 rounded-lg border transition-colors disabled:opacity-50 ${
+                                    confirmingDeleteId === sale.id
+                                      ? 'border-red-400 bg-red-500 text-white dark:bg-red-600 dark:border-red-600 font-medium'
+                                      : 'border-red-200 text-red-500 bg-surface hover:bg-red-50 dark:border-red-500/30 dark:text-red-400 dark:bg-transparent dark:hover:bg-red-500/10'
+                                  }`}
                                 >
-                                  {isDeleting ? '…' : 'Eliminar'}
+                                  {isDeleting ? '…' : confirmingDeleteId === sale.id ? '¿Eliminar?' : 'Eliminar'}
                                 </button>
                               </div>
                               <button

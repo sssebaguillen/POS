@@ -41,8 +41,11 @@ export default function POSView({ products, businessId, businessName, priceLists
   const searchRef = useRef<HTMLInputElement>(null)
   const scanFeedbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const lastGlobalPrintableKeyAtRef = useRef(0)
+  const itemCount = useCartStore(s => s.items.length)
   const clearCart = useCartStore(s => s.clearCart)
   const addItem = useCartStore(s => s.addItem)
+  const [confirmingNewSale, setConfirmingNewSale] = useState(false)
+  const confirmNewSaleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const filterScrollRef = useRef<HTMLDivElement>(null)
 
@@ -60,10 +63,10 @@ export default function POSView({ products, businessId, businessName, priceLists
     return () => el.removeEventListener('wheel', handleFilterWheel)
   }, [handleFilterWheel])
 
-  // Limpiar timer de feedback al desmontar
   useEffect(() => {
     return () => {
       if (scanFeedbackTimerRef.current) clearTimeout(scanFeedbackTimerRef.current)
+      if (confirmNewSaleTimerRef.current) clearTimeout(confirmNewSaleTimerRef.current)
     }
   }, [])
 
@@ -133,12 +136,19 @@ export default function POSView({ products, businessId, businessName, priceLists
   }, [listDropdownOpen])
 
   const handleNewSale = useCallback(() => {
+    if (itemCount > 0 && !confirmingNewSale) {
+      setConfirmingNewSale(true)
+      confirmNewSaleTimerRef.current = setTimeout(() => setConfirmingNewSale(false), 3000)
+      return
+    }
+    if (confirmNewSaleTimerRef.current) clearTimeout(confirmNewSaleTimerRef.current)
+    setConfirmingNewSale(false)
     clearCart()
     setSearch('')
     setActiveFilter(null)
     setScanFeedback(null)
     searchRef.current?.focus()
-  }, [clearCart])
+  }, [itemCount, confirmingNewSale, clearCart])
 
   /**
    * Muestra feedback visual por 900ms y lo limpia.
@@ -264,7 +274,7 @@ export default function POSView({ products, businessId, businessName, priceLists
         <button
           onClick={toggle}
           className="p-1.5 -ml-1 rounded-lg hover:bg-hover-bg transition-colors lg:hidden"
-          aria-label="Abrir menu"
+          aria-label="Abrir menú"
         >
           <Menu size={20} className="text-body" />
         </button>
@@ -302,11 +312,12 @@ export default function POSView({ products, businessId, businessName, priceLists
                     : 'bg-surface-alt border-edge',
               ].join(' ')}
             />
-            {/* Tooltip de feedback bajo el input */}
             {scanFeedback && (
               <p
+                role="alert"
+                aria-live="assertive"
                 className={[
-                  'absolute left-0 -bottom-5 text-[11px] font-medium animate-fade-in',
+                  'absolute left-0 -bottom-5 z-10 text-[11px] font-medium animate-fade-in',
                   scanFeedback === 'found' ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500 dark:text-red-400',
                 ].join(' ')}
               >
@@ -321,6 +332,7 @@ export default function POSView({ products, businessId, businessName, priceLists
             <button
               disabled={!canSelectList}
               onClick={() => canSelectList && setListDropdownOpen(prev => !prev)}
+              title={!canSelectList ? 'Solo operadores con permiso de stock pueden cambiar la lista de precios' : undefined}
               className={
                 'flex items-center gap-1.5 h-8 px-3 rounded-lg border border-edge text-sm font-medium transition-colors select-none ' +
                 (canSelectList
@@ -349,14 +361,18 @@ export default function POSView({ products, businessId, businessName, priceLists
           </div>
         )}
 
-        <span className="text-sm text-subtle capitalize shrink-0 hidden md:block">
+        <span className="text-sm text-subtle capitalize shrink-0 hidden lg:block">
           {formatDate(new Date())}
         </span>
         <Button
-          className="h-9 px-4 bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg text-sm font-semibold shrink-0"
+          className={`h-9 px-4 rounded-lg text-sm font-semibold shrink-0 transition-colors ${
+            confirmingNewSale
+              ? 'bg-destructive hover:bg-destructive/90 text-destructive-foreground'
+              : 'bg-primary hover:bg-primary/90 text-primary-foreground'
+          }`}
           onClick={handleNewSale}
         >
-          + Nueva venta
+          {confirmingNewSale ? '¿Vaciar carrito?' : '+ Nueva venta'}
         </Button>
       </header>
 
@@ -365,54 +381,59 @@ export default function POSView({ products, businessId, businessName, priceLists
         <div className="flex-1 min-w-0 flex flex-col min-h-0">
           {/* Filter chips strip — scoped to product column only */}
           {(topCategories.length > 0 || topBrands.length > 0) && (
-            <div className="border-b border-edge/60 shrink-0 overflow-hidden py-2 px-4">
-            <div
+            <div className="border-b border-edge/60 shrink-0 overflow-hidden py-2 px-6">
+              <div
                 ref={filterScrollRef}
                 className="flex flex-nowrap gap-1.5 overflow-x-auto"
                 style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
               >
-                <button
-                  onClick={() => setActiveFilter(null)}
-                  className={activeFilter === null ? `shrink-0 rounded-full px-3 py-1 text-xs font-medium transition-colors bg-primary text-primary-foreground` : `shrink-0 rounded-full px-3 py-1 text-xs font-medium transition-colors text-muted-foreground hover:text-foreground hover:bg-muted`}
-                >
-                  Todos
-                </button>
-                {topCategories.length > 0 && (
-                  <span className="shrink-0 w-px bg-edge/60 mx-0.5" />
-                )}
-                {topCategories.map(cat => (
-                  <button
-                    key={cat.id}
-                    onClick={() =>
-                      setActiveFilter(
-                        activeFilter?.type === 'category' && activeFilter.id === cat.id
-                          ? null
-                          : { type: 'category', id: cat.id }
-                      )
-                    }
-                    className={activeFilter?.type === 'category' && activeFilter.id === cat.id ? `shrink-0 rounded-full px-3 py-1 text-xs font-medium transition-colors bg-primary text-primary-foreground` : `shrink-0 rounded-full px-3 py-1 text-xs font-medium transition-colors text-muted-foreground hover:text-foreground hover:bg-muted`}
-                  >
-                    {cat.name}
-                  </button>
-                ))}
-                {topBrands.length > 0 && (
-                  <span className="shrink-0 w-px bg-edge/60 mx-0.5" />
-                )}
-                {topBrands.map(brand => (
-                  <button
-                    key={brand.id}
-                    onClick={() =>
-                      setActiveFilter(
-                        activeFilter?.type === 'brand' && activeFilter.id === brand.id
-                          ? null
-                          : { type: 'brand', id: brand.id }
-                      )
-                    }
-                    className={activeFilter?.type === 'brand' && activeFilter.id === brand.id ? `shrink-0 rounded-full px-3 py-1 text-xs font-medium transition-colors bg-primary text-primary-foreground` : `shrink-0 rounded-full px-3 py-1 text-xs font-medium transition-colors text-muted-foreground hover:text-foreground hover:bg-muted`}
-                  >
-                    {brand.name}
-                  </button>
-                ))}
+                {(() => {
+                  const chip = (active: boolean) =>
+                    `shrink-0 rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+                      active
+                        ? 'bg-primary text-primary-foreground'
+                        : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                    }`
+                  return (
+                    <>
+                      <button onClick={() => setActiveFilter(null)} className={chip(activeFilter === null)}>
+                        Todos
+                      </button>
+                      {topCategories.length > 0 && <span className="shrink-0 w-px bg-edge/60 mx-0.5" />}
+                      {topCategories.map(cat => (
+                        <button
+                          key={cat.id}
+                          onClick={() =>
+                            setActiveFilter(
+                              activeFilter?.type === 'category' && activeFilter.id === cat.id
+                                ? null
+                                : { type: 'category', id: cat.id }
+                            )
+                          }
+                          className={chip(activeFilter?.type === 'category' && activeFilter.id === cat.id)}
+                        >
+                          {cat.name}
+                        </button>
+                      ))}
+                      {topBrands.length > 0 && <span className="shrink-0 w-px bg-edge/60 mx-0.5" />}
+                      {topBrands.map(brand => (
+                        <button
+                          key={brand.id}
+                          onClick={() =>
+                            setActiveFilter(
+                              activeFilter?.type === 'brand' && activeFilter.id === brand.id
+                                ? null
+                                : { type: 'brand', id: brand.id }
+                            )
+                          }
+                          className={chip(activeFilter?.type === 'brand' && activeFilter.id === brand.id)}
+                        >
+                          {brand.name}
+                        </button>
+                      ))}
+                    </>
+                  )
+                })()}
               </div>
             </div>
           )}
@@ -426,7 +447,7 @@ export default function POSView({ products, businessId, businessName, priceLists
             />
           </div>
         </div>
-        <div className="w-[380px] shrink-0 bg-surface border-l border-edge/60 flex flex-col" data-tour="pos-cart">
+        <div className="w-[300px] md:w-[340px] lg:w-[380px] shrink-0 bg-surface border-l border-edge/60 flex flex-col" data-tour="pos-cart">
           <CartPanel
             businessId={businessId}
             businessName={businessName}

@@ -19,7 +19,7 @@ export default function Toast({ message, duration = 5500, onUndo, onDismiss }: P
   return (
     <div
       role="status"
-      className="fixed bottom-4 right-4 z-50 flex items-center gap-3 rounded-lg border border-border bg-popover px-4 py-2.5 shadow-lg text-sm text-popover-foreground"
+      className="fixed top-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 rounded-lg border border-border bg-popover px-4 py-2.5 shadow-lg text-sm text-popover-foreground animate-fade-in"
     >
       <span>{message}</span>
       {onUndo && (
@@ -34,7 +34,7 @@ export default function Toast({ message, duration = 5500, onUndo, onDismiss }: P
       <button
         type="button"
         onClick={onDismiss}
-        aria-label="Cerrar notificacion"
+        aria-label="Cerrar notificación"
         className="rounded p-0.5 hover:bg-muted transition-colors"
       >
         <X size={14} />

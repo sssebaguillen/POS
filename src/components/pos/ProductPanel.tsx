@@ -1,6 +1,7 @@
 'use client'
 
 import Image from 'next/image'
+import { Box } from 'lucide-react'
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useCartStore } from '@/lib/store/cart.store'
 import { calculateProductPrice } from '@/lib/price-lists'
@@ -58,7 +59,7 @@ export default function ProductPanel({ products, search, activeFilter, activePri
       {topSellers.length > 0 && !isSearching && !activeFilter && (
         <section>
           <p className="text-xs font-semibold text-hint uppercase tracking-wider mb-3">
-            Más vendidos — últimos 30 días
+            Más vendidos, últimos 30 días
           </p>
           <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))' }}>
             {topSellers.map(product => (
@@ -160,7 +161,7 @@ function PaginatedProductGrid({
       <div ref={sentinelRef} />
       {visibleCount < products.length && (
         <p className="py-4 text-center text-xs text-subtle">
-          Mostrando {visibleCount} de {products.length} — seguí scrolleando para ver más
+          Mostrando {visibleCount} de {products.length}. Seguí scrolleando para ver más.
         </p>
       )}
     </>
@@ -184,9 +185,16 @@ const ProductCard = memo(function ProductCard({
     ? calculateProductPrice(product.cost, product.price, product.id, product.brand_id, activePriceList, priceListOverrides)
     : product.price
 
+  const stockLabel = product.stock === 0
+    ? 'Sin stock'
+    : product.stock > 0 && product.stock <= product.min_stock
+      ? 'Stock bajo'
+      : null
+
   return (
     <button
       onClick={() => onAdd(product)}
+      aria-label={`${product.name}, ${formatMoney(displayPrice)}${stockLabel ? `, ${stockLabel}` : ''}`}
       className="group relative text-left p-4 rounded-2xl border border-edge/60 bg-surface hover:border-primary/50 hover:shadow-md transition-all flex flex-col"
     >
       {/* Image or category marker */}
@@ -203,7 +211,10 @@ const ProductCard = memo(function ProductCard({
         </div>
       ) : (
         <div className="h-10 mb-3 flex items-center text-3xl leading-none">
-          {product.categories?.icon ?? 'CAT'}
+          {product.categories?.icon
+            ? <span>{product.categories.icon}</span>
+            : <Box size={28} className="text-hint" />
+          }
         </div>
       )}
 
@@ -217,14 +228,17 @@ const ProductCard = memo(function ProductCard({
         {formatMoney(displayPrice)}
       </p>
 
-      {/* Stock badge */}
-      {product.stock === 0 && (
-        <span className="absolute top-2 right-2 text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-red-100 text-red-600 dark:bg-red-900/50 dark:text-red-400">
-          Sin stock
+      {stockLabel && (
+        <span
+          aria-hidden="true"
+          className={`absolute top-2 right-2 text-[10px] font-medium px-1.5 py-0.5 rounded-full ${
+            product.stock === 0
+              ? 'bg-red-100 text-red-600 dark:bg-red-900/50 dark:text-red-400'
+              : 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400'
+          }`}
+        >
+          {stockLabel}
         </span>
-      )}
-      {product.stock > 0 && product.stock <= product.min_stock && (
-        <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-amber-400" />
       )}
     </button>
   )
