@@ -45,7 +45,7 @@ export default function BulkActionBar({
   }, [])
 
   const categoryOptions = [
-    { value: '__none__', label: 'Sin categoria' },
+    { value: '__none__', label: 'Sin categoría' },
     ...categories.map(c => ({ value: c.id, label: c.icon ? `${c.icon} ${c.name}` : c.name })),
   ]
 
@@ -71,10 +71,10 @@ export default function BulkActionBar({
       <div className="fixed bottom-14 inset-x-0 z-40 flex items-center justify-center px-4 pointer-events-none">
         <div
           className={`surface-elevated rounded-2xl shadow-2xl border border-edge/60 px-5 py-3 flex items-center gap-3 pointer-events-auto overflow-x-auto flex-nowrap transition-all duration-300 ease-out ${
-            visible ? 'translate-y-0 opacity-100' : 'translate-y-8 opacity-0'
+            visible ? 'opacity-100 translate-y-0' : 'opacity-0 motion-safe:translate-y-8'
           }`}
         >
-          <span className="text-sm font-semibold text-heading shrink-0 whitespace-nowrap text-display">
+          <span className="text-sm font-semibold text-heading shrink-0 whitespace-nowrap">
             {selectedCount} {selectedCount === 1 ? 'producto' : 'productos'}
           </span>
 
@@ -112,16 +112,16 @@ export default function BulkActionBar({
                   disabled={loading}
                 >
                   <Tag size={13} />
-                  Categoria
+                  Categoría
                 </Button>
               </PopoverTrigger>
               <PopoverContent side="top" align="center" className="w-64 p-3 space-y-3">
-                <p className="text-xs font-semibold text-heading">Cambiar categoria</p>
+                <p className="text-xs font-semibold text-heading">Cambiar categoría</p>
                 <SelectDropdown
                   value={selectedCategoryId}
                   onChange={setSelectedCategoryId}
                   options={categoryOptions}
-                  placeholder="Seleccionar categoria"
+                  placeholder="Seleccionar categoría"
                   usePortal
                 />
                 <div className="flex justify-end gap-2">
@@ -204,7 +204,7 @@ export default function BulkActionBar({
       <ConfirmModal
         open={showDeleteConfirm}
         title={`Eliminar ${selectedCount} ${selectedCount === 1 ? 'producto' : 'productos'}`}
-        message="Los productos con historial de ventas seran discontinuados en lugar de eliminados. Esta accion no se puede deshacer."
+        message="Los productos con ventas registradas serán discontinuados en lugar de eliminarse. Esta acción no se puede deshacer."
         confirmLabel="Eliminar"
         onConfirm={() => {
           setShowDeleteConfirm(false)

@@ -150,7 +150,7 @@ export default function FilterSidebar({
     <>
       {/* Backdrop */}
       <div
-        className={`fixed inset-0 z-40 bg-black/30 transition-opacity duration-200 ${
+        className={`fixed inset-0 z-40 bg-foreground/30 transition-opacity duration-200 ${
           open ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
         }`}
         onClick={onClose}
@@ -231,14 +231,14 @@ export default function FilterSidebar({
               }`}
             >
               <Checkbox checked={showInCatalogOnly} />
-              <span>Solo visibles en catalogo</span>
+              <span>Solo visibles en catálogo</span>
             </button>
           </Section>
 
           {/* Categories */}
           {categories.length > 0 && (
             <Section
-              label="Categorias"
+              label="Categorías"
               badge={selectedCategories.length}
               open={openSections.categories}
               onToggle={() => toggleSection('categories')}
@@ -249,7 +249,7 @@ export default function FilterSidebar({
                   type="text"
                   value={catQuery}
                   onChange={e => setCatQuery(e.target.value)}
-                  placeholder="Buscar categoria..."
+                  placeholder="Buscar categoría..."
                   className="w-full pl-8 pr-3 py-1.5 text-xs rounded-lg border border-edge bg-surface-alt text-body placeholder:text-hint focus:outline-none focus:ring-1 focus:ring-primary/40"
                 />
               </div>

@@ -29,7 +29,7 @@ const ProductListRow = memo(function ProductListRow({
 
   return (
     <TableRow className={`group/row ${isSelected ? 'bg-primary/5' : ''}`}>
-      <TableCell className={`w-10 ${selectionMode ? '' : 'opacity-0 group-hover/row:opacity-100'} transition-opacity`}>
+      <TableCell className={`w-10 ${selectionMode ? '' : '[@media(hover:none)]:opacity-40 opacity-0 group-hover/row:opacity-100'} transition-opacity`}>
         <SelectionCheckbox
           checked={isSelected}
           onClick={(e) => { e.stopPropagation(); onToggleSelect(product.id) }}
@@ -70,24 +70,24 @@ const ProductListRow = memo(function ProductListRow({
 
       <TableCell className="hidden xl:table-cell">
         <div
-          className={`group/cat flex items-center gap-1 min-w-0 rounded px-1 -mx-1 ${!readOnly ? 'cursor-pointer hover:bg-primary/5' : ''}`}
+          className={`group/cat flex items-center gap-1 min-w-0 rounded px-1 -mx-1 touch-manipulation ${!readOnly ? 'cursor-pointer hover:bg-primary/5' : ''}`}
           onClick={!readOnly ? () => onQuickCategory(product) : undefined}
         >
           <p className="text-sm text-subtle truncate">{product.categories?.name ?? '—'}</p>
           {!readOnly && (
-            <Pencil size={11} className="shrink-0 text-primary opacity-0 group-hover/cat:opacity-50 transition-opacity" />
+            <Pencil size={11} className="shrink-0 text-primary opacity-40 [@media(hover:hover)]:opacity-0 group-hover/cat:opacity-60 transition-opacity" />
           )}
         </div>
       </TableCell>
 
       <TableCell className="hidden xl:table-cell">
         <div
-          className={`group/brand flex items-center gap-1 min-w-0 rounded px-1 -mx-1 ${!readOnly ? 'cursor-pointer hover:bg-primary/5' : ''}`}
+          className={`group/brand flex items-center gap-1 min-w-0 rounded px-1 -mx-1 touch-manipulation ${!readOnly ? 'cursor-pointer hover:bg-primary/5' : ''}`}
           onClick={!readOnly ? () => onQuickBrand(product) : undefined}
         >
           <p className="text-sm text-subtle truncate">{product.brand?.name ?? '—'}</p>
           {!readOnly && (
-            <Pencil size={11} className="shrink-0 text-primary opacity-0 group-hover/brand:opacity-50 transition-opacity" />
+            <Pencil size={11} className="shrink-0 text-primary opacity-40 [@media(hover:hover)]:opacity-0 group-hover/brand:opacity-60 transition-opacity" />
           )}
         </div>
       </TableCell>
@@ -115,23 +115,26 @@ const ProductListRow = memo(function ProductListRow({
         <TableCell>
           <div className="flex items-center justify-end gap-1.5">
             <button
+              type="button"
               onClick={() => onEdit(product)}
               disabled={loadingId === product.id}
-              className="text-xs px-3 py-1.5 rounded-lg border border-edge text-body hover:bg-hover-bg transition-colors disabled:opacity-50"
+              className="text-xs px-3 py-2 rounded-lg border border-edge text-body hover:bg-hover-bg transition-colors disabled:opacity-50 touch-manipulation"
             >
               Editar
             </button>
             <button
+              type="button"
               onClick={() => onToggleActive(product)}
               disabled={loadingId === product.id}
-              className="text-xs px-3 py-1.5 rounded-lg border border-edge text-body hover:bg-hover-bg transition-colors disabled:opacity-50"
+              className="text-xs px-3 py-2 rounded-lg border border-edge text-body hover:bg-hover-bg transition-colors disabled:opacity-50 touch-manipulation"
             >
-              {product.is_active ? 'Baja' : 'Activar'}
+              {product.is_active ? 'Discontinuar' : 'Activar'}
             </button>
             <button
+              type="button"
               onClick={() => onDelete(product)}
               disabled={loadingId === product.id}
-              className="text-xs px-3 py-1.5 rounded-lg bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800/50 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors disabled:opacity-50"
+              className="text-xs px-3 py-2 rounded-lg bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800/50 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors disabled:opacity-50 touch-manipulation"
             >
               Eliminar
             </button>

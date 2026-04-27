@@ -1,0 +1,173 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-04-27T00:00:00Z",
+  "title": "Design System: Pulsar POS",
+  "extensions": {
+    "colorMeta": {
+      "primary":             { "role": "primary",   "displayName": "Burnt Espresso",    "canonical": "oklch(38% 0.12 48)",  "tonalRamp": ["#3d1c06", "#5a2a0c", "#7a3e10", "#984d18", "#b26025", "#c8843a", "#dba870", "#eeceab"] },
+      "primary-dark":        { "role": "primary",   "displayName": "Amber Ember",        "canonical": "oklch(62% 0.14 55)",  "tonalRamp": ["#3d1c06", "#5a2a0c", "#7a3e10", "#984d18", "#b26025", "#c8843a", "#dba870", "#eeceab"] },
+      "background":          { "role": "neutral",   "displayName": "Warm Ivory",         "canonical": "oklch(98% 0.008 80)", "tonalRamp": ["#c8b89a", "#d4c6ab", "#e0d4bc", "#ece2cc", "#f5f0e8", "#faf7f0", "#fbfaf2", "#fdfcf8"] },
+      "card":                { "role": "neutral",   "displayName": "Clean Card",         "canonical": "oklch(99.5% 0 0)",    "tonalRamp": ["#c8c8c8", "#d9d9d9", "#e6e6e6", "#f0f0f0", "#f7f7f7", "#fafafa", "#fdfdfd", "#ffffff"] },
+      "foreground":          { "role": "neutral",   "displayName": "Dark Roast",         "canonical": "oklch(12% 0.025 50)", "tonalRamp": ["#1c1008", "#2e1e10", "#3f2b18", "#5a3e28", "#7a5838", "#9a7858", "#bfa888", "#eedecc"] },
+      "secondary":           { "role": "neutral",   "displayName": "Sand Dune",          "canonical": "oklch(92% 0.015 75)", "tonalRamp": ["#c2b49a", "#ccbea8", "#d6c8b5", "#e0d4c0", "#ede6dc", "#f0e9e0", "#f5f0e8", "#faf7f2"] },
+      "accent":              { "role": "neutral",   "displayName": "Pale Linen",         "canonical": "oklch(94% 0.012 70)", "tonalRamp": ["#c4b8a4", "#d0c4b0", "#ddd0bc", "#e8dece", "#f0e8de", "#f5ede5", "#f8f3ec", "#fdf9f5"] },
+      "body":                { "role": "neutral",   "displayName": "Muted Sienna",       "canonical": "oklch(52% 0.06 55)",  "tonalRamp": ["#3a2818", "#4e3825", "#634a35", "#7a5c44", "#8a6848", "#a07d5c", "#b89878", "#d4bc9e"] },
+      "hint":                { "role": "neutral",   "displayName": "Faded Khaki",        "canonical": "oklch(68% 0.04 65)",  "tonalRamp": ["#5a4838", "#6e5a48", "#806c58", "#947e6a", "#b09880", "#c0aa94", "#d0bca8", "#e4d4c4"] },
+      "faint":               { "role": "neutral",   "displayName": "Dusty Limestone",    "canonical": "oklch(83% 0.02 70)",  "tonalRamp": ["#9a8e80", "#a89e90", "#b8ae9e", "#c8bead", "#d4c8b8", "#ddd4c6", "#e8e0d4", "#f4f0ea"] },
+      "border":              { "role": "neutral",   "displayName": "Tan Border",         "canonical": "oklch(86% 0.02 70)",  "tonalRamp": ["#a89a88", "#b4a898", "#c4b8a8", "#d0c4b4", "#e0d4c0", "#e8dece", "#f0e8dc", "#f8f4ee"] },
+      "destructive":         { "role": "semantic",  "displayName": "Ember Red",          "canonical": "oklch(48% 0.18 25)",  "tonalRamp": ["#7a1a10", "#9a2418", "#b83024", "#c0392b", "#d04840", "#e05a50", "#ec8078", "#f8b8b0"] },
+      "background-dark":     { "role": "neutral",   "displayName": "Charred Graphite",   "canonical": "oklch(8% 0.003 50)",  "tonalRamp": ["#0a0a09", "#0e0e0d", "#111110", "#161614", "#1a1a18", "#1e1e1c", "#222220", "#2a2926"] },
+      "card-dark":           { "role": "neutral",   "displayName": "Ink Black",          "canonical": "oklch(11% 0.005 50)", "tonalRamp": ["#0a0a09", "#0e0e0d", "#111110", "#161614", "#1a1a18", "#1e1e1c", "#222220", "#2a2926"] },
+      "foreground-dark":     { "role": "neutral",   "displayName": "Warm Cream",         "canonical": "oklch(90% 0.04 75)",  "tonalRamp": ["#a08060", "#b49478", "#c8a890", "#dbbea8", "#eecebe", "#f1dbbf", "#f6e8d0", "#fdf5e8"] }
+    },
+    "typographyMeta": {
+      "display":  { "displayName": "Display",    "purpose": "Page titles in PageHeader. One per view. Always Sora." },
+      "headline": { "displayName": "Headline",   "purpose": "Section card headings (h2). Named subsections within a view." },
+      "body":     { "displayName": "Body",       "purpose": "Table cells, form text, product names, operator names." },
+      "label":    { "displayName": "Label",      "purpose": "Field labels above inputs, column headers. Always uppercase + tracked." },
+      "caption":  { "displayName": "Caption",    "purpose": "Timestamps, secondary metadata, muted helper copy." }
+    },
+    "shadows": [
+      { "name": "surface-card",     "value": "inset 0 1px 0 rgba(255,255,255,0.85), 0 1px 3px rgba(0,0,0,0.03), 0 8px 24px rgba(0,0,0,0.05)", "purpose": "Main page content panels. 20px radius. Soft ambient lift." },
+      { "name": "surface-elevated", "value": "inset 0 1px 0 rgba(255,255,255,0.85), 0 4px 6px rgba(0,0,0,0.04), 0 20px 40px rgba(0,0,0,0.10)", "purpose": "Modals, dialogs, popovers. 16px radius. Floats above page." },
+      { "name": "surface-sidebar",  "value": "4px 0 32px rgba(0,0,0,0.06)", "purpose": "Persistent left nav. Directional rightward separation." },
+      { "name": "surface-card-dark","value": "inset 0 1px 0 rgba(255,255,255,0.11), inset 0 0 0 1px rgba(255,255,255,0.06), 0 0 0 1px rgba(0,0,0,0.20), 0 1px 1px -0.5px rgba(0,0,0,0.18), 0 3px 3px -1.5px rgba(0,0,0,0.18), 0 6px 6px -3px rgba(0,0,0,0.18), 0 12px 12px -6px rgba(0,0,0,0.18), 0 24px 24px -12px rgba(0,0,0,0.18), 0 48px 48px -24px rgba(0,0,0,0.18)", "purpose": "surface-card in dark mode. Multi-layer cascade needed because tonal separation is insufficient on near-black." }
+    ],
+    "motion": [
+      { "name": "ease-standard", "value": "cubic-bezier(0.4, 0, 0.2, 1)", "purpose": "Default easing for all state transitions. Pill tab indicator, color transitions." },
+      { "name": "ease-out-gentle", "value": "ease-out", "purpose": "Fade-in animation on initial content render." },
+      { "name": "duration-fast",   "value": "200ms", "purpose": "Interactive state changes: hover, focus, active. Never longer." },
+      { "name": "duration-reveal", "value": "250ms", "purpose": "Content fade-in on mount (animate-fade-in)." },
+      { "name": "duration-skeleton","value": "1500ms", "purpose": "Skeleton shimmer loop (skeleton-pulse)." }
+    ],
+    "breakpoints": [
+      { "name": "sm",  "value": "640px" },
+      { "name": "md",  "value": "768px" },
+      { "name": "lg",  "value": "1024px" },
+      { "name": "xl",  "value": "1280px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Sole primary CTA per view. Burnt Espresso fill, white text. Used for submit, save, and confirm actions.",
+      "html": "<button class=\"ds-btn-primary\">Guardar cambios</button>",
+      "css": ".ds-btn-primary { display: inline-flex; align-items: center; justify-content: center; height: 32px; padding: 0 10px; background: #7a3e10; color: #ffffff; font-family: 'DM Sans', ui-sans-serif, sans-serif; font-size: 14px; font-weight: 500; border-radius: 8px; border: 1px solid transparent; cursor: pointer; transition: opacity 200ms cubic-bezier(0.4,0,0.2,1); outline: none; white-space: nowrap; } .ds-btn-primary:hover { opacity: 0.9; } .ds-btn-primary:focus-visible { border-color: #7a3e10; box-shadow: 0 0 0 3px rgba(122,62,16,0.50); } .ds-btn-primary:active { transform: translateY(1px); } .ds-btn-primary:disabled { opacity: 0.5; pointer-events: none; }"
+    },
+    {
+      "name": "Outline Button",
+      "kind": "button",
+      "refersTo": "button-outline",
+      "description": "Secondary action alongside a primary. Tan Border stroke, Warm Ivory fill. Fills Sand Dune on hover.",
+      "html": "<button class=\"ds-btn-outline\">Cancelar</button>",
+      "css": ".ds-btn-outline { display: inline-flex; align-items: center; justify-content: center; height: 32px; padding: 0 10px; background: #fbfaf2; color: #1c1008; font-family: 'DM Sans', ui-sans-serif, sans-serif; font-size: 14px; font-weight: 500; border-radius: 8px; border: 1px solid #e0d4c0; cursor: pointer; transition: background 200ms cubic-bezier(0.4,0,0.2,1), color 200ms; outline: none; white-space: nowrap; } .ds-btn-outline:hover { background: #ede6dc; color: #1c1008; } .ds-btn-outline:focus-visible { border-color: #7a3e10; box-shadow: 0 0 0 3px rgba(122,62,16,0.50); } .ds-btn-outline:active { transform: translateY(1px); } .ds-btn-outline:disabled { opacity: 0.5; pointer-events: none; }"
+    },
+    {
+      "name": "Ghost Button",
+      "kind": "button",
+      "refersTo": "button-ghost",
+      "description": "Low-emphasis action inside surfaces. Transparent at rest, Pale Linen fill on hover.",
+      "html": "<button class=\"ds-btn-ghost\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><path d=\"M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7\"/><path d=\"M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z\"/></svg> Editar</button>",
+      "css": ".ds-btn-ghost { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 10px; background: transparent; color: #8a6848; font-family: 'DM Sans', ui-sans-serif, sans-serif; font-size: 14px; font-weight: 500; border-radius: 8px; border: 1px solid transparent; cursor: pointer; transition: background 200ms cubic-bezier(0.4,0,0.2,1), color 200ms; outline: none; white-space: nowrap; } .ds-btn-ghost:hover { background: #f0e8de; color: #1c1008; } .ds-btn-ghost:focus-visible { border-color: #7a3e10; box-shadow: 0 0 0 3px rgba(122,62,16,0.50); } .ds-btn-ghost:active { transform: translateY(1px); }"
+    },
+    {
+      "name": "Cancel Button",
+      "kind": "button",
+      "refersTo": "button-cancel",
+      "description": "Secondary action in destructive dialogs. Outline at rest, progressively reddens on hover to telegraph the pairing.",
+      "html": "<button class=\"ds-btn-cancel\">Cancelar</button>",
+      "css": ".ds-btn-cancel { display: inline-flex; align-items: center; justify-content: center; height: 32px; padding: 0 10px; background: #fbfaf2; color: #1c1008; font-family: 'DM Sans', ui-sans-serif, sans-serif; font-size: 14px; font-weight: 500; border-radius: 8px; border: 1px solid #e0d4c0; cursor: pointer; transition: background 200ms cubic-bezier(0.4,0,0.2,1), color 200ms, border-color 200ms; outline: none; } .ds-btn-cancel:hover { border-color: #fca5a5; background: rgba(254,242,242,0.6); color: #b91c1c; } .ds-btn-cancel:focus-visible { border-color: #fca5a5; box-shadow: 0 0 0 3px rgba(252,165,165,0.60); }"
+    },
+    {
+      "name": "Text Input",
+      "kind": "input",
+      "refersTo": "input-default",
+      "description": "Standard form control. Clean Card fill, Tan Border stroke, 8px radius. Burnt Espresso focus ring.",
+      "html": "<div class=\"ds-field\"><label class=\"ds-label\">Nombre</label><input class=\"ds-input\" type=\"text\" placeholder=\"Nombre del negocio\" /></div>",
+      "css": ".ds-field { display: flex; flex-direction: column; gap: 6px; } .ds-label { font-family: 'DM Sans', ui-sans-serif, sans-serif; font-size: 10px; font-weight: 500; letter-spacing: 0.06em; text-transform: uppercase; color: #b09880; } .ds-input { height: 32px; width: 100%; padding: 0 10px; background: #ffffff; color: #1c1008; font-family: 'DM Sans', ui-sans-serif, sans-serif; font-size: 14px; border: 1px solid #e0d4c0; border-radius: 8px; outline: none; transition: border-color 200ms cubic-bezier(0.4,0,0.2,1), box-shadow 200ms; } .ds-input::placeholder { color: #b09880; } .ds-input:focus { border-color: #7a3e10; box-shadow: 0 0 0 3px rgba(122,62,16,0.50); } .ds-input:disabled { background: rgba(224,212,192,0.5); opacity: 0.5; cursor: not-allowed; }"
+    },
+    {
+      "name": "Badge Primary",
+      "kind": "chip",
+      "refersTo": "badge-primary",
+      "description": "Status indicator, category label, count. Burnt Espresso fill. Pill-shaped.",
+      "html": "<span class=\"ds-badge-primary\">Activo</span>",
+      "css": ".ds-badge-primary { display: inline-flex; align-items: center; height: 20px; padding: 0 8px; background: #7a3e10; color: #ffffff; font-family: 'DM Sans', ui-sans-serif, sans-serif; font-size: 12px; font-weight: 500; border-radius: 9999px; white-space: nowrap; }"
+    },
+    {
+      "name": "Badge Secondary",
+      "kind": "chip",
+      "refersTo": "badge-secondary",
+      "description": "Neutral or inactive tags. Sand Dune fill, Dark Roast text.",
+      "html": "<span class=\"ds-badge-secondary\">Cajero</span>",
+      "css": ".ds-badge-secondary { display: inline-flex; align-items: center; height: 20px; padding: 0 8px; background: #ede6dc; color: #1c1008; font-family: 'DM Sans', ui-sans-serif, sans-serif; font-size: 12px; font-weight: 500; border-radius: 9999px; white-space: nowrap; }"
+    },
+    {
+      "name": "Surface Card",
+      "kind": "card",
+      "refersTo": "button-primary",
+      "description": "Primary page section container. Noise-textured, warm gradient, soft ambient shadow. 20px radius. Every major page section lives in one.",
+      "html": "<div class=\"ds-surface-card\"><h2 class=\"ds-card-heading\">Negocio</h2><p class=\"ds-card-description\">Actualizá los datos visibles en el sistema y el catálogo público.</p></div>",
+      "css": ".ds-surface-card { padding: 24px; border-radius: 20px; border: 1px solid rgba(224,212,192,0.50); background-color: #ffffff; background-image: linear-gradient(145deg, #ffffff 0%, #f5f0e8 100%); box-shadow: inset 0 1px 0 rgba(255,255,255,0.85), 0 1px 3px rgba(0,0,0,0.03), 0 8px 24px rgba(0,0,0,0.05); } .ds-card-heading { font-family: 'Sora', ui-sans-serif, sans-serif; font-size: 16px; font-weight: 600; color: #1c1008; margin: 0 0 4px; } .ds-card-description { font-family: 'DM Sans', ui-sans-serif, sans-serif; font-size: 14px; color: #8a6848; margin: 0; }"
+    },
+    {
+      "name": "Pill Tabs",
+      "kind": "custom",
+      "refersTo": "button-secondary",
+      "description": "Filter/segment control for view-level switching. Sand Dune container, pill-shaped. Active tab has white background. Indicator animates via CSS transform.",
+      "html": "<div class=\"ds-pill-tabs\" role=\"tablist\"><div class=\"ds-pill-indicator\" style=\"width:72px;transform:translateX(0)\"></div><button class=\"ds-pill-tab ds-pill-tab--active\" role=\"tab\" aria-selected=\"true\">Hoy</button><button class=\"ds-pill-tab\" role=\"tab\" aria-selected=\"false\">Semana</button><button class=\"ds-pill-tab\" role=\"tab\" aria-selected=\"false\">Mes</button></div>",
+      "css": ".ds-pill-tabs { position: relative; display: inline-flex; align-items: center; background: #ede6dc; border-radius: 9999px; padding: 4px; gap: 2px; } .ds-pill-indicator { position: absolute; top: 4px; height: calc(100% - 8px); background: #ffffff; border-radius: 9999px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); pointer-events: none; transition: transform 200ms cubic-bezier(0.4,0,0.2,1), width 200ms cubic-bezier(0.4,0,0.2,1); will-change: transform, width; } .ds-pill-tab { position: relative; z-index: 10; padding: 6px 16px; font-family: 'DM Sans', ui-sans-serif, sans-serif; font-size: 14px; font-weight: 500; color: #8a6848; border: none; background: transparent; border-radius: 9999px; cursor: pointer; transition: color 200ms; } .ds-pill-tab--active { color: #1c1008; font-weight: 600; } .ds-pill-tab:hover:not(.ds-pill-tab--active) { color: #1c1008; }"
+    },
+    {
+      "name": "Permission Toggle",
+      "kind": "custom",
+      "refersTo": "button-primary",
+      "description": "Custom switch for operator permission management. Off: Muted Sienna fill. On: Burnt Espresso fill. Thumb animates right on active.",
+      "html": "<div class=\"ds-toggle-row\"><span class=\"ds-toggle-label\">Ventas</span><button class=\"ds-toggle ds-toggle--on\" role=\"switch\" aria-checked=\"true\"><span class=\"ds-toggle-thumb\"></span></button></div>",
+      "css": ".ds-toggle-row { display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; } .ds-toggle-label { font-family: 'DM Sans', ui-sans-serif, sans-serif; font-size: 14px; color: #1c1008; } .ds-toggle { position: relative; width: 36px; height: 20px; border-radius: 9999px; border: none; background: #b09880; cursor: pointer; transition: background 200ms cubic-bezier(0.4,0,0.2,1); padding: 0; } .ds-toggle--on { background: #7a3e10; } .ds-toggle-thumb { position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 9999px; background: #ffffff; box-shadow: 0 1px 2px rgba(0,0,0,0.15); transition: transform 200ms cubic-bezier(0.4,0,0.2,1); } .ds-toggle--on .ds-toggle-thumb { transform: translateX(16px); }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Calibrated Counter",
+    "overview": "Pulsar POS is a tool used at a physical counter under ambient shop lighting, by hands that have already rung up a hundred transactions today. The interface should feel like a well-worn but perfectly-calibrated instrument — warm paper tones, ink-brown type, tactile states that respond without drama. The name carries this double meaning: the physical press of a key and the compressed precision of a neutron star. Every pixel either earns speed or earns trust; nothing else.\n\nThe palette is warm ivory in light mode (the color of a receipt, of a ruled notebook page) and near-black with amber accents in dark mode (the color of a dim storeroom, a screen at the back of a quiet shop). Surfaces have subtle noise texture and soft gradients that prevent the flatness of generic SaaS, without calling attention to themselves. The design should feel like it was crafted, not generated.\n\nThis system explicitly rejects: generic SaaS dashboard look (blue/purple palette, hero metrics with glowing cards), dated desktop POS UI (grey Windows forms, cluttered toolbars), and anything that requires a manual to operate.",
+    "keyCharacteristics": [
+      "Warm ivory / near-black surfaces tinted toward the brand hue, never pure white or pure black",
+      "Single brand accent (Burnt Espresso in light, Amber Ember in dark) used only on primary actions, active states, and critical indicators",
+      "Two-font system: Sora for semantic headings and prominent values; DM Sans for all UI text, labels, tables, forms",
+      "Noise grain + warm diagonal gradient on all major surfaces — the system's signature texture",
+      "Flat-by-default with three named elevation levels: card, elevated, sidebar",
+      "Restrained motion — 200ms standard, ease-standard only, no choreography"
+    ],
+    "rules": [
+      { "name": "The One Accent Rule",       "body": "Burnt Espresso (or Amber Ember in dark) is used on ≤10% of any given screen. Primary CTA, focus rings, active nav, toggle-on. Nothing else.",                             "section": "colors" },
+      { "name": "The Warmth Floor Rule",     "body": "No surface or text color is pure white, pure black, or RGB-neutral grey. Every token carries a minimum hue of 45–80° with non-zero chroma.",                             "section": "colors" },
+      { "name": "The Font Split Rule",       "body": "Sora for h1–h6 and .text-emphasis. DM Sans for everything operational. Never Sora on labels, buttons, table cells, or form fields.",                                       "section": "typography" },
+      { "name": "The Flat-at-Rest Rule",     "body": "Surfaces are flat at rest. Shadows appear only as structural elevation indicators. Hover state is background color change, never a shadow addition.",                       "section": "elevation" },
+      { "name": "The No-Nest Rule",          "body": ".surface-card inside .surface-card is never correct. .surface-elevated is always a float. The only permitted nested pairing is Card inside surface-card.",                   "section": "components" }
+    ],
+    "dos": [
+      "Do use --primary exclusively on the single primary action per view, focus rings, and active states.",
+      "Do apply .surface-card to all major page content sections and .surface-elevated to all floating layers.",
+      "Do use Sora (font-display) for all h1–h6 elements and .text-emphasis data values. DM Sans for everything else.",
+      "Do use opacity modifiers (/10, /30, /50) for subtle fills rather than new hex values.",
+      "Do place error messages inline, adjacent to the field that caused them, in text-xs text-destructive.",
+      "Do use the cancel button variant as the secondary action in destructive dialogs.",
+      "Do size touch targets at ≥32px height; 44px for primary actions on tablet POS views.",
+      "Do use .text-label (10px, uppercase, tracked) for all form field labels and table column headers."
+    ],
+    "donts": [
+      "Don't use a blue/purple palette, hero metrics with glowing cards, or any generic SaaS dashboard aesthetic.",
+      "Don't use dated desktop POS aesthetics: grey forms, cluttered toolbars, raised Windows-era buttons.",
+      "Don't use border-left or border-right greater than 1px as a colored stripe on cards, list items, or callouts.",
+      "Don't use gradient text (background-clip: text with a gradient).",
+      "Don't add glassmorphism (backdrop-filter: blur) to any standard UI surface.",
+      "Don't use #000000 or #ffffff as actual color values. Every surface and text color is tinted.",
+      "Don't nest .surface-card inside .surface-card, or .surface-elevated inside any in-flow surface.",
+      "Don't use Sora for button labels, form field text, table content, or helper copy.",
+      "Don't add decorative motion. animate-fade-in is for initial content reveal only.",
+      "Don't show raw Supabase or server error messages to users without a human-readable wrapper."
+    ]
+  }
+}

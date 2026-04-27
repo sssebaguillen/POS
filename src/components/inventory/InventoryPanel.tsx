@@ -77,6 +77,7 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
   const formatMoney = useFormatMoney()
 
   const scrollContainerRef = useRef<HTMLDivElement>(null)
+  const deleteTimersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map())
   const router = useRouter()
 
   const supabase = useMemo(() => createClient(), [])
@@ -152,6 +153,12 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
     return () => el.removeEventListener('scroll', onScroll)
   }, [filtered.length, visibleCount])
 
+  // Clear any pending deferred deletes on unmount
+  useEffect(() => {
+    const timers = deleteTimersRef.current
+    return () => { timers.forEach(id => clearTimeout(id)) }
+  }, [])
+
   const activeProducts = products.filter(p => p.is_active)
   const totalStock = activeProducts.reduce((acc, p) => acc + p.stock, 0)
   const inventoryValue = activeProducts.reduce((acc, p) => acc + p.cost * p.stock, 0)
@@ -167,7 +174,7 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
 
   const updateProduct = useCallback(async (productId: string, values: Partial<InventoryProduct>) => {
     if (readOnly) {
-      setCrudError('Tu rol tiene acceso de solo lectura para stock.')
+      setCrudError('No tenés permiso para editar el inventario.')
       return
     }
 
@@ -259,7 +266,7 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
 
   const handleDeleteProductImpl = useCallback((product: InventoryProduct) => {
     if (readOnly) {
-      setCrudError('Tu rol tiene acceso de solo lectura para stock.')
+      setCrudError('No tenés permiso para editar el inventario.')
       return
     }
 
@@ -268,26 +275,47 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
       return
     }
 
+    const bid = businessId
+    const TOAST_DURATION = 6000
+
     setPendingConfirm({
       title: `Eliminar "${product.name}"`,
-      message: 'Esta accion no se puede deshacer.',
-      onConfirm: async () => {
+      message: 'El producto será eliminado. Tendrás unos segundos para deshacer.',
+      onConfirm: () => {
         setCrudError(null)
-        setLoadingId(product.id)
 
-        const { error } = await supabase
-          .from('products')
-          .delete()
-          .eq('id', product.id)
-          .eq('business_id', businessId)
+        // Optimistically remove from UI immediately
+        setProducts(prev => prev.filter(p => p.id !== product.id))
 
-        if (!error) {
-          setProducts(prev => prev.filter(p => p.id !== product.id))
-          showToast({ message: 'Producto eliminado' })
-        } else {
-          showToast({ message: error.message })
-        }
-        setLoadingId(null)
+        showToast({
+          message: `"${product.name}" eliminado`,
+          duration: TOAST_DURATION,
+          onUndo: () => {
+            const timer = deleteTimersRef.current.get(product.id)
+            if (timer !== undefined) {
+              clearTimeout(timer)
+              deleteTimersRef.current.delete(product.id)
+            }
+            setProducts(prev => [product, ...prev])
+          },
+        })
+
+        // Schedule actual DB delete after toast expires
+        const timer = setTimeout(async () => {
+          deleteTimersRef.current.delete(product.id)
+          const { error } = await supabase
+            .from('products')
+            .delete()
+            .eq('id', product.id)
+            .eq('business_id', bid)
+          if (error) {
+            // DB delete failed — restore the product and surface the error
+            setProducts(prev => [product, ...prev])
+            setCrudError(error.message)
+          }
+        }, TOAST_DURATION + 500)
+
+        deleteTimersRef.current.set(product.id, timer)
       },
     })
   }, [businessId, readOnly, showToast, supabase])
@@ -322,7 +350,7 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
 
   const handleEdit = useCallback((product: InventoryProduct) => {
     if (readOnly) {
-      setCrudError('Tu rol tiene acceso de solo lectura para stock.')
+      setCrudError('No tenés permiso para editar el inventario.')
       return
     }
     setEditingProduct(product)
@@ -391,9 +419,9 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
     const discontinued = result?.discontinued ?? 0
 
     if (discontinued > 0 && deleted > 0) {
-      showToast({ message: `${deleted} eliminados, ${discontinued} discontinuados (tenian ventas)` })
+      showToast({ message: `${deleted} eliminados, ${discontinued} discontinuados (tenían ventas)` })
     } else if (discontinued > 0) {
-      showToast({ message: `${discontinued} productos discontinuados (tenian ventas)` })
+      showToast({ message: `${discontinued} productos discontinuados (tenían ventas)` })
     } else {
       showToast({ message: `${deleted} productos eliminados` })
     }
@@ -468,7 +496,7 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
     }
     const result = data as { updated: number } | null
     const catName = categoryId ? categories.find(c => c.id === categoryId)?.name ?? '' : 'ninguna'
-    showToast({ message: `${result?.updated ?? 0} productos → categoria: ${catName}` })
+    showToast({ message: `${result?.updated ?? 0} productos → categoría: ${catName}` })
     // Actualizar estado local directamente
     const nextCat = categoryId ? categories.find(c => c.id === categoryId) ?? null : null
     setProducts(prev => prev.map(p =>
@@ -515,7 +543,7 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
         <div className="flex-1 overflow-y-auto p-6">
           <div className="surface-card p-6">
             <p className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
-              No se pudo obtener el negocio asociado al usuario actual.
+              No se encontró tu negocio. Intentá recargar la página.
             </p>
           </div>
         </div>
@@ -577,11 +605,11 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
       </PageHeader>
 
       <div className="bg-surface border-b border-edge/60 px-5 py-3">
-        <div className="flex items-center gap-3 flex-wrap">
+        <div className="flex items-center gap-3">
           <Input
             value={query}
             onChange={e => setQuery(e.target.value)}
-            placeholder="Buscar producto, marca o codigo..."
+            placeholder="Buscar producto, marca o código..."
             className="h-9 max-w-xs rounded-lg text-sm"
           />
           <button
@@ -629,9 +657,8 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
             ))}
           </div>
 
-          {/* Acciones de selección + contador — siempre pegados a la derecha */}
           <div className="flex items-center gap-2 ml-auto shrink-0">
-            <span className="text-xs text-subtle shrink-0">
+            <span className="text-xs text-subtle shrink-0 whitespace-nowrap">
               {filtered.length} productos
               {selectionMode && selectedIds.size > 0 && (
                 <span className="text-primary font-medium"> ({selectedIds.size} sel.)</span>
@@ -642,7 +669,7 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
               <button
                 type="button"
                 onClick={() => setSelectionMode(true)}
-                className="inline-flex items-center gap-1 rounded-md border border-edge px-2.5 py-1 text-xs font-medium text-subtle hover:text-body hover:bg-surface-alt transition-colors"
+                className="inline-flex items-center gap-1 rounded-md border border-edge px-2.5 py-1.5 text-xs font-medium text-subtle hover:text-body hover:bg-surface-alt transition-colors touch-manipulation"
               >
                 <CheckSquare size={13} />
                 Seleccionar
@@ -654,7 +681,7 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
                 <button
                   type="button"
                   onClick={selectedIds.size === filtered.length ? handleDeselectAll : handleSelectAll}
-                  className="inline-flex items-center gap-1 rounded-md border border-primary/30 bg-primary/5 px-2.5 py-1 text-xs font-medium text-primary hover:bg-primary/10 transition-colors"
+                  className="inline-flex items-center gap-1 rounded-md border border-primary/30 bg-primary/5 px-2.5 py-1.5 text-xs font-medium text-primary hover:bg-primary/10 transition-colors touch-manipulation"
                 >
                   <CheckSquare size={12} />
                   {selectedIds.size === filtered.length ? 'Deseleccionar todo' : 'Seleccionar todo'}
@@ -662,30 +689,31 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
                 <button
                   type="button"
                   onClick={handleCloseSelection}
-                  className="inline-flex items-center gap-1 rounded-md border border-edge px-2.5 py-1 text-xs font-medium text-subtle hover:text-body hover:bg-surface-alt transition-colors"
+                  className="inline-flex items-center gap-1 rounded-md border border-edge px-2.5 py-1.5 text-xs font-medium text-subtle hover:text-body hover:bg-surface-alt transition-colors touch-manipulation"
                 >
                   <X size={12} />
-                  Cancelar seleccion
+                  Cancelar selección
                 </button>
               </>
             )}
           </div>
 
-          {/* View toggle — siempre al final */}
           <div className="flex items-center gap-1 shrink-0 border border-edge rounded-lg p-0.5">
             <button
               type="button"
               onClick={() => { setViewMode('list'); document.cookie = 'inventory-view-mode=list; path=/; max-age=31536000; SameSite=Lax'; localStorage.setItem('inventory-view-mode', 'list') }}
-              className={`p-1.5 rounded-md transition-colors ${viewMode === 'list' ? 'bg-primary text-primary-foreground' : 'text-subtle hover:text-body hover:bg-surface-alt'}`}
+              className={`p-2 rounded-md transition-colors touch-manipulation ${viewMode === 'list' ? 'bg-primary text-primary-foreground' : 'text-subtle hover:text-body hover:bg-surface-alt'}`}
               title="Vista lista"
+              aria-label="Vista lista"
             >
               <LayoutList size={15} />
             </button>
             <button
               type="button"
               onClick={() => { setViewMode('grid'); document.cookie = 'inventory-view-mode=grid; path=/; max-age=31536000; SameSite=Lax'; localStorage.setItem('inventory-view-mode', 'grid') }}
-              className={`p-1.5 rounded-md transition-colors ${viewMode === 'grid' ? 'bg-primary text-primary-foreground' : 'text-subtle hover:text-body hover:bg-surface-alt'}`}
-              title="Vista cuadricula"
+              className={`p-2 rounded-md transition-colors touch-manipulation ${viewMode === 'grid' ? 'bg-primary text-primary-foreground' : 'text-subtle hover:text-body hover:bg-surface-alt'}`}
+              title="Vista cuadrícula"
+              aria-label="Vista cuadrícula"
             >
               <LayoutGrid size={15} />
             </button>
@@ -694,7 +722,7 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
       </div>
 
       {activeFilterCount > 0 && (
-        <div className="flex flex-wrap items-center gap-2 px-5 py-2 bg-surface border-b border-edge/60">
+        <div className="flex flex-wrap items-center gap-2 px-5 py-2.5 bg-surface border-b border-edge/60">
           {selectedCategories.map(id => {
             const cat = categories.find(c => c.id === id)
             if (!cat) return null
@@ -704,7 +732,8 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
                 <button
                   type="button"
                   onClick={() => setSelectedCategories(prev => prev.filter(c => c !== id))}
-                  className="hover:opacity-70 transition-opacity"
+                  aria-label={`Quitar categoría ${cat.name}`}
+                  className="hover:opacity-70 transition-opacity p-0.5 -m-0.5 touch-manipulation"
                 >
                   <X size={11} />
                 </button>
@@ -720,7 +749,8 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
                 <button
                   type="button"
                   onClick={() => setSelectedBrands(prev => prev.filter(b => b !== id))}
-                  className="hover:opacity-70 transition-opacity"
+                  aria-label={`Quitar marca ${brand.name}`}
+                  className="hover:opacity-70 transition-opacity p-0.5 -m-0.5 touch-manipulation"
                 >
                   <X size={11} />
                 </button>
@@ -744,18 +774,18 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
       )}
 
       {readOnly && (
-        <div className="mx-5 mt-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-700 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-700">
-          Acceso de solo lectura habilitado para stock.
+        <div className="mx-5 mt-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-700 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-400">
+          Solo podés ver el inventario, sin permiso para editarlo.
         </div>
       )}
 
       <div ref={scrollContainerRef} className="flex-1 overflow-y-auto p-5">
         {filtered.length === 0 ? (
           <div className="surface-card p-12 text-center text-hint">
-            No hay productos con los filtros actuales
+            Sin resultados. Probá ajustando los filtros.
           </div>
         ) : viewMode === 'grid' ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4">
             {visibleProducts.map(product => (
               <ProductCard
                 key={product.id}
@@ -781,7 +811,7 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
                   <TableHead className="w-10" />
                   <TableHead>Estado</TableHead>
                   <TableHead>Producto</TableHead>
-                  <TableHead className="hidden xl:table-cell">Categoria</TableHead>
+                  <TableHead className="hidden xl:table-cell">Categoría</TableHead>
                   <TableHead className="hidden xl:table-cell">Marca</TableHead>
                   <TableHead className="text-right hidden md:table-cell">Venta</TableHead>
                   <TableHead className="text-right hidden lg:table-cell">Costo</TableHead>
@@ -813,7 +843,7 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
         )}
         {visibleCount < filtered.length && (
           <div className="py-4 text-center text-xs text-subtle">
-            Mostrando {visibleCount} de {filtered.length} — seguí scrolleando para ver más
+            Mostrando {visibleCount} de {filtered.length}. Seguí scrolleando para ver más.
           </div>
         )}
       </div>
@@ -944,7 +974,7 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
           <span className="w-2 h-2 rounded-full bg-amber-500" />
           {lowStock} stock bajo
         </span>
-        <span className="ml-auto">{categoryCount} categorias</span>
+        <span className="ml-auto">{categoryCount} categorías</span>
       </div>
 
       {quickEditCategoryProduct !== null && businessId && (
