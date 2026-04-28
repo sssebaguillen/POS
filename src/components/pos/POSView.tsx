@@ -12,6 +12,7 @@ import type { ProductWithCategory, ActiveFilter } from '@/components/pos/types'
 import type { PriceList, PriceListOverride } from '@/lib/types'
 import type { ActiveOperator } from '@/lib/operator'
 import { OWNER_PERMISSIONS } from '@/lib/operator'
+import { trackFeatureUsed } from '@/lib/analytics'
 
 interface Props {
   products: ProductWithCategory[]
@@ -176,6 +177,7 @@ export default function POSView({ products, businessId, businessName, priceLists
     const barcodeMatch = products.find(p => p.barcode === trimmed)
     if (barcodeMatch) {
       addItem(barcodeMatch)
+      trackFeatureUsed('barcode_scan')
       showScanFeedback('found')
       return true
     }

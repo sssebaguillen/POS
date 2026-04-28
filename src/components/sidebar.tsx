@@ -11,6 +11,7 @@ import { useTheme } from '@/components/shared/theme'
 import OperatorSwitcher from '@/components/operator/OperatorSwitcher'
 import OnboardingChecklist from '@/components/onboarding/OnboardingChecklist'
 import { parsePermissions, type Permissions, type UserRole } from '@/lib/operator'
+import { resetTracking } from '@/lib/analytics'
 
 interface NavLink {
   href: string
@@ -132,6 +133,7 @@ export default function Sidebar({
   const showBusinessSessionActions = isOwnerSessionActive || isOperatorSelectRoute
 
   async function handleLogout() {
+    resetTracking()
     await supabase.auth.signOut()
     await fetch('/api/operator/logout', { method: 'POST' })
     router.push('/login')

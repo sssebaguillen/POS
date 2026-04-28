@@ -5,6 +5,7 @@ export const PAYMENT_COLORS: Record<PaymentMethod, string> = {
   card: 'bg-indigo-500',
   transfer: 'bg-amber-500',
   mercadopago: 'bg-sky-500',
+  credit: 'bg-violet-500',
 }
 
 export function isPaymentMethod(value: string | null): value is PaymentMethod {

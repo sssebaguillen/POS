@@ -22,6 +22,7 @@ import type { PriceList, PriceListOverride } from '@/lib/types'
 import type { PriceListProduct } from '@/components/price-lists/types'
 import type { PriceListExportItem } from '@/components/price-lists/ExportPriceListModal'
 import { calculateProductPrice } from '@/lib/price-lists'
+import { trackFeatureUsed } from '@/lib/analytics'
 
 interface PriceListsPanelProps {
   businessId: string
@@ -60,6 +61,8 @@ export default function PriceListsPanel({
   products,
   initialOverrides,
 }: PriceListsPanelProps) {
+  useEffect(() => { trackFeatureUsed('price_lists') }, [])
+
   const [lists, setLists] = useState<PriceList[]>(initialLists)
   const [overrides, setOverrides] = useState<PriceListOverride[]>(initialOverrides)
   const [activeListId, setActiveListId] = useState<string | null>(initialLists[0]?.id ?? null)

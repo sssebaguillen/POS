@@ -18,6 +18,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import posthog from 'posthog-js'
 
 type ConfirmState = { title: string; message: string; onConfirm: () => void } | null
 
@@ -134,6 +135,7 @@ export default function ProductsPanel({ businessId, initialProducts, categories,
           return
         }
 
+        posthog.capture('product_deleted', { product_id: product.id, product_name: product.name })
         setProducts(prev => prev.filter(item => item.id !== product.id))
         setLoadingId(null)
       },
@@ -279,7 +281,10 @@ export default function ProductsPanel({ businessId, initialProducts, categories,
         categories={categories}
         brands={brands}
         priceLists={priceLists}
-        onCreated={product => setProducts(prev => [product, ...prev])}
+        onCreated={product => {
+          posthog.capture('product_created', { product_id: product.id, product_name: product.name, price: product.price })
+          setProducts(prev => [product, ...prev])
+        }}
       />
 
       <ConfirmModal

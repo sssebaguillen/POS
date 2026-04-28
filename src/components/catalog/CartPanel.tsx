@@ -5,6 +5,7 @@ import { CheckCircle2, Minus, Plus, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import type { CatalogCartItem } from '@/components/catalog/types'
+import posthog from 'posthog-js'
 
 interface CartPanelProps {
   businessName: string
@@ -95,6 +96,13 @@ export default function CartPanel({
     const message = buildMessage()
     const encodedMessage = encodeURIComponent(message)
     const url = `https://wa.me/${normalizedWhatsapp}?text=${encodedMessage}`
+
+    posthog.capture('catalog_order_sent', {
+      total,
+      item_count: cartItems.length,
+      delivery_type: deliveryType,
+      business_name: businessName,
+    })
 
     window.open(url, '_blank', 'noopener,noreferrer')
     setOrderSent(true)

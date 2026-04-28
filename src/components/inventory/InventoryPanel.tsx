@@ -27,6 +27,7 @@ import { useToast } from '@/hooks/useToast'
 import { usePillIndicator } from '@/hooks/usePillIndicator'
 import Toast from '@/components/shared/Toast'
 import { useFormatMoney } from '@/lib/context/CurrencyContext'
+import { trackFeatureUsed } from '@/lib/analytics'
 
 const PAGE_SIZE = 60
 
@@ -403,6 +404,7 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
 
   const handleBulkDelete = useCallback(async () => {
     if (!businessId) return
+    trackFeatureUsed('bulk_action')
     setBulkLoading(true)
     const ids = Array.from(selectedIds)
     const { data, error } = await supabase.rpc('bulk_delete_products', {
@@ -558,7 +560,7 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
           variant="outline"
           size="sm"
           className="rounded-lg text-xs"
-          onClick={() => setShowImport(true)}
+          onClick={() => { setShowImport(true); trackFeatureUsed('import_products') }}
           disabled={readOnly || !businessId}
           title={readOnly ? 'Sin permiso de inventario' : undefined}
         >

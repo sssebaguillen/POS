@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import Link from 'next/link'
+import posthog from 'posthog-js'
 
 export const dynamic = 'force-dynamic'
 
@@ -24,12 +25,14 @@ export default function LoginPage() {
   async function handleLogin() {
     setLoading(true)
     setError('')
-    const { error } = await supabase.auth.signInWithPassword({ email, password })
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password })
     if (error) {
       setError('Email o contraseña incorrectos')
       setLoading(false)
       return
     }
+    posthog.identify(data.user.id, { email: data.user.email })
+    posthog.capture('user_logged_in', { email: data.user.email })
     router.push('/')
   }
 
@@ -49,6 +52,7 @@ export default function LoginPage() {
         redirectTo: 'https://pulsarpos.vercel.app/auth/update-password',
       })
       setForgotSent(true)
+      posthog.capture('password_reset_requested', { email: normalizedEmail })
     } catch {
       setForgotError('Ocurrió un error, intentá de nuevo')
     } finally {

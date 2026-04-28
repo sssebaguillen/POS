@@ -6,6 +6,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import type { Supplier } from './types'
+import posthog from 'posthog-js'
 
 interface Props {
   suppliers: Supplier[]
@@ -59,6 +60,7 @@ export default function SuppliersPanel({ suppliers, businessId, supabaseClient, 
       .single()
     setSaving(false)
     if (error || !data) { setFormError(error?.message ?? 'No se pudo crear el proveedor'); return }
+    posthog.capture('supplier_created', { supplier_id: (data as Supplier).id, supplier_name: form.name.trim() })
     onSuppliersChange([...suppliers, data as Supplier].sort((a, b) => a.name.localeCompare(b.name)))
     setForm(emptyForm)
     setShowForm(false)

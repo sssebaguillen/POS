@@ -1,10 +1,12 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { usePathname } from 'next/navigation'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Plus } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
+import posthog from 'posthog-js'
+import { trackFeatureUsed } from '@/lib/analytics'
 import { Button } from '@/components/ui/button'
 import PageHeader from '@/components/shared/PageHeader'
 import DateRangeFilter from '@/components/shared/DateRangeFilter'
@@ -50,6 +52,8 @@ export default function ExpensesView({
   to: initialTo,
   canUpdateStock = false,
 }: Props) {
+  useEffect(() => { trackFeatureUsed('expenses') }, [])
+
   const pathname = usePathname()
   const queryClient = useQueryClient()
   const supabase = useMemo(() => createClient(), [])
@@ -130,6 +134,7 @@ export default function ExpensesView({
   }
 
   function handleExpenseCreated() {
+    posthog.capture('expense_created')
     void queryClient.invalidateQueries({ queryKey: ['expenses'] })
   }
 

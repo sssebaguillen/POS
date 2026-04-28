@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { OPERATOR_ROLE_LABELS, PROFILE_ROLE_LABELS, type OperatorRole } from '@/lib/constants/domain'
+import { trackOperatorSwitch } from '@/lib/analytics'
 
 interface OperatorListItem {
   id: string
@@ -113,6 +114,8 @@ export default function OperatorSelectView({ ownerProfile, operators, availableO
       }
       return
     }
+
+    trackOperatorSwitch()
 
     window.location.href = '/pos'
   }

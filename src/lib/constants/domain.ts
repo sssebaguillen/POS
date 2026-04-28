@@ -1,5 +1,5 @@
 // Payment method keys must match the DB CHECK constraint exactly
-export const PAYMENT_METHODS = ['cash', 'card', 'transfer', 'mercadopago'] as const
+export const PAYMENT_METHODS = ['cash', 'card', 'transfer', 'mercadopago', 'credit'] as const
 export type PaymentMethod = typeof PAYMENT_METHODS[number]
 
 export const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
@@ -7,6 +7,7 @@ export const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
   card: 'Tarjeta',
   transfer: 'Transferencia',
   mercadopago: 'MercadoPago',
+  credit: 'Crédito',
 }
 
 // Operator role keys must match the DB CHECK constraint exactly

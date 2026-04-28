@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import posthog from 'posthog-js'
 
 // 🔥 ESTA LÍNEA ES OBLIGATORIA para que funcione el nonce + CSP
 export const dynamic = 'force-dynamic'
@@ -65,6 +66,9 @@ export default function RegisterPage() {
       setLoading(false)
       return
     }
+
+    posthog.identify(authData.user.id, { email, name: userName, business_name: businessName })
+    posthog.capture('user_signed_up', { email, name: userName, business_name: businessName })
 
     // Clear any stale operator cookies from a previous session
     await fetch('/api/operator/logout', { method: 'POST' })

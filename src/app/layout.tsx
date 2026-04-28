@@ -4,6 +4,7 @@ import { DM_Sans, Sora } from 'next/font/google'
 import './globals.css'
 import { ThemeProvider } from '@/components/shared/theme'
 import { SpeedInsights } from "@vercel/speed-insights/next"
+import PostHogPageView from '@/components/shared/PostHogPageView'
 
 const dmSans = DM_Sans({
   subsets: ['latin'],
@@ -34,7 +35,10 @@ export default async function RootLayout({
   return (
     <html lang="es" className={`${dmSans.variable} ${sora.variable}`} suppressHydrationWarning>
       <body className="font-sans antialiased">
-        <ThemeProvider>{children}</ThemeProvider>
+        <ThemeProvider>
+          {children}
+          <PostHogPageView />
+        </ThemeProvider>
         <SpeedInsights />
       </body>
     </html>

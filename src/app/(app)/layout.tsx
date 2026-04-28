@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import AppShell from '@/components/shared/AppShell'
 import FlashToast from '@/components/shared/FlashToast'
+import PostHogIdentify from '@/components/shared/PostHogIdentify'
 import QueryProvider from '@/providers/query-provider'
 import { cookies } from 'next/headers'
 import { getActiveOperator } from '@/lib/operator'
@@ -128,6 +129,9 @@ export default async function AppLayout({
           </CurrencyProvider>
         </QueryProvider>
       </AppShell>
+      {businessId && (
+        <PostHogIdentify userId={user.id} businessId={businessId} />
+      )}
       {showTour && onboardingProfileId ? (
         <OnboardingTour
           open={showTour}

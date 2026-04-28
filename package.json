@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev --webpack",
     "build": "next build",
     "start": "next start",
     "lint": "eslint"
@@ -23,6 +23,8 @@
     "hono": "^4.12.12",
     "lucide-react": "^0.577.0",
     "next": "^16.2.3",
+    "posthog-js": "^1.372.3",
+    "posthog-node": "^5.30.6",
     "radix-ui": "^1.4.3",
     "react": "19.2.3",
     "react-dom": "19.2.3",

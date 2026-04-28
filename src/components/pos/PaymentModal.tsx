@@ -1,27 +1,31 @@
 'use client'
 
 import { useCallback, useMemo, useState } from 'react'
-import { Printer, X } from 'lucide-react'
+import { Plus, Printer, X } from 'lucide-react'
 import ReceiptPreviewModal from '@/components/pos/ReceiptPreviewModal'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import SelectDropdown from '@/components/ui/SelectDropdown'
 import type { PaymentMethod, ReceiptData, ReceiptItemInput, SaleItemInput } from '@/lib/printer/types'
 import { PAYMENT_METHOD_LABELS, PAYMENT_METHODS } from '@/lib/constants/domain'
 import { useCurrency, useFormatMoney } from '@/lib/context/CurrencyContext'
 import { useCartStore } from '@/lib/store/cart.store'
 import { createClient } from '@/lib/supabase/client'
+import { trackSale } from '@/lib/analytics'
 
 const PAYMENT_ICONS: Record<PaymentMethod, string> = {
   cash: '$',
   card: 'TC',
   transfer: 'TR',
   mercadopago: 'MP',
+  credit: 'CR',
 }
 
 const PAYMENT_METHOD_OPTIONS = PAYMENT_METHODS.map(id => ({
   id,
   label: PAYMENT_METHOD_LABELS[id],
   icon: PAYMENT_ICONS[id],
+  value: id,
 }))
 
 interface Props {
@@ -51,24 +55,62 @@ export default function PaymentModal({
   onClose,
   onSaleCompleted,
 }: Props) {
-  const [method, setMethod] = useState<PaymentMethod>('cash')
+  // Single-mode state
+  const [primaryMethod, setPrimaryMethod] = useState<PaymentMethod>('cash')
   const [cashReceived, setCashReceived] = useState('')
+
+  // Mixed-mode state
+  const [isMixed, setIsMixed] = useState(false)
+  const [primaryMixedAmount, setPrimaryMixedAmount] = useState('')
+  const [secondaryMethod, setSecondaryMethod] = useState<PaymentMethod>('transfer')
+  const [secondaryAmount, setSecondaryAmount] = useState('')
+
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [receipt, setReceipt] = useState<ReceiptData | null>(null)
+
   const { clearCart } = useCartStore()
   const supabase = useMemo(() => createClient(), [])
   const formatMoney = useFormatMoney()
   const currency = useCurrency()
 
-  const parsedCashReceived = Number(cashReceived)
-  const validCashReceived = Number.isFinite(parsedCashReceived) ? parsedCashReceived : 0
+  // Single-mode derived
+  const parsedCash = Number(cashReceived)
+  const validCash = Number.isFinite(parsedCash) ? parsedCash : 0
+  const singleChange = primaryMethod === 'cash' && cashReceived ? Math.max(0, validCash - total) : 0
+  const singleCanConfirm = primaryMethod !== 'cash' || (cashReceived.trim() !== '' && validCash >= total)
 
-  const change = method === 'cash' && cashReceived
-    ? Math.max(0, validCashReceived - total)
-    : 0
+  // Mixed-mode derived
+  const validPrimary = Number(primaryMixedAmount) || 0
+  const validSecondary = Number(secondaryAmount) || 0
+  const mixedTotal = validPrimary + validSecondary
+  const mixedChange = Math.max(0, mixedTotal - total)
+  const mixedCanConfirm = validPrimary > 0 && validSecondary > 0 && mixedTotal >= total
 
-  const canConfirm = method !== 'cash' || (cashReceived.trim() !== '' && validCashReceived >= total)
+  const canConfirm = isMixed ? mixedCanConfirm : singleCanConfirm
+
+  function handlePrimaryMethodChange(method: PaymentMethod) {
+    setPrimaryMethod(method)
+    setCashReceived('')
+    if (method === secondaryMethod) {
+      const next = PAYMENT_METHODS.find(m => m !== method)
+      if (next) setSecondaryMethod(next)
+    }
+  }
+
+  function enterMixedMode() {
+    setPrimaryMixedAmount('')
+    setSecondaryAmount('')
+    const defaultSecondary = PAYMENT_METHODS.find(m => m !== primaryMethod)!
+    setSecondaryMethod(defaultSecondary)
+    setIsMixed(true)
+  }
+
+  function exitMixedMode() {
+    setIsMixed(false)
+    setPrimaryMixedAmount('')
+    setSecondaryAmount('')
+  }
 
   const closeModal = useCallback(() => {
     clearCart()
@@ -83,6 +125,13 @@ export default function PaymentModal({
 
     setError('')
     setLoading(true)
+
+    const payments = isMixed
+      ? [
+          { method: primaryMethod, amount: validPrimary },
+          { method: secondaryMethod, amount: validSecondary },
+        ]
+      : [{ method: primaryMethod, amount: primaryMethod === 'cash' ? validCash : total }]
 
     const { data: rpcResult, error: rpcError } = await supabase.rpc('create_sale_transaction', {
       p_business_id: businessId,
@@ -100,8 +149,7 @@ export default function PaymentModal({
         unit_price_override: item.unit_price_override,
         override_reason: item.override_reason,
       })),
-      p_payment_method: method,
-      p_payment_amount: total,
+      p_payments: payments,
     })
 
     const result = rpcResult as { success: boolean; sale_id?: string; created_at?: string; error?: string } | null
@@ -114,6 +162,7 @@ export default function PaymentModal({
       return
     }
 
+    const change = isMixed ? mixedChange : singleChange
     const nextReceipt: ReceiptData = {
       saleId: result.sale_id ?? '',
       businessName,
@@ -122,15 +171,21 @@ export default function PaymentModal({
       subtotal,
       discount,
       total,
-      paymentMethod: method,
-      cashReceived: method === 'cash' ? validCashReceived : null,
+      paymentMethod: primaryMethod,
+      cashReceived: !isMixed && primaryMethod === 'cash' ? validCash : null,
       change,
       currency,
     }
 
+    trackSale({
+      total,
+      itemCount: saleItems.length,
+      paymentMethods: isMixed ? [primaryMethod, secondaryMethod] : [primaryMethod],
+      isMultiPayment: isMixed,
+    })
+
     onSaleCompleted('Venta registrada')
     clearCart()
-
     setLoading(false)
 
     if (openReceiptPreview) {
@@ -166,47 +221,146 @@ export default function PaymentModal({
 
             <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain">
               <div className="p-5 space-y-4">
-                <div className="grid grid-cols-2 gap-2">
-                  {PAYMENT_METHOD_OPTIONS.map(m => (
-                    <button
-                      key={m.id}
-                      onClick={() => setMethod(m.id)}
-                      type="button"
-                      className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border text-sm font-medium transition-all ${
-                        method === m.id
-                          ? 'border-primary bg-primary text-primary-foreground'
-                          : 'border-edge text-body hover:border-primary/40'
-                      }`}
-                    >
-                      <span>{m.icon}</span>
-                      {m.label}
-                    </button>
-                  ))}
-                </div>
 
-                {method === 'cash' && (
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-medium text-subtle">Monto recibido</label>
-                    <Input
-                      type="number"
-                      placeholder="0"
-                      value={cashReceived}
-                      onChange={e => setCashReceived(e.target.value)}
-                      className="text-lg font-bold h-11"
-                      autoFocus
-                    />
-                    {cashReceived && validCashReceived >= total && (
-                      <div className="flex justify-between text-sm px-1">
-                        <span className="text-subtle">Vuelto</span>
-                        <span className="font-bold text-heading">
-                          {formatMoney(change)}
-                        </span>
+                {/* ── Single payment mode ── */}
+                {!isMixed && (
+                  <>
+                    <div className="grid grid-cols-2 gap-2">
+                      {PAYMENT_METHOD_OPTIONS.map(m => (
+                        <button
+                          key={m.id}
+                          onClick={() => handlePrimaryMethodChange(m.id)}
+                          type="button"
+                          className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border text-sm font-medium transition-all ${
+                            primaryMethod === m.id
+                              ? 'border-primary bg-primary text-primary-foreground'
+                              : 'border-edge text-body hover:border-primary/40'
+                          }`}
+                        >
+                          <span>{m.icon}</span>
+                          {m.label}
+                        </button>
+                      ))}
+                    </div>
+
+                    {primaryMethod === 'cash' && (
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-medium text-subtle">Monto recibido</label>
+                        <Input
+                          type="number"
+                          placeholder="0"
+                          value={cashReceived}
+                          onChange={e => setCashReceived(e.target.value)}
+                          className="text-lg font-bold h-11"
+                          autoFocus
+                        />
+                        {cashReceived && validCash >= total && (
+                          <div className="flex justify-between text-sm px-1">
+                            <span className="text-subtle">Vuelto</span>
+                            <span className="font-bold text-emerald-600">{formatMoney(singleChange)}</span>
+                          </div>
+                        )}
+                        {cashReceived && validCash < total && (
+                          <p className="text-xs text-red-500 px-1">
+                            Falta {formatMoney(total - validCash)}
+                          </p>
+                        )}
                       </div>
                     )}
-                    {cashReceived && validCashReceived < total && (
-                      <p className="text-xs text-red-500 px-1">
-                        Falta {formatMoney(total - validCashReceived)}
-                      </p>
+
+                    <button
+                      type="button"
+                      onClick={enterMixedMode}
+                      className="flex items-center gap-1.5 text-sm text-primary hover:text-primary/80 transition-colors font-medium"
+                    >
+                      <Plus size={15} />
+                      Agregar método
+                    </button>
+                  </>
+                )}
+
+                {/* ── Mixed payment mode ── */}
+                {isMixed && (
+                  <div className="space-y-3">
+                    {/* Primary row */}
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-medium text-subtle">Método 1</label>
+                      <div className="flex items-center gap-2">
+                        <div className="flex-1">
+                          <SelectDropdown
+                            value={primaryMethod}
+                            onChange={v => handlePrimaryMethodChange(v as PaymentMethod)}
+                            options={PAYMENT_METHODS.filter(m => m !== secondaryMethod).map(m => ({
+                              value: m,
+                              label: PAYMENT_METHOD_LABELS[m],
+                            }))}
+                            usePortal
+                          />
+                        </div>
+                        <Input
+                          type="number"
+                          placeholder="0"
+                          value={primaryMixedAmount}
+                          onChange={e => setPrimaryMixedAmount(e.target.value)}
+                          className="w-28 h-9 text-sm font-semibold text-right"
+                          autoFocus
+                        />
+                      </div>
+                    </div>
+
+                    {/* Secondary row */}
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <label className="text-xs font-medium text-subtle">Método 2</label>
+                        <button
+                          type="button"
+                          onClick={exitMixedMode}
+                          className="text-hint hover:text-red-500 transition-colors"
+                        >
+                          <X size={14} />
+                        </button>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="flex-1">
+                          <SelectDropdown
+                            value={secondaryMethod}
+                            onChange={v => setSecondaryMethod(v as PaymentMethod)}
+                            options={PAYMENT_METHODS.filter(m => m !== primaryMethod).map(m => ({
+                              value: m,
+                              label: PAYMENT_METHOD_LABELS[m],
+                            }))}
+                            usePortal
+                          />
+                        </div>
+                        <Input
+                          type="number"
+                          placeholder="0"
+                          value={secondaryAmount}
+                          onChange={e => setSecondaryAmount(e.target.value)}
+                          className="w-28 h-9 text-sm font-semibold text-right"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Mixed totals feedback */}
+                    {(validPrimary > 0 || validSecondary > 0) && (
+                      <div className="space-y-1 pt-1">
+                        <div className="flex justify-between text-sm px-1">
+                          <span className="text-subtle">Total recibido</span>
+                          <span className="font-semibold text-heading">{formatMoney(mixedTotal)}</span>
+                        </div>
+                        {mixedChange > 0 && (
+                          <div className="flex justify-between text-sm px-1">
+                            <span className="text-subtle">Vuelto</span>
+                            <span className="font-bold text-emerald-600">{formatMoney(mixedChange)}</span>
+                          </div>
+                        )}
+                        {mixedTotal < total && validPrimary > 0 && validSecondary > 0 && (
+                          <p className="text-xs text-red-500 px-1">
+                            Falta {formatMoney(total - mixedTotal)}
+                          </p>
+                        )}
+                      </div>
                     )}
                   </div>
                 )}
