@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { CheckCircle2, Minus, Plus, Trash2 } from 'lucide-react'
+import { AlertTriangle, CheckCircle2, Minus, Plus, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import type { CatalogCartItem } from '@/components/catalog/types'
@@ -297,9 +297,12 @@ export default function CartPanel({
       )}
 
       {!normalizedWhatsapp && (
-        <p className={`text-xs text-amber-600 dark:text-amber-400 ${isEmpty ? 'mt-4' : 'mt-3'}`}>
-          Este negocio todavía no configuró su número de WhatsApp.
-        </p>
+        <div className={`flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 dark:border-amber-800/40 dark:bg-amber-950/30 ${isEmpty ? 'mt-4' : 'mt-3'}`}>
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
+          <p className="text-xs text-amber-700 dark:text-amber-300">
+            Este negocio todavía no configuró su número de WhatsApp. No es posible enviar pedidos por ahora.
+          </p>
+        </div>
       )}
 
       <Button

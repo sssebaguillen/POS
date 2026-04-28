@@ -2,6 +2,7 @@
 
 import Image from 'next/image'
 import { ImageIcon, LayoutGrid, List, Plus, Search } from 'lucide-react'
+import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import SelectDropdown from '@/components/ui/SelectDropdown'
@@ -32,6 +33,24 @@ interface ProductGridProps {
 }
 
 const currencyFormatter = new Intl.NumberFormat('es-AR')
+
+function ProductImage({ imageUrl, name, sizes }: { imageUrl: string; name: string; sizes: string }) {
+  const [loaded, setLoaded] = useState(false)
+  return (
+    <>
+      {!loaded && <div className="absolute inset-0 animate-pulse rounded-lg bg-muted/60" />}
+      <Image
+        src={imageUrl}
+        alt={name}
+        fill
+        unoptimized
+        className={`object-cover transition-opacity duration-300 ${loaded ? 'opacity-100' : 'opacity-0'}`}
+        sizes={sizes}
+        onLoad={() => setLoaded(true)}
+      />
+    </>
+  )
+}
 
 function sortProducts(products: CatalogProduct[], sortBy: SortBy): CatalogProduct[] {
   return [...products].sort((a, b) => {
@@ -178,12 +197,9 @@ export default function ProductGrid({
               >
                 <div className="relative h-36 w-full overflow-hidden rounded-lg bg-muted/40">
                   {product.imageUrl ? (
-                    <Image
-                      src={product.imageUrl}
-                      alt={product.name}
-                      fill
-                      unoptimized
-                      className="object-cover"
+                    <ProductImage
+                      imageUrl={product.imageUrl}
+                      name={product.name}
                       sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                     />
                   ) : (
@@ -236,12 +252,9 @@ export default function ProductGrid({
               >
                 <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-lg bg-muted/40">
                   {product.imageUrl ? (
-                    <Image
-                      src={product.imageUrl}
-                      alt={product.name}
-                      fill
-                      unoptimized
-                      className="object-cover"
+                    <ProductImage
+                      imageUrl={product.imageUrl}
+                      name={product.name}
                       sizes="56px"
                     />
                   ) : (
