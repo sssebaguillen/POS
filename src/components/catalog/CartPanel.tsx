@@ -1,11 +1,30 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { AlertTriangle, CheckCircle2, Minus, Plus, Trash2 } from 'lucide-react'
+import Image from 'next/image'
+import { AlertTriangle, CheckCircle2, ImageIcon, Minus, Plus, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import type { CatalogCartItem } from '@/components/catalog/types'
 import posthog from 'posthog-js'
+
+function CartItemImage({ imageUrl, name }: { imageUrl: string; name: string }) {
+  const [loaded, setLoaded] = useState(false)
+  return (
+    <>
+      {!loaded && <div className="absolute inset-0 animate-pulse rounded-md bg-muted/60" />}
+      <Image
+        src={imageUrl}
+        alt={name}
+        fill
+        unoptimized
+        className={`object-cover transition-opacity duration-300 ${loaded ? 'opacity-100' : 'opacity-0'}`}
+        sizes="40px"
+        onLoad={() => setLoaded(true)}
+      />
+    </>
+  )
+}
 
 interface CartPanelProps {
   businessName: string
@@ -151,25 +170,39 @@ export default function CartPanel({
           <ul className="space-y-2">
             {cartItems.map(item => (
               <li key={item.product.id} className="rounded-lg border border-border/70 p-3">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="text-sm font-medium text-foreground">{item.product.name}</p>
-                    <p className="mt-1 text-sm text-muted-foreground">
-                      ${currencyFormatter.format(item.product.price * item.quantity)}
-                    </p>
+                <div className="flex items-start gap-2.5">
+                  {/* Thumbnail */}
+                  <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-md bg-muted/40">
+                    {item.product.imageUrl ? (
+                      <CartItemImage imageUrl={item.product.imageUrl} name={item.product.name} />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center text-muted-foreground">
+                        <ImageIcon className="h-4 w-4" />
+                      </div>
+                    )}
                   </div>
 
-                  <button
-                    type="button"
-                    onClick={() => onRemoveItem(item.product.id)}
-                    className="rounded-md p-1 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
-                    aria-label={`Quitar ${item.product.name}`}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
+                  {/* Name, price, remove */}
+                  <div className="flex min-w-0 flex-1 items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="line-clamp-1 text-sm font-medium text-foreground">{item.product.name}</p>
+                      <p className="mt-0.5 text-sm text-muted-foreground">
+                        ${currencyFormatter.format(item.product.price * item.quantity)}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => onRemoveItem(item.product.id)}
+                      className="shrink-0 rounded-md p-1 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+                      aria-label={`Quitar ${item.product.name}`}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
                 </div>
 
-                <div className="mt-3 flex items-center gap-2">
+                {/* Quantity controls */}
+                <div className="mt-2.5 flex items-center gap-2">
                   <Button
                     type="button"
                     variant="outline"
