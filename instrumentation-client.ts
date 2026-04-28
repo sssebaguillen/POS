@@ -7,4 +7,5 @@ posthog.init(process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN!, {
   capture_pageview: false,
   capture_exceptions: true,
   debug: process.env.NODE_ENV === "development",
+  disable_feature_flags: true,
 })

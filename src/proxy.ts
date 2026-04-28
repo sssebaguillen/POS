@@ -35,7 +35,7 @@ export async function proxy(request: NextRequest) {
     "style-src 'self' 'unsafe-inline'",
     `img-src 'self' data: blob: https: ${supabaseUrl} https://*.supabase.co`,
     "font-src 'self' https://fonts.gstatic.com",
-    `connect-src 'self' ${supabaseUrl} ${supabaseWs} https://*.supabase.co`,
+    `connect-src 'self' ${supabaseUrl} ${supabaseWs} https://*.supabase.co https://eu.i.posthog.com`,
     "frame-src 'self' blob:",
     "frame-ancestors 'none'",
     "object-src 'none'",
@@ -219,6 +219,6 @@ export async function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
-    '/((?!api|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    '/((?!api|ingest|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
 }
