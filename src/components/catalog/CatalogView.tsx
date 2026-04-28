@@ -163,7 +163,7 @@ export default function CatalogView({ business, products, categories }: CatalogV
           onSortChange={setSortBy}
         />
 
-        <div className={`${isMobileCartOpen ? 'block' : 'hidden'} lg:block`}>
+        <div className={`${isMobileCartOpen ? 'block' : 'hidden'} lg:sticky lg:top-0 lg:block lg:h-screen lg:overflow-hidden`}>
           <CartPanel
             businessName={business.name}
             businessWhatsapp={business.whatsapp}

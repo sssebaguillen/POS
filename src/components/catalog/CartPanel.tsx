@@ -139,7 +139,7 @@ export default function CartPanel({
 
   if (orderSent) {
     return (
-      <aside className="rounded-xl border border-border/70 bg-card p-4 md:p-5 lg:sticky lg:top-8 lg:max-h-[calc(100vh-4rem)] lg:overflow-y-auto">
+      <aside className="rounded-xl border border-border/70 bg-card p-4 md:p-5 lg:max-h-full lg:overflow-y-auto">
         <div className="flex flex-col items-center gap-4 py-6 text-center">
           <CheckCircle2 className="h-12 w-12 text-green-500" />
           <div>
@@ -157,7 +157,7 @@ export default function CartPanel({
   const isEmpty = cartItems.length === 0
 
   return (
-    <aside className="rounded-xl border border-border/70 bg-card p-4 md:p-5 lg:sticky lg:top-8 lg:max-h-[calc(100vh-4rem)] lg:overflow-y-auto">
+    <aside className="rounded-xl border border-border/70 bg-card p-4 md:p-5 lg:max-h-full lg:overflow-y-auto">
       <h2 className="text-base font-semibold text-foreground">Tu pedido</h2>
       <p className="mt-1 text-xs uppercase tracking-wide text-muted-foreground">{businessName}</p>
 
