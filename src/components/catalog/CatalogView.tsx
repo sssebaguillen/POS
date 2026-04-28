@@ -10,6 +10,12 @@ type ViewMode = 'grid' | 'list'
 type SortBy = 'name-asc' | 'name-desc' | 'price-asc' | 'price-desc'
 
 const VIEW_MODE_KEY = 'catalog-view-mode'
+const CART_TTL_MS = 8 * 60 * 60 * 1000 // 8 hours
+
+interface StoredCart {
+  items: CatalogCartItem[]
+  savedAt: number
+}
 
 function getStoredCartItems(
   cartKey: string,
@@ -19,15 +25,24 @@ function getStoredCartItems(
     return []
   }
 
-  const storedCart = localStorage.getItem(cartKey)
-  if (!storedCart) {
+  const raw = localStorage.getItem(cartKey)
+  if (!raw) {
     return []
   }
 
   try {
-    const parsed = JSON.parse(storedCart) as CatalogCartItem[]
+    const stored = JSON.parse(raw) as StoredCart | CatalogCartItem[]
+    // Migrate legacy format (plain array without timestamp)
+    const items = Array.isArray(stored) ? stored : stored.items
+    const savedAt = Array.isArray(stored) ? 0 : stored.savedAt
+
+    if (Date.now() - savedAt > CART_TTL_MS) {
+      localStorage.removeItem(cartKey)
+      return []
+    }
+
     const productIds = new Set(products.map(product => product.id))
-    return parsed.filter(item => productIds.has(item.product.id))
+    return items.filter(item => productIds.has(item.product.id))
   } catch {
     return []
   }
@@ -50,7 +65,8 @@ export default function CatalogView({ business, products, categories }: CatalogV
   const [sortBy, setSortBy] = useState<SortBy>('name-asc')
 
   useEffect(() => {
-    localStorage.setItem(cartKey, JSON.stringify(cartItems))
+    const payload: StoredCart = { items: cartItems, savedAt: Date.now() }
+    localStorage.setItem(cartKey, JSON.stringify(payload))
   }, [cartItems, cartKey])
 
   useEffect(() => {

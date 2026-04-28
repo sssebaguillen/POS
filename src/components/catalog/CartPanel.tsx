@@ -75,12 +75,12 @@ export default function CartPanel({
       '',
       `Total: $${currencyFormatter.format(total)}`,
       `Nombre: ${trimmedName}`,
-      `Telefono: ${trimmedPhone}`,
-      `Entrega: ${deliveryType === 'delivery' ? 'Delivery' : 'Take away'}`,
+      `Teléfono: ${trimmedPhone}`,
+      `Entrega: ${deliveryType === 'delivery' ? 'Delivery' : 'Para llevar'}`,
     ]
 
     if (deliveryType === 'delivery') {
-      lines.push(`Direccion: ${trimmedAddress}`)
+      lines.push(`Dirección: ${trimmedAddress}`)
     }
 
     if (trimmedNotes) {
@@ -120,12 +120,12 @@ export default function CartPanel({
 
   if (orderSent) {
     return (
-      <aside className="rounded-xl border border-border/70 bg-card p-4 md:p-5 lg:sticky lg:top-6">
+      <aside className="rounded-xl border border-border/70 bg-card p-4 md:p-5 lg:sticky lg:top-8 lg:max-h-[calc(100vh-4rem)] lg:overflow-y-auto">
         <div className="flex flex-col items-center gap-4 py-6 text-center">
           <CheckCircle2 className="h-12 w-12 text-green-500" />
           <div>
             <p className="text-base font-semibold text-foreground">Pedido enviado</p>
-            <p className="mt-1 text-sm text-muted-foreground">Revisa tu WhatsApp para continuar con el pedido.</p>
+            <p className="mt-1 text-sm text-muted-foreground">Revisá tu WhatsApp para continuar con el pedido.</p>
           </div>
           <Button type="button" className="w-full" onClick={handleNewOrder}>
             Nuevo pedido
@@ -135,19 +135,19 @@ export default function CartPanel({
     )
   }
 
+  const isEmpty = cartItems.length === 0
+
   return (
-    <aside className="rounded-xl border border-border/70 bg-card p-4 md:p-5 lg:sticky lg:top-6">
+    <aside className="rounded-xl border border-border/70 bg-card p-4 md:p-5 lg:sticky lg:top-8 lg:max-h-[calc(100vh-4rem)] lg:overflow-y-auto">
       <h2 className="text-base font-semibold text-foreground">Tu pedido</h2>
       <p className="mt-1 text-xs uppercase tracking-wide text-muted-foreground">{businessName}</p>
 
       <div className="mt-4 space-y-3">
-        {cartItems.length === 0 && (
+        {isEmpty ? (
           <div className="rounded-lg border border-dashed border-border p-4 text-center text-sm text-muted-foreground">
-            Tu carrito esta vacio.
+            Tu carrito está vacío.
           </div>
-        )}
-
-        {cartItems.length > 0 && (
+        ) : (
           <ul className="space-y-2">
             {cartItems.map(item => (
               <li key={item.product.id} className="rounded-lg border border-border/70 p-3">
@@ -199,102 +199,106 @@ export default function CartPanel({
         )}
       </div>
 
-      <div className="mt-4 rounded-lg border border-border/70 bg-muted/20 p-3">
-        <div className="flex items-center justify-between text-sm text-muted-foreground">
-          <span>Subtotal</span>
-          <span>${currencyFormatter.format(subtotal)}</span>
-        </div>
-        <div className="mt-2 flex items-center justify-between text-base font-bold text-foreground">
-          <span>Total</span>
-          <span>${currencyFormatter.format(total)}</span>
-        </div>
-      </div>
-
-      <div className="mt-5 space-y-3">
-        <div className="space-y-1.5">
-          <label htmlFor="catalog-name" className="text-xs uppercase tracking-wide text-muted-foreground">
-            Nombre
-          </label>
-          <Input
-            id="catalog-name"
-            value={customerName}
-            onChange={event => setCustomerName(event.target.value)}
-            placeholder="Tu nombre"
-          />
-        </div>
-
-        <div className="space-y-1.5">
-          <label htmlFor="catalog-phone" className="text-xs uppercase tracking-wide text-muted-foreground">
-            Telefono
-          </label>
-          <Input
-            id="catalog-phone"
-            value={customerPhone}
-            onChange={event => setCustomerPhone(event.target.value)}
-            placeholder="Tu telefono"
-          />
-        </div>
-
-        <div className="space-y-1.5">
-          <p className="text-xs uppercase tracking-wide text-muted-foreground">Entrega</p>
-          <div className="grid grid-cols-2 gap-2">
-            <button
-              type="button"
-              onClick={() => setDeliveryType('take-away')}
-              className={`rounded-lg border px-3 py-2 text-sm transition-colors ${
-                deliveryType === 'take-away'
-                  ? 'border-primary bg-primary text-primary-foreground'
-                  : 'border-border bg-background text-foreground hover:border-primary/40'
-              }`}
-            >
-              Take away
-            </button>
-            <button
-              type="button"
-              onClick={() => setDeliveryType('delivery')}
-              className={`rounded-lg border px-3 py-2 text-sm transition-colors ${
-                deliveryType === 'delivery'
-                  ? 'border-primary bg-primary text-primary-foreground'
-                  : 'border-border bg-background text-foreground hover:border-primary/40'
-              }`}
-            >
-              Delivery
-            </button>
+      {!isEmpty && (
+        <>
+          <div className="mt-4 rounded-lg border border-border/70 bg-muted/20 p-3">
+            <div className="flex items-center justify-between text-sm text-muted-foreground">
+              <span>Subtotal</span>
+              <span>${currencyFormatter.format(subtotal)}</span>
+            </div>
+            <div className="mt-2 flex items-center justify-between text-base font-bold text-foreground">
+              <span>Total</span>
+              <span>${currencyFormatter.format(total)}</span>
+            </div>
           </div>
-        </div>
 
-        {deliveryType === 'delivery' && (
-          <div className="space-y-1.5">
-            <label htmlFor="catalog-address" className="text-xs uppercase tracking-wide text-muted-foreground">
-              Direccion
-            </label>
-            <Input
-              id="catalog-address"
-              value={address}
-              onChange={event => setAddress(event.target.value)}
-              placeholder="Calle y numero"
-            />
+          <div className="mt-5 space-y-3">
+            <div className="space-y-1.5">
+              <label htmlFor="catalog-name" className="text-xs uppercase tracking-wide text-muted-foreground">
+                Nombre
+              </label>
+              <Input
+                id="catalog-name"
+                value={customerName}
+                onChange={event => setCustomerName(event.target.value)}
+                placeholder="Tu nombre"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <label htmlFor="catalog-phone" className="text-xs uppercase tracking-wide text-muted-foreground">
+                Teléfono
+              </label>
+              <Input
+                id="catalog-phone"
+                value={customerPhone}
+                onChange={event => setCustomerPhone(event.target.value)}
+                placeholder="Tu teléfono"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <p className="text-xs uppercase tracking-wide text-muted-foreground">Entrega</p>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setDeliveryType('take-away')}
+                  className={`rounded-full border px-3 py-2 text-sm transition-colors ${
+                    deliveryType === 'take-away'
+                      ? 'border-primary bg-primary text-primary-foreground'
+                      : 'border-border bg-background text-foreground hover:border-primary/40'
+                  }`}
+                >
+                  Para llevar
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDeliveryType('delivery')}
+                  className={`rounded-full border px-3 py-2 text-sm transition-colors ${
+                    deliveryType === 'delivery'
+                      ? 'border-primary bg-primary text-primary-foreground'
+                      : 'border-border bg-background text-foreground hover:border-primary/40'
+                  }`}
+                >
+                  Delivery
+                </button>
+              </div>
+            </div>
+
+            {deliveryType === 'delivery' && (
+              <div className="space-y-1.5">
+                <label htmlFor="catalog-address" className="text-xs uppercase tracking-wide text-muted-foreground">
+                  Dirección
+                </label>
+                <Input
+                  id="catalog-address"
+                  value={address}
+                  onChange={event => setAddress(event.target.value)}
+                  placeholder="Calle y número"
+                />
+              </div>
+            )}
+
+            <div className="space-y-1.5">
+              <label htmlFor="catalog-notes" className="text-xs uppercase tracking-wide text-muted-foreground">
+                Notas
+              </label>
+              <textarea
+                id="catalog-notes"
+                value={notes}
+                onChange={event => setNotes(event.target.value)}
+                placeholder="Opcional"
+                rows={3}
+                className="w-full rounded-lg border border-input bg-transparent px-3 py-2 text-sm outline-none transition-colors placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+              />
+            </div>
           </div>
-        )}
-
-        <div className="space-y-1.5">
-          <label htmlFor="catalog-notes" className="text-xs uppercase tracking-wide text-muted-foreground">
-            Notas
-          </label>
-          <textarea
-            id="catalog-notes"
-            value={notes}
-            onChange={event => setNotes(event.target.value)}
-            placeholder="Opcional"
-            rows={3}
-            className="w-full rounded-lg border border-input bg-transparent px-3 py-2 text-sm outline-none transition-colors placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
-          />
-        </div>
-      </div>
+        </>
+      )}
 
       {!normalizedWhatsapp && (
-        <p className="mt-3 text-xs text-muted-foreground">
-          Este negocio todavia no configuro su numero de WhatsApp.
+        <p className={`text-xs text-amber-600 dark:text-amber-400 ${isEmpty ? 'mt-4' : 'mt-3'}`}>
+          Este negocio todavía no configuró su número de WhatsApp.
         </p>
       )}
 

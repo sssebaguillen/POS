@@ -71,7 +71,7 @@ export function CatalogThemeToggle() {
     <button
       onClick={toggle}
       aria-label={themeForUi === 'light' ? 'Cambiar a modo oscuro' : 'Cambiar a modo claro'}
-      className="flex items-center justify-center w-9 h-9 rounded-xl bg-zinc-100 hover:bg-zinc-200 text-zinc-600 dark:bg-accent dark:hover:bg-accent/80 dark:text-white/70 dark:hover:text-white border border-zinc-200 dark:border-edge transition-colors duration-200"
+      className="flex items-center justify-center w-9 h-9 rounded-xl bg-muted hover:bg-secondary text-muted-foreground hover:text-foreground border border-border transition-colors duration-200"
     >
       {themeForUi === 'light' ? (
         <Moon size={16} strokeWidth={1.8} />
