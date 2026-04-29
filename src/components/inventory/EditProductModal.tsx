@@ -341,13 +341,13 @@ export default function EditProductModal({
 
   return (
     <Dialog open={open} onOpenChange={nextOpen => !nextOpen && handleClose()}>
-      <DialogContent className="sm:max-w-[640px] p-0 gap-0 rounded-2xl overflow-hidden bg-app-bg" showCloseButton={false}>
-        <div className="modal-header px-6 py-4 flex items-center justify-between">
-          <h2 className="text-base font-semibold text-foreground">Editar producto</h2>
+      <DialogContent className="sm:max-w-[640px] p-0 gap-0 overflow-hidden bg-card" showCloseButton={false}>
+        <div className="flex items-center justify-between px-5 py-4 border-b border-edge shrink-0">
+          <h2 className="text-base font-semibold text-heading">Editar producto</h2>
           <button
             type="button"
             onClick={handleClose}
-            className="text-muted-foreground hover:text-foreground transition-colors p-0.5"
+            className="p-1.5 rounded-lg hover:bg-hover-bg transition-colors text-hint"
             aria-label="Cerrar modal"
           >
             <X className="w-4 h-4" />
@@ -534,7 +534,7 @@ export default function EditProductModal({
 
                   {isPriceEdited && priceLists.length > 0 && (
                     <div className="col-span-2 rounded-xl border border-edge bg-surface-alt px-3 py-2.5 flex flex-col gap-2">
-                      <p className="text-xs text-subtle">Aplicar este precio como override en:</p>
+                      <p className="text-xs text-subtle">Aplicar este precio personalizado en:</p>
                       <div className="flex flex-wrap gap-x-4 gap-y-1.5">
                         {priceLists.map(list => (
                           <label key={list.id} className="flex items-center gap-2 cursor-pointer select-none">

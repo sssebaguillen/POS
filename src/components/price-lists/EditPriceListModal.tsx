@@ -9,6 +9,7 @@ import { Dialog, DialogContent } from '@/components/ui/dialog'
 import ConfirmModal from '@/components/shared/ConfirmModal'
 import type { PriceList, PriceListOverride } from '@/lib/types'
 import { normalizePriceList } from '@/lib/mappers'
+import { translateDbError } from '@/lib/errors'
 
 type ConfirmState = { title: string; message: string; onConfirm: () => void } | null
 
@@ -80,7 +81,7 @@ export default function EditPriceListModal({
 
     const parsedPercentage = Number(percentage)
     if (!percentage.trim() || !Number.isFinite(parsedPercentage) || parsedPercentage <= 0) {
-      setError('El margen debe ser un numero mayor a 0')
+      setError('El margen debe ser un número mayor a 0.')
       return
     }
 
@@ -163,7 +164,7 @@ export default function EditPriceListModal({
   function handleDelete() {
     setPendingConfirm({
       title: `Eliminar lista "${list.name}"`,
-      message: 'Esta accion no se puede deshacer.',
+      message: 'Esta acción no se puede deshacer.',
       onConfirm: async () => {
         setDeleting(true)
         setError(null)
@@ -176,7 +177,7 @@ export default function EditPriceListModal({
         setDeleting(false)
 
         if (deleteError) {
-          setError(deleteError.message)
+          setError(translateDbError(deleteError.message, 'No se pudo eliminar la lista de precios.'))
           return
         }
 
@@ -189,13 +190,13 @@ export default function EditPriceListModal({
   return (
     <>
       <Dialog open={open} onOpenChange={nextOpen => !nextOpen && handleClose()}>
-        <DialogContent className="sm:max-w-[560px] p-0 gap-0 rounded-2xl overflow-hidden bg-app-bg" showCloseButton={false}>
-          <div className="modal-header px-6 py-4 flex items-center justify-between">
-            <h2 className="text-base font-semibold text-foreground">Editar lista de precios</h2>
+        <DialogContent className="sm:max-w-[560px] p-0 gap-0 overflow-hidden bg-card" showCloseButton={false}>
+          <div className="flex items-center justify-between px-5 py-4 border-b border-edge shrink-0">
+            <h2 className="text-base font-semibold text-heading">Editar lista de precios</h2>
             <button
               type="button"
               onClick={handleClose}
-              className="text-muted-foreground hover:text-foreground transition-colors p-0.5"
+              className="p-1.5 rounded-lg hover:bg-hover-bg transition-colors text-hint"
               aria-label="Cerrar modal"
             >
               <X className="w-4 h-4" />
@@ -226,7 +227,7 @@ export default function EditPriceListModal({
             </div>
 
             <div className="flex flex-col gap-1">
-              <label className="text-label text-subtle">Descripcion</label>
+              <label className="text-label text-subtle">Descripción</label>
               <Input
                 value={description}
                 onChange={event => {
@@ -328,8 +329,7 @@ export default function EditPriceListModal({
               <Button
                 type="button"
                 variant="destructive"
-                size="sm"
-                className="rounded-lg text-xs"
+                className="h-9 px-5 rounded-lg text-sm"
                 onClick={handleDelete}
                 disabled={saving || deleting}
               >
@@ -340,8 +340,7 @@ export default function EditPriceListModal({
                 <Button
                   type="button"
                   variant="cancel"
-                  size="sm"
-                  className="rounded-lg text-xs"
+                  className="h-9 px-5 rounded-xl text-sm"
                   onClick={handleClose}
                   disabled={saving || deleting}
                 >
@@ -349,8 +348,7 @@ export default function EditPriceListModal({
                 </Button>
                 <Button
                   type="submit"
-                  size="sm"
-                  className="rounded-lg text-xs bg-primary hover:bg-primary/90 text-primary-foreground"
+                  className="h-9 px-5 rounded-lg text-sm bg-primary hover:bg-primary/90 text-primary-foreground"
                   disabled={saving || deleting}
                 >
                   {saving ? 'Guardando...' : 'Guardar cambios'}

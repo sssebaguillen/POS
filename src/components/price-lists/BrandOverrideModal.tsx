@@ -72,7 +72,7 @@ export default function BrandOverrideModal({
       .single()
 
     if (error || !data) {
-      setError(error?.message ?? 'Error al guardar el override de marca')
+      setError('No se pudo guardar el precio por marca.')
       setSaving(false)
       return
     }
@@ -108,13 +108,13 @@ export default function BrandOverrideModal({
 
   return (
     <Dialog open={open} onOpenChange={nextOpen => !nextOpen && handleClose()}>
-      <DialogContent className="sm:max-w-[560px] p-0 gap-0 rounded-2xl overflow-hidden bg-app-bg" showCloseButton={false}>
-        <div className="modal-header px-6 py-4 flex items-center justify-between">
-          <h2 className="text-base font-semibold text-foreground">Override por marca</h2>
+      <DialogContent className="sm:max-w-[560px] p-0 gap-0 overflow-hidden bg-card" showCloseButton={false}>
+        <div className="flex items-center justify-between px-5 py-4 border-b border-edge shrink-0">
+          <h2 className="text-base font-semibold text-heading">Precio por marca</h2>
           <button
             type="button"
             onClick={handleClose}
-            className="text-muted-foreground hover:text-foreground transition-colors p-0.5"
+            className="p-1.5 rounded-lg hover:bg-hover-bg transition-colors text-hint"
             aria-label="Cerrar modal"
           >
             <X className="w-4 h-4" />
@@ -128,7 +128,7 @@ export default function BrandOverrideModal({
             </p>
           )}
 
-          <div className="rounded-xl border border-edge/70 bg-surface-alt px-3 py-2.5">
+          <div className="rounded-xl border border-edge/70 bg-surface px-3 py-2.5">
             <p className="text-xs text-subtle uppercase tracking-wide">Marca</p>
             <p className="text-sm font-semibold text-heading">{brandName}</p>
           </div>
@@ -157,8 +157,7 @@ export default function BrandOverrideModal({
               <Button
                 type="button"
                 variant="destructive"
-                size="sm"
-                className="rounded-lg text-xs"
+                className="h-9 px-5 rounded-lg text-sm"
                 onClick={() => void handleDelete()}
                 disabled={saving}
               >
@@ -172,8 +171,7 @@ export default function BrandOverrideModal({
               <Button
                 type="button"
                 variant="cancel"
-                size="sm"
-                className="rounded-lg text-xs"
+                className="h-9 px-5 rounded-xl text-sm"
                 onClick={handleClose}
                 disabled={saving}
               >
@@ -181,8 +179,7 @@ export default function BrandOverrideModal({
               </Button>
               <Button
                 type="submit"
-                size="sm"
-                className="rounded-lg text-xs bg-primary hover:bg-primary/90 text-primary-foreground"
+                className="h-9 px-5 rounded-lg text-sm bg-primary hover:bg-primary/90 text-primary-foreground"
                 disabled={saving}
               >
                 {saving ? 'Guardando...' : 'Guardar'}

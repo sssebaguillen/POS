@@ -70,7 +70,7 @@ export default function NewPriceListModal({
 
     const parsedPercentage = Number(percentage)
     if (!percentage.trim() || !Number.isFinite(parsedPercentage) || parsedPercentage <= 0) {
-      setError('El margen debe ser un numero mayor a 0')
+      setError('El margen debe ser un número mayor a 0.')
       return
     }
 
@@ -184,7 +184,7 @@ export default function NewPriceListModal({
           </div>
 
           <div className="flex flex-col gap-1">
-            <label className="text-label text-subtle">Descripcion</label>
+            <label className="text-label text-subtle">Descripción</label>
             <Input
               value={description}
               onChange={event => {
@@ -287,8 +287,7 @@ export default function NewPriceListModal({
             <Button
               type="button"
               variant="cancel"
-              size="sm"
-              className="rounded-lg text-xs"
+              className="h-9 px-5 rounded-xl text-sm"
               onClick={handleClose}
               disabled={saving}
             >
@@ -296,8 +295,7 @@ export default function NewPriceListModal({
             </Button>
             <Button
               type="submit"
-              size="sm"
-              className="rounded-lg text-xs bg-primary hover:bg-primary/90 text-primary-foreground"
+              className="h-9 px-5 rounded-lg text-sm bg-primary hover:bg-primary/90 text-primary-foreground"
               disabled={saving}
             >
               {saving ? 'Creando...' : 'Crear lista'}

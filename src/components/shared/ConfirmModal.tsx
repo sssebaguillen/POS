@@ -27,11 +27,11 @@ export default function ConfirmModal({
           <p className="font-semibold text-heading">{title}</p>
           <p className="text-sm text-body">{message}</p>
         </div>
-        <div className="px-5 py-3 bg-muted/40 flex justify-end gap-2 border-t border-edge-soft">
-          <Button variant="outline" size="sm" className="rounded-lg" onClick={onCancel}>
+        <div className="px-5 py-3 flex justify-end gap-2 border-t border-edge">
+          <Button variant="cancel" className="h-9 px-5 rounded-lg text-sm" onClick={onCancel}>
             Cancelar
           </Button>
-          <Button size="sm" className="btn-danger rounded-lg" onClick={onConfirm}>
+          <Button variant="destructive" className="h-9 px-5 rounded-lg text-sm" onClick={onConfirm}>
             {confirmLabel}
           </Button>
         </div>

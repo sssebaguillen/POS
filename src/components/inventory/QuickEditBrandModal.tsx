@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Dialog, DialogContent } from '@/components/ui/dialog'
 import SelectDropdown from '@/components/ui/SelectDropdown'
 import type { InventoryBrand, InventoryProduct } from '@/components/inventory/types'
+import { translateDbError } from '@/lib/errors'
 
 interface QuickEditBrandModalProps {
   open: boolean
@@ -40,7 +41,7 @@ export default function QuickEditBrandModal({ open, product, brands, businessId,
       })
       const result = rpcResult as { success: boolean; error?: string } | null
       if (rpcError || !result?.success) {
-        setError(result?.error ?? rpcError?.message ?? 'Error al crear la marca')
+        setError(result?.error ?? translateDbError(rpcError?.message ?? '', 'Error al crear la marca'))
         setSaving(false)
         return
       }
@@ -51,13 +52,13 @@ export default function QuickEditBrandModal({ open, product, brands, businessId,
         .eq('name', newName.trim())
         .limit(1)
         .single()
-      if (fetchError || !fetched) { setError(fetchError?.message ?? 'Error al obtener la marca creada'); setSaving(false); return }
+      if (fetchError || !fetched) { setError(translateDbError(fetchError?.message ?? '', 'Error al obtener la marca creada')); setSaving(false); return }
       const { error: updateError } = await supabase
         .from('products')
         .update({ brand_id: fetched.id })
         .eq('id', product.id)
         .eq('business_id', businessId)
-      if (updateError) { setError(updateError.message); setSaving(false); return }
+      if (updateError) { setError(translateDbError(updateError.message, 'No se pudo guardar el cambio.')); setSaving(false); return }
       onSaved(product.id, fetched.id, { id: fetched.id, name: fetched.name })
     } else {
       const brandId = selectedId === '' ? null : selectedId
@@ -66,7 +67,7 @@ export default function QuickEditBrandModal({ open, product, brands, businessId,
         .update({ brand_id: brandId })
         .eq('id', product.id)
         .eq('business_id', businessId)
-      if (updateError) { setError(updateError.message); setSaving(false); return }
+      if (updateError) { setError(translateDbError(updateError.message, 'No se pudo guardar el cambio.')); setSaving(false); return }
       onSaved(product.id, brandId)
     }
 
@@ -116,9 +117,9 @@ export default function QuickEditBrandModal({ open, product, brands, businessId,
           )}
           {error && <p className="text-xs text-destructive">{error}</p>}
         </div>
-        <div className="px-5 py-3 bg-muted/40 flex justify-end gap-2 border-t border-edge-soft">
-          <Button variant="outline" size="sm" className="rounded-lg" onClick={onClose} disabled={saving}>Cancelar</Button>
-          <Button size="sm" className="rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground" onClick={handleSave} disabled={saving || (creating && !newName.trim())}>
+        <div className="px-5 py-3 flex justify-end gap-2 border-t border-edge">
+          <Button variant="cancel" className="h-9 px-5 rounded-lg text-sm" onClick={onClose} disabled={saving}>Cancelar</Button>
+          <Button className="h-9 px-5 rounded-lg text-sm bg-primary hover:bg-primary/90 text-primary-foreground" onClick={handleSave} disabled={saving || (creating && !newName.trim())}>
             {saving ? 'Guardando...' : 'Guardar'}
           </Button>
         </div>

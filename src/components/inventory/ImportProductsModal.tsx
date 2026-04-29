@@ -75,12 +75,12 @@ const FIELD_ALIASES: Record<SystemField, string[]> = {
 const FIELD_LABELS: Record<SystemField, string> = {
   name: 'Nombre',
   sku: 'SKU',
-  barcode: 'Codigo de barras',
+  barcode: 'Código de barras',
   price: 'Precio de venta',
   cost: 'Costo',
   stock: 'Stock',
-  min_stock: 'Stock minimo',
-  category: 'Categoria',
+  min_stock: 'Stock mínimo',
+  category: 'Categoría',
   brand: 'Marca',
   is_active: 'Activo',
   ignore: 'Ignorar columna',
@@ -564,7 +564,7 @@ export default function ImportProductsModal({
                   </div>
                   <div>
                     <p className="text-body font-medium text-heading">
-                      {fileName ?? 'Arrastra tu archivo aqui o hace clic para seleccionar'}
+                      {fileName ?? 'Arrastrá tu archivo aquí o hacé clic para seleccionar'}
                     </p>
                     <p className="text-caption text-hint mt-1">
                       Formatos soportados: .xlsx, .xls, .csv, .ods
@@ -585,7 +585,7 @@ export default function ImportProductsModal({
               )}
 
               <div className="mt-6 rounded-xl bg-surface-alt border border-edge/60 p-4">
-                <p className="text-caption font-medium text-heading mb-2">Columnas reconocidas automaticamente</p>
+                <p className="text-caption font-medium text-heading mb-2">Columnas reconocidas automáticamente</p>
                 <div className="grid grid-cols-2 gap-x-6 gap-y-1">
                   {(Object.entries(FIELD_ALIASES) as [SystemField, string[]][])
                     .filter(([field]) => field !== 'ignore')
@@ -596,7 +596,7 @@ export default function ImportProductsModal({
                       </div>
                     ))}
                 </div>
-                <p className="text-label text-hint mt-3">El sistema tambien reconoce variantes con acentos, mayusculas, guiones y espacios.</p>
+                <p className="text-label text-hint mt-3">El sistema también reconoce variantes con acentos, mayúsculas, guiones y espacios.</p>
               </div>
             </div>
           )}
@@ -607,7 +607,7 @@ export default function ImportProductsModal({
           {step === 'mapping' && (
             <div className="p-6">
               <p className="text-body-sm text-hint mb-4">
-                Algunas columnas no fueron reconocidas automaticamente. Asignalas manualmente o marcalas como &quot;Ignorar&quot;.
+                Algunas columnas no fueron reconocidas automáticamente. Asignalas manualmente o marcalas como &quot;Ignorar&quot;.
               </p>
 
               <div className="rounded-xl border border-edge/60 overflow-hidden">
@@ -659,19 +659,19 @@ export default function ImportProductsModal({
               {/* Notices */}
               {newBrandNames.length > 0 && (
                 <div className="mb-3 rounded-lg border border-amber-200 dark:border-amber-800/50 bg-amber-50 dark:bg-amber-950/30 px-3 py-2 text-sm text-amber-700 dark:text-amber-400">
-                  <span className="font-semibold">{newBrandNames.length} marca{newBrandNames.length > 1 ? 's' : ''} nueva{newBrandNames.length > 1 ? 's' : ''} seran creadas:</span>{' '}
+                  <span className="font-semibold">{newBrandNames.length} marca{newBrandNames.length > 1 ? 's' : ''} nueva{newBrandNames.length > 1 ? 's' : ''} serán creadas:</span>{' '}
                   {newBrandNames.join(', ')}
                 </div>
               )}
               {newCategoryNames.length > 0 && (
                 <div className="mb-3 rounded-lg border border-amber-200 dark:border-amber-800/50 bg-amber-50 dark:bg-amber-950/30 px-3 py-2 text-sm text-amber-700 dark:text-amber-400">
-                  <span className="font-semibold">{newCategoryNames.length} categoria{newCategoryNames.length > 1 ? 's' : ''} nueva{newCategoryNames.length > 1 ? 's' : ''} seran creadas:</span>{' '}
+                  <span className="font-semibold">{newCategoryNames.length} categoría{newCategoryNames.length > 1 ? 's' : ''} nueva{newCategoryNames.length > 1 ? 's' : ''} serán creadas:</span>{' '}
                   {newCategoryNames.join(', ')}
                 </div>
               )}
               {resolvedRows.some(r => r.sku || r.barcode) && (
-                <div className="mb-3 rounded-lg border border-blue-200 dark:border-blue-800/50 bg-blue-50 dark:bg-blue-950/30 px-3 py-2 text-sm text-blue-700 dark:text-blue-400">
-                  Los productos con SKU o codigo de barras existente seran actualizados en lugar de duplicarse.
+                <div className="mb-3 rounded-lg border border-amber-200 dark:border-amber-800/50 bg-amber-50 dark:bg-amber-950/30 px-3 py-2 text-sm text-amber-700 dark:text-amber-400">
+                  Los productos con SKU o código de barras existente serán actualizados en lugar de duplicarse.
                 </div>
               )}
 
@@ -723,9 +723,8 @@ export default function ImportProductsModal({
         {/* Footer */}
         <div className="flex items-center justify-between px-6 py-4 border-t border-edge/60 shrink-0 bg-surface">
           <Button
-            variant="outline"
-            size="sm"
-            className="rounded-lg text-xs"
+            variant="cancel"
+            className="h-9 px-5 rounded-xl text-sm"
             onClick={() => {
               if (step === 'mapping') setStep('upload')
               else if (step === 'preview') setStep(columnMappings.some(m => m.systemField === 'ignore' || parsedRows.length === 0) ? 'mapping' : 'upload')
@@ -733,13 +732,12 @@ export default function ImportProductsModal({
             }}
             disabled={importing}
           >
-            {step === 'upload' ? 'Cancelar' : 'Atras'}
+            {step === 'upload' ? 'Cancelar' : 'Atrás'}
           </Button>
 
           {step === 'mapping' && (
             <Button
-              size="sm"
-              className="rounded-lg text-xs btn-primary-gradient"
+              className="h-9 px-5 rounded-lg text-sm bg-primary hover:bg-primary/90 text-primary-foreground"
               onClick={handleMappingConfirm}
             >
               Continuar
@@ -748,8 +746,7 @@ export default function ImportProductsModal({
 
           {step === 'preview' && (
             <Button
-              size="sm"
-              className="rounded-lg text-xs btn-primary-gradient"
+              className="h-9 px-5 rounded-lg text-sm bg-primary hover:bg-primary/90 text-primary-foreground"
               onClick={handleConfirmImport}
               disabled={importing || resolvedRows.length === 0}
             >

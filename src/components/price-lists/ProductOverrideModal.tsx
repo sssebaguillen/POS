@@ -9,6 +9,7 @@ import { Dialog, DialogContent } from '@/components/ui/dialog'
 import type { PriceListOverride } from '@/lib/types'
 import type { PriceListProduct } from '@/components/price-lists/types'
 import { normalizePriceListOverride } from '@/lib/mappers'
+import { useFormatMoney } from '@/lib/context/CurrencyContext'
 
 interface ProductOverrideModalProps {
   open: boolean
@@ -38,6 +39,17 @@ export default function ProductOverrideModal({
   const [saving, setSaving] = useState(false)
 
   const supabase = useMemo(() => createClient(), [])
+  const formatMoney = useFormatMoney()
+
+  const currentPrice = product.cost > 0 ? product.cost * effectiveMultiplier : null
+
+  const parsedPct = Number(percentage)
+  const previewPrice = product.cost > 0 && percentage.trim() !== '' && Number.isFinite(parsedPct) && parsedPct > 0
+    ? product.cost * (1 + parsedPct / 100)
+    : null
+
+  const priceChanged = previewPrice !== null && currentPrice !== null
+    && Math.abs(previewPrice - currentPrice) > 0.005
 
   function handleClose() {
     if (saving) return
@@ -128,7 +140,7 @@ export default function ProductOverrideModal({
     const parsedPercentage = Number(nextValue)
     if (!Number.isFinite(parsedPercentage) || parsedPercentage <= 0) {
       setSaving(false)
-      setError('El margen debe ser un numero mayor a 0')
+      setError('El margen debe ser un número mayor a 0.')
       return
     }
 
@@ -182,13 +194,13 @@ export default function ProductOverrideModal({
 
   return (
     <Dialog open={open} onOpenChange={nextOpen => !nextOpen && handleClose()}>
-      <DialogContent className="sm:max-w-[560px] p-0 gap-0 rounded-2xl overflow-hidden bg-app-bg" showCloseButton={false}>
-        <div className="modal-header px-6 py-4 flex items-center justify-between">
-          <h2 className="text-base font-semibold text-foreground">Override por producto</h2>
+      <DialogContent className="sm:max-w-[560px] p-0 gap-0 overflow-hidden bg-card" showCloseButton={false}>
+        <div className="flex items-center justify-between px-5 py-4 border-b border-edge shrink-0">
+          <h2 className="text-base font-semibold text-heading">Precio por producto</h2>
           <button
             type="button"
             onClick={handleClose}
-            className="text-muted-foreground hover:text-foreground transition-colors p-0.5"
+            className="p-1.5 rounded-lg hover:bg-hover-bg transition-colors text-hint"
             aria-label="Cerrar modal"
           >
             <X className="w-4 h-4" />
@@ -202,14 +214,19 @@ export default function ProductOverrideModal({
             </p>
           )}
 
-          <div className="rounded-xl border border-edge/70 bg-surface-alt px-3 py-2.5">
+          <div className="rounded-xl border border-edge/70 bg-surface px-3 py-2.5">
             <p className="text-xs text-subtle uppercase tracking-wide">Producto</p>
             <p className="text-sm font-semibold text-heading">{product.name}</p>
-            <p className="text-xs text-hint mt-1">Margen efectivo actual: +{((effectiveMultiplier - 1) * 100).toFixed(0)}%</p>
+            <div className="flex items-baseline gap-3 mt-1">
+              <p className="text-xs text-hint">Margen actual: +{((effectiveMultiplier - 1) * 100).toFixed(0)}%</p>
+              {currentPrice !== null && (
+                <p className="text-xs text-hint">Precio actual: <span className="font-medium text-body">{formatMoney(currentPrice)}</span></p>
+              )}
+            </div>
           </div>
 
           <div className="flex flex-col gap-1">
-            <label className="text-label text-subtle">Margen de ganancia</label>
+            <label className="text-label text-subtle">Nuevo margen de ganancia</label>
             <div className="relative">
               <Input
                 type="number"
@@ -220,14 +237,28 @@ export default function ProductOverrideModal({
                   setPercentage(event.target.value)
                   setError(null)
                 }}
-                placeholder="Vaciar para eliminar override"
+                placeholder="Vaciar para eliminar"
                 className="h-9 rounded-xl text-sm bg-surface border-edge focus-visible:ring-ring/50 focus-visible:border-ring pr-8"
               />
               {percentage.trim() !== '' && (
                 <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-hint pointer-events-none">%</span>
               )}
             </div>
-            <p className="text-caption text-hint">10% = +10% sobre el costo · 60% = +60% sobre el costo</p>
+            {previewPrice !== null ? (
+              <p className="text-caption">
+                <span className="text-hint">Precio resultante: </span>
+                <span className={`font-semibold ${priceChanged ? 'text-primary' : 'text-hint'}`}>
+                  {formatMoney(previewPrice)}
+                </span>
+                {priceChanged && currentPrice !== null && (
+                  <span className="text-hint ml-1">
+                    ({previewPrice > currentPrice ? '+' : ''}{formatMoney(previewPrice - currentPrice)})
+                  </span>
+                )}
+              </p>
+            ) : (
+              <p className="text-caption text-hint">10% = +10% sobre el costo · 60% = +60% sobre el costo</p>
+            )}
           </div>
 
           <div className="pt-1 flex items-center justify-between gap-2.5">
@@ -235,8 +266,7 @@ export default function ProductOverrideModal({
               <Button
                 type="button"
                 variant="destructive"
-                size="sm"
-                className="rounded-lg text-xs"
+                className="h-9 px-5 rounded-lg text-sm"
                 onClick={() => void handleReset()}
                 disabled={saving}
               >
@@ -249,8 +279,7 @@ export default function ProductOverrideModal({
               <Button
                 type="button"
                 variant="cancel"
-                size="sm"
-                className="rounded-lg text-xs"
+                className="h-9 px-5 rounded-xl text-sm"
                 onClick={handleClose}
                 disabled={saving}
               >
@@ -258,8 +287,7 @@ export default function ProductOverrideModal({
               </Button>
               <Button
                 type="submit"
-                size="sm"
-                className="rounded-lg text-xs bg-primary hover:bg-primary/90 text-primary-foreground"
+                className="h-9 px-5 rounded-lg text-sm bg-primary hover:bg-primary/90 text-primary-foreground"
                 disabled={saving}
               >
                 {saving ? 'Guardando...' : 'Guardar'}
