@@ -53,14 +53,12 @@ export default async function SettingsPage() {
   return (
     <div className="flex flex-col h-screen overflow-hidden">
       <PageHeader title="Configuración" />
-      <div className="flex-1 overflow-y-auto p-6">
-        <SettingsForm
-          business={business}
-          operators={parsedOperators}
-          isOwner={isOwner}
-          canManageOperators={canManageOperators}
-        />
-      </div>
+      <SettingsForm
+        business={business}
+        operators={parsedOperators}
+        isOwner={isOwner}
+        canManageOperators={canManageOperators}
+      />
     </div>
   )
 }

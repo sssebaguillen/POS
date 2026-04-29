@@ -54,17 +54,17 @@ export default function OperatorList({
           return
         }
 
-        showToast({ message: 'Operador eliminado correctamente.' })
+        showToast({ message: 'Operario eliminado correctamente.' })
         setOperatorList(prev => prev.filter(item => item.id !== operator.id))
       },
     })
   }
 
   return (
-    <div className="surface-card p-6 self-start">
+    <div className="surface-card p-6 max-w-3xl mx-auto w-full">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h2 className="text-base font-semibold text-foreground">Operadores</h2>
+          <h2 className="text-base font-semibold text-foreground font-display">Operarios</h2>
           <p className="text-sm text-muted-foreground mt-1">
             Creá subusuarios con PIN para cambiar el operador activo durante el turno.
           </p>
@@ -74,7 +74,7 @@ export default function OperatorList({
           className="h-9 px-4 rounded-lg text-sm font-semibold bg-primary hover:bg-primary/90 text-primary-foreground shrink-0"
           onClick={() => setShowNewOperatorModal(true)}
         >
-          + Nuevo operario
+          Nuevo operario
         </Button>
       </div>
 
@@ -102,7 +102,7 @@ export default function OperatorList({
 
               <Button
                 type="button"
-                variant="outline"
+                variant="destructive"
                 className="h-8 px-3 text-xs"
                 disabled={deletingOperatorId === operator.id}
                 onClick={() => handleDeleteOperator(operator)}

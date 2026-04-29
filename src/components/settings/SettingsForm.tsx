@@ -11,6 +11,7 @@ import { type SettingsBusiness, type SettingsOperator } from '@/components/setti
 import OperatorList from '@/components/settings/OperatorList'
 import { CURRENCIES, type SupportedCurrencyCode } from '@/lib/constants/currencies'
 import { Upload } from 'lucide-react'
+import { usePillIndicator } from '@/hooks/usePillIndicator'
 
 const BUSINESS_SLUG_REGEX = /^[a-z0-9][a-z0-9-]{1,48}[a-z0-9]$/
 
@@ -49,6 +50,17 @@ function isValidHttpUrl(value: string): boolean {
   }
 }
 
+type SettingsTab = 'negocio' | 'catalogo' | 'operarios'
+
+const ALL_TABS: { key: SettingsTab; label: string; ownerOnly: boolean }[] = [
+  { key: 'negocio', label: 'Negocio', ownerOnly: true },
+  { key: 'catalogo', label: 'Catálogo', ownerOnly: true },
+  { key: 'operarios', label: 'Operarios', ownerOnly: false },
+]
+
+const SUCCESS_CLASS =
+  'rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-700 dark:border-green-500/30 dark:bg-green-500/10 dark:text-green-400'
+
 export default function SettingsForm({
   business,
   operators,
@@ -62,6 +74,11 @@ export default function SettingsForm({
     }
     return 'ARS'
   })()
+
+  const visibleTabs = ALL_TABS.filter(t => !t.ownerOnly || isOwner)
+
+  const [activeTab, setActiveTab] = useState<SettingsTab>(isOwner ? 'negocio' : 'operarios')
+  const { setRef, indicator } = usePillIndicator(activeTab)
 
   const [form, setForm] = useState<FormState>({
     name: business.name,
@@ -278,311 +295,350 @@ export default function SettingsForm({
   }
 
   return (
-    <div className="grid gap-6 lg:grid-cols-2">
-      <div className="surface-card p-6">
-        <h2 className="text-base font-semibold text-foreground">Negocio</h2>
-        <p className="text-sm text-muted-foreground mt-1">Actualizá los datos visibles en el sistema y el catálogo público.</p>
-
-        <form onSubmit={handleSubmit} className="mt-6 space-y-5">
-        <div className="space-y-1.5">
-          <label htmlFor="business-name" className="text-xs uppercase tracking-wide text-muted-foreground">
-            Nombre
-          </label>
-          <Input
-            id="business-name"
-            value={form.name}
-            onChange={event => setField('name', event.target.value)}
-            placeholder="Nombre del negocio"
-            required
-          />
-        </div>
-
-        <div className="space-y-1.5">
-          <label htmlFor="business-description" className="text-xs uppercase tracking-wide text-muted-foreground">
-            Descripción
-          </label>
-          <textarea
-            id="business-description"
-            value={form.description}
-            onChange={event => setField('description', event.target.value)}
-            placeholder="Descripción opcional para el catálogo"
-            rows={4}
-            className="w-full rounded-lg border border-input bg-transparent px-3 py-2 text-sm outline-none transition-colors placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
-          />
-        </div>
-
-        <div className="space-y-1.5">
-          <label htmlFor="business-whatsapp" className="text-xs uppercase tracking-wide text-muted-foreground">
-            WhatsApp
-          </label>
-          <Input
-            id="business-whatsapp"
-            value={form.whatsapp}
-            onChange={event => setField('whatsapp', event.target.value)}
-            placeholder="5491112345678"
-          />
-          <p className="text-xs text-muted-foreground">
-            Include country and area code, numbers only. E.g.: 5491112345678
-          </p>
-        </div>
-
-        <div className="space-y-1.5">
-          <label className="text-xs uppercase tracking-wide text-muted-foreground">Moneda</label>
-          <div className="relative">
-            <Input
-              id="business-currency"
-              value={currencyInput || form.currencyCode}
-              onFocus={() => setShowCurrencyOptions(true)}
-              onBlur={() => {
-                window.setTimeout(() => {
-                  setShowCurrencyOptions(false)
-                  setCurrencyInput('')
-                }, 120)
+    <div className="flex flex-col flex-1 min-h-0">
+      {/* Tab strip */}
+      <div className="shrink-0 border-b border-edge px-6 pt-3 pb-3 flex items-center justify-center">
+        <div className="pill-tabs relative">
+          {indicator && (
+            <span
+              className="pill-tab-indicator"
+              style={{
+                transform: `translateX(${indicator.left}px)`,
+                width: indicator.width,
               }}
-              onChange={event => {
-                const next = event.target.value
-                setCurrencyInput(next)
-                setShowCurrencyOptions(true)
-                const exact = CURRENCIES.find(
-                  c => c.code.toLowerCase() === next.trim().toLowerCase()
-                )
-                if (exact) {
-                  setForm(prev => ({ ...prev, currencyCode: exact.code }))
-                }
-              }}
-              placeholder="Seleccionar moneda"
-              className="font-mono"
-              autoComplete="off"
             />
-            {showCurrencyOptions && (
-              <div className="absolute z-20 mt-1 w-full max-h-52 overflow-y-auto rounded-lg border border-border bg-popover shadow-md">
-                {filteredCurrencies.length === 0 ? (
-                  <div className="px-3 py-2 text-xs text-muted-foreground">Sin resultados</div>
-                ) : (
-                  filteredCurrencies.map(c => (
-                    <button
-                      key={c.code}
-                      type="button"
-                      className="w-full px-3 py-2 text-left text-sm hover:bg-muted/50 transition-colors"
-                      onMouseDown={event => {
-                        event.preventDefault()
-                        setForm(prev => ({ ...prev, currencyCode: c.code }))
-                        setCurrencyInput('')
-                        setShowCurrencyOptions(false)
-                      }}
-                    >
-                      {c.code} — {c.label}
-                    </button>
-                  ))
-                )}
-              </div>
-            )}
-          </div>
-          {selectedCurrencyLabel && (
-            <p className="text-xs text-muted-foreground">{selectedCurrencyLabel}</p>
           )}
-        </div>
-
-        <div className="space-y-1.5">
-          <span className="text-xs uppercase tracking-wide text-muted-foreground">Logo</span>
-          <div className="rounded-lg border border-border overflow-hidden">
-            <div className="flex border-b border-border">
-              <button
-                type="button"
-                onClick={() => {
-                  setLogoInputTab('upload')
-                  setLogoUploadError('')
-                }}
-                className={`flex-1 px-4 py-2 text-xs font-medium transition-colors ${
-                  logoInputTab === 'upload'
-                    ? 'bg-background text-foreground border-b-2 border-primary'
-                    : 'bg-muted/30 text-muted-foreground hover:text-foreground'
-                }`}
-              >
-                Subir archivo
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setLogoInputTab('url')
-                  setLogoUploadError('')
-                }}
-                className={`flex-1 px-4 py-2 text-xs font-medium transition-colors ${
-                  logoInputTab === 'url'
-                    ? 'bg-background text-foreground border-b-2 border-primary'
-                    : 'bg-muted/30 text-muted-foreground hover:text-foreground'
-                }`}
-              >
-                URL externa
-              </button>
-            </div>
-            <div className="p-3 space-y-3">
-              {logoInputTab === 'upload' && (
-                <>
-                  <label className="flex flex-col items-center gap-2 cursor-pointer rounded-lg border border-dashed border-border bg-muted/20 px-4 py-5 hover:border-primary/40 transition-colors">
-                    <Upload className="h-5 w-5 text-muted-foreground" />
-                    <span className="text-xs text-muted-foreground">
-                      {logoUploading ? 'Subiendo...' : 'Arrastrá o hacé clic para seleccionar'}
-                    </span>
-                    <span className="text-[10px] text-muted-foreground">
-                      JPEG, PNG, WebP, SVG · máx. 2 MB
-                    </span>
-                    <input
-                      type="file"
-                      accept="image/jpeg,image/jpg,image/png,image/webp,image/svg+xml"
-                      className="sr-only"
-                      disabled={logoUploading}
-                      onChange={e => {
-                        const file = e.target.files?.[0]
-                        if (file) void handleLogoFileUpload(file)
-                        e.target.value = ''
-                      }}
-                    />
-                  </label>
-                  {logoUploadError && <p className="text-xs text-destructive">{logoUploadError}</p>}
-                </>
-              )}
-              {logoInputTab === 'url' && (
-                <Input
-                  id="business-logo-url"
-                  value={form.logoUrl}
-                  onChange={event => setField('logoUrl', event.target.value)}
-                  placeholder="https://..."
-                />
-              )}
-            </div>
-          </div>
-
-          {hasLogoUrl && !canPreviewLogo && logoInputTab === 'url' && (
-            <p className="text-xs text-destructive">Ingresá una URL válida con http:// o https://.</p>
-          )}
-
-          {hasLogoUrl && canPreviewLogo && !logoPreviewError && (
-            <div className="mt-2 inline-flex items-center gap-3 rounded-lg border border-border bg-muted/30 px-3 py-2">
-              <Image
-                src={normalizedLogoUrl}
-                alt="Vista previa del logo"
-                width={48}
-                height={48}
-                className="rounded-md object-cover border border-border"
-                onError={() => setLogoPreviewError(true)}
-                unoptimized
-              />
-              <span className="text-xs text-muted-foreground">Vista previa del logo</span>
-            </div>
-          )}
-
-          {canPreviewLogo && logoPreviewError && (
-            <p className="text-xs text-destructive">No se pudo cargar la imagen desde esa URL.</p>
-          )}
-        </div>
-
-        <div className="space-y-1.5">
-          <label htmlFor="business-slug" className="text-xs uppercase tracking-wide text-muted-foreground">
-            URL de tu catálogo
-          </label>
-          <Input
-            id="business-slug"
-            value={businessSlug}
-            onChange={event => {
-              setBusinessSlug(event.target.value)
-              setSlugError('')
-              setSlugSuccess('')
-            }}
-            placeholder="mi-negocio"
-            disabled={!isOwner || slugLoading}
-          />
-          <p className="text-xs text-muted-foreground">
-            Vista previa: <span className="font-mono">{catalogPreviewUrl}</span>
-          </p>
-          {!isOwner && (
-            <p className="text-xs text-muted-foreground">Solo el owner puede cambiar esta URL.</p>
-          )}
-          {slugError && <p className="text-xs text-destructive">{slugError}</p>}
-          {slugSuccess && (
-            <p className="rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-700 dark:border-green-500/30 dark:bg-green-500/10 dark:text-green-400">
-              {slugSuccess}
-            </p>
-          )}
-          <div className="flex justify-end">
-            <Button
-              type="button"
-              className="h-9 px-4"
-              onClick={handleSlugSubmit}
-              disabled={!isOwner || slugLoading || normalizedBusinessSlug === business.slug}
-            >
-              {slugLoading ? 'Guardando...' : 'Guardar'}
-            </Button>
-          </div>
-        </div>
-
-        <div className="space-y-1.5">
-          <label htmlFor="public-catalog-url" className="text-xs uppercase tracking-wide text-muted-foreground">
-            URL publica del catalogo
-          </label>
-          <div className="flex gap-2">
-            <Input id="public-catalog-url" value={publicCatalogUrl} readOnly disabled />
-            <Button type="button" variant="outline" className="shrink-0" onClick={handleCopyPublicUrl}>
-              Copiar enlace
-            </Button>
-          </div>
-          {copySuccess && <p className="rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-700 dark:border-green-500/30 dark:bg-green-500/10 dark:text-green-400">¡Enlace copiado!</p>}
-          {copyError && <p className="text-xs text-destructive">{copyError}</p>}
-        </div>
-
-        <div className="space-y-2">
-          <label className="text-xs uppercase tracking-wide text-muted-foreground">
-            Color primario
-          </label>
-          <div className="flex items-center gap-3">
-            <input
-              type="color"
-              value={form.primaryColor}
-              onChange={e => setField('primaryColor', e.target.value)}
-              className="h-10 w-10 rounded-lg border border-input cursor-pointer bg-transparent p-0.5"
-            />
-            <span className="text-sm font-mono text-muted-foreground">
-              {form.primaryColor}
-            </span>
+          {visibleTabs.map(tab => (
             <button
+              key={tab.key}
+              ref={setRef(tab.key)}
               type="button"
-              onClick={() => setField('primaryColor', '#7a3e10')}
-              className="text-xs text-muted-foreground hover:text-foreground transition-colors ml-auto"
+              onClick={() => setActiveTab(tab.key)}
+              className={`pill-tab !px-8${activeTab === tab.key ? ' pill-tab-active' : ''}`}
             >
-              Restablecer
+              {tab.label}
             </button>
-          </div>
-          <p className="text-xs text-muted-foreground">
-            Se aplica a botones, badges y acentos del sistema.
-          </p>
+          ))}
         </div>
-
-        {error && (
-          <p className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
-            {error}
-          </p>
-        )}
-
-        {success && (
-          <p className="rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-700 dark:border-green-500/30 dark:bg-green-500/10 dark:text-green-400">
-            {success}
-          </p>
-        )}
-
-          <div className="flex justify-end">
-            <Button type="submit" className="h-9 px-4" disabled={loading}>
-              {loading ? 'Guardando...' : 'Guardar cambios'}
-            </Button>
-          </div>
-        </form>
       </div>
 
-      <OperatorList
-        businessId={business.id}
-        initialOperators={operators}
-        isOwner={isOwner}
-        canManageOperators={canManageOperators}
-      />
+      {/* Scrollable content */}
+      <div className="flex-1 overflow-y-auto p-6">
+
+        {/* Negocio tab */}
+        {activeTab === 'negocio' && (
+          <div className="surface-card p-6 max-w-3xl mx-auto w-full">
+            <h2 className="text-base font-semibold text-foreground font-display">Negocio</h2>
+            <p className="text-sm text-muted-foreground mt-1">Actualizá los datos visibles en el sistema y el catálogo público.</p>
+
+            <form onSubmit={handleSubmit} className="mt-6 space-y-5">
+              <div className="space-y-1.5">
+                <label htmlFor="business-name" className="text-xs uppercase tracking-wide text-muted-foreground">
+                  Nombre
+                </label>
+                <Input
+                  id="business-name"
+                  value={form.name}
+                  onChange={event => setField('name', event.target.value)}
+                  placeholder="Nombre del negocio"
+                  required
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label htmlFor="business-description" className="text-xs uppercase tracking-wide text-muted-foreground">
+                  Descripción
+                </label>
+                <textarea
+                  id="business-description"
+                  value={form.description}
+                  onChange={event => setField('description', event.target.value)}
+                  placeholder="Descripción opcional para el catálogo"
+                  rows={4}
+                  className="w-full rounded-lg border border-input bg-transparent px-3 py-2 text-sm outline-none transition-colors placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label htmlFor="business-whatsapp" className="text-xs uppercase tracking-wide text-muted-foreground">
+                  WhatsApp
+                </label>
+                <Input
+                  id="business-whatsapp"
+                  value={form.whatsapp}
+                  onChange={event => setField('whatsapp', event.target.value)}
+                  placeholder="5491112345678"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Incluí el código de país y área, solo números. Ej.: 5491112345678
+                </p>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs uppercase tracking-wide text-muted-foreground">Moneda</label>
+                <div className="relative">
+                  <Input
+                    id="business-currency"
+                    value={currencyInput || form.currencyCode}
+                    onFocus={() => setShowCurrencyOptions(true)}
+                    onBlur={() => {
+                      window.setTimeout(() => {
+                        setShowCurrencyOptions(false)
+                        setCurrencyInput('')
+                      }, 120)
+                    }}
+                    onChange={event => {
+                      const next = event.target.value
+                      setCurrencyInput(next)
+                      setShowCurrencyOptions(true)
+                      const exact = CURRENCIES.find(
+                        c => c.code.toLowerCase() === next.trim().toLowerCase()
+                      )
+                      if (exact) {
+                        setForm(prev => ({ ...prev, currencyCode: exact.code }))
+                      }
+                    }}
+                    placeholder="Seleccionar moneda"
+                    className="font-mono"
+                    autoComplete="off"
+                  />
+                  {showCurrencyOptions && (
+                    <div className="absolute z-20 mt-1 w-full max-h-52 overflow-y-auto rounded-lg border border-border bg-popover shadow-md">
+                      {filteredCurrencies.length === 0 ? (
+                        <div className="px-3 py-2 text-xs text-muted-foreground">Sin resultados</div>
+                      ) : (
+                        filteredCurrencies.map(c => (
+                          <button
+                            key={c.code}
+                            type="button"
+                            className="w-full px-3 py-2 text-left text-sm hover:bg-muted/50 transition-colors"
+                            onMouseDown={event => {
+                              event.preventDefault()
+                              setForm(prev => ({ ...prev, currencyCode: c.code }))
+                              setCurrencyInput('')
+                              setShowCurrencyOptions(false)
+                            }}
+                          >
+                            {c.code} — {c.label}
+                          </button>
+                        ))
+                      )}
+                    </div>
+                  )}
+                </div>
+                {selectedCurrencyLabel && (
+                  <p className="text-xs text-muted-foreground">{selectedCurrencyLabel}</p>
+                )}
+              </div>
+
+              <div className="space-y-1.5">
+                <span className="text-xs uppercase tracking-wide text-muted-foreground">Logo</span>
+                <div className="rounded-lg border border-border overflow-hidden">
+                  <div className="flex border-b border-border">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setLogoInputTab('upload')
+                        setLogoUploadError('')
+                      }}
+                      className={`flex-1 px-4 py-2 text-xs font-medium transition-colors ${
+                        logoInputTab === 'upload'
+                          ? 'bg-background text-foreground border-b-2 border-primary'
+                          : 'bg-muted/30 text-muted-foreground hover:text-foreground'
+                      }`}
+                    >
+                      Subir archivo
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setLogoInputTab('url')
+                        setLogoUploadError('')
+                      }}
+                      className={`flex-1 px-4 py-2 text-xs font-medium transition-colors ${
+                        logoInputTab === 'url'
+                          ? 'bg-background text-foreground border-b-2 border-primary'
+                          : 'bg-muted/30 text-muted-foreground hover:text-foreground'
+                      }`}
+                    >
+                      URL externa
+                    </button>
+                  </div>
+                  <div className="p-3 space-y-3">
+                    {logoInputTab === 'upload' && (
+                      <>
+                        <label className="flex flex-col items-center gap-2 cursor-pointer rounded-lg border border-dashed border-border bg-muted/20 px-4 py-5 hover:border-primary/40 transition-colors">
+                          <Upload className="h-5 w-5 text-muted-foreground" />
+                          <span className="text-xs text-muted-foreground">
+                            {logoUploading ? 'Subiendo...' : 'Arrastrá o hacé clic para seleccionar'}
+                          </span>
+                          <span className="text-[10px] text-muted-foreground">
+                            JPEG, PNG, WebP, SVG · máx. 2 MB
+                          </span>
+                          <input
+                            type="file"
+                            accept="image/jpeg,image/jpg,image/png,image/webp,image/svg+xml"
+                            className="sr-only"
+                            disabled={logoUploading}
+                            onChange={e => {
+                              const file = e.target.files?.[0]
+                              if (file) void handleLogoFileUpload(file)
+                              e.target.value = ''
+                            }}
+                          />
+                        </label>
+                        {logoUploadError && <p className="text-xs text-destructive">{logoUploadError}</p>}
+                      </>
+                    )}
+                    {logoInputTab === 'url' && (
+                      <Input
+                        id="business-logo-url"
+                        value={form.logoUrl}
+                        onChange={event => setField('logoUrl', event.target.value)}
+                        placeholder="https://..."
+                      />
+                    )}
+                  </div>
+                </div>
+
+                {hasLogoUrl && !canPreviewLogo && logoInputTab === 'url' && (
+                  <p className="text-xs text-destructive">Ingresá una URL válida con http:// o https://.</p>
+                )}
+
+                {hasLogoUrl && canPreviewLogo && !logoPreviewError && (
+                  <div className="mt-2 inline-flex items-center gap-3 rounded-lg border border-border bg-muted/30 px-3 py-2">
+                    <Image
+                      src={normalizedLogoUrl}
+                      alt="Vista previa del logo"
+                      width={48}
+                      height={48}
+                      className="rounded-md object-cover border border-border"
+                      onError={() => setLogoPreviewError(true)}
+                      unoptimized
+                    />
+                    <span className="text-xs text-muted-foreground">Vista previa del logo</span>
+                  </div>
+                )}
+
+                {canPreviewLogo && logoPreviewError && (
+                  <p className="text-xs text-destructive">No se pudo cargar la imagen desde esa URL.</p>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-xs uppercase tracking-wide text-muted-foreground">
+                  Color primario
+                </label>
+                <div className="flex items-center gap-3">
+                  <input
+                    type="color"
+                    value={form.primaryColor}
+                    onChange={e => setField('primaryColor', e.target.value)}
+                    className="h-10 w-10 rounded-lg border border-input cursor-pointer bg-transparent p-0.5"
+                  />
+                  <span className="text-sm font-mono text-muted-foreground">
+                    {form.primaryColor}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setField('primaryColor', '#7a3e10')}
+                    className="text-xs text-muted-foreground hover:text-foreground transition-colors ml-auto"
+                  >
+                    Restablecer
+                  </button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Se aplica a botones, badges y acentos del sistema.
+                </p>
+              </div>
+
+              {error && (
+                <p className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
+                  {error}
+                </p>
+              )}
+
+              {success && <p className={SUCCESS_CLASS}>{success}</p>}
+
+              <div className="flex justify-end">
+                <Button type="submit" className="h-9 px-4" disabled={loading}>
+                  {loading ? 'Guardando...' : 'Guardar cambios'}
+                </Button>
+              </div>
+            </form>
+          </div>
+        )}
+
+        {/* Catálogo tab */}
+        {activeTab === 'catalogo' && (
+          <div className="surface-card p-6 max-w-3xl mx-auto w-full">
+            <h2 className="text-base font-semibold text-foreground font-display">Catálogo</h2>
+            <p className="text-sm text-muted-foreground mt-1">Configurá la URL pública de tu catálogo de productos.</p>
+
+            <div className="mt-6 space-y-5">
+              <div className="space-y-1.5">
+                <label htmlFor="business-slug" className="text-xs uppercase tracking-wide text-muted-foreground">
+                  URL de tu catálogo
+                </label>
+                <Input
+                  id="business-slug"
+                  value={businessSlug}
+                  onChange={event => {
+                    setBusinessSlug(event.target.value)
+                    setSlugError('')
+                    setSlugSuccess('')
+                  }}
+                  placeholder="mi-negocio"
+                  disabled={!isOwner || slugLoading}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Vista previa: <span className="font-mono">{catalogPreviewUrl}</span>
+                </p>
+                {!isOwner && (
+                  <p className="text-xs text-muted-foreground">Solo el owner puede cambiar esta URL.</p>
+                )}
+                {slugError && <p className="text-xs text-destructive">{slugError}</p>}
+                {slugSuccess && <p className={SUCCESS_CLASS}>{slugSuccess}</p>}
+                <div className="flex justify-end">
+                  <Button
+                    type="button"
+                    className="h-9 px-4"
+                    onClick={handleSlugSubmit}
+                    disabled={!isOwner || slugLoading || normalizedBusinessSlug === business.slug}
+                  >
+                    {slugLoading ? 'Guardando...' : 'Guardar'}
+                  </Button>
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <label htmlFor="public-catalog-url" className="text-xs uppercase tracking-wide text-muted-foreground">
+                  URL pública del catálogo
+                </label>
+                <div className="flex gap-2">
+                  <Input id="public-catalog-url" value={publicCatalogUrl} readOnly disabled />
+                  <Button type="button" variant="outline" className="shrink-0" onClick={handleCopyPublicUrl}>
+                    Copiar enlace
+                  </Button>
+                </div>
+                {copySuccess && <p className={SUCCESS_CLASS}>¡Enlace copiado!</p>}
+                {copyError && <p className="text-xs text-destructive">{copyError}</p>}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Operarios tab */}
+        {activeTab === 'operarios' && (
+          <OperatorList
+            businessId={business.id}
+            initialOperators={operators}
+            isOwner={isOwner}
+            canManageOperators={canManageOperators}
+          />
+        )}
+
+      </div>
     </div>
   )
 }
