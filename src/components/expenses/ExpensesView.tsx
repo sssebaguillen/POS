@@ -227,7 +227,7 @@ export default function ExpensesView({
                 ))}
               </div>
 
-              <ExpenseSummaryCards balance={displayBalance} />
+              <ExpenseSummaryCards balance={displayBalance} isFiltered={!!selectedCategory} />
 
               <div className="flex items-center justify-between">
                 <button

@@ -12,9 +12,9 @@ interface Props {
 }
 
 function AttachmentIcon({ type }: { type: ExpenseAttachmentType | null }) {
-  if (type === 'pdf') return <FileText size={16} className="text-red-500 shrink-0" />
-  if (type === 'image') return <ImageIcon size={16} className="text-blue-500 shrink-0" />
-  if (type === 'spreadsheet') return <FileSpreadsheet size={16} className="text-emerald-600 shrink-0" />
+  if (type === 'pdf') return <FileText size={16} className="text-destructive shrink-0" />
+  if (type === 'image') return <ImageIcon size={16} className="text-primary shrink-0" />
+  if (type === 'spreadsheet') return <FileSpreadsheet size={16} className="text-body shrink-0" />
   return <FileText size={16} className="text-hint shrink-0" />
 }
 
@@ -123,7 +123,7 @@ export default function ExpenseAttachmentModal({ signedUrl, type, name, onClose 
 
   return (
     <div
-      className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+      className="fixed inset-0 bg-foreground/40 flex items-center justify-center z-50 p-4"
       onClick={e => { if (e.target === e.currentTarget) onClose() }}
     >
       <div className="surface-elevated rounded-2xl w-full max-w-3xl flex flex-col overflow-hidden"

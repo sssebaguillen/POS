@@ -149,7 +149,7 @@ export default function NewExpensePanel({
 
   return (
     <>
-      <div className="fixed inset-y-0 right-0 z-40 w-full max-w-md bg-card border-l border-edge shadow-xl flex flex-col">
+      <div className="fixed inset-y-0 right-0 z-40 w-full max-w-md surface-elevated border-l border-edge flex flex-col" style={{ borderRadius: 0 }}>
         <div className="h-14 border-b border-edge/60 flex items-center justify-between px-5 shrink-0">
           <h2 className="font-semibold text-heading">Nuevo gasto</h2>
           <button
@@ -161,7 +161,7 @@ export default function NewExpensePanel({
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto px-5 py-5 space-y-5">
+        <form id="new-expense-form" onSubmit={handleSubmit} className="flex-1 overflow-y-auto px-5 py-5 space-y-5">
           <div className="space-y-1.5">
             <label className="text-sm font-medium text-body">Categoría</label>
             <SelectDropdown
@@ -271,10 +271,10 @@ export default function NewExpensePanel({
             Cancelar
           </Button>
           <Button
-            type="button"
+            type="submit"
+            form="new-expense-form"
             className="flex-1 h-9 rounded-lg text-sm font-semibold bg-primary hover:bg-primary/90 text-primary-foreground"
             disabled={saving}
-            onClick={handleSubmit}
           >
             {saving ? 'Guardando...' : 'Registrar gasto'}
           </Button>
