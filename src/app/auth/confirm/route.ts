@@ -5,8 +5,6 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
   const token_hash = searchParams.get('token_hash')
   const type = searchParams.get('type') as 'email' | 'recovery' | 'invite' | 'email_change' | null
-  const next = searchParams.get('next') ?? '/email-confirmed'
-
   if (!token_hash || !type) {
     return NextResponse.redirect(new URL('/login?error=invalid_link', request.url))
   }
@@ -18,5 +16,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(new URL('/login?error=invalid_link', request.url))
   }
 
-  return NextResponse.redirect(new URL(next, request.url))
+  await supabase.auth.signOut()
+
+  return NextResponse.redirect(new URL('/email-confirmed', request.url))
 }
