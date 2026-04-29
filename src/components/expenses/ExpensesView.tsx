@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { usePathname } from 'next/navigation'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { Plus } from 'lucide-react'
+import { ChevronLeft, Plus } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import posthog from 'posthog-js'
 import { trackFeatureUsed } from '@/lib/analytics'
@@ -255,12 +255,17 @@ export default function ExpensesView({
 
           {showSuppliers && (
             <>
-              <button
-                onClick={() => setShowSuppliers(false)}
-                className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-              >
-                ← Volver a Gastos
-              </button>
+              <nav className="flex items-center gap-2 text-sm" aria-label="Navegación de sección">
+                <button
+                  onClick={() => setShowSuppliers(false)}
+                  className="inline-flex items-center gap-1 text-hint hover:text-foreground transition-colors"
+                >
+                  <ChevronLeft size={14} />
+                  Gastos
+                </button>
+                <span className="text-faint" aria-hidden="true">/</span>
+                <span className="font-semibold text-foreground">Proveedores</span>
+              </nav>
               <SuppliersPanel
                 suppliers={suppliers}
                 businessId={businessId}

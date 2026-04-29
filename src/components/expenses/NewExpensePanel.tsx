@@ -163,7 +163,7 @@ export default function NewExpensePanel({
 
         <form id="new-expense-form" onSubmit={handleSubmit} className="flex-1 overflow-y-auto px-5 py-5 space-y-5">
           <div className="space-y-1.5">
-            <label className="text-sm font-medium text-body">Categoría</label>
+            <label className="text-label text-hint">Categoría</label>
             <SelectDropdown
               value={category}
               onChange={v => setCategory(v as ExpenseCategory)}
@@ -174,7 +174,7 @@ export default function NewExpensePanel({
 
           {isMercaderia ? (
             <div className="space-y-1.5">
-              <label className="text-sm font-medium text-body">Productos</label>
+              <label className="text-label text-hint">Productos</label>
               <MercaderiaItemsSection
                 businessId={businessId}
                 supabaseClient={supabase}
@@ -188,7 +188,7 @@ export default function NewExpensePanel({
             </div>
           ) : (
             <div className="space-y-1.5">
-              <label className="text-sm font-medium text-body">
+              <label className="text-label text-hint">
                 Monto <span className="text-destructive">*</span>
               </label>
               <Input
@@ -204,7 +204,7 @@ export default function NewExpensePanel({
           )}
 
           <div className="space-y-1.5">
-            <label className="text-sm font-medium text-body">
+            <label className="text-label text-hint">
               Descripción <span className="text-destructive">*</span>
             </label>
             <Input
@@ -216,12 +216,12 @@ export default function NewExpensePanel({
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-sm font-medium text-body">Fecha</label>
+            <label className="text-label text-hint">Fecha</label>
             <DatePicker value={date} onChange={setDate} className="w-full" />
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-sm font-medium text-body">Proveedor (opcional)</label>
+            <label className="text-label text-hint">Proveedor (opcional)</label>
             <SupplierSelectDropdown
               value={supplierId}
               onChange={setSupplierId}
@@ -231,7 +231,7 @@ export default function NewExpensePanel({
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-sm font-medium text-body">Notas (opcional)</label>
+            <label className="text-label text-hint">Notas (opcional)</label>
             <textarea
               value={notes}
               onChange={e => setNotes(e.target.value)}
@@ -243,7 +243,7 @@ export default function NewExpensePanel({
 
           {!isMercaderia && (
             <div className="space-y-1.5">
-              <label className="text-sm font-medium text-body">Adjunto (opcional)</label>
+              <label className="text-label text-hint">Adjunto (opcional)</label>
               <ExpenseAttachmentUploader
                 businessId={businessId}
                 onUpload={setAttachment}
