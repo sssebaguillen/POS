@@ -102,6 +102,14 @@
 
   /* ── Light mode tokens ── */
   --shadow-color: rgb(0 0 0 / 0.06);
+
+  /* ── Category swatch palette — 6 warm-toned muted fills ── */
+  --cat-0: #f0e8d8;
+  --cat-1: #ecddd8;
+  --cat-2: #dde8dc;
+  --cat-3: #d8e4ec;
+  --cat-4: #e4daf0;
+  --cat-5: #f0e4cc;
 }
 
 .dark {
@@ -155,6 +163,14 @@
 
   /* Frosted surface */
   --surface-tint: #131312;
+
+  /* ── Category swatch palette — dark mode overrides ── */
+  --cat-0: #252218;
+  --cat-1: #251e1c;
+  --cat-2: #1c2520;
+  --cat-3: #1c2228;
+  --cat-4: #211c28;
+  --cat-5: #28200e;
 }
 
 @layer base {

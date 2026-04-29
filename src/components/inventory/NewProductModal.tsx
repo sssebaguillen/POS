@@ -14,7 +14,7 @@ import type { InventoryBrand } from '@/components/inventory/types'
 import { validateImageUrl } from '@/lib/validation'
 import FieldGroup from '@/components/inventory/FieldGroup'
 import { useCurrency } from '@/lib/context/CurrencyContext'
-import { getCurrencySymbol } from '@/lib/format'
+import { getCurrencySymbol, toTitleCase } from '@/lib/format'
 
 interface Category {
   id: string
@@ -244,7 +244,7 @@ export default function NewProductModal({
     setLoading(true)
     const payload = {
       business_id: businessId,
-      name: form.name.trim(),
+      name: toTitleCase(form.name.trim()),
       sku: form.sku.trim() || null,
       brand_id: form.brand_id || null,
       barcode: form.barcode.trim() || null,

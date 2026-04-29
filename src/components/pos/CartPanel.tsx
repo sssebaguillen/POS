@@ -598,7 +598,7 @@ export default function CartPanel({ businessId, businessName, activePriceList, p
                           <button
                             onClick={() => updateQuantity(item.product.id, item.quantity - 1)}
                             aria-label={`Quitar una unidad de ${item.product.name}`}
-                            className="w-8 h-8 rounded-md bg-surface-alt hover:bg-hover-bg flex items-center justify-center transition-colors"
+                            className="w-8 h-8 rounded-md bg-surface hover:bg-hover-bg flex items-center justify-center transition-colors"
                           >
                             <Minus size={12} />
                           </button>
@@ -608,7 +608,7 @@ export default function CartPanel({ businessId, businessName, activePriceList, p
                           <button
                             onClick={() => updateQuantity(item.product.id, item.quantity + 1)}
                             aria-label={`Agregar una unidad de ${item.product.name}`}
-                            className="w-8 h-8 rounded-md bg-surface-alt hover:bg-hover-bg flex items-center justify-center transition-colors"
+                            className="w-8 h-8 rounded-md bg-surface hover:bg-hover-bg flex items-center justify-center transition-colors"
                           >
                             <Plus size={12} />
                           </button>

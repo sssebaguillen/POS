@@ -11,7 +11,7 @@ import type { InventoryBrand, InventoryCategory, InventoryProduct } from '@/comp
 import { validateImageUrl } from '@/lib/validation'
 import FieldGroup from '@/components/inventory/FieldGroup'
 import { useCurrency } from '@/lib/context/CurrencyContext'
-import { getCurrencySymbol } from '@/lib/format'
+import { getCurrencySymbol, toTitleCase } from '@/lib/format'
 
 interface EditProductModalProps {
   open: boolean
@@ -301,7 +301,7 @@ export default function EditProductModal({
 
     onSaved(
       {
-        name: form.name.trim(),
+        name: toTitleCase(form.name.trim()),
         price: parsedPrice,
         cost: parsedCost || 0,
         stock: Math.trunc(Number(form.stock) || 0),

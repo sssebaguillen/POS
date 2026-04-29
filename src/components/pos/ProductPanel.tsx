@@ -1,7 +1,6 @@
 'use client'
 
 import Image from 'next/image'
-import { Box } from 'lucide-react'
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useCartStore } from '@/lib/store/cart.store'
 import { calculateProductPrice } from '@/lib/price-lists'
@@ -11,6 +10,17 @@ import type { PriceList, PriceListOverride } from '@/lib/types'
 import { useFormatMoney } from '@/lib/context/CurrencyContext'
 
 const PAGE_SIZE = 80
+
+const CATEGORY_PALETTE_SIZE = 6
+
+function hashCategoryIndex(categoryId: string | null): number {
+  if (!categoryId) return 0
+  let hash = 0
+  for (let i = 0; i < categoryId.length; i++) {
+    hash = (hash * 31 + categoryId.charCodeAt(i)) >>> 0
+  }
+  return hash % CATEGORY_PALETTE_SIZE
+}
 
 interface Props {
   products: ProductWithCategory[]
@@ -168,6 +178,22 @@ function PaginatedProductGrid({
   )
 }
 
+function CategorySwatch({ categoryId, brandName }: { categoryId: string | null; brandName: string | null }) {
+  const idx = hashCategoryIndex(categoryId)
+  return (
+    <div
+      className="w-full h-20 mb-3 rounded-md shrink-0 flex items-center justify-center"
+      style={{ backgroundColor: `var(--cat-${idx})` }}
+    >
+      {brandName && (
+        <span className="text-xs text-hint font-medium truncate px-2 text-center leading-tight">
+          {brandName}
+        </span>
+      )}
+    </div>
+  )
+}
+
 const ProductCard = memo(function ProductCard({
   product,
   activePriceList,
@@ -181,9 +207,12 @@ const ProductCard = memo(function ProductCard({
   onAdd: (p: Product) => void
   formatMoney: (v: number) => string
 }) {
-  const displayPrice = activePriceList
+  const rawPrice = activePriceList
     ? calculateProductPrice(product.cost, product.price, product.id, product.brand_id, activePriceList, priceListOverrides)
     : product.price
+  const displayPrice = Number.isFinite(rawPrice) ? rawPrice : (product.price ?? 0)
+
+  const displayName = product.name || 'Sin nombre'
 
   const stockLabel = product.stock === 0
     ? 'Sin stock'
@@ -194,37 +223,39 @@ const ProductCard = memo(function ProductCard({
   return (
     <button
       onClick={() => onAdd(product)}
-      aria-label={`${product.name}, ${formatMoney(displayPrice)}${stockLabel ? `, ${stockLabel}` : ''}`}
-      className="group relative text-left p-4 rounded-2xl border border-edge/60 bg-surface hover:border-primary/50 hover:shadow-md transition-all flex flex-col"
+      aria-label={`${displayName}, ${formatMoney(displayPrice)}${stockLabel ? `, ${stockLabel}` : ''}`}
+      className="group relative text-left p-4 rounded-2xl border border-edge/60 bg-surface hover:border-primary/50 transition-all flex flex-col"
     >
-      {/* Image or category marker */}
+      {/* Top zone — always h-20, keeps all cards identical height */}
       {product.image_url ? (
         <div className="relative w-full h-20 mb-3 rounded-md overflow-hidden shrink-0">
           <Image
             src={product.image_url}
-            alt={product.name}
+            alt={displayName}
             fill
             sizes="(max-width: 768px) 50vw, 140px"
             className="object-cover"
             unoptimized={product.image_source === 'url'}
           />
+
         </div>
       ) : (
-        <div className="h-10 mb-3 flex items-center text-3xl leading-none">
-          {product.categories?.icon
-            ? <span>{product.categories.icon}</span>
-            : <Box size={28} className="text-hint" />
-          }
-        </div>
+        <CategorySwatch
+          categoryId={product.category_id}
+          brandName={product.brand?.name ?? null}
+        />
       )}
 
       {/* Name */}
-      <p className="text-sm font-medium text-heading leading-tight line-clamp-2 mb-1 flex-1">
-        {product.name}
+      <p
+        title={displayName}
+        className={`text-sm font-semibold text-heading leading-snug line-clamp-2 mb-1 flex-1${stockLabel ? ' pr-12' : ''}`}
+      >
+        {displayName}
       </p>
 
       {/* Price */}
-      <p className="text-sm font-bold text-heading">
+      <p className="text-sm font-medium text-body tabular-nums">
         {formatMoney(displayPrice)}
       </p>
 
@@ -233,8 +264,8 @@ const ProductCard = memo(function ProductCard({
           aria-hidden="true"
           className={`absolute top-2 right-2 text-[10px] font-medium px-1.5 py-0.5 rounded-full ${
             product.stock === 0
-              ? 'bg-red-100 text-red-600 dark:bg-red-900/50 dark:text-red-400'
-              : 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400'
+              ? 'bg-red-100 text-red-600 dark:bg-red-900 dark:text-red-300'
+              : 'bg-amber-100 text-amber-700 dark:bg-amber-900/60 dark:text-amber-400'
           }`}
         >
           {stockLabel}
