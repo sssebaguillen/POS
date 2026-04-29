@@ -16,6 +16,7 @@ import ExportCSVButton from '@/components/shared/ExportCSVButton'
 import ExpenseSummaryCards from './ExpenseSummaryCards'
 import ExpensesTable from './ExpensesTable'
 import NewExpensePanel from './NewExpensePanel'
+import EditExpensePanel from './EditExpensePanel'
 import SuppliersPanel from './SuppliersPanel'
 import {
   EXPENSE_CATEGORY_LABELS,
@@ -59,6 +60,7 @@ export default function ExpensesView({
   const supabase = useMemo(() => createClient(), [])
   const [showSuppliers, setShowSuppliers] = useState(false)
   const [panelOpen, setPanelOpen] = useState(false)
+  const [editingExpense, setEditingExpense] = useState<Expense | null>(null)
   const [period, setPeriod] = useState<DateRangePeriod>(initialPeriod)
   const [from, setFrom] = useState(initialFrom)
   const [to, setTo] = useState(initialTo)
@@ -130,6 +132,10 @@ export default function ExpensesView({
       ['expenses', businessId, period, from, to],
       (old) => old ? { ...old, expenses: old.expenses.filter(e => e.id !== id) } : old
     )
+    void queryClient.invalidateQueries({ queryKey: ['expenses'] })
+  }
+
+  function handleExpenseUpdated() {
     void queryClient.invalidateQueries({ queryKey: ['expenses'] })
   }
 
@@ -248,6 +254,7 @@ export default function ExpensesView({
                   businessId={businessId}
                   supabaseClient={supabase}
                   onDeleted={handleExpenseDeleted}
+                  onEdit={setEditingExpense}
                 />
               </div>
             </>
@@ -283,6 +290,17 @@ export default function ExpensesView({
           supabaseClient={supabase}
           onCreated={handleExpenseCreated}
           onClose={() => setPanelOpen(false)}
+          canUpdateStock={canUpdateStock}
+        />
+      )}
+
+      {editingExpense && (
+        <EditExpensePanel
+          expense={editingExpense}
+          businessId={businessId}
+          supabaseClient={supabase}
+          onUpdated={handleExpenseUpdated}
+          onClose={() => setEditingExpense(null)}
           canUpdateStock={canUpdateStock}
         />
       )}

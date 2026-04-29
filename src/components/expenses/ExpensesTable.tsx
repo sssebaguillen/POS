@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo, useRef } from 'react'
-import { Paperclip, Trash2, Loader2 } from 'lucide-react'
+import { Paperclip, Pencil, Trash2, Loader2 } from 'lucide-react'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { EXPENSE_CATEGORY_LABELS, type Expense, type ExpenseAttachmentType } from './types'
 import ExpenseAttachmentModal from './ExpenseAttachmentModal'
@@ -31,9 +31,10 @@ interface Props {
   businessId: string
   supabaseClient: SupabaseClient
   onDeleted: (id: string) => void
+  onEdit: (expense: Expense) => void
 }
 
-export default function ExpensesTable({ expenses, businessId, supabaseClient, onDeleted }: Props) {
+export default function ExpensesTable({ expenses, businessId, supabaseClient, onDeleted, onEdit }: Props) {
   const supabase = useMemo(() => supabaseClient, [supabaseClient])
   const { toast, showToast, dismissToast } = useToast()
   const [deletingId, setDeletingId] = useState<string | null>(null)
@@ -176,18 +177,28 @@ export default function ExpensesTable({ expenses, businessId, supabaseClient, on
                   )}
                 </td>
                 <td className="px-4 py-3 text-right">
-                  <button
-                    type="button"
-                    onClick={() => handleTrashClick(expense)}
-                    disabled={deletingId === expense.id || loadingItemsId === expense.id}
-                    className="p-1.5 rounded-lg text-hint hover:text-destructive hover:bg-destructive/10 transition-colors disabled:opacity-40"
-                    title="Eliminar gasto"
-                  >
-                    {(deletingId === expense.id || loadingItemsId === expense.id)
-                      ? <Loader2 size={15} className="animate-spin" />
-                      : <Trash2 size={15} />
-                    }
-                  </button>
+                  <div className="flex items-center justify-end gap-1">
+                    <button
+                      type="button"
+                      onClick={() => onEdit(expense)}
+                      className="p-1.5 rounded-lg text-hint hover:text-primary hover:bg-primary/10 transition-colors"
+                      title="Editar gasto"
+                    >
+                      <Pencil size={14} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleTrashClick(expense)}
+                      disabled={deletingId === expense.id || loadingItemsId === expense.id}
+                      className="p-1.5 rounded-lg text-hint hover:text-destructive hover:bg-destructive/10 transition-colors disabled:opacity-40"
+                      title="Eliminar gasto"
+                    >
+                      {(deletingId === expense.id || loadingItemsId === expense.id)
+                        ? <Loader2 size={15} className="animate-spin" />
+                        : <Trash2 size={15} />
+                      }
+                    </button>
+                  </div>
                 </td>
               </tr>
             ))}
