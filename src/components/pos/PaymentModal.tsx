@@ -204,7 +204,7 @@ export default function PaymentModal({
           autoPrintOnOpen
         />
       ) : (
-        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-foreground/40 flex items-center justify-center z-50 p-4">
           <div className="surface-elevated rounded-2xl w-full max-w-sm max-h-[calc(100vh-2rem)] flex flex-col overflow-hidden">
           <>
             <div className="flex items-center justify-between px-5 pt-5 pb-4 border-b border-edge-soft">
@@ -271,7 +271,7 @@ export default function PaymentModal({
                     <button
                       type="button"
                       onClick={enterMixedMode}
-                      className="flex items-center gap-1.5 text-sm text-primary hover:text-primary/80 transition-colors font-medium"
+                      className="flex items-center gap-1.5 text-sm text-primary hover:bg-primary/8 transition-colors font-medium px-2 py-1 rounded-lg -ml-2"
                     >
                       <Plus size={15} />
                       Agregar método

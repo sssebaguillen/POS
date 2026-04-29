@@ -391,7 +391,7 @@ export default function POSView({ products, businessId, businessName, priceLists
               >
                 {(() => {
                   const chip = (active: boolean) =>
-                    `shrink-0 rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+                    `shrink-0 rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
                       active
                         ? 'bg-primary text-primary-foreground'
                         : 'text-muted-foreground hover:text-foreground hover:bg-muted'

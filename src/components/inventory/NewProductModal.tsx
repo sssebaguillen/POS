@@ -512,7 +512,7 @@ export default function NewProductModal({
 
                   {isPriceEdited && priceLists.length > 0 && (
                     <div className="col-span-2 rounded-xl border border-edge bg-surface-alt px-3 py-2.5 flex flex-col gap-2">
-                      <p className="text-xs text-subtle">Aplicar este precio como override en:</p>
+                      <p className="text-xs text-subtle">Aplicar este precio personalizado en:</p>
                       <div className="flex flex-wrap gap-x-4 gap-y-1.5">
                         {priceLists.map(list => (
                           <label key={list.id} className="flex items-center gap-2 cursor-pointer select-none">
@@ -533,7 +533,7 @@ export default function NewProductModal({
                               }`}
                             >
                               {selectedListIds.has(list.id) && (
-                                <svg viewBox="0 0 10 8" className="w-2.5 h-2 fill-none stroke-white stroke-[2]"><path d="M1 4l3 3 5-6" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                                <svg viewBox="0 0 10 8" className="w-2.5 h-2 fill-none stroke-primary-foreground stroke-[2]"><path d="M1 4l3 3 5-6" strokeLinecap="round" strokeLinejoin="round" /></svg>
                               )}
                             </button>
                             <span className="text-xs text-body">

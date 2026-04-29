@@ -129,7 +129,7 @@ export default function ReceiptPreviewModal({ receipt, onClose, autoPrintOnOpen 
   }
 
   return (
-    <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4">
+    <div className="fixed inset-0 bg-foreground/40 flex items-center justify-center z-50 p-4">
       <div className="surface-elevated rounded-2xl w-full max-w-sm max-h-[calc(100vh-2rem)] flex flex-col overflow-hidden">
         <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain">
           <div className="p-5 space-y-4">
@@ -179,7 +179,7 @@ export default function ReceiptPreviewModal({ receipt, onClose, autoPrintOnOpen 
               {directPrintAvailable && (
                 <Button
                   variant="outline"
-                  className="w-full h-11 rounded-xl font-semibold"
+                  className="w-full h-11 rounded-lg font-semibold"
                   disabled={printingBrowser || printingDirect || sharing}
                   onClick={handleDirectPrint}
                 >
@@ -191,7 +191,7 @@ export default function ReceiptPreviewModal({ receipt, onClose, autoPrintOnOpen 
               {nativeShareAvailable && (
                 <Button
                   variant="outline"
-                  className="w-full h-11 rounded-xl font-semibold"
+                  className="w-full h-11 rounded-lg font-semibold"
                   disabled={printingBrowser || printingDirect || sharing}
                   onClick={handleNativeShare}
                 >
@@ -202,7 +202,7 @@ export default function ReceiptPreviewModal({ receipt, onClose, autoPrintOnOpen 
 
               <Button
                 variant="outline"
-                className="w-full h-11 rounded-xl font-semibold"
+                className="w-full h-11 rounded-lg font-semibold"
                 disabled={printingBrowser || printingDirect || sharing}
                 onClick={openWhatsAppShare}
               >
@@ -212,7 +212,7 @@ export default function ReceiptPreviewModal({ receipt, onClose, autoPrintOnOpen 
 
               <Button
                 variant="outline"
-                className="w-full h-11 rounded-xl font-semibold"
+                className="w-full h-11 rounded-lg font-semibold"
                 disabled={printingBrowser || printingDirect || sharing}
                 onClick={openEmailShare}
               >
@@ -222,7 +222,7 @@ export default function ReceiptPreviewModal({ receipt, onClose, autoPrintOnOpen 
 
               <Button
                 variant="cancel"
-                className="w-full h-11 rounded-xl font-medium sm:col-span-2"
+                className="w-full h-11 rounded-lg font-medium sm:col-span-2"
                 disabled={printingBrowser || printingDirect || sharing}
                 onClick={onClose}
               >

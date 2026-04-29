@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Dialog, DialogContent } from '@/components/ui/dialog'
+import { X } from 'lucide-react'
 import { isSettingsOperator, type SettingsOperator } from '@/components/settings/types'
 import {
   OPERATOR_MANAGEMENT_PERMISSION_KEYS,
@@ -13,6 +14,7 @@ import {
   type OperatorManagementPermissionKey,
   type OperatorManagementPermissions,
 } from '@/lib/operator'
+import { translateDbError } from '@/lib/errors'
 
 interface EditOperatorModalProps {
   operator: SettingsOperator
@@ -41,10 +43,10 @@ interface PermissionToggleRowProps {
 const PERMISSION_FIELDS: PermissionField[] = [
   { key: 'sales', label: 'Ventas' },
   { key: 'stock', label: 'Ver inventario' },
-  { key: 'stats', label: 'Estadisticas' },
+  { key: 'stats', label: 'Estadísticas' },
   { key: 'price_lists', label: 'Ver listas de precios' },
   { key: 'expenses', label: 'Gastos' },
-  { key: 'settings', label: 'Configuracion' },
+  { key: 'settings', label: 'Configuración' },
 ]
 
 function PermissionToggleRow({
@@ -56,7 +58,7 @@ function PermissionToggleRow({
 }: PermissionToggleRowProps) {
   return (
     <div className={`flex items-center justify-between px-3 py-2.5 ${indented ? 'pl-8' : ''}`}>
-      <span className={`text-sm ${indented ? 'text-muted-foreground' : 'text-foreground'}`}>{label}</span>
+      <span className={`text-sm ${indented ? 'text-hint' : 'text-body'}`}>{label}</span>
       <button
         type="button"
         role="switch"
@@ -187,7 +189,7 @@ export default function EditOperatorModal({
       }
 
       if (!/^\d{4}$|^\d{6}$/.test(newPin)) {
-        setError('El PIN debe contener exactamente 4 o 6 digitos.')
+        setError('El PIN debe contener exactamente 4 o 6 dígitos.')
         return
       }
     }
@@ -212,7 +214,7 @@ export default function EditOperatorModal({
 
     if (updateError) {
       setLoading(false)
-      onError(updateError.message)
+      onError(translateDbError(updateError.message, 'No se pudo actualizar el operario.'))
       return
     }
 
@@ -245,150 +247,160 @@ export default function EditOperatorModal({
 
   return (
     <Dialog open onOpenChange={nextOpen => { if (!nextOpen) onClose() }}>
-      <DialogContent className="max-w-lg">
-        <h2 className="text-base font-semibold text-foreground">
-          Editar operario
-        </h2>
+      <DialogContent className="sm:max-w-lg p-0 gap-0 overflow-hidden bg-card flex flex-col" showCloseButton={false}>
+        <div className="flex items-center justify-between px-5 py-4 border-b border-edge shrink-0">
+          <h2 className="text-base font-semibold text-heading">Editar operario</h2>
+          <button
+            type="button"
+            onClick={onClose}
+            className="p-1.5 rounded-lg hover:bg-hover-bg transition-colors text-hint"
+            aria-label="Cerrar"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
 
-        <form onSubmit={handleSubmit} className="space-y-5">
-          {isOwner && (
-            <section className="space-y-3">
-              <div>
-                <h3 className="text-label text-muted-foreground">Nombre</h3>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  Solo el owner puede actualizar el nombre del operario.
-                </p>
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="text-label text-muted-foreground">
-                  Nombre actual
-                </label>
-                <Input
-                  value={name}
-                  onChange={event => {
-                    setName(event.target.value)
-                    setError(null)
-                  }}
-                  placeholder="Nombre del operario"
-                  required
-                />
-              </div>
-            </section>
-          )}
-
-          {isOwner && (
-            <section className="space-y-3">
-              <div>
-                <h3 className="text-label text-muted-foreground">Resetear PIN</h3>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  Solo se enviara un nuevo PIN si completas ambos campos.
-                </p>
-              </div>
-
-              <div className="grid gap-3 sm:grid-cols-2">
-                <div className="space-y-1.5">
-                  <label className="text-label text-muted-foreground">Nuevo PIN</label>
-                  <Input
-                    type="password"
-                    inputMode="numeric"
-                    autoComplete="off"
-                    maxLength={6}
-                    value={newPin}
-                    onChange={event => {
-                      setNewPin(normalizePin(event.target.value))
-                      setError(null)
-                    }}
-                    placeholder="4 o 6 digitos"
-                  />
+        <form onSubmit={handleSubmit} className="flex flex-col min-h-0">
+          <div className="overflow-y-auto px-5 py-4 flex-1 space-y-5">
+            {isOwner && (
+              <section className="space-y-3">
+                <div>
+                  <h3 className="text-label text-subtle">Nombre</h3>
+                  <p className="mt-1 text-sm text-hint">
+                    Solo el owner puede actualizar el nombre del operario.
+                  </p>
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-label text-muted-foreground">Confirmar PIN</label>
+                  <label className="text-label text-subtle">
+                    Nombre actual
+                  </label>
                   <Input
-                    type="password"
-                    inputMode="numeric"
-                    autoComplete="off"
-                    maxLength={6}
-                    value={confirmPin}
+                    value={name}
                     onChange={event => {
-                      setConfirmPin(normalizePin(event.target.value))
+                      setName(event.target.value)
                       setError(null)
                     }}
-                    placeholder="Repite el PIN"
+                    placeholder="Nombre del operario"
+                    required
                   />
                 </div>
-              </div>
-            </section>
-          )}
+              </section>
+            )}
 
-          {canEditPermissions && (
-            <section className="space-y-3">
-              <div>
-                <h3 className="text-label text-muted-foreground">Permisos</h3>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  Al guardar se envia el estado completo de permisos del operario.
-                </p>
-              </div>
+            {isOwner && (
+              <section className="space-y-3">
+                <div>
+                  <h3 className="text-label text-subtle">Resetear PIN</h3>
+                  <p className="mt-1 text-sm text-hint">
+                    Solo se enviará un nuevo PIN si completas ambos campos.
+                  </p>
+                </div>
 
-              <div className="rounded-lg border border-border/60 divide-y divide-border/60">
-                {PERMISSION_FIELDS.map(({ key, label }) => (
-                  <div key={key}>
-                    <PermissionToggleRow
-                      label={label}
-                      checked={permissions[key]}
-                      onToggle={() => handleTogglePermission(key)}
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="space-y-1.5">
+                    <label className="text-label text-subtle">Nuevo PIN</label>
+                    <Input
+                      type="password"
+                      inputMode="numeric"
+                      autoComplete="off"
+                      maxLength={6}
+                      value={newPin}
+                      onChange={event => {
+                        setNewPin(normalizePin(event.target.value))
+                        setError(null)
+                      }}
+                      placeholder="4 o 6 dígitos"
                     />
-
-                    {key === 'stock' && permissions.stock && (
-                      <div className="border-t border-border/60">
-                        <PermissionToggleRow
-                          label="Modificar inventario"
-                          checked={permissions.stock_write}
-                          indented
-                          onToggle={() => handleTogglePermission('stock_write')}
-                        />
-                      </div>
-                    )}
-
-                    {key === 'price_lists' && permissions.price_lists && (
-                      <div className="border-t border-border/60">
-                        <PermissionToggleRow
-                          label="Modificar listas de precios"
-                          checked={permissions.price_lists_write}
-                          indented
-                          onToggle={() => handleTogglePermission('price_lists_write')}
-                        />
-                      </div>
-                    )}
-
-                    {key === 'settings' && permissions.settings && (
-                      <div className="border-t border-border/60">
-                        <PermissionToggleRow
-                          label="Gestionar operarios"
-                          checked={permissions.operators_write}
-                          indented
-                          onToggle={() => handleTogglePermission('operators_write')}
-                        />
-                      </div>
-                    )}
                   </div>
-                ))}
-              </div>
-            </section>
-          )}
 
-          {error && (
-            <p className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
-              {error}
-            </p>
-          )}
+                  <div className="space-y-1.5">
+                    <label className="text-label text-subtle">Confirmar PIN</label>
+                    <Input
+                      type="password"
+                      inputMode="numeric"
+                      autoComplete="off"
+                      maxLength={6}
+                      value={confirmPin}
+                      onChange={event => {
+                        setConfirmPin(normalizePin(event.target.value))
+                        setError(null)
+                      }}
+                      placeholder="Repite el PIN"
+                    />
+                  </div>
+                </div>
+              </section>
+            )}
 
-          <div className="flex justify-end gap-2">
-            <Button type="button" variant="outline" onClick={onClose} disabled={loading}>
+            {canEditPermissions && (
+              <section className="space-y-3">
+                <div>
+                  <h3 className="text-label text-subtle">Permisos</h3>
+                  <p className="mt-1 text-sm text-hint">
+                    Al guardar se envía el estado completo de permisos del operario.
+                  </p>
+                </div>
+
+                <div className="rounded-lg border border-edge divide-y divide-edge">
+                  {PERMISSION_FIELDS.map(({ key, label }) => (
+                    <div key={key}>
+                      <PermissionToggleRow
+                        label={label}
+                        checked={permissions[key]}
+                        onToggle={() => handleTogglePermission(key)}
+                      />
+
+                      {key === 'stock' && permissions.stock && (
+                        <div className="border-t border-edge">
+                          <PermissionToggleRow
+                            label="Modificar inventario"
+                            checked={permissions.stock_write}
+                            indented
+                            onToggle={() => handleTogglePermission('stock_write')}
+                          />
+                        </div>
+                      )}
+
+                      {key === 'price_lists' && permissions.price_lists && (
+                        <div className="border-t border-edge">
+                          <PermissionToggleRow
+                            label="Modificar listas de precios"
+                            checked={permissions.price_lists_write}
+                            indented
+                            onToggle={() => handleTogglePermission('price_lists_write')}
+                          />
+                        </div>
+                      )}
+
+                      {key === 'settings' && permissions.settings && (
+                        <div className="border-t border-edge">
+                          <PermissionToggleRow
+                            label="Gestionar operarios"
+                            checked={permissions.operators_write}
+                            indented
+                            onToggle={() => handleTogglePermission('operators_write')}
+                          />
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {error && (
+              <p className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
+                {error}
+              </p>
+            )}
+          </div>
+
+          <div className="border-t border-edge px-5 py-4 flex items-center justify-end gap-2.5 shrink-0">
+            <Button type="button" variant="cancel" onClick={onClose} disabled={loading} className="h-9 rounded-lg text-sm">
               Cancelar
             </Button>
-            <Button type="submit" disabled={loading || !hasChanges}>
+            <Button type="submit" disabled={loading || !hasChanges} className="h-9 rounded-lg text-sm bg-primary hover:bg-primary/90 text-primary-foreground">
               {loading ? 'Guardando...' : 'Guardar cambios'}
             </Button>
           </div>
