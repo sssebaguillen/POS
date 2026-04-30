@@ -275,8 +275,8 @@ export default function EditOperatorModal({
               <section className="space-y-3">
                 <div>
                   <h3 className="text-label text-subtle">Nombre</h3>
-                  <p className="mt-1 text-sm text-hint">
-                    Solo el owner puede actualizar el nombre del operario.
+                  <p className="mt-1 text-xs text-hint bg-muted/50 border border-edge rounded-md px-2.5 py-1.5">
+                    Solo el propietario puede actualizar el nombre del operario.
                   </p>
                 </div>
 
