@@ -18,7 +18,6 @@ const PAYMENT_ICONS: Record<PaymentMethod, string> = {
   card: 'TC',
   transfer: 'TR',
   mercadopago: 'MP',
-  credit: 'CR',
 }
 
 const PAYMENT_METHOD_OPTIONS = PAYMENT_METHODS.map(id => ({

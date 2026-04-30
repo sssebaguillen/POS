@@ -80,7 +80,9 @@ export interface CashSession {
 export interface Sale {
   id: string
   business_id: string
-  session_id: string
+  session_id: string | null
+  operator_id: string | null
+  price_list_id: string | null
   customer_id: string | null
   subtotal: number
   discount: number
@@ -96,6 +98,8 @@ export interface SaleItem {
   product_id: string | null
   quantity: number
   unit_price: number
+  unit_price_override: number | null
+  override_reason: string | null
   total: number
 }
 
@@ -105,7 +109,7 @@ export interface Payment {
   method: PaymentMethod
   amount: number
   reference: string | null
-  status: 'completed' | 'failed' | 'pending'
+  status: 'completed' | 'pending' | 'refunded' | 'cancelled'
   created_at: string
 }
 

@@ -1,11 +1,12 @@
 import { PAYMENT_METHOD_LABELS, PAYMENT_METHODS, type PaymentMethod } from '@/lib/constants/domain'
 
+export { PAYMENT_METHOD_LABELS as PAYMENT_LABELS } from '@/lib/constants/domain'
+
 export const PAYMENT_COLORS: Record<PaymentMethod, string> = {
   cash: 'bg-emerald-600',
   card: 'bg-indigo-500',
   transfer: 'bg-amber-500',
   mercadopago: 'bg-sky-500',
-  credit: 'bg-violet-500',
 }
 
 export function isPaymentMethod(value: string | null): value is PaymentMethod {
