@@ -1,7 +1,7 @@
 import { cookies } from 'next/headers'
 import { createClient } from '@/lib/supabase/server'
 import ExpensesView from '@/components/expenses/ExpensesView'
-import type { Expense, Supplier, BusinessBalance } from '@/components/expenses/types'
+import type { Expense, BusinessBalance } from '@/components/expenses/types'
 import { requireAuthenticatedBusinessId } from '@/lib/business'
 import { resolveDateRange, type DateRangePeriod } from '@/lib/date-utils'
 import { getActiveOperator } from '@/lib/operator'
@@ -32,7 +32,7 @@ export default async function ExpensesPage({
   const to = params.to ?? undefined
   const resolvedRange = resolveDateRange(period, from, to)
 
-  const [balanceResult, expensesResult, suppliersResult] = await Promise.all([
+  const [balanceResult, expensesResult] = await Promise.all([
     supabase.rpc('get_business_balance', {
       p_business_id: businessId,
       p_from: resolvedRange.from,
@@ -45,12 +45,6 @@ export default async function ExpensesPage({
       p_limit: 5000,
       p_offset: 0,
     }),
-    supabase
-      .from('suppliers')
-      .select('id, business_id, name, contact_name, phone, email, address, notes, is_active, created_at')
-      .eq('business_id', businessId)
-      .eq('is_active', true)
-      .order('name'),
   ])
 
   const balance = (balanceResult.data as unknown as BusinessBalance | null) ?? {
@@ -65,13 +59,11 @@ export default async function ExpensesPage({
 
   const expensesData = (expensesResult.data as unknown as { data: Expense[]; total: number } | null)
   const expenses = expensesData?.data ?? []
-  const suppliers = (suppliersResult.data ?? []) as Supplier[]
 
   return (
     <ExpensesView
       expenses={expenses}
       balance={balance}
-      suppliers={suppliers}
       businessId={businessId}
       period={period}
       from={from}

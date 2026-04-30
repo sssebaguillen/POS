@@ -1,9 +1,9 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { ChevronLeft, Plus } from 'lucide-react'
+import { Plus, Building2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import posthog from 'posthog-js'
 import { trackFeatureUsed } from '@/lib/analytics'
@@ -17,12 +17,10 @@ import ExpenseSummaryCards from './ExpenseSummaryCards'
 import ExpensesTable from './ExpensesTable'
 import NewExpensePanel from './NewExpensePanel'
 import EditExpensePanel from './EditExpensePanel'
-import SuppliersPanel from './SuppliersPanel'
 import {
   EXPENSE_CATEGORY_LABELS,
   EXPENSE_CATEGORIES,
   type Expense,
-  type Supplier,
   type BusinessBalance,
   type ExpenseCategory,
 } from './types'
@@ -30,7 +28,6 @@ import {
 interface Props {
   expenses: Expense[]
   balance: BusinessBalance
-  suppliers: Supplier[]
   businessId: string
   period: DateRangePeriod
   from?: string
@@ -46,7 +43,6 @@ interface ExpensesQueryData {
 export default function ExpensesView({
   expenses: initialExpenses,
   balance: initialBalance,
-  suppliers: initialSuppliers,
   businessId,
   period: initialPeriod,
   from: initialFrom,
@@ -56,16 +52,15 @@ export default function ExpensesView({
   useEffect(() => { trackFeatureUsed('expenses') }, [])
 
   const pathname = usePathname()
+  const router = useRouter()
   const queryClient = useQueryClient()
   const supabase = useMemo(() => createClient(), [])
-  const [showSuppliers, setShowSuppliers] = useState(false)
   const [panelOpen, setPanelOpen] = useState(false)
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null)
   const [period, setPeriod] = useState<DateRangePeriod>(initialPeriod)
   const [from, setFrom] = useState(initialFrom)
   const [to, setTo] = useState(initialTo)
   const [selectedCategory, setSelectedCategory] = useState<ExpenseCategory | undefined>(undefined)
-  const [suppliers, setSuppliers] = useState<Supplier[]>(initialSuppliers)
   const [mountedAt] = useState(() => Date.now())
   const { setRef, indicator } = usePillIndicator(selectedCategory ?? 'todos')
 
@@ -180,107 +175,82 @@ export default function ExpensesView({
   return (
     <div className="flex flex-col h-screen overflow-hidden">
       <PageHeader title="Gastos">
-        {!showSuppliers && (
-          <Button
-            onClick={() => setPanelOpen(true)}
-            className="h-9 px-4 rounded-lg text-sm font-semibold bg-primary hover:bg-primary/90 text-primary-foreground gap-2 shrink-0"
-          >
-            <Plus size={15} />
-            Nuevo gasto
-          </Button>
-        )}
+        <Button
+          onClick={() => setPanelOpen(true)}
+          className="h-9 px-4 rounded-lg text-sm font-semibold bg-primary hover:bg-primary/90 text-primary-foreground gap-2 shrink-0"
+        >
+          <Plus size={15} />
+          Nuevo gasto
+        </Button>
       </PageHeader>
 
       <div className="flex-1 overflow-y-auto">
         <div className="px-5 pt-4 pb-6 space-y-5">
-          {!showSuppliers && (
-            <>
-              <DateRangeFilter
-                key="expenses-date-filter"
-                value={period}
-                from={from}
-                to={to}
-                onChange={handlePeriodChange}
+          <DateRangeFilter
+            key="expenses-date-filter"
+            value={period}
+            from={from}
+            to={to}
+            onChange={handlePeriodChange}
+          />
+
+          {/* Category filter */}
+          <div className="pill-tabs flex-wrap relative">
+            {indicator && (
+              <span
+                className="pill-tab-indicator"
+                style={{
+                  transform: `translateX(${indicator.left}px)`,
+                  width: indicator.width,
+                }}
               />
+            )}
+            <button
+              ref={setRef('todos')}
+              onClick={() => setSelectedCategory(undefined)}
+              className={`pill-tab${!selectedCategory ? ' pill-tab-active' : ''}`}
+            >
+              Todos
+            </button>
+            {EXPENSE_CATEGORIES.map(cat => (
+              <button
+                key={cat}
+                ref={setRef(cat)}
+                onClick={() => setSelectedCategory(cat)}
+                className={`pill-tab${selectedCategory === cat ? ' pill-tab-active' : ''}`}
+              >
+                {EXPENSE_CATEGORY_LABELS[cat]}
+              </button>
+            ))}
+          </div>
 
-              {/* Category filter */}
-              <div className="pill-tabs flex-wrap relative">
-                {indicator && (
-                  <span
-                    className="pill-tab-indicator"
-                    style={{
-                      transform: `translateX(${indicator.left}px)`,
-                      width: indicator.width,
-                    }}
-                  />
-                )}
-                <button
-                  ref={setRef('todos')}
-                  onClick={() => setSelectedCategory(undefined)}
-                  className={`pill-tab${!selectedCategory ? ' pill-tab-active' : ''}`}
-                >
-                  Todos
-                </button>
-                {EXPENSE_CATEGORIES.map(cat => (
-                  <button
-                    key={cat}
-                    ref={setRef(cat)}
-                    onClick={() => setSelectedCategory(cat)}
-                    className={`pill-tab${selectedCategory === cat ? ' pill-tab-active' : ''}`}
-                  >
-                    {EXPENSE_CATEGORY_LABELS[cat]}
-                  </button>
-                ))}
-              </div>
+          <ExpenseSummaryCards balance={displayBalance} isFiltered={!!selectedCategory} />
 
-              <ExpenseSummaryCards balance={displayBalance} isFiltered={!!selectedCategory} />
+          <div className="flex items-center justify-between">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => router.push('/expenses/providers')}
+              className="gap-2 text-sm font-medium"
+            >
+              <Building2 size={14} />
+              Proveedores
+            </Button>
+            <div className="flex items-center gap-3">
+              {isFetching && <span className="text-xs text-hint">Actualizando...</span>}
+              <ExportCSVButton data={csvData} filename="gastos" label="Exportar" />
+            </div>
+          </div>
 
-              <div className="flex items-center justify-between">
-                <button
-                  onClick={() => setShowSuppliers(true)}
-                  className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  Gestionar proveedores →
-                </button>
-                <div className="flex items-center gap-3">
-                  {isFetching && <span className="text-xs text-hint">Actualizando...</span>}
-                  <ExportCSVButton data={csvData} filename="gastos" label="Exportar" />
-                </div>
-              </div>
-
-              <div className={isFetching ? 'opacity-60 transition-opacity' : 'transition-opacity'}>
-                <ExpensesTable
-                  expenses={filteredExpenses}
-                  businessId={businessId}
-                  supabaseClient={supabase}
-                  onDeleted={handleExpenseDeleted}
-                  onEdit={setEditingExpense}
-                />
-              </div>
-            </>
-          )}
-
-          {showSuppliers && (
-            <>
-              <nav className="flex items-center gap-2 text-sm" aria-label="Navegación de sección">
-                <button
-                  onClick={() => setShowSuppliers(false)}
-                  className="inline-flex items-center gap-1 text-hint hover:text-foreground transition-colors"
-                >
-                  <ChevronLeft size={14} />
-                  Gastos
-                </button>
-                <span className="text-faint" aria-hidden="true">/</span>
-                <span className="font-semibold text-foreground">Proveedores</span>
-              </nav>
-              <SuppliersPanel
-                suppliers={suppliers}
-                businessId={businessId}
-                supabaseClient={supabase}
-                onSuppliersChange={setSuppliers}
-              />
-            </>
-          )}
+          <div className={isFetching ? 'opacity-60 transition-opacity' : 'transition-opacity'}>
+            <ExpensesTable
+              expenses={filteredExpenses}
+              businessId={businessId}
+              supabaseClient={supabase}
+              onDeleted={handleExpenseDeleted}
+              onEdit={setEditingExpense}
+            />
+          </div>
         </div>
       </div>
 

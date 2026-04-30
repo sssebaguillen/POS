@@ -124,13 +124,13 @@ export default function ExpensesTable({ expenses, businessId, supabaseClient, on
         <table className="w-full text-sm">
           <thead className="border-b border-edge/60">
             <tr className="text-xs text-hint font-medium">
-              <th className="text-left px-4 py-3">Fecha</th>
-              <th className="text-left px-4 py-3">Categoría</th>
-              <th className="text-left px-4 py-3">Descripción</th>
-              <th className="text-left px-4 py-3 hidden md:table-cell">Proveedor</th>
-              <th className="text-right px-4 py-3">Monto</th>
-              <th className="text-center px-4 py-3 hidden lg:table-cell">Adjunto</th>
-              <th className="text-right px-4 py-3"></th>
+              <th className="text-foreground text-left px-4 py-3">Fecha</th>
+              <th className="text-foreground text-left px-4 py-3">Descripción</th>
+              <th className="text-foreground text-left px-4 py-3">Categoría</th>
+              <th className="text-foreground text-left px-4 py-3 hidden md:table-cell">Proveedor</th>
+              <th className="text-foreground text-right px-4 py-3">Monto</th>
+              <th className="text-foreground text-right px-4 py-3 hidden lg:table-cell">Adjunto</th>
+              <th className="text-foreground text-right px-4 py-3">Acciones</th>
             </tr>
           </thead>
           <tbody>
