@@ -28,7 +28,7 @@ interface EditOperatorModalProps {
 }
 
 interface PermissionField {
-  key: Exclude<OperatorManagementPermissionKey, 'operators_write' | 'stock_write' | 'price_lists_write'>
+  key: Exclude<OperatorManagementPermissionKey, 'operators_write' | 'stock_write' | 'price_lists_write' | 'price_override'>
   label: string
 }
 
@@ -131,6 +131,15 @@ export default function EditOperatorModal({
 
   function handleTogglePermission(key: OperatorManagementPermissionKey) {
     setPermissions(prev => {
+      if (key === 'sales') {
+        const nextSales = !prev.sales
+        return {
+          ...prev,
+          sales: nextSales,
+          price_override: nextSales ? prev.price_override : false,
+        }
+      }
+
       if (key === 'stock') {
         const nextStock = !prev.stock
 
@@ -350,6 +359,17 @@ export default function EditOperatorModal({
                         checked={permissions[key]}
                         onToggle={() => handleTogglePermission(key)}
                       />
+
+                      {key === 'sales' && permissions.sales && (
+                        <div className="border-t border-edge">
+                          <PermissionToggleRow
+                            label="Editar precio en venta"
+                            checked={permissions.price_override}
+                            indented
+                            onToggle={() => handleTogglePermission('price_override')}
+                          />
+                        </div>
+                      )}
 
                       {key === 'stock' && permissions.stock && (
                         <div className="border-t border-edge">

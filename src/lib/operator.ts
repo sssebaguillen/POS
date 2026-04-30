@@ -37,6 +37,7 @@ export const OPERATOR_MANAGEMENT_PERMISSION_KEYS = [
   'expenses',
   'settings',
   'operators_write',
+  'price_override',
 ] as const
 
 export type OperatorManagementPermissionKey = (typeof OPERATOR_MANAGEMENT_PERMISSION_KEYS)[number]
@@ -137,6 +138,7 @@ export function toOperatorManagementPermissions(
     expenses: permissions.expenses,
     settings: permissions.settings,
     operators_write: permissions.operators_write,
+    price_override: permissions.price_override,
   }
 }
 

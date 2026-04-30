@@ -20,6 +20,7 @@ interface NavLink {
   check: (p: Permissions) => boolean
 }
 
+// price_override is intentionally absent — it controls per-line price editing in the POS, not route access.
 const NAV_LINKS: NavLink[] = [
   { href: '/pos',         label: 'Vender',            icon: ShoppingCart,  check: () => true },
   { href: '/dashboard',   label: 'Dashboard',         icon: BarChart2,     check: (p) => p.stats === true },

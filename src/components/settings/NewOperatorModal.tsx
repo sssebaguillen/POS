@@ -10,21 +10,21 @@ import { isSettingsOperator, type SettingsOperator } from '@/components/settings
 import { OPERATOR_ROLES, OPERATOR_ROLE_LABELS, type OperatorRole } from '@/lib/constants/domain'
 import type { Permissions } from '@/lib/operator'
 
-type VisiblePermissionKey = Exclude<keyof Permissions, 'operators_write' | 'stock_write' | 'price_lists_write'>
+// price_override is a sub-toggle of sales (only meaningful in POS context, not a standalone permission)
+type VisiblePermissionKey = Exclude<keyof Permissions, 'operators_write' | 'stock_write' | 'price_lists_write' | 'price_override'>
 type BaseRole = Exclude<OperatorRole, 'custom'>
 
 const PERMISSION_LABELS: { key: VisiblePermissionKey; label: string }[] = [
-  { key: 'sales',              label: 'Ventas' },
-  { key: 'stock',              label: 'Ver inventario' },
-  { key: 'stats',              label: 'Estadísticas' },
-  { key: 'expenses',           label: 'Gastos' },
-  { key: 'price_lists',        label: 'Ver listas de precios' },
-  { key: 'price_override',     label: 'Editar precio en venta' },
-  { key: 'settings',           label: 'Configuración' },
+  { key: 'sales',       label: 'Ventas' },
+  { key: 'stock',       label: 'Ver inventario' },
+  { key: 'stats',       label: 'Estadísticas' },
+  { key: 'expenses',    label: 'Gastos' },
+  { key: 'price_lists', label: 'Ver listas de precios' },
+  { key: 'settings',    label: 'Configuración' },
 ]
 
 const ROLE_DEFAULTS: Record<BaseRole, Permissions> = {
-  manager: { sales: true, stock: true, stock_write: true,  stats: true,  expenses: true,  price_lists: true,  price_lists_write: true,  settings: false, operators_write: false, price_override: false },
+  manager: { sales: true, stock: true, stock_write: true,  stats: true,  expenses: true,  price_lists: true,  price_lists_write: true,  settings: false, operators_write: false, price_override: true },
   cashier: { sales: true, stock: true, stock_write: false, stats: false, expenses: false, price_lists: false, price_lists_write: false, settings: false, operators_write: false, price_override: false },
 }
 
@@ -78,6 +78,15 @@ export default function NewOperatorModal({
 
   function togglePermission(key: keyof Permissions) {
     setPermissions(prev => {
+      if (key === 'sales') {
+        const nextSales = !prev.sales
+        return {
+          ...prev,
+          sales: nextSales,
+          price_override: nextSales ? prev.price_override : false,
+        }
+      }
+
       if (key === 'stock') {
         const nextStock = !prev.stock
 
@@ -235,6 +244,23 @@ export default function NewOperatorModal({
                       />
                     </button>
                   </div>
+
+                  {key === 'sales' && permissions.sales && (
+                    <div className="flex items-center justify-between border-t border-edge px-3 py-2.5 pl-8">
+                      <span className="text-sm text-subtle">Editar precio en venta</span>
+                      <button
+                        type="button"
+                        role="switch"
+                        aria-checked={permissions.price_override}
+                        onClick={() => togglePermission('price_override')}
+                        className={`relative h-5 w-9 rounded-full transition-colors cursor-pointer ${permissions.price_override ? 'bg-primary' : 'bg-muted-foreground'}`}
+                      >
+                        <span
+                          className={`absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-card shadow-sm transition-transform ${permissions.price_override ? 'translate-x-4' : 'translate-x-0'}`}
+                        />
+                      </button>
+                    </div>
+                  )}
 
                   {key === 'stock' && permissions.stock && (
                     <div className="flex items-center justify-between border-t border-edge px-3 py-2.5 pl-8">
