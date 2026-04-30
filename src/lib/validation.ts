@@ -1,3 +1,5 @@
+export const BUSINESS_SLUG_REGEX = /^[a-z0-9][a-z0-9-]{1,48}[a-z0-9]$/
+
 export function validateImageUrl(url: string): string {
   if (!url) return ''
   if (

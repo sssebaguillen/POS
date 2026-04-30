@@ -8,6 +8,10 @@ export function getCurrencySymbol(code: string): string {
   return CURRENCIES.find(c => c.code === code)?.symbol ?? '$'
 }
 
+export function formatNumber(value: number): string {
+  return value.toLocaleString('es-AR')
+}
+
 export function formatMoney(value: number, currencyCode?: string): string {
   const symbol = getCurrencySymbol(currencyCode ?? 'ARS')
   return `${symbol}${value.toLocaleString('es-AR', {

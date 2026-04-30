@@ -12,8 +12,7 @@ import OperatorList from '@/components/settings/OperatorList'
 import { CURRENCIES, type SupportedCurrencyCode } from '@/lib/constants/currencies'
 import { Upload } from 'lucide-react'
 import { usePillIndicator } from '@/hooks/usePillIndicator'
-
-const BUSINESS_SLUG_REGEX = /^[a-z0-9][a-z0-9-]{1,48}[a-z0-9]$/
+import { BUSINESS_SLUG_REGEX } from '@/lib/validation'
 
 interface SettingsFormProps {
   business: SettingsBusiness
