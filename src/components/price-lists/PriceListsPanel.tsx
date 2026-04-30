@@ -335,7 +335,8 @@ export default function PriceListsPanel({
             onClick={() => setShowNewListModal(true)}
             disabled={!businessId}
           >
-            + Nueva lista
+            <Plus size={15} />
+            Nueva lista
           </Button>
         )}
       </PageHeader>

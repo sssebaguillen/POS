@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { LayoutGrid, LayoutList, SlidersHorizontal, X, CheckSquare } from 'lucide-react'
+import { LayoutGrid, LayoutList, SlidersHorizontal, X, CheckSquare, Plus } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -601,6 +601,7 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
             className="rounded-lg text-xs bg-primary hover:bg-primary/90 text-primary-foreground"
             onClick={() => setShowNewProduct(true)}
           >
+            <Plus size={15} />
             Nuevo producto
           </Button>
         )}

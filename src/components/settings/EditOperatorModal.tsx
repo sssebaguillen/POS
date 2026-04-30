@@ -273,13 +273,6 @@ export default function EditOperatorModal({
           <div className="overflow-y-auto px-5 py-4 flex-1 space-y-5">
             {isOwner && (
               <section className="space-y-3">
-                <div>
-                  <h3 className="text-label text-subtle">Nombre</h3>
-                  <p className="mt-1 text-xs text-hint bg-muted/50 border border-edge rounded-md px-2.5 py-1.5">
-                    Solo el propietario puede actualizar el nombre del operario.
-                  </p>
-                </div>
-
                 <div className="space-y-1.5">
                   <label className="text-label text-subtle">
                     Nombre actual
@@ -293,6 +286,9 @@ export default function EditOperatorModal({
                     placeholder="Nombre del operario"
                     required
                   />
+                  <p className="text-xs text-hint">
+                    Solo el dueño puede actualizar el nombre del operario.
+                  </p>
                 </div>
               </section>
             )}

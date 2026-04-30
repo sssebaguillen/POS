@@ -10,6 +10,7 @@ import EditOperatorModal from '@/components/settings/EditOperatorModal'
 import ConfirmModal from '@/components/shared/ConfirmModal'
 import { useToast } from '@/hooks/useToast'
 import Toast from '@/components/shared/Toast'
+import { Plus } from 'lucide-react'
 
 type ConfirmState = { title: string; message: string; onConfirm: () => void } | null
 
@@ -74,6 +75,7 @@ export default function OperatorList({
           className="h-9 px-4 rounded-lg text-sm font-semibold bg-primary hover:bg-primary/90 text-primary-foreground shrink-0"
           onClick={() => setShowNewOperatorModal(true)}
         >
+          <Plus size={15} />
           Nuevo operario
         </Button>
       </div>
