@@ -72,10 +72,11 @@ export default function ProductPanel({ products, search, activeFilter, activePri
             Más vendidos, últimos 30 días
           </p>
           <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))' }}>
-            {topSellers.map(product => (
+            {topSellers.map((product, index) => (
               <ProductCard
                 key={product.id}
                 product={product}
+                index={index}
                 activePriceList={activePriceList}
                 priceListOverrides={priceListOverrides}
                 onAdd={handleAdd}
@@ -157,10 +158,11 @@ function PaginatedProductGrid({
   return (
     <>
       <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))' }}>
-        {visibleProducts.map(product => (
+        {visibleProducts.map((product, index) => (
           <ProductCard
             key={product.id}
             product={product}
+            index={index}
             activePriceList={activePriceList}
             priceListOverrides={priceListOverrides}
             onAdd={onAdd}
@@ -196,12 +198,14 @@ function CategorySwatch({ categoryId, brandName }: { categoryId: string | null; 
 
 const ProductCard = memo(function ProductCard({
   product,
+  index,
   activePriceList,
   priceListOverrides,
   onAdd,
   formatMoney,
 }: {
   product: ProductWithCategory
+  index: number
   activePriceList: PriceList | null
   priceListOverrides: PriceListOverride[]
   onAdd: (p: Product) => void
@@ -236,6 +240,7 @@ const ProductCard = memo(function ProductCard({
             sizes="(max-width: 768px) 50vw, 140px"
             className="object-cover"
             unoptimized={product.image_source === 'url'}
+            priority={index === 0}
           />
 
         </div>
