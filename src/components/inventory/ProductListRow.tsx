@@ -30,10 +30,12 @@ const ProductListRow = memo(function ProductListRow({
   return (
     <TableRow className={`group/row ${isSelected ? 'bg-primary/5' : ''}`}>
       <TableCell className={`w-10 ${selectionMode ? '' : '[@media(hover:none)]:opacity-40 opacity-0 group-hover/row:opacity-100'} transition-opacity`}>
-        <SelectionCheckbox
-          checked={isSelected}
-          onClick={(e) => { e.stopPropagation(); onToggleSelect(product.id) }}
-        />
+        {!readOnly && (
+          <SelectionCheckbox
+            checked={isSelected}
+            onClick={(e) => { e.stopPropagation(); onToggleSelect(product.id) }}
+          />
+        )}
       </TableCell>
       <TableCell>
         <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap ${config.badge}`}>

@@ -408,6 +408,7 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
     setBulkLoading(true)
     const ids = Array.from(selectedIds)
     const { data, error } = await supabase.rpc('bulk_delete_products', {
+      p_operator_id: operatorId,
       p_business_id: businessId,
       p_product_ids: ids,
     })
@@ -443,6 +444,7 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
     setBulkLoading(true)
     const ids = Array.from(selectedIds)
     const { data, error } = await supabase.rpc('bulk_set_product_status', {
+      p_operator_id: operatorId,
       p_business_id: businessId,
       p_product_ids: ids,
       p_is_active: true,
@@ -465,6 +467,7 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
     setBulkLoading(true)
     const ids = Array.from(selectedIds)
     const { data, error } = await supabase.rpc('bulk_set_product_status', {
+      p_operator_id: operatorId,
       p_business_id: businessId,
       p_product_ids: ids,
       p_is_active: false,
@@ -487,6 +490,7 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
     setBulkLoading(true)
     const ids = Array.from(selectedIds)
     const { data, error } = await supabase.rpc('bulk_update_product_category', {
+      p_operator_id: operatorId,
       p_business_id: businessId,
       p_product_ids: ids,
       p_category_id: categoryId,
@@ -515,6 +519,7 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
     setBulkLoading(true)
     const ids = Array.from(selectedIds)
     const { data, error } = await supabase.rpc('bulk_update_product_brand', {
+      p_operator_id: operatorId,
       p_business_id: businessId,
       p_product_ids: ids,
       p_brand_id: brandId,
@@ -1029,7 +1034,7 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
 
       {toast && <Toast message={toast.message} duration={toast.duration} onUndo={toast.onUndo} onDismiss={dismissToast} />}
 
-      {selectedIds.size > 0 && (
+      {!readOnly && selectedIds.size > 0 && (
         <BulkActionBar
           selectedCount={selectedIds.size}
           categories={categories}
