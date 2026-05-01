@@ -10,7 +10,7 @@ import { useCartStore } from '@/lib/store/cart.store'
 import PaymentModal from '@/components/pos/PaymentModal'
 import ReceiptPreviewModal from '@/components/pos/ReceiptPreviewModal'
 import EditSalePanel from '@/components/pos/EditSalePanel'
-import type { ProductWithCategory } from '@/components/pos/types'
+import type { ProductWithCategory, SaleRow, SaleDetail } from '@/components/pos/types'
 import { buildReceiptData } from '@/lib/printer/receipt'
 import type { ReceiptData, ReceiptItemInput } from '@/lib/printer/types'
 import { createClient } from '@/lib/supabase/client'
@@ -20,7 +20,7 @@ import { isPaymentMethod, normalizePayment } from '@/lib/payments'
 import type { PriceList, PriceListOverride } from '@/lib/types'
 import type { Permissions } from '@/lib/operator'
 import { useToast } from '@/hooks/useToast'
-import { useCurrency } from '@/lib/context/CurrencyContext'
+import { useCurrency, useFormatMoney } from '@/lib/context/CurrencyContext'
 import Toast from '@/components/shared/Toast'
 
 function getStockIndicator(
@@ -36,30 +36,6 @@ function getStockIndicator(
 }
 
 type RightTab = 'current' | 'history'
-
-interface SaleRow {
-  id: string
-  subtotal: number
-  discount: number
-  created_at: string
-  total: number
-  status: string | null
-  payment_method: PaymentMethod | null
-}
-
-interface SaleItem {
-  id: string
-  product_id: string | null
-  product_name: string
-  product_icon: string | null
-  quantity: number
-  unit_price: number
-}
-
-interface SaleDetail extends SaleRow {
-  items: SaleItem[]
-  operator_name: string | null
-}
 
 interface SaleItemQueryRow {
   id: string
@@ -81,6 +57,7 @@ interface Props {
 
 export default function CartPanel({ businessId, businessName, activePriceList, priceListOverrides, operatorId, permissions }: Props) {
   const currency = useCurrency()
+  const formatMoney = useFormatMoney()
   const router = useRouter()
   const { items, removeItem, updateQuantity, updatePrice, discount, clearCart, restoreCart } = useCartStore()
   const [showPayment, setShowPayment] = useState(false)
@@ -538,7 +515,7 @@ export default function CartPanel({ businessId, businessName, activePriceList, p
                               <div className="flex items-center gap-1">
                                 {originalPrice !== null && originalPrice !== effectivePrice && (
                                   <span className="text-[10px] text-muted-foreground line-through tabular-nums">
-                                    ${originalPrice.toLocaleString('es-AR')}
+                                    {formatMoney(originalPrice)}
                                   </span>
                                 )}
                                 {isEditingUnit ? (
@@ -563,7 +540,7 @@ export default function CartPanel({ businessId, businessName, activePriceList, p
                                         item.priceIsManual ? 'text-primary font-medium' : 'text-hint'
                                       }`}
                                     >
-                                      ${effectivePrice.toLocaleString('es-AR')} c/u
+                                      {formatMoney(effectivePrice)} c/u
                                     </p>
                                     {canOverridePrice && (
                                       <button
@@ -632,7 +609,7 @@ export default function CartPanel({ businessId, businessName, activePriceList, p
                             />
                           ) : (
                             <p className={`text-sm font-semibold tabular-nums ${item.priceIsManual ? 'text-primary' : 'text-heading'}`}>
-                              ${effectiveTotal.toLocaleString('es-AR')}
+                              {formatMoney(effectiveTotal)}
                             </p>
                           )}
                           <div className="flex items-center justify-end gap-1.5 mt-1">
@@ -667,7 +644,7 @@ export default function CartPanel({ businessId, businessName, activePriceList, p
               <div className="space-y-1.5 text-sm">
                 <div className="flex justify-between text-subtle">
                   <span>Subtotal</span>
-                  <span className="tabular-nums">${adjustedSubtotal.toLocaleString('es-AR')}</span>
+                  <span className="tabular-nums">{formatMoney(adjustedSubtotal)}</span>
                 </div>
                 <div className="flex justify-between text-subtle">
                   <span>Ítems</span>
@@ -676,12 +653,12 @@ export default function CartPanel({ businessId, businessName, activePriceList, p
                 {discount > 0 && (
                   <div className="flex justify-between text-[var(--primary-active-text)]">
                     <span>Descuento</span>
-                    <span className="tabular-nums">-${discount.toLocaleString('es-AR')}</span>
+                    <span className="tabular-nums">-{formatMoney(discount)}</span>
                   </div>
                 )}
                 <div className="flex justify-between font-semibold text-heading text-2xl pt-2 border-t border-edge-soft leading-none">
                   <span>Total</span>
-                  <span className="tabular-nums">${adjustedTotal.toLocaleString('es-AR', { minimumFractionDigits: 2 })}</span>
+                  <span className="tabular-nums">{formatMoney(adjustedTotal)}</span>
                 </div>
               </div>
 
@@ -730,7 +707,7 @@ export default function CartPanel({ businessId, businessName, activePriceList, p
                 className="h-9 text-sm rounded-lg"
               />
               <p className="text-xs text-subtle">
-                {filteredHistory.length} ventas · ${historyTotal.toLocaleString('es-AR')}
+                {filteredHistory.length} ventas · {formatMoney(historyTotal)}
               </p>
               {receiptError && (
                 <p className="text-xs text-red-500">{receiptError}</p>
@@ -778,7 +755,7 @@ export default function CartPanel({ businessId, businessName, activePriceList, p
                             </div>
                             <div className="flex items-center gap-2 shrink-0">
                               <span className={`text-sm font-bold tabular-nums ${isExpanded ? 'text-[var(--primary-active-text)]' : 'text-heading'}`}>
-                                ${sale.total.toLocaleString('es-AR')}
+                                {formatMoney(sale.total)}
                               </span>
                               {isLoadingDetail ? (
                                 <span className="w-3 h-3 border-2 border-hint border-t-transparent rounded-full animate-spin" />
@@ -827,7 +804,7 @@ export default function CartPanel({ businessId, businessName, activePriceList, p
                                     <span className="text-hint shrink-0 text-xs">×{item.quantity}</span>
                                   </span>
                                   <span className="text-xs font-semibold text-heading tabular-nums shrink-0 ml-3">
-                                    ${(item.quantity * item.unit_price).toLocaleString('es-AR')}
+                                    {formatMoney(item.quantity * item.unit_price)}
                                   </span>
                                 </li>
                               ))}
@@ -836,7 +813,7 @@ export default function CartPanel({ businessId, businessName, activePriceList, p
                             <div className="flex justify-between items-center border-t border-dashed border-primary/20 dark:border-primary/15 pt-2 mb-1">
                               <span className="text-xs font-semibold text-heading">Total cobrado</span>
                               <span className="text-xs font-bold text-[var(--primary-active-text)] tabular-nums">
-                                ${detail.total.toLocaleString('es-AR')}
+                                {formatMoney(detail.total)}
                               </span>
                             </div>
 
@@ -891,13 +868,13 @@ export default function CartPanel({ businessId, businessName, activePriceList, p
                 <div>
                   <p className="text-xs text-hint">Ticket promedio</p>
                   <p className="text-sm font-semibold text-heading tabular-nums">
-                    ${Math.round(historyTotal / filteredHistory.length).toLocaleString('es-AR')}
+                    {formatMoney(Math.round(historyTotal / filteredHistory.length))}
                   </p>
                 </div>
                 <div>
                   <p className="text-xs text-hint">Total del día</p>
                   <p className="text-sm font-semibold text-heading tabular-nums">
-                    ${historyTotal.toLocaleString('es-AR')}
+                    {formatMoney(historyTotal)}
                   </p>
                 </div>
               </div>

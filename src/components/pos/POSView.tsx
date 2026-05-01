@@ -151,24 +151,13 @@ export default function POSView({ products, businessId, businessName, priceLists
     searchRef.current?.focus()
   }, [itemCount, confirmingNewSale, clearCart])
 
-  /**
-   * Muestra feedback visual por 900ms y lo limpia.
-   * Cancela cualquier timer previo para evitar solapamiento.
-   */
   const showScanFeedback = useCallback((type: ScanFeedback) => {
     if (scanFeedbackTimerRef.current) clearTimeout(scanFeedbackTimerRef.current)
     setScanFeedback(type)
     scanFeedbackTimerRef.current = setTimeout(() => setScanFeedback(null), 900)
   }, [])
 
-  /**
-   * Intenta agregar un producto al carrito a partir de un string de búsqueda.
-   * Orden de resolución:
-   *   1. Barcode exacto
-   *   2. Resultado único por nombre o SKU
-   *
-   * Devuelve true si se agregó el producto (para que el caller limpie el input).
-   */
+  // resolves barcode > unique name/SKU match; returns true if added (caller clears input)
   const tryAddBySearch = useCallback((value: string): boolean => {
     const trimmed = value.trim()
     if (!trimmed) return false
@@ -204,11 +193,7 @@ export default function POSView({ products, businessId, businessName, priceLists
     return false
   }, [products, addItem, showScanFeedback])
 
-  /**
-   * Global keydown listener — redirige keystrokes al input de búsqueda cuando
-   * ningún campo de texto está enfocado. Soporta lectores USB que envían chars
-   * incluso si el cajero hizo click en otra parte de la pantalla.
-   */
+  // redirect global keystrokes to the search input; enables USB barcode readers
   useEffect(() => {
     function handleGlobalKeyDown(e: KeyboardEvent) {
       if (e.ctrlKey || e.altKey || e.metaKey) return
@@ -255,10 +240,6 @@ export default function POSView({ products, businessId, businessName, priceLists
     return () => document.removeEventListener('keydown', handleGlobalKeyDown)
   }, [tryAddBySearch])
 
-  /**
-   * Keydown handler del input de búsqueda.
-   * Enter: intentar agregar producto. Si se agrega, limpiar el input y mantener foco.
-   */
   const handleSearchKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
       const added = tryAddBySearch(search)

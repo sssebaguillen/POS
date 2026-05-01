@@ -43,7 +43,7 @@ export default function ReceiptPreviewModal({ receipt, onClose, autoPrintOnOpen 
     window.setTimeout(() => {
       openBrowserPrint().catch(printError => {
         console.error(printError)
-        setError('No se pudo abrir la impresion del ticket.')
+        setError('No se pudo abrir la impresión del ticket.')
       })
     }, 80)
   }, [autoPrintOnOpen, openBrowserPrint])
@@ -80,7 +80,7 @@ export default function ReceiptPreviewModal({ receipt, onClose, autoPrintOnOpen 
       await openBrowserPrint()
     } catch (printError) {
       console.error(printError)
-      setError('No se pudo abrir el dialogo de impresion.')
+      setError('No se pudo abrir el diálogo de impresión.')
     }
   }
 

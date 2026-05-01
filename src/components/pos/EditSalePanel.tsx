@@ -5,27 +5,8 @@ import { Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import type { PaymentMethod } from '@/lib/constants/domain'
 import { isPaymentMethod, PAYMENT_OPTIONS } from '@/lib/payments'
-
-interface SaleItem {
-  id: string
-  product_id: string | null
-  product_name: string
-  product_icon: string | null
-  quantity: number
-  unit_price: number
-}
-
-interface SaleDetail {
-  id: string
-  subtotal: number
-  discount: number
-  created_at: string
-  total: number
-  status: string | null
-  payment_method: PaymentMethod | null
-  items: SaleItem[]
-  operator_name: string | null
-}
+import type { SaleDetail } from '@/components/pos/types'
+import { useFormatMoney } from '@/lib/context/CurrencyContext'
 
 interface EditSalePanelProps {
   sale: SaleDetail
@@ -38,6 +19,7 @@ export default function EditSalePanel({
   onSave,
   onCancel,
 }: EditSalePanelProps) {
+  const formatMoney = useFormatMoney()
   const [items, setItems] = useState(sale.items.map(i => ({ ...i })))
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(
     isPaymentMethod(sale.payment_method) ? sale.payment_method : 'cash'
@@ -61,7 +43,7 @@ export default function EditSalePanel({
           <div key={item.id} className="flex items-center gap-3 py-2 border-b border-edge-soft">
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-heading truncate">{item.product_name}</p>
-              <p className="text-xs text-hint">${item.unit_price.toLocaleString('es-AR')} c/u</p>
+              <p className="text-xs text-hint">{formatMoney(item.unit_price)} c/u</p>
             </div>
             <div className="flex items-center gap-1.5 shrink-0">
               <button
@@ -79,7 +61,7 @@ export default function EditSalePanel({
               </button>
             </div>
             <p className="text-sm font-semibold text-heading tabular-nums w-20 text-right shrink-0">
-              ${(item.quantity * item.unit_price).toLocaleString('es-AR')}
+              {formatMoney(item.quantity * item.unit_price)}
             </p>
             <button
               onClick={() => removeItem(item.id)}
@@ -114,7 +96,7 @@ export default function EditSalePanel({
         <div className="flex justify-between items-baseline">
           <span className="text-sm text-subtle">Total</span>
           <span className="text-lg font-semibold text-heading tabular-nums">
-            ${total.toLocaleString('es-AR')}
+            {formatMoney(total)}
           </span>
         </div>
 

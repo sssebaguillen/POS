@@ -1,4 +1,5 @@
 import type { Product } from '@/lib/types'
+import type { PaymentMethod } from '@/lib/constants/domain'
 
 export interface PosCategory {
   id: string
@@ -15,3 +16,27 @@ export type ActiveFilter =
   | { type: 'category'; id: string }
   | { type: 'brand'; id: string }
   | null
+
+export interface SaleRow {
+  id: string
+  subtotal: number
+  discount: number
+  created_at: string
+  total: number
+  status: string | null
+  payment_method: PaymentMethod | null
+}
+
+export interface SaleItem {
+  id: string
+  product_id: string | null
+  product_name: string
+  product_icon: string | null
+  quantity: number
+  unit_price: number
+}
+
+export interface SaleDetail extends SaleRow {
+  items: SaleItem[]
+  operator_name: string | null
+}
