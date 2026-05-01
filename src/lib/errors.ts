@@ -1,8 +1,3 @@
-/**
- * Translates raw database/RPC error messages into user-readable Spanish.
- * Handles the two cases users can actually resolve (duplicate SKU, insufficient stock)
- * plus a generic fallback for everything else.
- */
 export function translateDbError(message: string, fallback: string): string {
   const lower = message.toLowerCase()
 

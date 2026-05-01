@@ -1,11 +1,6 @@
 import type { PriceList, PriceListOverride } from '@/lib/types'
 
-/**
- * Price resolution rules:
- * 1. cost > 0  → apply list/override multiplier to cost
- * 2. cost = 0, price > 0 → respect the explicit sale price as-is
- * 3. both = 0 → return 0
- */
+// Resolution: cost>0 → cost×multiplier; cost=0,price>0 → price; both=0 → 0
 export function calculateProductPrice(
   cost: number,
   price: number,

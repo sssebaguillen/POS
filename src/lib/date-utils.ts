@@ -1,7 +1,4 @@
-// ---------------------------------------------------------------------------
-// Shared date-range utilities
-// Single source of truth for period → date-range resolution across modules.
-// ---------------------------------------------------------------------------
+// Shared date-range utilities — single source of truth for period → date-range resolution.
 
 export type DateRangePeriod = 'hoy' | 'semana' | 'mes' | 'trimestre' | 'año' | 'personalizado'
 
@@ -15,9 +12,7 @@ export interface DateRangeStrings {
   to: string | null
 }
 
-// ---------------------------------------------------------------------------
 // Primitive helpers
-// ---------------------------------------------------------------------------
 
 export function startOfDay(date: Date): Date {
   const copy = new Date(date)
@@ -47,9 +42,7 @@ export function getDayLabel(dayIndex: number): string {
   return ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'][dayIndex]
 }
 
-// ---------------------------------------------------------------------------
 // Period → Date objects (client-side components)
-// ---------------------------------------------------------------------------
 
 export function getDateRange(
   period: DateRangePeriod,
@@ -74,9 +67,7 @@ export function getDateRange(
   return { from: startOfDay(fallback), to: endOfDay(now) }
 }
 
-// ---------------------------------------------------------------------------
 // Period → previous period Date objects (for trend comparison)
-// ---------------------------------------------------------------------------
 
 export function getPreviousPeriodRange(
   period: string,
@@ -104,9 +95,7 @@ export function getPreviousPeriodRange(
   }
 }
 
-// ---------------------------------------------------------------------------
 // Period → YYYY-MM-DD strings (server pages & client RPCs)
-// ---------------------------------------------------------------------------
 
 function formatDateLocal(date: Date): string {
   const y = date.getFullYear()
@@ -149,17 +138,13 @@ export function resolveDateRange(
   return { from: from ?? null, to: to ?? null }
 }
 
-// ---------------------------------------------------------------------------
 // Helper: does this period carry explicit from/to in URL params?
-// ---------------------------------------------------------------------------
 
 export function periodNeedsCustomDates(period: DateRangePeriod | string): boolean {
   return period === 'personalizado' || period === 'trimestre' || period === 'año'
 }
 
-// ---------------------------------------------------------------------------
 // Build URL search params for period navigation
-// ---------------------------------------------------------------------------
 
 export function buildDateParams(
   period: DateRangePeriod,
