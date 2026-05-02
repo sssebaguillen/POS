@@ -62,9 +62,10 @@ interface Props {
   rows: SaleRow[]
   businessId: string | null
   businessName: string
+  onSaleDeleted?: (id: string) => void
 }
 
-function SalesHistoryTable({ rows, businessId, businessName }: Props) {
+function SalesHistoryTable({ rows, businessId, businessName, onSaleDeleted }: Props) {
   const currency = useCurrency()
   const fmt = useFormatMoney()
   const [deletedIds, setDeletedIds] = useState<Set<string>>(new Set())
@@ -217,6 +218,7 @@ function SalesHistoryTable({ rows, businessId, businessName }: Props) {
     },
     onSuccess: (saleId) => {
       setDeletedIds(prev => new Set([...prev, saleId]))
+      onSaleDeleted?.(saleId)
       setSaleDetails(prev => { const next = { ...prev }; delete next[saleId]; return next })
       if (expandedSaleId === saleId) setExpandedSaleId(null)
       showToast({ message: 'Venta eliminada' })
@@ -575,14 +577,14 @@ function EditSalePanel({
             <div className="flex items-center gap-1.5 shrink-0">
               <button
                 onClick={() => updateQty(item.product_id, item.quantity - 1)}
-                className="w-6 h-6 rounded-md bg-surface-alt hover:bg-hover-bg flex items-center justify-center transition-colors text-xs"
+                className="w-6 h-6 rounded-md hover:bg-hover-bg flex items-center justify-center transition-colors text-xs"
               >
                 −
               </button>
               <span className="text-sm font-semibold w-6 text-center tabular-nums">{item.quantity}</span>
               <button
                 onClick={() => updateQty(item.product_id, item.quantity + 1)}
-                className="w-6 h-6 rounded-md bg-surface-alt hover:bg-hover-bg flex items-center justify-center transition-colors text-xs"
+                className="w-6 h-6 rounded-md hover:bg-hover-bg flex items-center justify-center transition-colors text-xs"
               >
                 +
               </button>

@@ -126,6 +126,7 @@ export default function DashboardView({
   const [fromDate, setFromDate] = useState('')
   const [toDate, setToDate] = useState('')
   const [suppressWizardLocal, setSuppressWizardLocal] = useState(false)
+  const [deletedSaleIds, setDeletedSaleIds] = useState<Set<string>>(new Set())
 
   useEffect(() => {
     if (!showOnboardingWizard) {
@@ -295,6 +296,7 @@ export default function DashboardView({
 
   const recentSales = useMemo<RecentSaleRow[]>(
     () => completedSales
+      .filter(s => !deletedSaleIds.has(s.id))
       .slice()
       .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
       .slice(0, 5)
@@ -304,7 +306,7 @@ export default function DashboardView({
         method: paymentsBySaleId.get(s.id) ?? 'sin dato',
         created_at: s.created_at,
       })),
-    [completedSales, paymentsBySaleId]
+    [completedSales, deletedSaleIds, paymentsBySaleId]
   )
 
   const periodLabel =
@@ -414,6 +416,7 @@ export default function DashboardView({
               rows={historyRows}
               businessId={businessId}
               businessName={businessName}
+              onSaleDeleted={(id) => setDeletedSaleIds(prev => new Set([...prev, id]))}
             />
           ) : (
             <>
