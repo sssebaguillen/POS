@@ -202,9 +202,10 @@ function SalesHistoryTable({ rows, businessId, businessName }: Props) {
 
   const deleteMutation = useMutation({
     mutationFn: async (saleId: string) => {
+      if (!businessId) throw new Error('businessId requerido')
       const { data, error } = await supabase.rpc('delete_sale', {
         p_sale_id: saleId,
-        p_business_id: businessId!,
+        p_business_id: businessId,
       })
       if (error || !data?.success) {
         throw new Error(error?.message ?? 'No se pudo eliminar la venta')
@@ -232,9 +233,10 @@ function SalesHistoryTable({ rows, businessId, businessName }: Props) {
       paymentMethod: PaymentMethod
       status: string
     }) => {
+      if (!businessId) throw new Error('businessId requerido')
       const { data, error } = await supabase.rpc('update_sale', {
         p_sale_id: vars.saleId,
-        p_business_id: businessId!,
+        p_business_id: businessId,
         p_items: vars.items,
         p_payment_method: vars.paymentMethod,
         p_status: vars.status,
