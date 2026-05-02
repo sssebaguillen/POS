@@ -357,49 +357,39 @@ export default function ImportProductsModal({
 
     try {
       // 1. Create new brands via guarded RPC (enforces stock_write at DB level)
-      let allBrands = [...initialBrands]
-      if (newBrandNames.length > 0) {
-        for (const brandName of newBrandNames) {
-          const { data: rpcResult, error: rpcError } = await supabase.rpc('create_brand_guarded', {
-            p_operator_id: operatorId,
-            p_business_id: businessId,
-            p_name: brandName,
-          })
-          const result = rpcResult as { success: boolean; error?: string } | null
-          if (rpcError || !result?.success) {
-            throw new Error(`Error al crear marca "${brandName}": ${result?.error ?? rpcError?.message}`)
-          }
+      // RPCs return { success, id, error? } — use id directly to avoid a follow-up SELECT
+      const allBrands = [...initialBrands]
+      for (const brandName of newBrandNames) {
+        const { data: rpcResult, error: rpcError } = await supabase.rpc('create_brand_guarded', {
+          p_operator_id: operatorId,
+          p_business_id: businessId,
+          p_name: brandName,
+        })
+        const result = rpcResult as { success: boolean; id?: string; error?: string } | null
+        if (rpcError || !result?.success) {
+          throw new Error(`Error al crear marca "${brandName}": ${result?.error ?? rpcError?.message}`)
         }
-        const { data: freshBrands, error: brandsError } = await supabase
-          .from('brands')
-          .select('id, name')
-          .eq('business_id', businessId)
-        if (brandsError) throw new Error(`Error al obtener marcas: ${brandsError.message}`)
-        allBrands = freshBrands ?? allBrands
+        if (typeof result.id === 'string') {
+          allBrands.push({ id: result.id, name: brandName })
+        }
       }
 
       // 2. Create new categories via guarded RPC (enforces stock_write at DB level)
-      let allCategories = [...initialCategories]
-      if (newCategoryNames.length > 0) {
-        for (const categoryName of newCategoryNames) {
-          const { data: rpcResult, error: rpcError } = await supabase.rpc('create_category_guarded', {
-            p_operator_id: operatorId,
-            p_business_id: businessId,
-            p_name: categoryName,
-            p_icon: '📦',
-          })
-          const result = rpcResult as { success: boolean; error?: string } | null
-          if (rpcError || !result?.success) {
-            throw new Error(`Error al crear categoría "${categoryName}": ${result?.error ?? rpcError?.message}`)
-          }
+      const allCategories = [...initialCategories]
+      for (const categoryName of newCategoryNames) {
+        const { data: rpcResult, error: rpcError } = await supabase.rpc('create_category_guarded', {
+          p_operator_id: operatorId,
+          p_business_id: businessId,
+          p_name: categoryName,
+          p_icon: '📦',
+        })
+        const result = rpcResult as { success: boolean; id?: string; error?: string } | null
+        if (rpcError || !result?.success) {
+          throw new Error(`Error al crear categoría "${categoryName}": ${result?.error ?? rpcError?.message}`)
         }
-        const { data: freshCats, error: catsError } = await supabase
-          .from('categories')
-          .select('id, name, icon')
-          .eq('business_id', businessId)
-          .eq('is_active', true)
-        if (catsError) throw new Error(`Error al obtener categorías: ${catsError.message}`)
-        allCategories = freshCats ?? allCategories
+        if (typeof result.id === 'string') {
+          allCategories.push({ id: result.id, name: categoryName, icon: '📦' })
+        }
       }
 
       // 3. Build product rows with resolved FKs

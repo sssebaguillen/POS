@@ -3,7 +3,8 @@ import InventoryPanel from '@/components/inventory/InventoryPanel'
 import { cookies } from 'next/headers'
 import { getActiveOperator } from '@/lib/operator'
 import { requireAuthenticatedBusinessId } from '@/lib/business'
-import { normalizePriceList, normalizePriceListOverride, unwrapRelation } from '@/lib/mappers'
+import { normalizePriceList, normalizePriceListOverride } from '@/lib/mappers'
+import { fetchInventoryProducts } from '@/lib/inventory-products'
 
 export default async function InventoryPage() {
   const supabase = await createClient()
@@ -15,16 +16,12 @@ export default async function InventoryPage() {
   const initialViewMode: 'grid' | 'list' = viewModeCookie === 'grid' ? 'grid' : 'list'
 
   const [
-    { data: products },
-    { data: categories },
-    { data: brands },
-    { data: priceListsData },
+    { data: products, error: productsError },
+    { data: categories, error: categoriesError },
+    { data: brands, error: brandsError },
+    { data: priceListsData, error: priceListsError },
   ] = await Promise.all([
-    supabase
-      .from('products')
-      .select('id, business_id, name, price, cost, stock, min_stock, is_active, show_in_catalog, category_id, sku, barcode, brand_id, image_url, image_source, brands(id, name), categories(name, icon)')
-      .eq('business_id', businessId)
-      .order('name'),
+    fetchInventoryProducts(supabase, businessId),
     supabase
       .from('categories')
       .select('id, business_id, name, icon')
@@ -43,16 +40,36 @@ export default async function InventoryPage() {
       .order('created_at'),
   ])
 
+  if (productsError) {
+    throw new Error(productsError.message)
+  }
+
+  if (categoriesError) {
+    throw new Error(categoriesError.message)
+  }
+
+  if (brandsError) {
+    throw new Error(brandsError.message)
+  }
+
+  if (priceListsError) {
+    throw new Error(priceListsError.message)
+  }
+
   const priceLists = (priceListsData ?? []).map(normalizePriceList)
   const priceListIds = priceLists.map(pl => pl.id)
 
-  const { data: productOverridesData } = priceListIds.length > 0
+  const { data: productOverridesData, error: productOverridesError } = priceListIds.length > 0
     ? await supabase
         .from('price_list_overrides')
         .select('id, price_list_id, product_id, brand_id, multiplier')
         .in('price_list_id', priceListIds)
         .not('product_id', 'is', null)
-    : { data: [] }
+    : { data: [], error: null }
+
+  if (productOverridesError) {
+    throw new Error(productOverridesError.message)
+  }
 
   const categoryIds = (categories ?? []).map(c => c.id).join(',')
   const brandIds = (brands ?? []).map(b => b.id).join(',')
@@ -63,16 +80,7 @@ export default async function InventoryPage() {
       businessId={businessId}
       operatorId={activeOperator?.profile_id ?? null}
       readOnly={activeOperator?.permissions.stock_write !== true}
-      initialProducts={(products ?? []).map(product => ({
-        ...product,
-        price: Number(product.price),
-        cost: Number(product.cost),
-        brand_id: product.brand_id ?? null,
-        brand: unwrapRelation(product.brands),
-        image_url: product.image_url ?? null,
-        image_source: (product.image_source as 'upload' | 'url' | null) ?? null,
-        categories: unwrapRelation(product.categories),
-      }))}
+      initialProducts={products ?? []}
       categories={categories ?? []}
       brands={brands ?? []}
       priceLists={priceLists}

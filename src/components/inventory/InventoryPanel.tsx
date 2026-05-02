@@ -28,6 +28,7 @@ import { usePillIndicator } from '@/hooks/usePillIndicator'
 import Toast from '@/components/shared/Toast'
 import { useFormatMoney } from '@/lib/context/CurrencyContext'
 import { trackFeatureUsed } from '@/lib/analytics'
+import { fetchInventoryProducts } from '@/lib/inventory-products'
 
 const PAGE_SIZE = 60
 
@@ -928,11 +929,7 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
               { data: updatedCategories, error: categoriesError },
               { data: updatedBrands, error: brandsError },
             ] = await Promise.all([
-              supabase
-                .from('products')
-                .select('id, business_id, name, price, cost, stock, min_stock, is_active, show_in_catalog, category_id, sku, barcode, brand_id, image_url, image_source, brands(id, name), categories(name, icon)')
-                .eq('business_id', businessId)
-                .order('name'),
+              fetchInventoryProducts(supabase, businessId),
               supabase
                 .from('categories')
                 .select('id, name, icon')
@@ -951,16 +948,8 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
               return
             }
             if (updatedProducts) {
-              setProducts(updatedProducts.map(p => ({
-                ...p,
-                price: Number(p.price),
-                cost: Number(p.cost),
-                brand_id: p.brand_id ?? null,
-                brand: Array.isArray(p.brands) ? p.brands[0] ?? null : (p.brands as { id: string; name: string } | null) ?? null,
-                image_url: p.image_url ?? null,
-                image_source: (p.image_source as 'upload' | 'url' | null) ?? null,
-                categories: Array.isArray(p.categories) ? p.categories[0] ?? null : (p.categories as { name: string; icon: string } | null) ?? null,
-              })))
+              setProducts(updatedProducts)
+              setVisibleCount(PAGE_SIZE)
             }
             if (updatedCategories) setCategories(updatedCategories)
             if (updatedBrands) setBrands(updatedBrands)
