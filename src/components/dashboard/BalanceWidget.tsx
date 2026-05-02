@@ -33,7 +33,7 @@ export default function BalanceWidget({
           <p className="font-semibold text-heading font-display">{title}</p>
           <p className="text-xs text-hint mt-0.5">{periodLabel}</p>
         </div>
-        <Link href="/gastos" className="text-xs text-primary font-medium hover:underline shrink-0">
+        <Link href="/expenses" className="text-xs text-primary font-medium hover:underline shrink-0">
           Ver detalle →
         </Link>
       </div>
