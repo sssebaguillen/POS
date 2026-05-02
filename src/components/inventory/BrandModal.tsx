@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { X } from 'lucide-react'
+import { X, Pencil, Check } from 'lucide-react'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import ConfirmModal from '@/components/shared/ConfirmModal'
 import type { InventoryBrand } from '@/components/inventory/types'
@@ -37,8 +37,16 @@ export default function BrandModal({
   const [creating, setCreating] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [pendingConfirm, setPendingConfirm] = useState<ConfirmState>(null)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [editName, setEditName] = useState('')
+  const [saving, setSaving] = useState(false)
 
   const supabase = useMemo(() => createClient(), [])
+
+  const filteredBrands = searchQuery.trim()
+    ? brands.filter(b => b.name.toLowerCase().includes(searchQuery.toLowerCase()))
+    : brands
 
   async function refreshBrands() {
     const { data, error: fetchError } = await supabase
@@ -89,6 +97,51 @@ export default function BrandModal({
     setCreating(false)
   }
 
+  function startEdit(brand: InventoryBrand) {
+    setEditingId(brand.id)
+    setEditName(brand.name)
+    setError(null)
+  }
+
+  function cancelEdit() {
+    setEditingId(null)
+    setEditName('')
+  }
+
+  async function handleUpdate(brandId: string) {
+    if (!stockWriteAllowed) return
+
+    if (!editName.trim()) {
+      setError('El nombre es obligatorio')
+      return
+    }
+
+    setSaving(true)
+    setError(null)
+
+    const { data: rpcResult, error: rpcError } = await supabase.rpc('update_brand', {
+      p_operator_id: operatorId,
+      p_business_id: businessId,
+      p_brand_id: brandId,
+      p_name: editName.trim(),
+    })
+
+    const result = rpcResult as { success: boolean; error?: string } | null
+
+    if (rpcError || !result?.success) {
+      setError(result?.error ?? rpcError?.message ?? 'Error al actualizar la marca')
+      setSaving(false)
+      return
+    }
+
+    const updated = brands.map(b => b.id === brandId ? { ...b, name: editName.trim() } : b)
+    setBrands(updated)
+    onBrandsChanged(updated)
+    setEditingId(null)
+    setEditName('')
+    setSaving(false)
+  }
+
   function handleDelete(brand: InventoryBrand) {
     setPendingConfirm({
       title: `Eliminar marca "${brand.name}"`,
@@ -117,6 +170,9 @@ export default function BrandModal({
 
   function handleClose() {
     setError(null)
+    setSearchQuery('')
+    setEditingId(null)
+    setEditName('')
     onClose()
   }
 
@@ -144,22 +200,77 @@ export default function BrandModal({
           )}
 
           <div className="rounded-xl border border-edge/70 overflow-hidden">
+            <div className="px-3 py-2 border-b border-edge/50">
+              <Input
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                placeholder="Buscar marca..."
+                className="h-8 rounded-lg text-sm bg-surface border-edge focus-visible:ring-ring/50 focus-visible:border-ring"
+              />
+            </div>
             <div className="max-h-60 overflow-y-auto divide-y divide-edge/50">
-              {brands.length === 0 ? (
-                <div className="px-3 py-4 text-sm text-hint text-center">No hay marcas creadas.</div>
+              {filteredBrands.length === 0 ? (
+                <div className="px-3 py-4 text-sm text-hint text-center">
+                  {brands.length === 0 ? 'No hay marcas creadas.' : 'Sin resultados.'}
+                </div>
               ) : (
-                brands.map(brand => (
-                  <div key={brand.id} className="px-3 py-2.5 flex items-center gap-3">
-                    <span className="text-sm font-medium text-heading flex-1">{brand.name}</span>
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="destructive"
-                      onClick={() => void handleDelete(brand)}
-                      disabled={creating || deletingId !== null || !stockWriteAllowed}
-                    >
-                      {deletingId === brand.id ? 'Eliminando...' : 'Eliminar'}
-                    </Button>
+                filteredBrands.map(brand => (
+                  <div key={brand.id} className="px-3 py-2.5 flex items-center gap-2">
+                    {editingId === brand.id ? (
+                      <>
+                        <Input
+                          value={editName}
+                          onChange={e => { setEditName(e.target.value); setError(null) }}
+                          onKeyDown={e => {
+                            if (e.key === 'Enter') void handleUpdate(brand.id)
+                            if (e.key === 'Escape') cancelEdit()
+                          }}
+                          className="h-8 rounded-lg text-sm bg-surface border-edge focus-visible:ring-ring/50 focus-visible:border-ring flex-1"
+                          autoFocus
+                          disabled={saving}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => void handleUpdate(brand.id)}
+                          disabled={saving}
+                          className="p-1.5 rounded-lg hover:bg-hover-bg transition-colors text-emerald-600 disabled:opacity-50"
+                          aria-label="Confirmar edición"
+                        >
+                          <Check className="w-4 h-4" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={cancelEdit}
+                          disabled={saving}
+                          className="p-1.5 rounded-lg hover:bg-hover-bg transition-colors text-hint disabled:opacity-50"
+                          aria-label="Cancelar edición"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <span className="text-sm font-medium text-heading flex-1">{brand.name}</span>
+                        <button
+                          type="button"
+                          onClick={() => startEdit(brand)}
+                          disabled={creating || deletingId !== null || !stockWriteAllowed || editingId !== null}
+                          className="p-1.5 rounded-lg hover:bg-hover-bg transition-colors text-hint disabled:opacity-30"
+                          aria-label={`Editar ${brand.name}`}
+                        >
+                          <Pencil className="w-3.5 h-3.5" />
+                        </button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="destructive"
+                          onClick={() => void handleDelete(brand)}
+                          disabled={creating || deletingId !== null || !stockWriteAllowed || editingId !== null}
+                        >
+                          {deletingId === brand.id ? 'Eliminando...' : 'Eliminar'}
+                        </Button>
+                      </>
+                    )}
                   </div>
                 ))
               )}

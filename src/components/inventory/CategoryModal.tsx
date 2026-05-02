@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { X } from 'lucide-react'
+import { X, Pencil, Check } from 'lucide-react'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import {
   AlertDialog,
@@ -47,8 +47,17 @@ export default function CategoryModal({
   const [creating, setCreating] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [editName, setEditName] = useState('')
+  const [editIcon, setEditIcon] = useState(DEFAULT_ICON)
+  const [saving, setSaving] = useState(false)
 
   const supabase = useMemo(() => createClient(), [])
+
+  const filteredCategories = searchQuery.trim()
+    ? categories.filter(c => c.name.toLowerCase().includes(searchQuery.toLowerCase()))
+    : categories
 
   async function refreshCategories() {
     const { data, error: fetchError } = await supabase
@@ -108,6 +117,57 @@ export default function CategoryModal({
     setCreating(false)
   }
 
+  function startEdit(category: InventoryCategory) {
+    setEditingId(category.id)
+    setEditName(category.name)
+    setEditIcon(category.icon || DEFAULT_ICON)
+    setError(null)
+  }
+
+  function cancelEdit() {
+    setEditingId(null)
+    setEditName('')
+    setEditIcon(DEFAULT_ICON)
+  }
+
+  async function handleUpdate(categoryId: string) {
+    if (!stockWriteAllowed) return
+
+    if (!editName.trim()) {
+      setError('El nombre es obligatorio')
+      return
+    }
+
+    setSaving(true)
+    setError(null)
+
+    const { data: rpcResult, error: rpcError } = await supabase.rpc('update_category', {
+      p_operator_id: operatorId,
+      p_business_id: businessId,
+      p_category_id: categoryId,
+      p_name: editName.trim(),
+      p_icon: editIcon.trim() || DEFAULT_ICON,
+    })
+
+    const result = rpcResult as { success: boolean; error?: string } | null
+
+    if (rpcError || !result?.success) {
+      setError(result?.error ?? rpcError?.message ?? 'Error al actualizar la categoría')
+      setSaving(false)
+      return
+    }
+
+    const updated = categories.map(c =>
+      c.id === categoryId ? { ...c, name: editName.trim(), icon: editIcon.trim() || DEFAULT_ICON } : c
+    )
+    setCategories(updated)
+    onCategoriesChanged(updated)
+    setEditingId(null)
+    setEditName('')
+    setEditIcon(DEFAULT_ICON)
+    setSaving(false)
+  }
+
   async function handleDelete(categoryId: string) {
     setDeletingId(categoryId)
     setError(null)
@@ -130,6 +190,10 @@ export default function CategoryModal({
 
   function handleClose() {
     setError(null)
+    setSearchQuery('')
+    setEditingId(null)
+    setEditName('')
+    setEditIcon(DEFAULT_ICON)
     onClose()
   }
 
@@ -157,25 +221,91 @@ export default function CategoryModal({
           )}
 
           <div className="rounded-xl border border-edge/70 overflow-hidden">
+            <div className="px-3 py-2 border-b border-edge/50">
+              <Input
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                placeholder="Buscar categoría..."
+                className="h-8 rounded-lg text-sm bg-surface border-edge focus-visible:ring-ring/50 focus-visible:border-ring"
+              />
+            </div>
             <div className="max-h-60 overflow-y-auto divide-y divide-edge/50">
-              {categories.length === 0 ? (
-                <div className="px-3 py-4 text-sm text-hint text-center">No hay categorías creadas.</div>
+              {filteredCategories.length === 0 ? (
+                <div className="px-3 py-4 text-sm text-hint text-center">
+                  {categories.length === 0 ? 'No hay categorías creadas.' : 'Sin resultados.'}
+                </div>
               ) : (
-                categories.map(category => (
-                  <div key={category.id} className="px-3 py-2.5 flex items-center gap-3">
-                    <span className="w-8 h-8 rounded-lg bg-surface-alt border border-edge flex items-center justify-center text-base">
-                      {category.icon || DEFAULT_ICON}
-                    </span>
-                    <span className="text-sm font-medium text-heading flex-1">{category.name}</span>
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="destructive"
-                      onClick={() => setConfirmDeleteId(category.id)}
-                      disabled={creating || deletingId !== null || !stockWriteAllowed}
-                    >
-                      {deletingId === category.id ? 'Eliminando...' : 'Eliminar'}
-                    </Button>
+                filteredCategories.map(category => (
+                  <div key={category.id} className="px-3 py-2.5 flex items-center gap-2">
+                    {editingId === category.id ? (
+                      <>
+                        <Input
+                          value={editIcon}
+                          onChange={e => setEditIcon(e.target.value)}
+                          onKeyDown={e => {
+                            if (e.key === 'Enter') void handleUpdate(category.id)
+                            if (e.key === 'Escape') cancelEdit()
+                          }}
+                          className="h-8 w-14 rounded-lg text-sm bg-surface border-edge focus-visible:ring-ring/50 focus-visible:border-ring text-center shrink-0"
+                          disabled={saving}
+                          aria-label="Icono"
+                        />
+                        <Input
+                          value={editName}
+                          onChange={e => { setEditName(e.target.value); setError(null) }}
+                          onKeyDown={e => {
+                            if (e.key === 'Enter') void handleUpdate(category.id)
+                            if (e.key === 'Escape') cancelEdit()
+                          }}
+                          className="h-8 rounded-lg text-sm bg-surface border-edge focus-visible:ring-ring/50 focus-visible:border-ring flex-1"
+                          autoFocus
+                          disabled={saving}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => void handleUpdate(category.id)}
+                          disabled={saving}
+                          className="p-1.5 rounded-lg hover:bg-hover-bg transition-colors text-emerald-600 disabled:opacity-50"
+                          aria-label="Confirmar edición"
+                        >
+                          <Check className="w-4 h-4" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={cancelEdit}
+                          disabled={saving}
+                          className="p-1.5 rounded-lg hover:bg-hover-bg transition-colors text-hint disabled:opacity-50"
+                          aria-label="Cancelar edición"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <span className="w-8 h-8 rounded-lg bg-surface-alt border border-edge flex items-center justify-center text-base shrink-0">
+                          {category.icon || DEFAULT_ICON}
+                        </span>
+                        <span className="text-sm font-medium text-heading flex-1">{category.name}</span>
+                        <button
+                          type="button"
+                          onClick={() => startEdit(category)}
+                          disabled={creating || deletingId !== null || !stockWriteAllowed || editingId !== null}
+                          className="p-1.5 rounded-lg hover:bg-hover-bg transition-colors text-hint disabled:opacity-30"
+                          aria-label={`Editar ${category.name}`}
+                        >
+                          <Pencil className="w-3.5 h-3.5" />
+                        </button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="destructive"
+                          onClick={() => setConfirmDeleteId(category.id)}
+                          disabled={creating || deletingId !== null || !stockWriteAllowed || editingId !== null}
+                        >
+                          {deletingId === category.id ? 'Eliminando...' : 'Eliminar'}
+                        </Button>
+                      </>
+                    )}
                   </div>
                 ))
               )}
