@@ -254,11 +254,12 @@ src/
     ├── operator/
     │   ├── OperatorSelectView.tsx        # Forgot password button (when isOwnerSelected && error)
     │   └── OperatorSwitcher.tsx
-    ├── dashboard/                        # ⚠️ DashboardView.tsx lives in analytics/ — needs moving
+    ├── dashboard/
+    │   ├── DashboardView.tsx
     │   ├── SalesHistoryTable.tsx         # 100% in-memory filter — data denormalized from page.tsx
     │   ├── BalanceWidget.tsx
-    │   └── utils.ts
-    ├── stats/                            # ⚠️ StatsView.tsx lives in analytics/ — needs moving
+    │   └── RecentActivityWidget.tsx
+    ├── stats/
     │   ├── TopProductsDetailView.tsx
     │   ├── BreakdownDetailView.tsx
     │   ├── PaymentMethodDetailView.tsx
@@ -868,8 +869,6 @@ The CONTEXT.md mentions a dead `/stock` guard in `proxy.ts`. This does NOT appea
 |------|-------|
 | `InventoryPanel.tsx` (~1291 lines) | Extract 5 embedded sub-components |
 | `CartPanel.tsx` (~920 lines) | `EditSalePanel` is embedded — separate it |
-| `DashboardView.tsx` in `analytics/` | Move to `dashboard/` |
-| `StatsView.tsx` in `analytics/` | Move to `stats/` |
 | `ProductsPanel.tsx` (294L) | Probably abandoned — verify and delete |
 | `components/sales/` | Empty directory — delete |
 | `formatMoney` duplicated | In PaymentModal, ReceiptPreviewModal, ReceiptTemplate — centralize in `lib/utils.ts` |
