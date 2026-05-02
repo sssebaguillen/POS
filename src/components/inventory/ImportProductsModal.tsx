@@ -266,7 +266,7 @@ export default function ImportProductsModal({
           setStep('mapping')
         }
       } catch {
-        setParseError('No se pudo leer el archivo. Asegurate de que sea un archivo Excel o CSV valido.')
+        setParseError('No se pudo leer el archivo. Asegurate de que sea un archivo Excel o CSV válido.')
       }
     }
     reader.readAsBinaryString(file)
@@ -688,7 +688,7 @@ export default function ImportProductsModal({
                       <th className="text-right px-3 py-2.5 font-medium text-hint">Precio</th>
                       <th className="text-right px-3 py-2.5 font-medium text-hint">Costo</th>
                       <th className="text-right px-3 py-2.5 font-medium text-hint">Stock</th>
-                      <th className="text-left px-3 py-2.5 font-medium text-hint">Categoria</th>
+                      <th className="text-left px-3 py-2.5 font-medium text-hint">Categoría</th>
                       <th className="text-left px-3 py-2.5 font-medium text-hint">Marca</th>
                     </tr>
                   </thead>

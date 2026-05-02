@@ -1,6 +1,6 @@
 'use client'
 
-import { Dialog, DialogContent } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 
 interface ConfirmModalProps {
@@ -24,7 +24,7 @@ export default function ConfirmModal({
     <Dialog open={open} onOpenChange={nextOpen => { if (!nextOpen) onCancel() }}>
       <DialogContent showCloseButton={false} className="max-w-sm gap-0 p-0 overflow-hidden rounded-2xl">
         <div className="px-5 py-4 space-y-1">
-          <p className="font-semibold text-heading">{title}</p>
+          <DialogTitle className="font-semibold text-heading">{title}</DialogTitle>
           <p className="text-sm text-body">{message}</p>
         </div>
         <div className="px-5 py-3 flex justify-end gap-2 border-t border-edge">

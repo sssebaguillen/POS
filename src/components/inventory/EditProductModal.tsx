@@ -279,9 +279,6 @@ export default function EditProductModal({
             multiplier: Number(r.data!.multiplier),
           }))
 
-        for (const r of upsertResults) {
-          if (r.error) console.error('Failed to upsert price list override:', r.error.message)
-        }
       } else {
         if (existingOverrides.length > 0) {
           await Promise.all(

@@ -10,35 +10,11 @@ import {
   DialogContent,
 } from '@/components/ui/dialog'
 import type { PriceList } from '@/lib/types'
-import type { InventoryBrand } from '@/components/inventory/types'
+import type { InventoryBrand, InventoryCategory, InventoryProduct } from '@/components/inventory/types'
 import { validateImageUrl } from '@/lib/validation'
 import FieldGroup from '@/components/inventory/FieldGroup'
 import { useCurrency } from '@/lib/context/CurrencyContext'
 import { getCurrencySymbol, toTitleCase } from '@/lib/format'
-
-interface Category {
-  id: string
-  name: string
-  icon: string
-}
-
-interface NewProduct {
-  id: string
-  name: string
-  price: number
-  cost: number
-  stock: number
-  min_stock: number
-  is_active: boolean
-  category_id: string | null
-  sku: string | null
-  brand_id?: string | null
-  brand?: { id: string; name: string } | null
-  barcode: string | null
-  image_url?: string | null
-  image_source?: 'upload' | 'url' | null
-  categories?: { name: string; icon: string } | null
-}
 
 interface Props {
   /** When true, renders only the form (no Dialog). Used by onboarding wizard. */
@@ -47,11 +23,11 @@ interface Props {
   onClose: () => void
   businessId: string | null
   priceLists: PriceList[]
-  categories: Category[]
+  categories: InventoryCategory[]
   brands: InventoryBrand[]
-  onCreated: (product: NewProduct) => void
+  onCreated: (product: InventoryProduct) => void
   /** Called after a successful create (in addition to onCreated). */
-  onSuccess?: (product: NewProduct) => void
+  onSuccess?: (product: InventoryProduct) => void
   /** Pre-fill the product name field. */
   initialName?: string
 }
@@ -272,7 +248,7 @@ export default function NewProductModal({
     if (isPriceEdited && payload.cost > 0 && selectedListIds.size > 0) {
       const multiplier = payload.price / payload.cost
       void (async () => {
-        const { error: overrideError } = await supabase
+        await supabase
           .from('price_list_overrides')
           .insert(
             [...selectedListIds].map(listId => ({
@@ -282,13 +258,10 @@ export default function NewProductModal({
               multiplier,
             }))
           )
-        if (overrideError) {
-          console.error('Failed to create price list overrides for new product:', overrideError.message)
-        }
       })()
     }
 
-    const created: NewProduct = {
+    const created: InventoryProduct = {
       ...data,
       price: Number(data.price),
       cost: Number(data.cost),

@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { X } from 'lucide-react'
-import { Dialog, DialogContent } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import ConfirmModal from '@/components/shared/ConfirmModal'
 import type { InventoryBrand } from '@/components/inventory/types'
 import { translateDbError } from '@/lib/errors'
@@ -125,7 +125,7 @@ export default function BrandModal({
     <Dialog open={open} onOpenChange={nextOpen => !nextOpen && handleClose()}>
       <DialogContent className="sm:max-w-[560px] p-0 gap-0 overflow-hidden bg-card" showCloseButton={false}>
         <div className="flex items-center justify-between px-5 py-4 border-b border-edge shrink-0">
-          <h2 className="text-base font-semibold text-heading">Marcas</h2>
+          <DialogTitle className="text-base font-semibold text-heading">Marcas</DialogTitle>
           <button
             type="button"
             onClick={handleClose}

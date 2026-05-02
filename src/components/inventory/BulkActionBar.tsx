@@ -38,7 +38,7 @@ export default function BulkActionBar({
   const [selectedCategoryId, setSelectedCategoryId] = useState('')
   const [selectedBrandId, setSelectedBrandId] = useState('')
 
-  // Slide-in al montar
+  // Slide in on mount
   useEffect(() => {
     const frame = requestAnimationFrame(() => setVisible(true))
     return () => cancelAnimationFrame(frame)

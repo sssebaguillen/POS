@@ -11,6 +11,10 @@ function flashRedirect(destination: URL, csp: string): NextResponse {
     path: '/',
   })
   response.headers.set('Content-Security-Policy', csp)
+  response.headers.set(
+    'Permissions-Policy',
+    'camera=(), microphone=(), geolocation=(), payment=(), usb=(), magnetometer=(), gyroscope=(), accelerometer=()'
+  )
   return response
 }
 
@@ -87,12 +91,10 @@ export async function proxy(request: NextRequest) {
   } = await supabase.auth.getUser()
 
   const isUpdatePasswordRoute =
-    pathname.startsWith('/update-password') ||
     pathname.startsWith('/auth/update-password')
   const isAuthRoute =
     pathname.startsWith('/login') ||
     pathname.startsWith('/register') ||
-    pathname.startsWith('/auth/confirm') ||
     pathname.startsWith('/auth/callback') ||
     isUpdatePasswordRoute
   const isCatalogRoute = pathname.startsWith('/catalogo')

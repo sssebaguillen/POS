@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Dialog, DialogContent, DialogPortal } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogPortal, DialogTitle } from '@/components/ui/dialog'
 import SelectDropdown from '@/components/ui/SelectDropdown'
 import type { InventoryBrand, InventoryProduct } from '@/components/inventory/types'
 import { translateDbError } from '@/lib/errors'
@@ -86,6 +86,7 @@ export default function QuickEditBrandModal({ open, product, brands, businessId,
         <div className="fixed inset-0 z-50 bg-black/40 dark:bg-black/60 backdrop-blur-sm" />
       </DialogPortal>
       <DialogContent showCloseButton={false} className="max-w-sm gap-0 p-0 overflow-hidden rounded-2xl">
+        <DialogTitle className="sr-only">Cambiar marca</DialogTitle>
         <div className="px-5 pt-4 pb-3 border-b border-edge/60">
           <p className="font-semibold text-heading text-sm">Cambiar marca</p>
           <p className="text-xs text-subtle truncate mt-0.5">{product?.name}</p>

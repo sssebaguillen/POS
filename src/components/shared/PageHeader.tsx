@@ -25,7 +25,7 @@ export default function PageHeader({ title, breadcrumbs, children }: Props) {
       <button
         onClick={toggle}
         className="p-1.5 -ml-1 rounded-lg hover:bg-hover-bg transition-colors lg:hidden"
-        aria-label="Abrir menu"
+        aria-label="Abrir menú"
       >
         <Menu size={20} className="text-body" />
       </button>

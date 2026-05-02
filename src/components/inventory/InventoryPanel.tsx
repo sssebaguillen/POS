@@ -12,7 +12,7 @@ import FilterSidebar from '@/components/inventory/FilterSidebar'
 import NewProductModal from '@/components/inventory/NewProductModal'
 import EditProductModal from '@/components/inventory/EditProductModal'
 import CategoryModal from '@/components/inventory/CategoryModal'
-import BrandModal from './BrandModal'
+import BrandModal from '@/components/inventory/BrandModal'
 import ImportProductsModal from '@/components/inventory/ImportProductsModal'
 import ConfirmModal from '@/components/shared/ConfirmModal'
 import BulkActionBar from '@/components/inventory/BulkActionBar'
@@ -132,13 +132,13 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
 
   const visibleProducts = useMemo(() => sorted.slice(0, visibleCount), [sorted, visibleCount])
 
-  // Resetear paginación cuando cambia el conjunto base mostrado
+  // Reset pagination when the filtered/sorted set changes
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setVisibleCount(PAGE_SIZE)
   }, [query, selectedCategories, selectedBrands, showInCatalogOnly, sort, statusFilter])
 
-  // Infinite scroll: al llegar al final del área virtual, carga mas productos
+  // Infinite scroll: load more products when near the bottom of the scroll area
   useEffect(() => {
     const el = scrollContainerRef.current
     if (!el) return
@@ -181,7 +181,7 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
     }
 
     if (!businessId) {
-      setCrudError('No se encontro el negocio activo para actualizar productos.')
+      setCrudError('No se encontró el negocio activo para actualizar productos.')
       return
     }
 
@@ -273,7 +273,7 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
     }
 
     if (!businessId) {
-      setCrudError('No se encontro el negocio activo para eliminar productos.')
+      setCrudError('No se encontró el negocio activo para eliminar productos.')
       return
     }
 
@@ -430,8 +430,8 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
       showToast({ message: `${deleted} productos eliminados` })
     }
 
-    // Actualizar estado local: si no hubo discontinuados, filtrar todos.
-    // Si hubo mix, router.refresh() se encarga (el RPC no devuelve qué IDs quedaron).
+    // Update local state: if no items were discontinued, filter them all out.
+    // Mixed result: router.refresh() handles it (the RPC does not return which IDs remain).
     if (discontinued === 0) {
       setProducts(prev => prev.filter(p => !ids.includes(p.id)))
     }
@@ -457,7 +457,7 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
     }
     const result = data as { updated: number } | null
     showToast({ message: `${result?.updated ?? 0} productos activados` })
-    // Actualizar estado local directamente — no depender de router.refresh()
+    // Update local state directly — do not rely on router.refresh()
     setProducts(prev => prev.map(p => ids.includes(p.id) ? { ...p, is_active: true } : p))
     handleCloseSelection()
     router.refresh()
@@ -480,7 +480,7 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
     }
     const result = data as { updated: number } | null
     showToast({ message: `${result?.updated ?? 0} productos discontinuados` })
-    // Actualizar estado local directamente — no depender de router.refresh()
+    // Update local state directly — do not rely on router.refresh()
     setProducts(prev => prev.map(p => ids.includes(p.id) ? { ...p, is_active: false } : p))
     handleCloseSelection()
     router.refresh()
@@ -504,7 +504,7 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
     const result = data as { updated: number } | null
     const catName = categoryId ? categories.find(c => c.id === categoryId)?.name ?? '' : 'ninguna'
     showToast({ message: `${result?.updated ?? 0} productos → categoría: ${catName}` })
-    // Actualizar estado local directamente
+    // Update local state directly
     const nextCat = categoryId ? categories.find(c => c.id === categoryId) ?? null : null
     setProducts(prev => prev.map(p =>
       ids.includes(p.id)
@@ -533,7 +533,7 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
     const result = data as { updated: number } | null
     const brandName = brandId ? brands.find(b => b.id === brandId)?.name ?? '' : 'ninguna'
     showToast({ message: `${result?.updated ?? 0} productos → marca: ${brandName}` })
-    // Actualizar estado local directamente
+    // Update local state directly
     const nextBrand = brandId ? brands.find(b => b.id === brandId) ?? null : null
     setProducts(prev => prev.map(p =>
       ids.includes(p.id)

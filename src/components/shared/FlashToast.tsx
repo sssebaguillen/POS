@@ -44,7 +44,7 @@ export default function FlashToast({ message, variant = 'warning' }: Props) {
           clearFlashCookie()
           setVisible(false)
         }}
-        aria-label="Cerrar notificacion"
+        aria-label="Cerrar notificación"
         className="ml-1 rounded p-0.5 hover:bg-muted transition-colors"
       >
         <X size={14} />
