@@ -48,14 +48,14 @@ export default function EditSalePanel({
             <div className="flex items-center gap-1.5 shrink-0">
               <button
                 onClick={() => updateQty(item.id, item.quantity - 1)}
-                className="w-6 h-6 rounded-md bg-surface-alt hover:bg-hover-bg flex items-center justify-center transition-colors text-xs"
+                className="w-6 h-6 rounded-md hover:bg-hover-bg flex items-center justify-center transition-colors text-xs"
               >
                 −
               </button>
               <span className="text-sm font-semibold w-6 text-center tabular-nums">{item.quantity}</span>
               <button
                 onClick={() => updateQty(item.id, item.quantity + 1)}
-                className="w-6 h-6 rounded-md bg-surface-alt hover:bg-hover-bg flex items-center justify-center transition-colors text-xs"
+                className="w-6 h-6 rounded-md hover:bg-hover-bg flex items-center justify-center transition-colors text-xs"
               >
                 +
               </button>

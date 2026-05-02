@@ -4,7 +4,7 @@ import { useState, useMemo, memo } from 'react'
 import { useMutation } from '@tanstack/react-query'
 import { Printer, Trash2, X } from 'lucide-react'
 import ReceiptPreviewModal from '@/components/pos/ReceiptPreviewModal'
-import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { buildReceiptData } from '@/lib/printer/receipt'
@@ -494,6 +494,7 @@ function SalesHistoryTable({ rows, businessId, businessName, onSaleDeleted }: Pr
       <Dialog open={!!editingSale} onOpenChange={nextOpen => !nextOpen && setEditingSale(null)}>
         <DialogContent className="sm:max-w-md p-0 gap-0 overflow-hidden bg-card max-h-[90vh] flex flex-col" showCloseButton={false}>
           <DialogTitle className="sr-only">Editar venta</DialogTitle>
+          <DialogDescription className="sr-only">Editar los detalles de la venta</DialogDescription>
           {editingSale && (
             <>
               <div className="flex items-center justify-between px-5 py-4 border-b border-edge shrink-0">
