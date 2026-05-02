@@ -229,8 +229,7 @@ export default function EditProductModal({
     return nextErrors
   }
 
-  async function handleSubmit(event: React.FormEvent) {
-    event.preventDefault()
+  async function handleSubmit() {
     const validationErrors = validate()
     if (Object.keys(validationErrors).length > 0) {
       setErrors(validationErrors)
@@ -354,7 +353,7 @@ export default function EditProductModal({
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="flex flex-col">
+        <div className="flex flex-col">
           <div className="px-6 py-4">
             <div className="space-y-3.5">
 
@@ -794,11 +793,11 @@ export default function EditProductModal({
             <Button type="button" variant="cancel" onClick={handleClose} disabled={isSaving} className="h-9 px-5 rounded-xl text-sm">
               Cancelar
             </Button>
-            <Button type="submit" disabled={isSaving} className="h-9 px-5 rounded-lg text-sm bg-primary hover:bg-primary/90 text-primary-foreground">
+            <Button type="button" onClick={() => void handleSubmit()} disabled={isSaving} className="h-9 px-5 rounded-lg text-sm bg-primary hover:bg-primary/90 text-primary-foreground">
               {isSaving ? 'Guardando…' : 'Guardar cambios'}
             </Button>
           </div>
-        </form>
+        </div>
       </DialogContent>
     </Dialog>
   )

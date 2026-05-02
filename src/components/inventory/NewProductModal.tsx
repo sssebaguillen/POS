@@ -231,8 +231,7 @@ export default function NewProductModal({
     return e
   }
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
+  async function handleSubmit() {
     const errs = validate()
     if (Object.keys(errs).length > 0) { setErrors(errs); return }
 
@@ -325,7 +324,7 @@ export default function NewProductModal({
   }
 
   const formInner = (
-        <form onSubmit={handleSubmit} className="flex flex-col">
+        <div className="flex flex-col">
           <div className="px-6 py-4">
             {errors._global && (
               <p className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive mb-3.5">{errors._global}</p>
@@ -780,14 +779,15 @@ export default function NewProductModal({
               </Button>
             )}
             <Button
-              type="submit"
+              type="button"
+              onClick={() => void handleSubmit()}
               disabled={loading}
               className="h-9 px-5 rounded-lg text-sm bg-primary hover:bg-primary/90 text-primary-foreground"
             >
               {loading ? 'Guardando…' : 'Crear producto'}
             </Button>
           </div>
-        </form>
+        </div>
   )
 
   if (embedded) {

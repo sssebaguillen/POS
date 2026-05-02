@@ -30,7 +30,8 @@ export default async function POSPage() {
       .select('id, business_id, name, price, cost, stock, min_stock, is_active, show_in_catalog, category_id, sku, barcode, brand_id, image_url, image_source, sales_count, created_at, brands(id, name), categories(name, icon)')
       .eq('business_id', businessId)
       .eq('is_active', true)
-      .order('sales_count', { ascending: false }),
+      .order('sales_count', { ascending: false })
+      .order('created_at', { ascending: false }),
     supabase
       .from('price_lists')
       .select('id, business_id, name, description, multiplier, is_default, created_at')

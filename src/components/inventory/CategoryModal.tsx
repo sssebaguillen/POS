@@ -73,9 +73,7 @@ export default function CategoryModal({
     onCategoriesChanged(updatedCategories)
   }
 
-  async function handleCreate(event: React.FormEvent) {
-    event.preventDefault()
-
+  async function handleCreate() {
     if (!stockWriteAllowed) {
       setError('Acceso denegado: Permisos de inventario insuficientes')
       return
@@ -184,7 +182,7 @@ export default function CategoryModal({
             </div>
           </div>
 
-          <form onSubmit={handleCreate} className="rounded-xl border border-edge/70 p-3.5">
+          <div className="rounded-xl border border-edge/70 p-3.5">
             <p className="text-label text-subtle mb-2.5">Nueva categoría</p>
             {!stockWriteAllowed && (
               <p className="mb-2.5 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-700 dark:text-amber-400">
@@ -232,14 +230,15 @@ export default function CategoryModal({
                 Cerrar
               </Button>
               <Button
-                type="submit"
+                type="button"
                 className="h-9 px-5 rounded-lg text-sm bg-primary hover:bg-primary/90 text-primary-foreground"
+                onClick={() => void handleCreate()}
                 disabled={creating || deletingId !== null || !stockWriteAllowed}
               >
                 {creating ? 'Creando...' : 'Crear categoría'}
               </Button>
             </div>
-          </form>
+          </div>
         </div>
       </DialogContent>
     </Dialog>
