@@ -4,7 +4,7 @@ import { useState, useMemo, memo } from 'react'
 import { useMutation } from '@tanstack/react-query'
 import { Printer, Trash2, X } from 'lucide-react'
 import ReceiptPreviewModal from '@/components/pos/ReceiptPreviewModal'
-import { Dialog, DialogContent } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { buildReceiptData } from '@/lib/printer/receipt'
@@ -39,7 +39,6 @@ interface SaleRow {
 
 interface SaleDetail extends SaleRow {
   items: SaleItem[]
-  operator_name: string | null
 }
 
 interface SaleItemQueryRow {
@@ -491,6 +490,7 @@ function SalesHistoryTable({ rows, businessId, businessName }: Props) {
 
       <Dialog open={!!editingSale} onOpenChange={nextOpen => !nextOpen && setEditingSale(null)}>
         <DialogContent className="sm:max-w-md p-0 gap-0 overflow-hidden bg-card max-h-[90vh] flex flex-col" showCloseButton={false}>
+          <DialogTitle className="sr-only">Editar venta</DialogTitle>
           {editingSale && (
             <>
               <div className="flex items-center justify-between px-5 py-4 border-b border-edge shrink-0">

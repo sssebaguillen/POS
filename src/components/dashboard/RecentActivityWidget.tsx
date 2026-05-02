@@ -1,5 +1,3 @@
-'use client'
-
 import { normalizePayment } from '@/lib/payments'
 import type { PaymentMethod } from '@/lib/constants/domain'
 

@@ -265,7 +265,7 @@ export default function DashboardView({
     period === 'hoy' ? 'vs ayer'
     : period === 'semana' ? 'vs semana anterior'
     : period === 'mes' ? 'vs mes anterior'
-    : ',',
+    : '',
     [period]
   )
 
