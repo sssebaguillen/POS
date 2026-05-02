@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo, memo } from 'react'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation } from '@tanstack/react-query'
 import { Printer, Trash2, X } from 'lucide-react'
 import ReceiptPreviewModal from '@/components/pos/ReceiptPreviewModal'
 import { Dialog, DialogContent } from '@/components/ui/dialog'
@@ -77,7 +77,6 @@ function SalesHistoryTable({ rows, businessId, businessName }: Props) {
   const [receiptPreview, setReceiptPreview] = useState<ReceiptData | null>(null)
   const [receiptError, setReceiptError] = useState('')
   const supabase = useMemo(() => createClient(), [])
-  const queryClient = useQueryClient()
   const { toast, showToast, dismissToast } = useToast()
 
   // Filter out deleted items
@@ -219,7 +218,6 @@ function SalesHistoryTable({ rows, businessId, businessName }: Props) {
       setDeletedIds(prev => new Set([...prev, saleId]))
       setSaleDetails(prev => { const next = { ...prev }; delete next[saleId]; return next })
       if (expandedSaleId === saleId) setExpandedSaleId(null)
-      void queryClient.invalidateQueries({ queryKey: ['expenses'] })
       showToast({ message: 'Venta eliminada' })
     },
     onSettled: () => {
@@ -274,7 +272,6 @@ function SalesHistoryTable({ rows, businessId, businessName }: Props) {
         }
       })
       setEditingSale(null)
-      void queryClient.invalidateQueries({ queryKey: ['expenses'] })
       showToast({ message: 'Venta actualizada' })
     },
   })
