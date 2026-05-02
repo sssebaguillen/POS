@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useMemo, memo } from 'react'
+import { useRouter } from 'next/navigation'
 import { useMutation } from '@tanstack/react-query'
 import { Printer, Trash2, X } from 'lucide-react'
 import ReceiptPreviewModal from '@/components/pos/ReceiptPreviewModal'
@@ -66,6 +67,7 @@ interface Props {
 }
 
 function SalesHistoryTable({ rows, businessId, businessName, onSaleDeleted }: Props) {
+  const router = useRouter()
   const currency = useCurrency()
   const fmt = useFormatMoney()
   const [deletedIds, setDeletedIds] = useState<Set<string>>(new Set())
@@ -222,6 +224,7 @@ function SalesHistoryTable({ rows, businessId, businessName, onSaleDeleted }: Pr
       setSaleDetails(prev => { const next = { ...prev }; delete next[saleId]; return next })
       if (expandedSaleId === saleId) setExpandedSaleId(null)
       showToast({ message: 'Venta eliminada' })
+      router.refresh()
     },
     onSettled: () => {
       setDeletingId(null)
