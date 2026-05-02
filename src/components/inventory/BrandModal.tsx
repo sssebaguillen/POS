@@ -123,7 +123,7 @@ export default function BrandModal({
   return (
     <>
     <Dialog open={open} onOpenChange={nextOpen => !nextOpen && handleClose()}>
-      <DialogContent className="sm:max-w-[560px] p-0 gap-0 overflow-hidden bg-card" showCloseButton={false}>
+      <DialogContent className="sm:max-w-[560px] p-0 gap-0 overflow-hidden bg-card" showCloseButton={false} aria-describedby={undefined}>
         <div className="flex items-center justify-between px-5 py-4 border-b border-edge shrink-0">
           <DialogTitle className="text-base font-semibold text-heading">Marcas</DialogTitle>
           <button

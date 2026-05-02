@@ -85,7 +85,7 @@ export default function QuickEditBrandModal({ open, product, brands, businessId,
       <DialogPortal>
         <div className="fixed inset-0 z-50 bg-black/40 dark:bg-black/60 backdrop-blur-sm" />
       </DialogPortal>
-      <DialogContent showCloseButton={false} className="max-w-sm gap-0 p-0 overflow-hidden rounded-2xl">
+      <DialogContent showCloseButton={false} className="max-w-sm gap-0 p-0 overflow-hidden rounded-2xl" aria-describedby={undefined}>
         <DialogTitle className="sr-only">Cambiar marca</DialogTitle>
         <div className="px-5 pt-4 pb-3 border-b border-edge/60">
           <p className="font-semibold text-heading text-sm">Cambiar marca</p>

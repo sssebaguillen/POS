@@ -22,7 +22,7 @@ export default function ConfirmModal({
 }: ConfirmModalProps) {
   return (
     <Dialog open={open} onOpenChange={nextOpen => { if (!nextOpen) onCancel() }}>
-      <DialogContent showCloseButton={false} className="max-w-sm gap-0 p-0 overflow-hidden rounded-2xl">
+      <DialogContent showCloseButton={false} className="max-w-sm gap-0 p-0 overflow-hidden rounded-2xl" aria-describedby={undefined}>
         <div className="px-5 py-4 space-y-1">
           <DialogTitle className="font-semibold text-heading">{title}</DialogTitle>
           <p className="text-sm text-body">{message}</p>
