@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { useRouter } from 'next/navigation'
 import PageHeader from '@/components/shared/PageHeader'
 import DateRangeFilter from '@/components/shared/DateRangeFilter'
 import { type DateRangePeriod } from '@/lib/date-utils'
@@ -120,7 +119,6 @@ export default function DashboardView({
   wizardBrands,
   wizardPriceLists,
 }: Props) {
-  const router = useRouter()
   const [period, setPeriod] = useState<DateRangePeriod>('hoy')
   const [showHistory, setShowHistory] = useState(false)
   const [fromDate, setFromDate] = useState('')
