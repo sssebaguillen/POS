@@ -1,5 +1,8 @@
+'use client'
+
 import Link from 'next/link'
 import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis } from 'recharts'
+import { useFormatMoney } from '@/lib/context/CurrencyContext'
 
 interface BalanceWidgetProps {
   income: number
@@ -23,6 +26,7 @@ export default function BalanceWidget({
   periodLabel,
   chartData,
 }: BalanceWidgetProps) {
+  const fmt = useFormatMoney()
   const isPositive = profit >= 0
   const hasChartData = chartData.some(point => point.value > 0)
 
@@ -42,19 +46,19 @@ export default function BalanceWidget({
         <div>
           <p className="text-xs text-hint uppercase tracking-wide mb-1">Ingresos</p>
           <p className="text-xl font-semibold text-heading">
-            ${income.toLocaleString('es-AR')}
+            {fmt(income)}
           </p>
         </div>
         <div>
           <p className="text-xs text-hint uppercase tracking-wide mb-1">Egresos</p>
           <p className="text-xl font-semibold text-heading">
-            ${expenses.toLocaleString('es-AR')}
+            {fmt(expenses)}
           </p>
         </div>
         <div>
           <p className="text-xs text-hint uppercase tracking-wide mb-1">Ganancia neta</p>
           <p className={`text-xl font-semibold ${isPositive ? 'text-emerald-600/80 dark:text-emerald-400/80' : 'text-red-500/80 dark:text-red-400/80'}`}>
-            {isPositive ? '' : '-'}${Math.abs(profit).toLocaleString('es-AR')}
+            {isPositive ? '' : '-'}{fmt(Math.abs(profit))}
           </p>
         </div>
         <div>
@@ -88,7 +92,7 @@ export default function BalanceWidget({
                     <div className="surface-card rounded-lg px-3 py-2 text-xs shadow-sm border border-edge/40">
                       <p className="text-hint mb-0.5">{label}</p>
                       <p className="font-semibold text-heading">
-                        ${Number(payload[0]?.value ?? 0).toLocaleString('es-AR')}
+                        {fmt(Number(payload[0]?.value ?? 0))}
                       </p>
                     </div>
                   )

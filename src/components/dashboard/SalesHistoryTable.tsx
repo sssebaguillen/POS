@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { buildReceiptData } from '@/lib/printer/receipt'
-import { useCurrency } from '@/lib/context/CurrencyContext'
+import { useCurrency, useFormatMoney } from '@/lib/context/CurrencyContext'
 import type { ReceiptData } from '@/lib/printer/types'
 import { createClient } from '@/lib/supabase/client'
 import type { PaymentMethod } from '@/lib/constants/domain'
@@ -66,6 +66,7 @@ interface Props {
 
 function SalesHistoryTable({ rows, businessId, businessName }: Props) {
   const currency = useCurrency()
+  const fmt = useFormatMoney()
   const [deletedIds, setDeletedIds] = useState<Set<string>>(new Set())
   const [expandedSaleId, setExpandedSaleId] = useState<string | null>(null)
   const [saleDetails, setSaleDetails] = useState<Record<string, SaleDetail>>({})
@@ -326,7 +327,7 @@ function SalesHistoryTable({ rows, businessId, businessName }: Props) {
         </div>
         <div className="flex flex-wrap gap-4 text-xs text-subtle">
           <span>Total de ventas: <strong className="text-body">{filteredRows.length}</strong></span>
-          <span>Total recaudado: <strong className="text-body">${summaryTotal.toLocaleString('es-AR')}</strong></span>
+          <span>Total recaudado: <strong className="text-body">{fmt(summaryTotal)}</strong></span>
           {mostUsedMethod && (
             <span>Método más usado: <strong className="text-body">{normalizePayment(mostUsedMethod)}</strong></span>
           )}
@@ -381,7 +382,7 @@ function SalesHistoryTable({ rows, businessId, businessName }: Props) {
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
                       <span className={`text-sm font-bold tabular-nums ${isExpanded ? 'text-primary' : 'text-heading'}`}>
-                        ${sale.total.toLocaleString('es-AR')}
+                        {fmt(sale.total)}
                       </span>
                       {isLoadingDetail ? (
                         <span className="w-3 h-3 border-2 border-hint border-t-transparent rounded-full animate-spin" />
@@ -439,7 +440,7 @@ function SalesHistoryTable({ rows, businessId, businessName }: Props) {
                             <span className="text-hint shrink-0 text-xs">×{item.quantity}</span>
                           </span>
                           <span className="text-xs font-semibold text-heading tabular-nums shrink-0 ml-3">
-                            ${(item.quantity * item.unit_price).toLocaleString('es-AR')}
+                            {fmt(item.quantity * item.unit_price)}
                           </span>
                         </li>
                       ))}
@@ -448,7 +449,7 @@ function SalesHistoryTable({ rows, businessId, businessName }: Props) {
                     <div className="flex justify-between items-center border-t border-dashed border-primary/20 dark:border-primary/15 pt-2 mb-1">
                       <span className="text-xs font-semibold text-heading">Total cobrado</span>
                       <span className="text-xs font-bold text-primary tabular-nums">
-                        ${detail.total.toLocaleString('es-AR')}
+                        {fmt(detail.total)}
                       </span>
                     </div>
 
@@ -546,6 +547,7 @@ function EditSalePanel({
   onSave: (items: { product_id: string; quantity: number; unit_price: number }[], paymentMethod: PaymentMethod, status: string) => void
   onCancel: () => void
 }) {
+  const fmt = useFormatMoney()
   const [items, setItems] = useState(sale.items.map(i => ({ ...i })))
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(isPaymentMethod(sale.method) ? sale.method : 'cash')
   const [saleStatus, setSaleStatus] = useState(sale.status ?? 'completed')
@@ -568,7 +570,7 @@ function EditSalePanel({
           <div key={item.product_id} className="flex items-center gap-3 py-2 border-b border-edge-soft">
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-heading truncate">{item.product_name}</p>
-              <p className="text-xs text-hint">${item.unit_price.toLocaleString('es-AR')} c/u</p>
+              <p className="text-xs text-hint">{fmt(item.unit_price)} c/u</p>
             </div>
             <div className="flex items-center gap-1.5 shrink-0">
               <button
@@ -586,7 +588,7 @@ function EditSalePanel({
               </button>
             </div>
             <p className="text-sm font-semibold text-heading tabular-nums w-20 text-right shrink-0">
-              ${(item.quantity * item.unit_price).toLocaleString('es-AR')}
+              {fmt(item.quantity * item.unit_price)}
             </p>
             <button
               onClick={() => removeItem(item.product_id)}
@@ -644,7 +646,7 @@ function EditSalePanel({
         <div className="flex justify-between items-baseline">
           <span className="text-sm text-subtle">Total</span>
           <span className="text-lg font-semibold text-heading tabular-nums">
-            ${total.toLocaleString('es-AR')}
+            {fmt(total)}
           </span>
         </div>
 

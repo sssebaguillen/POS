@@ -17,6 +17,7 @@ import type { PriceList } from '@/lib/types'
 import type { InventoryBrand } from '@/components/inventory/types'
 import type { SupportedCurrencyCode } from '@/lib/constants/currencies'
 import OnboardingWizard, { type OnboardingWizardProfile } from '@/components/onboarding/OnboardingWizard'
+import { useFormatMoney } from '@/lib/context/CurrencyContext'
 import { DollarSign, Receipt, AlertTriangle } from 'lucide-react'
 import { ResponsiveContainer, BarChart, Bar, XAxis, Tooltip } from 'recharts'
 
@@ -119,6 +120,7 @@ export default function DashboardView({
   wizardBrands,
   wizardPriceLists,
 }: Props) {
+  const fmt = useFormatMoney()
   const [period, setPeriod] = useState<DateRangePeriod>('hoy')
   const [showHistory, setShowHistory] = useState(false)
   const [fromDate, setFromDate] = useState('')
@@ -422,7 +424,7 @@ export default function DashboardView({
                   iconBg="bg-emerald-100 dark:bg-emerald-950/50"
                   iconColor="text-emerald-700 dark:text-emerald-400"
                   label="Total vendido"
-                  value={`$${totalSold.toLocaleString('es-AR')}`}
+                  value={fmt(totalSold)}
                   trend={trendLabel ? kpiTrends.total : undefined}
                   sparkline={chartData.map(point => point.value)}
                 />
@@ -505,7 +507,7 @@ export default function DashboardView({
                               <div className="surface-card rounded-lg px-3 py-2 text-xs shadow-sm border border-edge/40">
                                 <p className="text-hint mb-0.5">{label}</p>
                                 <p className="font-semibold text-heading">
-                                  ${Number(payload[0]?.value ?? 0).toLocaleString('es-AR')}
+                                  {fmt(Number(payload[0]?.value ?? 0))}
                                 </p>
                               </div>
                             )

@@ -1,4 +1,7 @@
+'use client'
+
 import { normalizePayment } from '@/lib/payments'
+import { useFormatMoney } from '@/lib/context/CurrencyContext'
 import type { PaymentMethod } from '@/lib/constants/domain'
 
 interface RecentSale {
@@ -21,6 +24,8 @@ function formatHour(dateStr: string): string {
 }
 
 export default function RecentActivityWidget({ sales }: Props) {
+  const fmt = useFormatMoney()
+
   return (
     <div className="surface-card p-5 h-full flex flex-col">
       <p className="font-semibold text-heading font-display mb-1">
@@ -48,7 +53,7 @@ export default function RecentActivityWidget({ sales }: Props) {
                 </span>
               </div>
               <span className="text-sm font-semibold text-heading shrink-0 tabular-nums">
-                ${sale.total.toLocaleString('es-AR')}
+                {fmt(sale.total)}
               </span>
             </div>
           ))}
