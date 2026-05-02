@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Dialog, DialogContent } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogPortal } from '@/components/ui/dialog'
 import SelectDropdown from '@/components/ui/SelectDropdown'
 import type { InventoryCategory, InventoryProduct } from '@/components/inventory/types'
 import { translateDbError } from '@/lib/errors'
@@ -83,7 +83,10 @@ export default function QuickEditCategoryModal({ open, product, categories, busi
   ]
 
   return (
-    <Dialog open={open} onOpenChange={next => { if (!next) onClose() }}>
+    <Dialog open={open} onOpenChange={next => { if (!next) onClose() }} modal={false}>
+      <DialogPortal>
+        <div className="fixed inset-0 z-50 bg-black/40 dark:bg-black/60 backdrop-blur-sm" />
+      </DialogPortal>
       <DialogContent showCloseButton={false} className="max-w-sm gap-0 p-0 overflow-hidden rounded-2xl">
         <div className="px-5 pt-4 pb-3 border-b border-edge/60">
           <p className="font-semibold text-heading text-sm">Cambiar categoría</p>

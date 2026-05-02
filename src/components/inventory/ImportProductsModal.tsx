@@ -50,6 +50,8 @@ interface Props {
   businessId: string
   categories: InventoryCategory[]
   brands: InventoryBrand[]
+  operatorId?: string | null
+  stockWriteAllowed?: boolean
   onImported: () => void
   onClose: () => void
 }
@@ -162,6 +164,8 @@ export default function ImportProductsModal({
   businessId,
   categories: initialCategories,
   brands: initialBrands,
+  operatorId = null,
+  stockWriteAllowed = true,
   onImported,
   onClose,
 }: Props) {
@@ -346,47 +350,56 @@ export default function ImportProductsModal({
   }
 
   async function handleConfirmImport() {
+    if (!stockWriteAllowed) return
     if (!businessId) return
     setImporting(true)
     setImportError(null)
 
     try {
-      // 1. Create new brands
-      const allBrands = [...initialBrands]
+      // 1. Create new brands via guarded RPC (enforces stock_write at DB level)
+      let allBrands = [...initialBrands]
       if (newBrandNames.length > 0) {
-        const toInsert = newBrandNames.map(name => ({ business_id: businessId, name }))
-        const { data: createdBrands, error: brandError } = await supabase
+        for (const brandName of newBrandNames) {
+          const { data: rpcResult, error: rpcError } = await supabase.rpc('create_brand_guarded', {
+            p_operator_id: operatorId,
+            p_business_id: businessId,
+            p_name: brandName,
+          })
+          const result = rpcResult as { success: boolean; error?: string } | null
+          if (rpcError || !result?.success) {
+            throw new Error(`Error al crear marca "${brandName}": ${result?.error ?? rpcError?.message}`)
+          }
+        }
+        const { data: freshBrands, error: brandsError } = await supabase
           .from('brands')
-          .insert(toInsert)
           .select('id, name')
-        if (brandError) throw new Error(`Error al crear marcas: ${brandError.message}`)
-        if (createdBrands) allBrands.push(...createdBrands)
+          .eq('business_id', businessId)
+        if (brandsError) throw new Error(`Error al obtener marcas: ${brandsError.message}`)
+        allBrands = freshBrands ?? allBrands
       }
 
-      // 2. Create new categories
-      const allCategories = [...initialCategories]
+      // 2. Create new categories via guarded RPC (enforces stock_write at DB level)
+      let allCategories = [...initialCategories]
       if (newCategoryNames.length > 0) {
-        const { data: maxPosData } = await supabase
+        for (const categoryName of newCategoryNames) {
+          const { data: rpcResult, error: rpcError } = await supabase.rpc('create_category_guarded', {
+            p_operator_id: operatorId,
+            p_business_id: businessId,
+            p_name: categoryName,
+            p_icon: '📦',
+          })
+          const result = rpcResult as { success: boolean; error?: string } | null
+          if (rpcError || !result?.success) {
+            throw new Error(`Error al crear categoría "${categoryName}": ${result?.error ?? rpcError?.message}`)
+          }
+        }
+        const { data: freshCats, error: catsError } = await supabase
           .from('categories')
-          .select('position')
-          .eq('business_id', businessId)
-          .order('position', { ascending: false })
-          .limit(1)
-
-        const maxPos = maxPosData?.[0]?.position ?? 0
-        const toInsert = newCategoryNames.map((name, i) => ({
-          business_id: businessId,
-          name,
-          icon: '📦',
-          position: maxPos + i + 1,
-          is_active: true,
-        }))
-        const { data: createdCats, error: catError } = await supabase
-          .from('categories')
-          .insert(toInsert)
           .select('id, name, icon')
-        if (catError) throw new Error(`Error al crear categorias: ${catError.message}`)
-        if (createdCats) allCategories.push(...createdCats)
+          .eq('business_id', businessId)
+          .eq('is_active', true)
+        if (catsError) throw new Error(`Error al obtener categorías: ${catsError.message}`)
+        allCategories = freshCats ?? allCategories
       }
 
       // 3. Build product rows with resolved FKs

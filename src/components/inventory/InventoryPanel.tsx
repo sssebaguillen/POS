@@ -918,6 +918,8 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
           businessId={businessId}
           categories={categories}
           brands={brands}
+          operatorId={operatorId}
+          stockWriteAllowed={!readOnly}
           onClose={() => setShowImport(false)}
           onImported={async () => {
             setShowImport(false)
