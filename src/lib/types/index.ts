@@ -203,6 +203,16 @@ export interface StatsBreakdownOperator {
   count: number
 }
 
+export interface OperatorSalesStatsRow {
+  operator_id: string | null
+  operator_name: string
+  role: UserRole
+  transactions: number
+  total_revenue: number
+  avg_ticket: number
+  units_sold: number
+}
+
 // Cart types (client-side only)
 export interface CartItem {
   product: Product
