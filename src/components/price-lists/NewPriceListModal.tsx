@@ -60,9 +60,7 @@ export default function NewPriceListModal({
     onClose()
   }
 
-  async function handleSubmit(event: React.FormEvent) {
-    event.preventDefault()
-
+  async function handleSubmit() {
     if (!name.trim()) {
       setError('El nombre es obligatorio')
       return
@@ -159,7 +157,7 @@ export default function NewPriceListModal({
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="px-5 py-4 flex flex-col gap-3.5 flex-1 overflow-y-auto">
+        <div className="px-5 py-4 flex flex-col gap-3.5 flex-1 overflow-y-auto">
           {error && (
             <p className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
               {error}
@@ -294,14 +292,15 @@ export default function NewPriceListModal({
               Cancelar
             </Button>
             <Button
-              type="submit"
+              type="button"
+              onClick={() => void handleSubmit()}
               className="h-9 px-5 rounded-lg text-sm bg-primary hover:bg-primary/90 text-primary-foreground"
               disabled={saving}
             >
               {saving ? 'Creando...' : 'Crear lista'}
             </Button>
           </div>
-        </form>
+        </div>
       </DialogContent>
     </Dialog>
   )

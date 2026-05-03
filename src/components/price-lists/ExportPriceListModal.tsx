@@ -408,7 +408,7 @@ export default function ExportPriceListModal({
                             className="peer sr-only"
                           />
                           <span className="flex h-4 w-4 items-center justify-center rounded border border-edge bg-surface transition-colors peer-checked:border-primary peer-checked:bg-primary peer-focus-visible:ring-2 peer-focus-visible:ring-ring/50">
-                            <Check size={11} className="text-primary-foreground opacity-0 transition-opacity peer-checked:opacity-100" />
+                            <Check size={11} className="text-primary-foreground" />
                           </span>
                         </span>
                         <span className="min-w-0 flex-1">

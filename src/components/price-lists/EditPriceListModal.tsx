@@ -71,9 +71,7 @@ export default function EditPriceListModal({
     onClose()
   }
 
-  async function handleSave(event: React.FormEvent) {
-    event.preventDefault()
-
+  async function handleSave() {
     if (!name.trim()) {
       setError('El nombre es obligatorio')
       return
@@ -203,7 +201,7 @@ export default function EditPriceListModal({
             </button>
           </div>
 
-          <form onSubmit={handleSave} className="px-6 py-4 flex flex-col gap-3.5">
+          <div className="px-6 py-4 flex flex-col gap-3.5">
             {error && (
               <p className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
                 {error}
@@ -347,7 +345,8 @@ export default function EditPriceListModal({
                   Cancelar
                 </Button>
                 <Button
-                  type="submit"
+                  type="button"
+                  onClick={() => void handleSave()}
                   className="h-9 px-5 rounded-lg text-sm bg-primary hover:bg-primary/90 text-primary-foreground"
                   disabled={saving || deleting}
                 >
@@ -355,7 +354,7 @@ export default function EditPriceListModal({
                 </Button>
               </div>
             </div>
-          </form>
+          </div>
         </DialogContent>
       </Dialog>
 
