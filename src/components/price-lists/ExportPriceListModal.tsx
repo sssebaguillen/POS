@@ -95,7 +95,7 @@ export default function ExportPriceListModal({
   const [selectedBrandKeys, setSelectedBrandKeys] = useState<string[]>([])
   const [selectedCategoryKeys, setSelectedCategoryKeys] = useState<string[]>([])
   const [selectedProductIds, setSelectedProductIds] = useState<string[]>([])
-  const { setRef, indicator } = usePillIndicator(scope)
+  const { setRef, indicator } = usePillIndicator(scope, open)
 
   const brandOptions = useMemo(() => {
     const grouped = new Map<string, ExportOption>()

@@ -373,7 +373,7 @@ export default function PriceListsPanel({
                 >
                   {list.name}
                   {list.is_default && (
-                    <span className={`ml-1 rounded-full px-1.5 py-0.5 text-[10px] ${isActive ? 'bg-white/20 text-white' : 'bg-primary/10 text-primary'}`}>
+                    <span className="ml-1 rounded-full border border-edge/70 bg-surface-alt px-1.5 py-0.5 text-[10px] text-primary">
                       Default
                     </span>
                   )}
