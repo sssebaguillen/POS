@@ -287,12 +287,12 @@ export default function POSView({ products, businessId, businessName, priceLists
               onKeyDown={handleSearchKeyDown}
               placeholder="Buscar producto o escanear código..."
               className={[
-                'pl-9 h-9 text-sm rounded-lg transition-colors',
+                'pl-9 h-9 text-sm bg-card rounded-lg transition-colors',
                 scanFeedback === 'found'
                   ? 'bg-emerald-50 border-emerald-300 dark:bg-emerald-950/30 dark:border-emerald-700'
                   : scanFeedback === 'not-found'
                     ? 'bg-red-50 border-red-300 dark:bg-red-950/30 dark:border-red-700'
-                    : 'bg-surface-alt border-edge',
+                    : 'bg-card border-edge',
               ].join(' ')}
             />
             {scanFeedback && (
@@ -374,7 +374,7 @@ export default function POSView({ products, businessId, businessName, priceLists
                   const chip = (active: boolean) =>
                     `shrink-0 rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
                       active
-                        ? 'bg-primary text-primary-foreground'
+                        ? 'bg-primary/10 text-primary border border-primary/20 dark:bg-primary/15 dark:border-primary/30'
                         : 'text-muted-foreground hover:text-foreground hover:bg-muted'
                     }`
                   return (

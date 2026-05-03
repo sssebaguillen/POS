@@ -348,7 +348,7 @@ export default function PriceListsPanel({
             No hay listas de precios creadas. Crea la primera lista para comenzar.
           </div>
         ) : (
-          <div className="flex items-center gap-2 overflow-x-auto pb-1">
+          <div className="pill-tabs overflow-x-auto flex-nowrap pb-1">
             {lists.map(list => {
               const isActive = activeListId === list.id
 
@@ -357,15 +357,11 @@ export default function PriceListsPanel({
                   key={list.id}
                   type="button"
                   onClick={() => setActiveListId(list.id)}
-                  className={`inline-flex items-center gap-1.5 h-8 px-3 rounded-full text-xs font-medium transition-colors whitespace-nowrap ${
-                    isActive
-                      ? 'bg-primary text-white'
-                      : 'bg-surface-alt text-body hover:bg-hover-bg'
-                  }`}
+                  className={`pill-tab whitespace-nowrap${isActive ? ' pill-tab-active' : ''}`}
                 >
                   {list.name}
                   {list.is_default && (
-                    <span className={`rounded-full px-1.5 py-0.5 text-[10px] ${isActive ? 'bg-white/20 text-white' : 'bg-primary/10 text-primary'}`}>
+                    <span className={`ml-1 rounded-full px-1.5 py-0.5 text-[10px] ${isActive ? 'bg-white/20 text-white' : 'bg-primary/10 text-primary'}`}>
                       Default
                     </span>
                   )}
@@ -376,7 +372,7 @@ export default function PriceListsPanel({
               <button
                 type="button"
                 onClick={() => setShowNewListModal(true)}
-                className="inline-flex items-center justify-center h-8 w-8 rounded-full bg-surface-alt text-body hover:bg-hover-bg transition-colors"
+                className="pill-tab"
                 aria-label="Crear lista"
                 title="Crear lista"
               >
@@ -603,7 +599,7 @@ function GroupedPriceRowsTable({
                         <span className="text-xs font-semibold uppercase tracking-wide text-subtle">{group.label}</span>
                         {group.brandOverride && (
                           <span className="inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold bg-primary text-primary-foreground">
-                            +{((group.brandOverride.multiplier - 1) * 100).toFixed(0)}%
+                            +{getMarginPercent(group.brandOverride.multiplier)}%
                           </span>
                         )}
                       </div>
