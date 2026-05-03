@@ -307,7 +307,7 @@ export default function PriceListsPanel({
 
   async function makeDefault(listId: string) {
     if (!businessId) {
-      setCrudError('No se encontro el negocio activo para actualizar la lista por defecto.')
+      setCrudError('No se encontró el negocio activo.')
       return
     }
 
@@ -320,7 +320,8 @@ export default function PriceListsPanel({
     })
 
     if (error) {
-      setCrudError(error.message)
+      console.error('swap_default_price_list:', error)
+      setCrudError('No se pudo cambiar la lista predeterminada. Intentá de nuevo.')
       setSavingDefaultId(null)
       return
     }
@@ -374,7 +375,7 @@ export default function PriceListsPanel({
                   {list.name}
                   {list.is_default && (
                     <span className="ml-1 rounded-full border border-edge/70 bg-surface-alt px-1.5 py-0.5 text-[10px] text-primary">
-                      Default
+                      Predeterminada
                     </span>
                   )}
                 </button>
@@ -410,7 +411,7 @@ export default function PriceListsPanel({
           <div className="surface-card p-2">
             <div className="px-2 pb-2 flex flex-wrap items-center gap-2">
               <h2 className="text-sm font-semibold text-heading font-display">{activeList.name}</h2>
-              <span className="text-xs text-subtle">Margen: x{activeList.multiplier.toFixed(2)}</span>
+              <span className="text-xs text-subtle">+{getMarginPercent(activeList.multiplier)}% sobre costo</span>
               {activeList.description && <span className="text-xs text-hint">{activeList.description}</span>}
               <div className="relative ml-auto">
                 <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-hint pointer-events-none" />
@@ -448,8 +449,9 @@ export default function PriceListsPanel({
                   className="rounded-lg text-xs"
                   onClick={() => void makeDefault(activeList.id)}
                   disabled={readOnly || savingDefaultId === activeList.id || !businessId}
+                  title="Esta lista se aplicará automáticamente a las ventas nuevas en el POS"
                 >
-                  {savingDefaultId === activeList.id ? 'Guardando...' : 'Marcar default'}
+                  {savingDefaultId === activeList.id ? 'Guardando...' : 'Usar como predeterminada'}
                 </Button>
               )}
             </div>
@@ -591,7 +593,7 @@ function GroupedPriceRowsTable({
             <TableHead className="text-right">Costo</TableHead>
             <TableHead className="text-right">Precio lista</TableHead>
             <TableHead className="text-right">Margen %</TableHead>
-            <TableHead className="text-right">Acciones</TableHead>
+            <TableHead className="text-right">Ajuste</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -619,8 +621,8 @@ function GroupedPriceRowsTable({
                         variant="outline"
                         size="icon-sm"
                         onClick={() => group.brandId && onEditBrandOverride(group.brandId)}
-                        aria-label={`Editar override de marca ${group.label}`}
-                        title="Editar override de marca"
+                        aria-label={`Ajustar margen de la marca ${group.label}`}
+                        title={`Ajustar margen de ${group.label}`}
                         disabled={readOnly || !group.brandId}
                       >
                         <Pencil size={14} />
@@ -640,8 +642,8 @@ function GroupedPriceRowsTable({
                     <TableCell className="text-right tabular-nums">
                       {formatMoney(row.finalPrice)}
                       {(row.productOverride ?? row.brandOverride) && (
-                        <span className="ml-2 inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold bg-primary text-primary-foreground">
-                          Override
+                        <span className="ml-1.5 inline-flex rounded-full px-2 py-0.5 text-[10px] font-medium bg-primary/10 text-primary border border-primary/20">
+                          Ajuste
                         </span>
                       )}
                     </TableCell>
@@ -658,13 +660,15 @@ function GroupedPriceRowsTable({
                       <div className="flex justify-end">
                         <Button
                           variant="outline"
-                          size="icon-sm"
+                          size="sm"
+                          className="rounded-lg text-xs gap-1.5"
                           onClick={() => onEditProductOverride(row.product.id)}
-                          aria-label={`Editar override de ${row.product.name}`}
-                          title="Editar override"
+                          aria-label={`Ajustar precio de ${row.product.name}`}
+                          title="Ajustar precio de este producto"
                           disabled={readOnly}
                         >
-                          <Pencil size={14} />
+                          <Pencil size={13} />
+                          Ajustar
                         </Button>
                       </div>
                     </TableCell>
