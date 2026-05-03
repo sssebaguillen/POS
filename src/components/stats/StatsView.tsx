@@ -2,15 +2,16 @@
 
 import { useState, memo } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
-import { TrendingDown, TrendingUp } from 'lucide-react'
+import { TrendingDown, TrendingUp, DollarSign, ShoppingBag, Receipt, Hash } from 'lucide-react'
 import Link from 'next/link'
 import PageHeader from '@/components/shared/PageHeader'
 import DateRangeFilter from '@/components/shared/DateRangeFilter'
 import { buildDateParams, periodNeedsCustomDates, type DateRangePeriod } from '@/lib/date-utils'
 import { PAYMENT_COLORS, isPaymentMethod, normalizePayment } from '@/lib/payments'
 import { useFormatMoney } from '@/lib/context/CurrencyContext'
+import { cn } from '@/lib/utils'
 import type {
-  StatsKpis, StatsEvolution, StatsBreakdown,
+  OperatorSalesStatsRow, StatsKpis, StatsEvolution, StatsBreakdown,
 } from '@/lib/types'
 import {
   LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -19,6 +20,14 @@ import {
 type EvolutionMode = 'revenue' | 'units'
 type RankingMode = 'amount' | 'units'
 type BreakdownMode = 'category' | 'brand'
+type OperatorMode = 'amount' | 'transactions'
+
+function getWidgetToggleClass(isActive: boolean): string {
+  return cn(
+    'pill-tab border border-transparent transition-colors',
+    isActive && 'bg-primary/10 text-primary border-primary/20 dark:bg-primary/15 dark:border-primary/30'
+  )
+}
 
 export interface TopProductRow {
   id: string
@@ -32,6 +41,7 @@ interface Props {
   evolution: StatsEvolution | null
   breakdown: StatsBreakdown | null
   topProducts: TopProductRow[]
+  operators: OperatorSalesStatsRow[]
   period: string
   from?: string
   to?: string
@@ -55,13 +65,14 @@ const DeltaBadge = memo(function DeltaBadge({ current, previous }: { current: nu
   )
 })
 
-export default function StatsView({ kpis, evolution, breakdown, topProducts, period: initialPeriod, from: initialFrom, to: initialTo }: Props) {
+export default function StatsView({ kpis, evolution, breakdown, topProducts, operators, period: initialPeriod, from: initialFrom, to: initialTo }: Props) {
   const router = useRouter()
   const pathname = usePathname()
   const formatMoney = useFormatMoney()
   const [evolutionMode, setEvolutionMode] = useState<EvolutionMode>('revenue')
   const [rankingMode, setRankingMode] = useState<RankingMode>('amount')
   const [breakdownMode, setBreakdownMode] = useState<BreakdownMode>('category')
+  const [operatorMode, setOperatorMode] = useState<OperatorMode>('amount')
 
   const totalRevenue = kpis?.total_revenue ?? 0
   const totalUnits = kpis?.total_units ?? 0
@@ -72,10 +83,6 @@ export default function StatsView({ kpis, evolution, breakdown, topProducts, per
   const prevAvgTicket = (kpis?.prev_total_sales ?? 0) > 0
     ? (kpis?.prev_total_revenue ?? 0) / (kpis?.prev_total_sales ?? 1)
     : 0
-
-  const peakDay = kpis?.peak_day
-    ? new Date(kpis.peak_day + 'T12:00:00').toLocaleDateString('es-AR')
-    : '-'
 
   const evolutionData = (evolution?.data ?? []).map(p => ({
     label: p.label,
@@ -114,6 +121,14 @@ export default function StatsView({ kpis, evolution, breakdown, topProducts, per
   const sortedTopProducts = [...topProducts]
     .sort((a, b) => rankingMode === 'amount' ? (b.revenue ?? 0) - (a.revenue ?? 0) : (b.units_sold ?? 0) - (a.units_sold ?? 0))
 
+  const sortedOperators = [...operators]
+    .sort((a, b) =>
+      operatorMode === 'amount'
+        ? (b.total_revenue ?? 0) - (a.total_revenue ?? 0)
+        : (b.transactions ?? 0) - (a.transactions ?? 0)
+    )
+    .slice(0, 5)
+
   function handlePeriodChange(nextPeriod: DateRangePeriod, nextFrom?: string, nextTo?: string) {
     const resolvedFrom = periodNeedsCustomDates(nextPeriod) ? nextFrom : undefined
     const resolvedTo = periodNeedsCustomDates(nextPeriod) ? nextTo : undefined
@@ -126,7 +141,7 @@ export default function StatsView({ kpis, evolution, breakdown, topProducts, per
       <PageHeader title="Estadísticas" />
 
       <div className="flex-1 overflow-y-auto">
-        <div className="px-6 pt-4 pb-6 space-y-5">
+        <div className="px-5 pt-4 pb-6 space-y-5">
           {/* Period filter */}
           <DateRangeFilter
             value={initialPeriod as DateRangePeriod}
@@ -139,7 +154,9 @@ export default function StatsView({ kpis, evolution, breakdown, topProducts, per
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
             <div className="surface-card p-5 flex flex-col gap-3">
               <div className="flex items-start justify-between">
-                <span className="h-10 w-10 rounded-xl flex items-center justify-center text-xs font-bold shrink-0 bg-emerald-100 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-400">$</span>
+                <span className="h-9 w-9 rounded-xl flex items-center justify-center shrink-0 bg-muted text-body">
+                  <DollarSign size={16} />
+                </span>
                 <DeltaBadge current={totalRevenue} previous={prevRevenue} />
               </div>
               <div>
@@ -149,7 +166,9 @@ export default function StatsView({ kpis, evolution, breakdown, topProducts, per
             </div>
             <div className="surface-card p-5 flex flex-col gap-3">
               <div className="flex items-start justify-between">
-                <span className="h-10 w-10 rounded-xl flex items-center justify-center text-xs font-bold shrink-0 bg-blue-100 dark:bg-blue-950/50 text-blue-700 dark:text-blue-400">U</span>
+                <span className="h-9 w-9 rounded-xl flex items-center justify-center shrink-0 bg-muted text-body">
+                  <ShoppingBag size={16} />
+                </span>
                 <DeltaBadge current={totalUnits} previous={prevUnits} />
               </div>
               <div>
@@ -159,7 +178,9 @@ export default function StatsView({ kpis, evolution, breakdown, topProducts, per
             </div>
             <div className="surface-card p-5 flex flex-col gap-3">
               <div className="flex items-start justify-between">
-                <span className="h-10 w-10 rounded-xl flex items-center justify-center text-xs font-bold shrink-0 bg-violet-100 dark:bg-violet-950/50 text-violet-700 dark:text-violet-400">T</span>
+                <span className="h-9 w-9 rounded-xl flex items-center justify-center shrink-0 bg-muted text-body">
+                  <Receipt size={16} />
+                </span>
                 <DeltaBadge current={avgTicket} previous={prevAvgTicket} />
               </div>
               <div>
@@ -169,11 +190,13 @@ export default function StatsView({ kpis, evolution, breakdown, topProducts, per
             </div>
             <div className="surface-card p-5 flex flex-col gap-3">
               <div className="flex items-start justify-between">
-                <span className="h-10 w-10 rounded-xl flex items-center justify-center text-xs font-bold shrink-0 bg-amber-100 dark:bg-amber-950/50 text-amber-700 dark:text-amber-400">D</span>
+                <span className="h-9 w-9 rounded-xl flex items-center justify-center shrink-0 bg-muted text-body">
+                  <Hash size={16} />
+                </span>
               </div>
               <div>
-                <p className="text-label text-hint mb-1">Día pico</p>
-                <p className="text-2xl font-bold text-heading leading-none">{peakDay}</p>
+                <p className="text-label text-hint mb-1">Total transacciones</p>
+                <p className="text-2xl font-bold text-heading leading-none">{totalSales.toLocaleString('es-AR')}</p>
               </div>
             </div>
           </div>
@@ -184,16 +207,18 @@ export default function StatsView({ kpis, evolution, breakdown, topProducts, per
             <div className="surface-card p-6 space-y-3">
               <div className="flex items-center justify-between">
                 <p className="font-semibold text-heading font-display">Evolución</p>
-                <div className="pill-tabs">
+                <div className="flex items-center gap-1.5">
                   <button
+                    type="button"
                     onClick={() => setEvolutionMode('revenue')}
-                    className={`pill-tab${evolutionMode === 'revenue' ? ' pill-tab-active' : ''}`}
+                    className={getWidgetToggleClass(evolutionMode === 'revenue')}
                   >
                     $ Ingresos
                   </button>
                   <button
+                    type="button"
                     onClick={() => setEvolutionMode('units')}
-                    className={`pill-tab${evolutionMode === 'units' ? ' pill-tab-active' : ''}`}
+                    className={getWidgetToggleClass(evolutionMode === 'units')}
                   >
                     Unidades
                   </button>
@@ -210,7 +235,7 @@ export default function StatsView({ kpis, evolution, breakdown, topProducts, per
                       Período actual
                     </span>
                     <span className="flex items-center gap-1.5">
-                      <svg width="16" height="3" viewBox="0 0 16 3"><line x1="0" y1="1.5" x2="16" y2="1.5" stroke="#9ca3af" strokeWidth="2" strokeDasharray="4 4" /></svg>
+                      <svg width="16" height="3" viewBox="0 0 16 3"><line x1="0" y1="1.5" x2="16" y2="1.5" style={{ stroke: 'var(--color-hint)' }} strokeWidth="2" strokeDasharray="4 4" /></svg>
                       Período anterior
                     </span>
                   </div>
@@ -222,11 +247,11 @@ export default function StatsView({ kpis, evolution, breakdown, topProducts, per
                       <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.06)" />
                       <XAxis
                         dataKey="label"
-                        tick={{ fontSize: 10, fill: '#6b7280' }}
+                        tick={{ fontSize: 10, fill: 'var(--color-hint)' }}
                         interval={evolutionData.length > 14 ? Math.floor(evolutionData.length / 7) : 0}
                       />
                       <YAxis
-                        tick={{ fontSize: 10, fill: '#6b7280' }}
+                        tick={{ fontSize: 10, fill: 'var(--color-hint)' }}
                         tickFormatter={v =>
                           evolutionMode === 'revenue'
                             ? v >= 1000 ? formatMoney(v / 1000) + 'k' : formatMoney(v)
@@ -266,7 +291,7 @@ export default function StatsView({ kpis, evolution, breakdown, topProducts, per
                       <Line
                         type="monotone"
                         dataKey={evolutionMode === 'revenue' ? 'previousRevenue' : 'previousUnits'}
-                        stroke="#9ca3af"
+                        stroke="var(--color-hint)"
                         strokeWidth={1.5}
                         strokeDasharray="5 5"
                         dot={false}
@@ -315,16 +340,18 @@ export default function StatsView({ kpis, evolution, breakdown, topProducts, per
                     Ver más →
                   </Link>
                 </div>
-                <div className="pill-tabs">
+                <div className="flex items-center gap-1.5">
                   <button
+                    type="button"
                     onClick={() => setRankingMode('amount')}
-                    className={`pill-tab${rankingMode === 'amount' ? ' pill-tab-active' : ''}`}
+                    className={getWidgetToggleClass(rankingMode === 'amount')}
                   >
                     $ Monto
                   </button>
                   <button
+                    type="button"
                     onClick={() => setRankingMode('units')}
-                    className={`pill-tab${rankingMode === 'units' ? ' pill-tab-active' : ''}`}
+                    className={getWidgetToggleClass(rankingMode === 'units')}
                   >
                     Unidades
                   </button>
@@ -354,16 +381,18 @@ export default function StatsView({ kpis, evolution, breakdown, topProducts, per
                     Ver más →
                   </Link>
                 </div>
-                <div className="pill-tabs">
+                <div className="flex items-center gap-1.5">
                   <button
+                    type="button"
                     onClick={() => setBreakdownMode('category')}
-                    className={`pill-tab${breakdownMode === 'category' ? ' pill-tab-active' : ''}`}
+                    className={getWidgetToggleClass(breakdownMode === 'category')}
                   >
                     Categoría
                   </button>
                   <button
+                    type="button"
                     onClick={() => setBreakdownMode('brand')}
-                    className={`pill-tab${breakdownMode === 'brand' ? ' pill-tab-active' : ''}`}
+                    className={getWidgetToggleClass(breakdownMode === 'brand')}
                   >
                     Marca
                   </button>
@@ -386,18 +415,63 @@ export default function StatsView({ kpis, evolution, breakdown, topProducts, per
               )}
             </div>
           </div>
-          {/* Day of week distribution */}
-          <div className="surface-card p-6 space-y-3">
-            <p className="font-semibold text-heading font-display">Ventas por día de la semana</p>
+          {/* Operators + Day of week */}
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+            {/* Operator sales widget */}
+            <div className="surface-card p-6 space-y-3">
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <p className="font-semibold text-heading font-display">Ventas por operador</p>
+                  <Link href="/stats/operators" className="text-xs text-primary font-medium hover:underline">
+                    Ver más →
+                  </Link>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setOperatorMode('amount')}
+                    className={getWidgetToggleClass(operatorMode === 'amount')}
+                  >
+                    $ Monto
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setOperatorMode('transactions')}
+                    className={getWidgetToggleClass(operatorMode === 'transactions')}
+                  >
+                    Operaciones
+                  </button>
+                </div>
+              </div>
+              {sortedOperators.length === 0 ? (
+                <p className="text-sm text-hint">Sin datos</p>
+              ) : (
+                sortedOperators.map((row, idx) => (
+                  <div key={row.operator_id ?? row.operator_name} className="flex items-center gap-3">
+                    <span className="text-xs text-hint w-5 shrink-0">#{idx + 1}</span>
+                    <span className="flex-1 text-sm text-body truncate">{row.operator_name}</span>
+                    <span className="text-sm font-semibold text-body shrink-0">
+                      {operatorMode === 'amount'
+                        ? formatMoney(row.total_revenue ?? 0)
+                        : `${row.transactions ?? 0} ventas`}
+                    </span>
+                  </div>
+                ))
+              )}
+            </div>
+
+            {/* Day of week distribution */}
+            <div className="surface-card px-5 pt-4 pb-3 space-y-2">
+            <p className="text-xs font-medium text-hint uppercase tracking-wide">Distribución por día</p>
             {dayOfWeekData.length === 0 || totalSales === 0 ? (
-              <p className="text-sm text-hint h-32 flex items-center justify-center">Sin datos para el período</p>
+              <p className="text-sm text-hint h-24 flex items-center justify-center">Sin datos para el período</p>
             ) : (
-              <ResponsiveContainer width="100%" height={160}>
+              <ResponsiveContainer width="100%" height={130}>
                 <BarChart data={dayOfWeekData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.06)" vertical={false} />
-                  <XAxis dataKey="day" tick={{ fontSize: 12, fill: '#6b7280' }} />
+                  <XAxis dataKey="day" tick={{ fontSize: 12, fill: 'var(--color-hint)' }} />
                   <YAxis
-                    tick={{ fontSize: 10, fill: '#6b7280' }}
+                    tick={{ fontSize: 10, fill: 'var(--color-hint)' }}
                     tickFormatter={v => v >= 1000 ? formatMoney(v / 1000) + 'k' : formatMoney(v)}
                     width={50}
                   />
@@ -417,6 +491,7 @@ export default function StatsView({ kpis, evolution, breakdown, topProducts, per
                 </BarChart>
               </ResponsiveContainer>
             )}
+            </div>
           </div>
         </div>
       </div>

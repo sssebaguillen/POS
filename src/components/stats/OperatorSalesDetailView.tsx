@@ -7,18 +7,8 @@ import { periodNeedsCustomDates, type DateRangePeriod } from '@/lib/date-utils'
 import ExportCSVButton from '@/components/shared/ExportCSVButton'
 import PageHeader from '@/components/shared/PageHeader'
 import { OPERATOR_ROLE_LABELS, PROFILE_ROLE_LABELS } from '@/lib/constants/domain'
-import type { UserRole } from '@/lib/operator'
 import { useFormatMoney } from '@/lib/context/CurrencyContext'
-
-export interface OperatorSalesRow {
-  operator_id: string | null
-  operator_name: string
-  role: UserRole
-  transactions: number
-  total_revenue: number
-  avg_ticket: number
-  units_sold: number
-}
+import type { OperatorSalesStatsRow, UserRole } from '@/lib/types'
 
 function roleLabel(role: UserRole): string {
   if (role === 'owner') return PROFILE_ROLE_LABELS.owner
@@ -26,7 +16,7 @@ function roleLabel(role: UserRole): string {
 }
 
 interface Props {
-  rows: OperatorSalesRow[]
+  rows: OperatorSalesStatsRow[]
   period: string
   from?: string
   to?: string
@@ -48,6 +38,8 @@ export default function OperatorSalesDetailView({ rows, period, from, to }: Prop
   }
 
   const sorted = useMemo(() => [...rows].sort((a, b) => (b.total_revenue ?? 0) - (a.total_revenue ?? 0)), [rows])
+  const periodRevenue = useMemo(() => sorted.reduce((acc, r) => acc + (r.total_revenue ?? 0), 0), [sorted])
+  const periodTransactions = useMemo(() => sorted.reduce((acc, r) => acc + (r.transactions ?? 0), 0), [sorted])
 
   const csvData = useMemo(() =>
     sorted.map(r => ({
@@ -75,6 +67,21 @@ export default function OperatorSalesDetailView({ rows, period, from, to }: Prop
             to={to}
             onChange={navigate}
           />
+
+          <div className="grid grid-cols-3 gap-3">
+            <div className="surface-card p-4 space-y-1">
+              <p className="text-label text-hint">Ingresos del período</p>
+              <p className="text-xl font-bold text-heading leading-none">{formatMoney(periodRevenue)}</p>
+            </div>
+            <div className="surface-card p-4 space-y-1">
+              <p className="text-label text-hint">Total transacciones</p>
+              <p className="text-xl font-bold text-heading leading-none">{periodTransactions.toLocaleString('es-AR')}</p>
+            </div>
+            <div className="surface-card p-4 space-y-1">
+              <p className="text-label text-hint">Operadores activos</p>
+              <p className="text-xl font-bold text-heading leading-none">{sorted.length}</p>
+            </div>
+          </div>
 
           <div className="surface-card overflow-hidden">
             <table className="w-full text-sm">

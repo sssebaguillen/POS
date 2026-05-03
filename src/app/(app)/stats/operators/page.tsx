@@ -1,8 +1,9 @@
 import { createClient } from '@/lib/supabase/server'
 import OperatorSalesDetailView from '@/components/stats/OperatorSalesDetailView'
-import type { OperatorSalesRow } from '@/components/stats/OperatorSalesDetailView'
 import { requireAuthenticatedBusinessId } from '@/lib/business'
 import { resolveDateRange } from '@/lib/date-utils'
+import { normalizeOperatorSalesStatsRows } from '@/lib/mappers'
+import type { OperatorSalesStatsRow } from '@/lib/types'
 
 interface SearchParams {
   period?: string
@@ -28,7 +29,8 @@ export default async function OperatorsDetailPage({
     p_to: to,
   })
 
-  const rows = (rpcResult as unknown as { data: OperatorSalesRow[] } | null)?.data ?? []
+  const rawRows = (rpcResult as unknown as { data: OperatorSalesStatsRow[] } | null)?.data ?? []
+  const rows = normalizeOperatorSalesStatsRows(rawRows)
 
   return (
     <OperatorSalesDetailView

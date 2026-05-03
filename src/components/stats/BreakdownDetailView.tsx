@@ -63,6 +63,17 @@ export default function BreakdownDetailView({ rows, period, from, to, tab }: Pro
 
   const sorted = useMemo(() => [...rows].sort((a, b) => (b.revenue ?? 0) - (a.revenue ?? 0)), [rows])
   const total = useMemo(() => sorted.reduce((acc, r) => acc + (r.revenue ?? 0), 0), [sorted])
+  const leadingLabel = useMemo(() => {
+    const first = sorted[0]
+    if (!first) return null
+    return tab === 'brand'
+      ? (first as BrandRow).brand_name
+      : (first as CategorySalesRow).category_name
+  }, [sorted, tab])
+  const leadingShare = useMemo(() => {
+    if (!sorted[0] || total === 0) return 0
+    return Math.round(((sorted[0].revenue ?? 0) / total) * 100)
+  }, [sorted, total])
 
   const csvData = useMemo(() => {
     if (tab === 'brand') {
@@ -97,6 +108,26 @@ export default function BreakdownDetailView({ rows, period, from, to, tab }: Pro
             to={to}
             onChange={navigate}
           />
+
+          <div className="grid grid-cols-3 gap-3">
+            <div className="surface-card p-4 space-y-1">
+              <p className="text-label text-hint">Ingresos del período</p>
+              <p className="text-xl font-bold text-heading leading-none">{formatMoney(total)}</p>
+            </div>
+            <div className="surface-card p-4 space-y-1">
+              <p className="text-label text-hint">{tab === 'category' ? 'Categorías' : 'Marcas'} con ventas</p>
+              <p className="text-xl font-bold text-heading leading-none">{sorted.length}</p>
+            </div>
+            <div className="surface-card p-4 space-y-1">
+              <p className="text-label text-hint">{tab === 'category' ? 'Categoría líder' : 'Marca líder'}</p>
+              <p className="text-xl font-bold text-heading leading-none truncate" title={leadingLabel ?? '—'}>
+                {leadingLabel ?? '—'}
+              </p>
+              {leadingShare > 0 && (
+                <p className="text-caption text-hint">{leadingShare}% del total</p>
+              )}
+            </div>
+          </div>
 
           <div className="pill-tabs">
             {indicator && (

@@ -1,13 +1,14 @@
 'use client'
 
 import { useState, useMemo } from 'react'
-import { ArrowUpDown } from 'lucide-react'
+import { ArrowUp, ArrowDown, ArrowUpDown } from 'lucide-react'
 import { useRouter, usePathname } from 'next/navigation'
 import DateRangeFilter from '@/components/shared/DateRangeFilter'
 import { periodNeedsCustomDates, type DateRangePeriod } from '@/lib/date-utils'
 import ExportCSVButton from '@/components/shared/ExportCSVButton'
 import PageHeader from '@/components/shared/PageHeader'
 import { useFormatMoney } from '@/lib/context/CurrencyContext'
+import type { StatsKpis } from '@/lib/types'
 
 export interface TopProductRow {
   id: string
@@ -25,24 +26,24 @@ export interface TopProductRow {
 
 type SortKey = 'units_sold' | 'revenue' | 'transaction_count' | 'gross_profit'
 
-function SortButton({ col, onSort }: { col: SortKey; onSort: (col: SortKey) => void }) {
-  return (
-    <button onClick={() => onSort(col)} className="inline-flex items-center gap-1 hover:text-heading transition-colors">
-      <ArrowUpDown size={12} />
-    </button>
-  )
+function SortIcon({ col, sortKey, sortAsc }: { col: SortKey; sortKey: SortKey; sortAsc: boolean }) {
+  if (col !== sortKey) return <ArrowUpDown size={12} className="text-hint/60" />
+  return sortAsc
+    ? <ArrowUp size={12} className="text-primary" />
+    : <ArrowDown size={12} className="text-primary" />
 }
 
 interface Props {
   rows: TopProductRow[]
   total: number
+  kpis: StatsKpis | null
   period: string
   from?: string
   to?: string
   page: number
 }
 
-export default function TopProductsDetailView({ rows, total, period, from, to, page }: Props) {
+export default function TopProductsDetailView({ rows, total, kpis, period, from, to, page }: Props) {
   const router = useRouter()
   const pathname = usePathname()
   const formatMoney = useFormatMoney()
@@ -102,6 +103,10 @@ export default function TopProductsDetailView({ rows, total, period, from, to, p
 
   const totalPages = Math.ceil(total / 50)
 
+  function thClass(col: SortKey, extraClass = '') {
+    const isActive = sortKey === col
+    return `px-4 py-3 cursor-pointer select-none transition-colors hover:text-heading ${isActive ? 'text-primary font-semibold' : ''} ${extraClass}`
+  }
 
   return (
     <div className="flex flex-col h-screen overflow-hidden">
@@ -118,6 +123,28 @@ export default function TopProductsDetailView({ rows, total, period, from, to, p
             onChange={navigate}
           />
 
+          {/* Summary KPIs */}
+          <div className="grid grid-cols-3 gap-3">
+            <div className="surface-card p-4 space-y-1">
+              <p className="text-label text-hint">Ingresos del período</p>
+              <p className="text-xl font-bold text-heading leading-none">
+                {formatMoney(kpis?.total_revenue ?? 0)}
+              </p>
+            </div>
+            <div className="surface-card p-4 space-y-1">
+              <p className="text-label text-hint">Unidades vendidas</p>
+              <p className="text-xl font-bold text-heading leading-none">
+                {(kpis?.total_units ?? 0).toLocaleString('es-AR')}
+              </p>
+            </div>
+            <div className="surface-card p-4 space-y-1">
+              <p className="text-label text-hint">Productos con ventas</p>
+              <p className="text-xl font-bold text-heading leading-none">
+                {total.toLocaleString('es-AR')}
+              </p>
+            </div>
+          </div>
+
           <div className="surface-card overflow-hidden">
             <table className="w-full text-sm">
               <thead className="border-b border-edge/60">
@@ -127,17 +154,41 @@ export default function TopProductsDetailView({ rows, total, period, from, to, p
                   <th className="text-left px-4 py-3 hidden md:table-cell">SKU</th>
                   <th className="text-left px-4 py-3 hidden md:table-cell">Categoría</th>
                   <th className="text-left px-4 py-3 hidden lg:table-cell">Marca</th>
-                  <th className="text-right px-4 py-3">
-                    <span className="flex items-center justify-end gap-1">Unidades <SortButton col="units_sold" onSort={handleSort} /></span>
+                  <th
+                    className={`text-right hidden md:table-cell ${thClass('units_sold')}`}
+                    onClick={() => handleSort('units_sold')}
+                  >
+                    <span className="flex items-center justify-end gap-1">
+                      Unidades
+                      <SortIcon col="units_sold" sortKey={sortKey} sortAsc={sortAsc} />
+                    </span>
                   </th>
-                  <th className="text-right px-4 py-3">
-                    <span className="flex items-center justify-end gap-1">Ingresos <SortButton col="revenue" onSort={handleSort} /></span>
+                  <th
+                    className={`text-right ${thClass('revenue')}`}
+                    onClick={() => handleSort('revenue')}
+                  >
+                    <span className="flex items-center justify-end gap-1">
+                      Ingresos
+                      <SortIcon col="revenue" sortKey={sortKey} sortAsc={sortAsc} />
+                    </span>
                   </th>
-                  <th className="text-right px-4 py-3 hidden lg:table-cell">
-                    <span className="flex items-center justify-end gap-1">Margen <SortButton col="gross_profit" onSort={handleSort} /></span>
+                  <th
+                    className={`text-right hidden lg:table-cell ${thClass('gross_profit')}`}
+                    onClick={() => handleSort('gross_profit')}
+                  >
+                    <span className="flex items-center justify-end gap-1">
+                      Margen
+                      <SortIcon col="gross_profit" sortKey={sortKey} sortAsc={sortAsc} />
+                    </span>
                   </th>
-                  <th className="text-right px-4 py-3 hidden md:table-cell">
-                    <span className="flex items-center justify-end gap-1">Transacciones <SortButton col="transaction_count" onSort={handleSort} /></span>
+                  <th
+                    className={`text-right hidden md:table-cell ${thClass('transaction_count')}`}
+                    onClick={() => handleSort('transaction_count')}
+                  >
+                    <span className="flex items-center justify-end gap-1">
+                      Transacciones
+                      <SortIcon col="transaction_count" sortKey={sortKey} sortAsc={sortAsc} />
+                    </span>
                   </th>
                 </tr>
               </thead>
@@ -150,12 +201,14 @@ export default function TopProductsDetailView({ rows, total, period, from, to, p
                   sorted.map((row, idx) => (
                     <tr key={row.id} className="border-b border-edge/40 hover:bg-hover-bg transition-colors">
                       <td className="px-4 py-3 text-hint text-xs">{(page - 1) * 50 + idx + 1}</td>
-                      <td className="px-4 py-3 font-medium text-heading">{row.name}</td>
+                      <td className="px-4 py-3 font-medium text-heading max-w-[180px] truncate">{row.name}</td>
                       <td className="px-4 py-3 text-body hidden md:table-cell">{row.sku ?? '—'}</td>
                       <td className="px-4 py-3 text-body hidden md:table-cell">{row.category_name ?? '—'}</td>
                       <td className="px-4 py-3 text-body hidden lg:table-cell">{row.brand_name ?? '—'}</td>
-                      <td className="px-4 py-3 text-right font-medium">{row.units_sold}</td>
-                      <td className="px-4 py-3 text-right font-semibold text-heading">{formatMoney(row.revenue ?? 0)}</td>
+                      <td className="px-4 py-3 text-right font-medium hidden md:table-cell">{row.units_sold}</td>
+                      <td className={`px-4 py-3 text-right font-semibold ${sortKey === 'revenue' ? 'text-primary' : 'text-heading'}`}>
+                        {formatMoney(row.revenue ?? 0)}
+                      </td>
                       <td className="px-4 py-3 text-right hidden lg:table-cell">
                         {formatMoney(row.gross_profit ?? 0)}
                       </td>

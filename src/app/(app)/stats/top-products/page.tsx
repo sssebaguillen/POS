@@ -3,6 +3,7 @@ import TopProductsDetailView from '@/components/stats/TopProductsDetailView'
 import type { TopProductRow } from '@/components/stats/TopProductsDetailView'
 import { requireAuthenticatedBusinessId } from '@/lib/business'
 import { resolveDateRange } from '@/lib/date-utils'
+import type { StatsKpis } from '@/lib/types'
 
 interface SearchParams {
   period?: string
@@ -27,20 +28,29 @@ export default async function TopProductsDetailPage({
 
   const { from, to } = resolveDateRange(period, params.from, params.to)
 
-  const { data: result } = await supabase.rpc('get_top_products_detail', {
-    p_business_id: businessId,
-    p_from: from,
-    p_to: to,
-    p_limit: limit,
-    p_offset: offset,
-  })
+  const [{ data: result }, { data: kpisRaw }] = await Promise.all([
+    supabase.rpc('get_top_products_detail', {
+      p_business_id: businessId,
+      p_from: from,
+      p_to: to,
+      p_limit: limit,
+      p_offset: offset,
+    }),
+    supabase.rpc('get_stats_kpis', {
+      p_business_id: businessId,
+      p_from: from,
+      p_to: to,
+    }),
+  ])
 
   const rows = (result as unknown as { data: TopProductRow[]; total: number } | null)
+  const kpis = kpisRaw as unknown as StatsKpis | null
 
   return (
     <TopProductsDetailView
       rows={rows?.data ?? []}
       total={rows?.total ?? 0}
+      kpis={kpis}
       period={period}
       from={params.from}
       to={params.to}
