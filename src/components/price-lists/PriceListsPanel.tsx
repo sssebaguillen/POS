@@ -1,7 +1,7 @@
 'use client'
 
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
-import { Download, Pencil, Plus, Search } from 'lucide-react'
+import { ChevronRight, Download, Pencil, Plus, Search, X } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import PageHeader from '@/components/shared/PageHeader'
 import { Button } from '@/components/ui/button'
@@ -374,7 +374,7 @@ export default function PriceListsPanel({
                 >
                   {list.name}
                   {list.is_default && (
-                    <span className="ml-1 rounded-full border border-edge/70 bg-surface-alt px-1.5 py-0.5 text-[10px] text-primary">
+                    <span className="ml-1 rounded-full border border-primary/25 bg-primary/[0.07] px-1.5 py-0.5 text-[10px] font-medium text-primary">
                       Predeterminada
                     </span>
                   )}
@@ -397,8 +397,16 @@ export default function PriceListsPanel({
       </div>
 
       {crudError && (
-        <div className="mx-5 mt-4 rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
-          {crudError}
+        <div className="mx-5 mt-4 flex items-center justify-between gap-3 rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
+          <span>{crudError}</span>
+          <button
+            type="button"
+            onClick={() => setCrudError(null)}
+            className="shrink-0 opacity-60 hover:opacity-100 transition-opacity"
+            aria-label="Cerrar"
+          >
+            <X size={14} />
+          </button>
         </div>
       )}
 
@@ -408,52 +416,62 @@ export default function PriceListsPanel({
             Selecciona una lista de precios para ver los productos.
           </div>
         ) : (
-          <div className="surface-card p-2">
-            <div className="px-2 pb-2 flex flex-wrap items-center gap-2">
-              <h2 className="text-sm font-semibold text-heading font-display">{activeList.name}</h2>
-              <span className="text-xs text-subtle">+{getMarginPercent(activeList.multiplier)}% sobre costo</span>
-              {activeList.description && <span className="text-xs text-hint">{activeList.description}</span>}
-              <div className="relative ml-auto">
-                <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-hint pointer-events-none" />
-                <input
-                  type="text"
-                  value={search}
-                  onChange={e => setSearch(e.target.value)}
-                  placeholder="Buscar producto o marca..."
-                  className="pl-8 pr-3 py-1.5 text-xs rounded-lg border border-edge bg-card text-body placeholder:text-hint focus:outline-none focus:ring-1 focus:ring-primary/40 w-56"
-                />
+          <div className="surface-card overflow-hidden p-0">
+            <div className="flex items-center gap-3 px-4 py-3 border-b border-edge/50">
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h2 className="text-sm font-semibold text-heading font-display leading-none">{activeList.name}</h2>
+                  <span className="text-xs text-subtle">+{getMarginPercent(activeList.multiplier)}% sobre costo</span>
+                  {activeList.description && (
+                    <span className="text-xs text-hint truncate max-w-[240px]">{activeList.description}</span>
+                  )}
+                </div>
               </div>
-              <Button
-                variant="outline"
-                size="sm"
-                className="rounded-lg text-xs"
-                onClick={() => setShowExportModal(true)}
-                disabled={exportItems.length === 0}
-              >
-                <Download size={14} />
-                Exportar
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                className="rounded-lg text-xs"
-                onClick={() => setEditingListId(activeList.id)}
-                disabled={readOnly}
-              >
-                Editar lista
-              </Button>
-              {!activeList.is_default && (
+              <div className="flex items-center gap-1.5 flex-shrink-0">
+                <div className="relative">
+                  <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-hint pointer-events-none" />
+                  <input
+                    type="text"
+                    value={search}
+                    onChange={e => setSearch(e.target.value)}
+                    placeholder="Buscar producto o marca..."
+                    className="pl-7 pr-3 h-8 text-xs rounded-lg border border-edge bg-card text-body placeholder:text-hint focus:outline-none focus:ring-1 focus:ring-primary/40 w-48"
+                  />
+                </div>
+                <div className="h-5 w-px bg-edge/60 mx-0.5" />
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="rounded-lg px-2"
+                  onClick={() => setShowExportModal(true)}
+                  disabled={exportItems.length === 0}
+                  title="Exportar lista a CSV"
+                  aria-label="Exportar lista a CSV"
+                >
+                  <Download size={14} />
+                </Button>
+                {!activeList.is_default && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="rounded-lg text-xs"
+                    onClick={() => void makeDefault(activeList.id)}
+                    disabled={readOnly || savingDefaultId === activeList.id || !businessId}
+                    title="Esta lista se aplicará automáticamente a las ventas nuevas en el POS"
+                  >
+                    {savingDefaultId === activeList.id ? 'Guardando...' : 'Predeterminar'}
+                  </Button>
+                )}
                 <Button
                   variant="outline"
                   size="sm"
                   className="rounded-lg text-xs"
-                  onClick={() => void makeDefault(activeList.id)}
-                  disabled={readOnly || savingDefaultId === activeList.id || !businessId}
-                  title="Esta lista se aplicará automáticamente a las ventas nuevas en el POS"
+                  onClick={() => setEditingListId(activeList.id)}
+                  disabled={readOnly}
                 >
-                  {savingDefaultId === activeList.id ? 'Guardando...' : 'Usar como predeterminada'}
+                  Editar lista
                 </Button>
-              )}
+              </div>
             </div>
 
             <GroupedPriceRowsTable
@@ -461,6 +479,7 @@ export default function PriceListsPanel({
               groupedRows={groupedRows}
               filteredRowsCount={filteredRows.length}
               readOnly={readOnly}
+              searchActive={!!search.trim()}
               onEditBrandOverride={setOverrideBrandId}
               onEditProductOverride={setOverrideProductId}
             />
@@ -545,6 +564,7 @@ interface GroupedPriceRowsTableProps {
   groupedRows: GroupedPriceRows[]
   filteredRowsCount: number
   readOnly: boolean
+  searchActive: boolean
   onEditBrandOverride: (brandId: string) => void
   onEditProductOverride: (productId: string) => void
 }
@@ -553,12 +573,25 @@ function GroupedPriceRowsTable({
   groupedRows,
   filteredRowsCount,
   readOnly,
+  searchActive,
   onEditBrandOverride,
   onEditProductOverride,
 }: GroupedPriceRowsTableProps) {
   const formatMoney = useFormatMoney()
   const [visibleGroupCount, setVisibleGroupCount] = useState(20)
   const sentinelRef = useRef<HTMLDivElement>(null)
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(
+    () => searchActive ? new Set(groupedRows.map(g => g.key)) : new Set()
+  )
+
+  function toggleGroup(key: string) {
+    setExpandedGroups(prev => {
+      const next = new Set(prev)
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
+      return next
+    })
+  }
 
   useEffect(() => {
     const sentinel = sentinelRef.current
@@ -589,7 +622,6 @@ function GroupedPriceRowsTable({
         <TableHeader>
           <TableRow>
             <TableHead>Producto</TableHead>
-            <TableHead>Marca</TableHead>
             <TableHead className="text-right">Costo</TableHead>
             <TableHead className="text-right">Precio lista</TableHead>
             <TableHead className="text-right">Margen %</TableHead>
@@ -599,60 +631,37 @@ function GroupedPriceRowsTable({
         <TableBody>
           {groupedRows.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={6} className="h-28 text-center text-sm text-hint">
+              <TableCell colSpan={5} className="h-28 text-center text-sm text-hint">
                 No hay productos activos para calcular precios.
               </TableCell>
             </TableRow>
           ) : (
-            visibleGroups.map(group => (
-              <Fragment key={`brand-${group.key}`}>
-                <TableRow className="bg-surface-alt/70">
-                  <TableCell colSpan={6}>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs font-semibold uppercase tracking-wide text-subtle">{group.label}</span>
-                        {group.brandOverride && (
-                          <span className="inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold bg-primary text-primary-foreground">
-                            +{getMarginPercent(group.brandOverride.multiplier)}%
-                          </span>
-                        )}
-                      </div>
-                      <Button
-                        variant="outline"
-                        size="icon-sm"
-                        onClick={() => group.brandId && onEditBrandOverride(group.brandId)}
-                        aria-label={`Ajustar margen de la marca ${group.label}`}
-                        title={`Ajustar margen de ${group.label}`}
-                        disabled={readOnly || !group.brandId}
-                      >
-                        <Pencil size={14} />
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-
-                {group.rows.map(row => (
-                  <TableRow key={row.product.id}>
+            visibleGroups.map(group => {
+              const isExpanded = expandedGroups.has(group.key)
+              return (
+                <Fragment key={`brand-${group.key}`}>
+                  <TableRow
+                    className="bg-primary/[0.04] hover:bg-primary/[0.07] cursor-pointer select-none dark:bg-primary/[0.07] dark:hover:bg-primary/[0.10]"
+                    onClick={() => toggleGroup(group.key)}
+                  >
                     <TableCell>
-                      <p className="font-medium text-heading">{row.product.name}</p>
-                      <p className="text-xs text-hint">{row.product.categories?.name ?? 'Sin categoria'}</p>
-                    </TableCell>
-                    <TableCell className="text-body">{row.product.brand?.name ?? '—'}</TableCell>
-                    <TableCell className="text-right tabular-nums">{formatMoney(row.product.cost)}</TableCell>
-                    <TableCell className="text-right tabular-nums">
-                      {formatMoney(row.finalPrice)}
-                      {(row.productOverride ?? row.brandOverride) && (
-                        <span className="ml-1.5 inline-flex rounded-full px-2 py-0.5 text-[10px] font-medium bg-primary/10 text-primary border border-primary/20">
-                          Ajuste
+                      <div className="flex items-center gap-2">
+                        <ChevronRight
+                          size={13}
+                          className={`text-hint transition-transform duration-150 ${isExpanded ? 'rotate-90' : ''}`}
+                        />
+                        <span className="text-xs font-semibold uppercase tracking-wide text-subtle">{group.label}</span>
+                        <span className="text-xs text-hint">
+                          {group.rows.length} {group.rows.length === 1 ? 'producto' : 'productos'}
                         </span>
-                      )}
+                      </div>
                     </TableCell>
-                    <TableCell className="text-right tabular-nums">
-                      {row.margin === null ? (
-                        <span className="text-hint">—</span>
-                      ) : (
-                        <span className={row.margin > 0 ? 'text-emerald-700 dark:text-emerald-400 font-semibold' : 'text-red-600 dark:text-red-400 font-semibold'}>
-                          {row.margin}%
+                    <TableCell />
+                    <TableCell />
+                    <TableCell className="text-right">
+                      {group.brandOverride && (
+                        <span className="inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold bg-primary text-primary-foreground">
+                          +{getMarginPercent(group.brandOverride.multiplier)}%
                         </span>
                       )}
                     </TableCell>
@@ -660,29 +669,78 @@ function GroupedPriceRowsTable({
                       <div className="flex justify-end">
                         <Button
                           variant="outline"
-                          size="sm"
-                          className="rounded-lg text-xs gap-1.5"
-                          onClick={() => onEditProductOverride(row.product.id)}
-                          aria-label={`Ajustar precio de ${row.product.name}`}
-                          title="Ajustar precio de este producto"
-                          disabled={readOnly}
+                          size="icon-sm"
+                          onClick={e => { e.stopPropagation(); group.brandId && onEditBrandOverride(group.brandId) }}
+                          aria-label={`Ajustar margen de la marca ${group.label}`}
+                          title={`Ajustar margen de ${group.label}`}
+                          disabled={readOnly || !group.brandId}
                         >
-                          <Pencil size={13} />
-                          Ajustar
+                          <Pencil size={14} />
                         </Button>
                       </div>
                     </TableCell>
                   </TableRow>
-                ))}
-              </Fragment>
-            ))
+
+                  {isExpanded && group.rows.map(row => (
+                    <TableRow key={row.product.id}>
+                      <TableCell>
+                        <p className="font-medium text-heading">{row.product.name}</p>
+                        <p className="text-xs text-hint">{row.product.categories?.name ?? 'Sin categoría'}</p>
+                      </TableCell>
+                      <TableCell className={`text-right tabular-nums${row.product.cost === 0 ? ' text-hint' : ''}`}>
+                        {formatMoney(row.product.cost)}
+                      </TableCell>
+                      <TableCell className="text-right tabular-nums">
+                        {formatMoney(row.finalPrice)}
+                        {(row.productOverride ?? row.brandOverride) && (
+                          <span className="ml-1.5 inline-flex rounded-full px-2 py-0.5 text-[10px] font-medium bg-primary/10 text-primary border border-primary/20">
+                            Ajuste
+                          </span>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-right tabular-nums">
+                        {row.margin === null ? (
+                          <span className="text-hint">—</span>
+                        ) : (
+                          <span className={
+                            row.margin > 0
+                              ? 'text-emerald-700 dark:text-emerald-400 font-semibold'
+                              : row.margin === 0
+                                ? 'text-amber-600 dark:text-amber-400 font-semibold'
+                                : 'text-red-600 dark:text-red-400 font-semibold'
+                          }>
+                            {row.margin}%
+                          </span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex justify-end">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="rounded-lg text-xs gap-1.5"
+                            onClick={() => onEditProductOverride(row.product.id)}
+                            aria-label={`Ajustar precio de ${row.product.name}`}
+                            title="Ajustar precio de este producto"
+                            disabled={readOnly}
+                          >
+                            <Pencil size={13} />
+                            Ajustar
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </Fragment>
+              )
+            })
           )}
         </TableBody>
       </Table>
       <div ref={sentinelRef} />
       {visibleGroupCount < groupedRows.length && (
         <p className="py-3 text-center text-xs text-subtle">
-          Mostrando {visibleGroups.reduce((total, group) => total + group.rows.length, 0)} de {filteredRowsCount} productos — seguí scrolleando para ver más
+          Mostrando {visibleGroups.reduce((total, group) => total + group.rows.length, 0)} de {filteredRowsCount} productos. Desplazate para ver más.
         </p>
       )}
     </>
