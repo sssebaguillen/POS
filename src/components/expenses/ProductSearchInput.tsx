@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { Plus, Search } from 'lucide-react'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { Input } from '@/components/ui/input'
+import { useFormatMoney } from '@/lib/context/CurrencyContext'
 
 interface ProductResult {
   id: string
@@ -27,6 +28,7 @@ export default function ProductSearchInput({
   onCreateNew,
   placeholder = 'Buscar producto por nombre o código de barras...',
 }: Props) {
+  const formatMoney = useFormatMoney()
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<ProductResult[]>([])
   const [open, setOpen] = useState(false)
@@ -134,7 +136,7 @@ export default function ProductSearchInput({
                 >
                   <span className="text-body font-medium truncate">{product.name}</span>
                   <span className="text-hint text-xs whitespace-nowrap shrink-0">
-                    Stock: {product.stock} · ${product.cost.toLocaleString('es-AR')}
+                    Stock: {product.stock} · {formatMoney(product.cost)}
                   </span>
                 </button>
               ))}

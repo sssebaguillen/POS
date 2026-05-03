@@ -9,6 +9,7 @@ import ProductSearchInput from './ProductSearchInput'
 import type { PriceList } from '@/lib/types'
 import type { InventoryBrand } from '@/components/inventory/types'
 import NewProductModal from '@/components/inventory/NewProductModal'
+import { useFormatMoney } from '@/lib/context/CurrencyContext'
 
 interface Category {
   id: string
@@ -43,6 +44,7 @@ export default function MercaderiaItemsSection({
   firstItemCostRef,
   totalRef,
 }: Props) {
+  const formatMoney = useFormatMoney()
   const [newProductOpen, setNewProductOpen] = useState(false)
   const [newProductInitialName, setNewProductInitialName] = useState('')
   const [priceLists, setPriceLists] = useState<PriceList[]>([])
@@ -190,7 +192,7 @@ export default function MercaderiaItemsSection({
                   </div>
                   {item.unit_cost !== item._original_cost && item._original_cost > 0 && (
                     <span className="text-[10px] text-amber-500 whitespace-nowrap">
-                      era ${item._original_cost.toLocaleString('es-AR')}
+                      era {formatMoney(item._original_cost)}
                     </span>
                   )}
                 </div>
@@ -228,7 +230,7 @@ export default function MercaderiaItemsSection({
                 </label>
 
                 <span className="text-xs font-semibold text-heading">
-                  ${(item.quantity * item.unit_cost).toLocaleString('es-AR')}
+                  {formatMoney(item.quantity * item.unit_cost)}
                 </span>
               </div>
             </div>
@@ -243,11 +245,7 @@ export default function MercaderiaItemsSection({
         >
           <span className="text-sm text-hint">Total</span>
           <span className="text-base font-semibold text-heading">
-            $
-            {total.toLocaleString('es-AR', {
-              minimumFractionDigits: 2,
-              maximumFractionDigits: 2,
-            })}
+            {formatMoney(total)}
           </span>
         </div>
       )}

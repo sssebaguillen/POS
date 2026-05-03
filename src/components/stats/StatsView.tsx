@@ -8,6 +8,7 @@ import PageHeader from '@/components/shared/PageHeader'
 import DateRangeFilter from '@/components/shared/DateRangeFilter'
 import { buildDateParams, periodNeedsCustomDates, type DateRangePeriod } from '@/lib/date-utils'
 import { PAYMENT_COLORS, isPaymentMethod, normalizePayment } from '@/lib/payments'
+import { useFormatMoney } from '@/lib/context/CurrencyContext'
 import type {
   StatsKpis, StatsEvolution, StatsBreakdown,
 } from '@/lib/types'
@@ -57,6 +58,7 @@ const DeltaBadge = memo(function DeltaBadge({ current, previous }: { current: nu
 export default function StatsView({ kpis, evolution, breakdown, topProducts, period: initialPeriod, from: initialFrom, to: initialTo }: Props) {
   const router = useRouter()
   const pathname = usePathname()
+  const formatMoney = useFormatMoney()
   const [evolutionMode, setEvolutionMode] = useState<EvolutionMode>('revenue')
   const [rankingMode, setRankingMode] = useState<RankingMode>('amount')
   const [breakdownMode, setBreakdownMode] = useState<BreakdownMode>('category')
@@ -142,7 +144,7 @@ export default function StatsView({ kpis, evolution, breakdown, topProducts, per
               </div>
               <div>
                 <p className="text-label text-hint mb-1">Ingresos totales</p>
-                <p className="text-2xl font-bold text-heading leading-none">${totalRevenue.toLocaleString('es-AR')}</p>
+                <p className="text-2xl font-bold text-heading leading-none">{formatMoney(totalRevenue)}</p>
               </div>
             </div>
             <div className="surface-card p-5 flex flex-col gap-3">
@@ -162,7 +164,7 @@ export default function StatsView({ kpis, evolution, breakdown, topProducts, per
               </div>
               <div>
                 <p className="text-label text-hint mb-1">Ticket promedio</p>
-                <p className="text-2xl font-bold text-heading leading-none">${avgTicket.toLocaleString('es-AR', { maximumFractionDigits: 0 })}</p>
+                <p className="text-2xl font-bold text-heading leading-none">{formatMoney(avgTicket)}</p>
               </div>
             </div>
             <div className="surface-card p-5 flex flex-col gap-3">
@@ -240,7 +242,7 @@ export default function StatsView({ kpis, evolution, breakdown, topProducts, per
                           const pk = evolutionMode === 'revenue' ? 'previousRevenue' : 'previousUnits'
                           const fmt = (v: number) =>
                             evolutionMode === 'revenue'
-                              ? `$${v.toLocaleString('es-AR')}`
+                              ? formatMoney(v)
                               : String(v)
                           const cur = payload.find(p => p.dataKey === ck)
                           const prev = payload.find(p => p.dataKey === pk)
@@ -336,7 +338,7 @@ export default function StatsView({ kpis, evolution, breakdown, topProducts, per
                     <span className="text-xs text-hint w-5 shrink-0">#{idx + 1}</span>
                     <span className="flex-1 text-sm text-body truncate">{row.name}</span>
                     <span className="text-sm font-semibold text-body shrink-0">
-                      {rankingMode === 'amount' ? `$${(row.revenue ?? 0).toLocaleString('es-AR')}` : `${row.units_sold ?? 0} uds`}
+                      {rankingMode === 'amount' ? formatMoney(row.revenue ?? 0) : `${row.units_sold ?? 0} uds`}
                     </span>
                   </div>
                 ))
@@ -406,7 +408,7 @@ export default function StatsView({ kpis, evolution, breakdown, topProducts, per
                       return (
                         <div className="surface-elevated rounded-xl p-2.5 text-xs shadow-sm">
                           <p className="font-semibold text-heading">{label}</p>
-                          <p className="text-body">${Number(payload[0]?.value ?? 0).toLocaleString('es-AR')}</p>
+                          <p className="text-body">{formatMoney(Number(payload[0]?.value ?? 0))}</p>
                         </div>
                       )
                     }}

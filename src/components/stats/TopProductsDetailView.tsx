@@ -7,6 +7,7 @@ import DateRangeFilter from '@/components/shared/DateRangeFilter'
 import { periodNeedsCustomDates, type DateRangePeriod } from '@/lib/date-utils'
 import ExportCSVButton from '@/components/shared/ExportCSVButton'
 import PageHeader from '@/components/shared/PageHeader'
+import { useFormatMoney } from '@/lib/context/CurrencyContext'
 
 export interface TopProductRow {
   id: string
@@ -45,6 +46,7 @@ interface Props {
 export default function TopProductsDetailView({ rows, total, period, from, to, page }: Props) {
   const router = useRouter()
   const pathname = usePathname()
+  const formatMoney = useFormatMoney()
   const [sortKey, setSortKey] = useState<SortKey>('revenue' as SortKey)
   const [sortAsc, setSortAsc] = useState(false)
 
@@ -154,9 +156,9 @@ export default function TopProductsDetailView({ rows, total, period, from, to, p
                       <td className="px-4 py-3 text-body hidden md:table-cell">{row.category_name ?? '—'}</td>
                       <td className="px-4 py-3 text-body hidden lg:table-cell">{row.brand_name ?? '—'}</td>
                       <td className="px-4 py-3 text-right font-medium">{row.units_sold}</td>
-                      <td className="px-4 py-3 text-right font-semibold text-heading">${(row.revenue ?? 0).toLocaleString('es-AR')}</td>
+                      <td className="px-4 py-3 text-right font-semibold text-heading">{formatMoney(row.revenue ?? 0)}</td>
                       <td className="px-4 py-3 text-right hidden lg:table-cell">
-                        ${(row.gross_profit ?? 0).toLocaleString('es-AR')}
+                        {formatMoney(row.gross_profit ?? 0)}
                       </td>
                       <td className="px-4 py-3 text-right hidden md:table-cell">{row.transaction_count}</td>
                     </tr>

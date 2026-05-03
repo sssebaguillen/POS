@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import SelectDropdown from '@/components/ui/SelectDropdown'
 import type { InventoryBrand, InventoryCategory } from '@/components/inventory/types'
+import { useFormatMoney } from '@/lib/context/CurrencyContext'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -170,6 +171,7 @@ export default function ImportProductsModal({
   onClose,
 }: Props) {
   const supabase = useMemo(() => createClient(), [])
+  const formatMoney = useFormatMoney()
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   // step: 'upload' | 'mapping' | 'preview'
@@ -697,8 +699,8 @@ export default function ImportProductsModal({
                       <tr key={i} className="border-b border-edge/40 last:border-0">
                         <td className="px-3 py-2 font-medium text-body max-w-[180px] truncate">{row.name}</td>
                         <td className="px-3 py-2 text-hint">{row.sku ?? '—'}</td>
-                        <td className="px-3 py-2 text-right text-body">{row.price > 0 ? `$${row.price.toLocaleString('es-AR')}` : '—'}</td>
-                        <td className="px-3 py-2 text-right text-hint">{row.cost > 0 ? `$${row.cost.toLocaleString('es-AR')}` : '—'}</td>
+                        <td className="px-3 py-2 text-right text-body">{row.price > 0 ? formatMoney(row.price) : '—'}</td>
+                        <td className="px-3 py-2 text-right text-hint">{row.cost > 0 ? formatMoney(row.cost) : '—'}</td>
                         <td className="px-3 py-2 text-right text-body">{row.stock}</td>
                         <td className="px-3 py-2 text-hint max-w-[120px] truncate">{row.category_name ?? '—'}</td>
                         <td className="px-3 py-2 text-hint max-w-[120px] truncate">{row.brand_name ?? '—'}</td>

@@ -19,6 +19,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import posthog from 'posthog-js'
+import { useFormatMoney } from '@/lib/context/CurrencyContext'
 
 type ConfirmState = { title: string; message: string; onConfirm: () => void } | null
 
@@ -40,6 +41,7 @@ type StatusFilter = 'all' | 'active' | 'inactive'
 
 export default function ProductsPanel({ businessId, initialProducts, categories, brands, priceLists }: Props) {
   const supabase = useMemo(() => createClient(), [])
+  const formatMoney = useFormatMoney()
   const [products, setProducts] = useState(initialProducts)
   const [query, setQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
@@ -227,8 +229,8 @@ export default function ProductsPanel({ businessId, initialProducts, categories,
                         {product.categories?.name ?? 'Sin categoria'}
                       </TableCell>
                       <TableCell className="text-body">{product.sku ?? '-'}</TableCell>
-                      <TableCell className="text-right tabular-nums">${product.price.toLocaleString('es-AR')}</TableCell>
-                      <TableCell className="text-right tabular-nums">${product.cost.toLocaleString('es-AR')}</TableCell>
+                      <TableCell className="text-right tabular-nums">{formatMoney(product.price)}</TableCell>
+                      <TableCell className="text-right tabular-nums">{formatMoney(product.cost)}</TableCell>
                       <TableCell className="text-right tabular-nums">
                         <span className={lowStock ? 'text-amber-700 font-semibold' : 'text-body'}>
                           {product.stock}

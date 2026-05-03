@@ -9,6 +9,7 @@ import { Dialog, DialogContent } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { useToast } from '@/hooks/useToast'
 import Toast from '@/components/shared/Toast'
+import { useFormatMoney } from '@/lib/context/CurrencyContext'
 
 /** Extracts the storage path from either a legacy full Supabase URL or a bare path. */
 function extractStoragePath(url: string): string {
@@ -36,6 +37,7 @@ interface Props {
 
 export default function ExpensesTable({ expenses, businessId, supabaseClient, onDeleted, onEdit }: Props) {
   const supabase = useMemo(() => supabaseClient, [supabaseClient])
+  const formatMoney = useFormatMoney()
   const { toast, showToast, dismissToast } = useToast()
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [loadingItemsId, setLoadingItemsId] = useState<string | null>(null)
@@ -156,7 +158,7 @@ export default function ExpensesTable({ expenses, businessId, supabaseClient, on
                   {expense.supplier?.name ?? '—'}
                 </td>
                 <td className="px-4 py-3 text-right font-semibold text-heading">
-                  ${expense.amount.toLocaleString('es-AR')}
+                  {formatMoney(expense.amount)}
                 </td>
                 <td className="px-4 py-3 text-center hidden lg:table-cell">
                   {expense.attachment_url ? (
@@ -242,7 +244,8 @@ function DeleteExpenseDialog({
   onConfirm: () => void
   onCancel: () => void
 }) {
-  const formattedAmount = `$${expense.amount.toLocaleString('es-AR')}`
+  const formatMoney = useFormatMoney()
+  const formattedAmount = formatMoney(expense.amount)
   const isMercaderia = expense.category === 'mercaderia'
   const isMedium = expense.category === 'sueldos' || expense.category === 'proveedores'
   const hasCostUpdate = isMercaderia && items !== null && items.some(i => i.update_cost)

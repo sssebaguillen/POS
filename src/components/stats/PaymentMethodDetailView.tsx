@@ -8,6 +8,7 @@ import ExportCSVButton from '@/components/shared/ExportCSVButton'
 import type { PaymentMethod } from '@/lib/constants/domain'
 import { PAYMENT_COLORS, isPaymentMethod, normalizePayment } from '@/lib/payments'
 import PageHeader from '@/components/shared/PageHeader'
+import { useFormatMoney } from '@/lib/context/CurrencyContext'
 
 export interface PaymentMethodRow {
   method: PaymentMethod
@@ -27,6 +28,7 @@ interface Props {
 export default function PaymentMethodDetailView({ rows, period, from, to }: Props) {
   const router = useRouter()
   const pathname = usePathname()
+  const formatMoney = useFormatMoney()
 
   function navigate(newPeriod: DateRangePeriod, newFrom?: string, newTo?: string) {
     const params = new URLSearchParams()
@@ -75,7 +77,7 @@ export default function PaymentMethodDetailView({ rows, period, from, to }: Prop
                   <span className={`h-2.5 w-2.5 rounded-full ${isPaymentMethod(row.method) ? PAYMENT_COLORS[row.method] : 'bg-hint'}`} />
                   <span className="text-sm font-medium text-body">{normalizePayment(row.method)}</span>
                 </div>
-                <p className="text-xl font-bold text-heading">${(row.total_amount ?? 0).toLocaleString('es-AR')}</p>
+                <p className="text-xl font-bold text-heading">{formatMoney(row.total_amount ?? 0)}</p>
                 <p className="text-xs text-hint">
                   {grandTotal > 0 ? `${(((row.total_amount ?? 0) / grandTotal) * 100).toFixed(1)}% del total` : '—'}
                 </p>
@@ -108,13 +110,13 @@ export default function PaymentMethodDetailView({ rows, period, from, to }: Prop
                           <span className="font-medium text-heading">{normalizePayment(row.method)}</span>
                         </div>
                       </td>
-                      <td className="px-4 py-3 text-right font-semibold">${(row.total_amount ?? 0).toLocaleString('es-AR')}</td>
+                      <td className="px-4 py-3 text-right font-semibold">{formatMoney(row.total_amount ?? 0)}</td>
                       <td className="px-4 py-3 text-right text-hint text-xs">
                         {grandTotal > 0 ? `${(((row.total_amount ?? 0) / grandTotal) * 100).toFixed(1)}%` : '—'}
                       </td>
                       <td className="px-4 py-3 text-right hidden md:table-cell">{row.transactions ?? 0}</td>
                       <td className="px-4 py-3 text-right hidden md:table-cell">
-                        ${(row.avg_ticket ?? 0).toLocaleString('es-AR', { maximumFractionDigits: 0 })}
+                        {formatMoney(row.avg_ticket ?? 0)}
                       </td>
                     </tr>
                   ))

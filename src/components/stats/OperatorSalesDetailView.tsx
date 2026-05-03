@@ -8,6 +8,7 @@ import ExportCSVButton from '@/components/shared/ExportCSVButton'
 import PageHeader from '@/components/shared/PageHeader'
 import { OPERATOR_ROLE_LABELS, PROFILE_ROLE_LABELS } from '@/lib/constants/domain'
 import type { UserRole } from '@/lib/operator'
+import { useFormatMoney } from '@/lib/context/CurrencyContext'
 
 export interface OperatorSalesRow {
   operator_id: string | null
@@ -35,6 +36,7 @@ interface Props {
 export default function OperatorSalesDetailView({ rows, period, from, to }: Props) {
   const router = useRouter()
   const pathname = usePathname()
+  const formatMoney = useFormatMoney()
 
   function navigate(newPeriod: DateRangePeriod, newFrom?: string, newTo?: string) {
     const params = new URLSearchParams()
@@ -97,10 +99,10 @@ export default function OperatorSalesDetailView({ rows, period, from, to }: Prop
                     <tr key={row.operator_id ?? row.operator_name} className="border-b border-edge/40 hover:bg-hover-bg transition-colors">
                       <td className="px-4 py-3 font-medium text-heading">{row.operator_name}</td>
                       <td className="px-4 py-3 text-body hidden md:table-cell">{roleLabel(row.role)}</td>
-                      <td className="px-4 py-3 text-right font-semibold">${(row.total_revenue ?? 0).toLocaleString('es-AR')}</td>
+                      <td className="px-4 py-3 text-right font-semibold">{formatMoney(row.total_revenue ?? 0)}</td>
                       <td className="px-4 py-3 text-right hidden md:table-cell">{row.transactions ?? 0}</td>
                       <td className="px-4 py-3 text-right hidden lg:table-cell">
-                        ${(row.avg_ticket ?? 0).toLocaleString('es-AR', { maximumFractionDigits: 0 })}
+                        {formatMoney(row.avg_ticket ?? 0)}
                       </td>
                       <td className="px-4 py-3 text-right hidden lg:table-cell">{row.units_sold ?? 0}</td>
                     </tr>

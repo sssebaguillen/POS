@@ -23,6 +23,7 @@ import type { PriceListProduct } from '@/components/price-lists/types'
 import type { PriceListExportItem } from '@/components/price-lists/ExportPriceListModal'
 import { calculateProductPrice } from '@/lib/price-lists'
 import { trackFeatureUsed } from '@/lib/analytics'
+import { useFormatMoney } from '@/lib/context/CurrencyContext'
 
 interface PriceListsPanelProps {
   businessId: string
@@ -401,6 +402,7 @@ export default function PriceListsPanel({
           <div className="surface-card p-2">
             <div className="px-2 pb-2 flex flex-wrap items-center gap-2">
               <h2 className="text-sm font-semibold text-heading font-display">{activeList.name}</h2>
+              <span className="text-xs text-subtle">Margen: x{activeList.multiplier.toFixed(2)}</span>
               {activeList.description && <span className="text-xs text-hint">{activeList.description}</span>}
               <div className="relative ml-auto">
                 <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-hint pointer-events-none" />
@@ -409,10 +411,9 @@ export default function PriceListsPanel({
                   value={search}
                   onChange={e => setSearch(e.target.value)}
                   placeholder="Buscar producto o marca..."
-                  className="pl-8 pr-3 py-1.5 text-xs rounded-lg border border-edge bg-surface-alt text-body placeholder:text-hint focus:outline-none focus:ring-1 focus:ring-primary/40 w-56"
+                  className="pl-8 pr-3 py-1.5 text-xs rounded-lg border border-edge bg-card text-body placeholder:text-hint focus:outline-none focus:ring-1 focus:ring-primary/40 w-56"
                 />
               </div>
-              <span className="text-xs text-subtle">Global: x{activeList.multiplier.toFixed(4)}</span>
               <Button
                 variant="outline"
                 size="sm"
@@ -545,6 +546,7 @@ function GroupedPriceRowsTable({
   onEditBrandOverride,
   onEditProductOverride,
 }: GroupedPriceRowsTableProps) {
+  const formatMoney = useFormatMoney()
   const [visibleGroupCount, setVisibleGroupCount] = useState(20)
   const sentinelRef = useRef<HTMLDivElement>(null)
 
@@ -626,9 +628,9 @@ function GroupedPriceRowsTable({
                       <p className="text-xs text-hint">{row.product.categories?.name ?? 'Sin categoria'}</p>
                     </TableCell>
                     <TableCell className="text-body">{row.product.brand?.name ?? '—'}</TableCell>
-                    <TableCell className="text-right tabular-nums">${row.product.cost.toLocaleString('es-AR')}</TableCell>
+                    <TableCell className="text-right tabular-nums">{formatMoney(row.product.cost)}</TableCell>
                     <TableCell className="text-right tabular-nums">
-                      ${row.finalPrice.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      {formatMoney(row.finalPrice)}
                       {(row.productOverride ?? row.brandOverride) && (
                         <span className="ml-2 inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold bg-primary text-primary-foreground">
                           Override

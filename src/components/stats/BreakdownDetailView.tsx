@@ -6,6 +6,7 @@ import DateRangeFilter from '@/components/shared/DateRangeFilter'
 import { periodNeedsCustomDates, type DateRangePeriod } from '@/lib/date-utils'
 import ExportCSVButton from '@/components/shared/ExportCSVButton'
 import PageHeader from '@/components/shared/PageHeader'
+import { useFormatMoney } from '@/lib/context/CurrencyContext'
 
 export interface CategorySalesRow {
   category_id: string | null
@@ -28,6 +29,7 @@ interface Props {
 export default function BreakdownDetailView({ rows, period, from, to, tab }: Props) {
   const router = useRouter()
   const pathname = usePathname()
+  const formatMoney = useFormatMoney()
 
   function setTab(newTab: 'category' | 'brand') {
     const params = new URLSearchParams()
@@ -114,7 +116,7 @@ export default function BreakdownDetailView({ rows, period, from, to, tab }: Pro
                   sorted.map(row => (
                     <tr key={row.category_id ?? row.category_name} className="border-b border-edge/40 hover:bg-hover-bg transition-colors">
                       <td className="px-4 py-3 font-medium text-heading">{row.category_name}</td>
-                      <td className="px-4 py-3 text-right font-semibold">${(row.revenue ?? 0).toLocaleString('es-AR')}</td>
+                      <td className="px-4 py-3 text-right font-semibold">{formatMoney(row.revenue ?? 0)}</td>
                       <td className="px-4 py-3 text-right text-hint text-xs">
                         {total > 0 ? `${(((row.revenue ?? 0) / total) * 100).toFixed(1)}%` : '—'}
                       </td>
