@@ -1,4 +1,4 @@
-import { useRef, useLayoutEffect, useState, useCallback } from 'react'
+import { useRef, useEffect, useState, useCallback } from 'react'
 
 export function usePillIndicator<T extends string>(activeKey: T) {
   const tabRefs = useRef<Map<string, HTMLButtonElement>>(new Map())
@@ -9,7 +9,7 @@ export function usePillIndicator<T extends string>(activeKey: T) {
     else tabRefs.current.delete(key)
   }, [])
 
-  useLayoutEffect(() => {
+  useEffect(() => {
     const el = tabRefs.current.get(activeKey)
     if (!el) return
     const parent = el.parentElement

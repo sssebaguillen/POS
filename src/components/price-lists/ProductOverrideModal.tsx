@@ -5,7 +5,8 @@ import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { X } from 'lucide-react'
-import { Dialog, DialogContent } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
+import { VisuallyHidden } from '@radix-ui/react-visually-hidden'
 import type { PriceListOverride } from '@/lib/types'
 import type { PriceListProduct } from '@/components/price-lists/types'
 import { normalizePriceListOverride } from '@/lib/mappers'
@@ -194,6 +195,7 @@ export default function ProductOverrideModal({
   return (
     <Dialog open={open} onOpenChange={nextOpen => !nextOpen && handleClose()}>
       <DialogContent className="sm:max-w-[560px] p-0 gap-0 overflow-hidden bg-card" showCloseButton={false}>
+        <VisuallyHidden><DialogTitle>Precio por producto</DialogTitle></VisuallyHidden>
         <div className="flex items-center justify-between px-5 py-4 border-b border-edge shrink-0">
           <h2 className="text-base font-semibold text-heading">Precio por producto</h2>
           <button

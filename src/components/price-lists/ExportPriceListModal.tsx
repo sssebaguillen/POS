@@ -239,6 +239,11 @@ export default function ExportPriceListModal({
   }, [priceListName])
 
   function handleClose() {
+    setScope('all')
+    setSearch('')
+    setSelectedBrandKeys([])
+    setSelectedCategoryKeys([])
+    setSelectedProductIds([])
     onClose()
   }
 

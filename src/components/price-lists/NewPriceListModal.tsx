@@ -5,7 +5,8 @@ import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { X } from 'lucide-react'
-import { Dialog, DialogContent } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
+import { VisuallyHidden } from '@radix-ui/react-visually-hidden'
 import type { PriceList } from '@/lib/types'
 
 interface NewPriceListModalProps {
@@ -145,6 +146,7 @@ export default function NewPriceListModal({
   return (
     <Dialog open={open} onOpenChange={nextOpen => !nextOpen && handleClose()}>
       <DialogContent className="sm:max-w-[560px] p-0 gap-0 overflow-hidden bg-card" showCloseButton={false}>
+        <VisuallyHidden><DialogTitle>Nueva lista de precios</DialogTitle></VisuallyHidden>
         <div className="flex items-center justify-between px-5 py-4 border-b border-edge">
           <h2 className="text-base font-semibold text-heading">Nueva lista de precios</h2>
           <button

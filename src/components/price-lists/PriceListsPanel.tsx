@@ -24,6 +24,7 @@ import type { PriceListExportItem } from '@/components/price-lists/ExportPriceLi
 import { calculateProductPrice } from '@/lib/price-lists'
 import { trackFeatureUsed } from '@/lib/analytics'
 import { useFormatMoney } from '@/lib/context/CurrencyContext'
+import { usePillIndicator } from '@/hooks/usePillIndicator'
 
 interface PriceListsPanelProps {
   businessId: string
@@ -67,6 +68,7 @@ export default function PriceListsPanel({
   const [lists, setLists] = useState<PriceList[]>(initialLists)
   const [overrides, setOverrides] = useState<PriceListOverride[]>(initialOverrides)
   const [activeListId, setActiveListId] = useState<string | null>(initialLists[0]?.id ?? null)
+  const { setRef: setListRef, indicator: listIndicator } = usePillIndicator(activeListId ?? '')
   const [showNewListModal, setShowNewListModal] = useState(false)
   const [editingListId, setEditingListId] = useState<string | null>(null)
   const [overrideProductId, setOverrideProductId] = useState<string | null>(null)
@@ -349,6 +351,15 @@ export default function PriceListsPanel({
           </div>
         ) : (
           <div className="pill-tabs overflow-x-auto flex-nowrap pb-1">
+            {listIndicator && (
+              <span
+                className="pill-tab-indicator"
+                style={{
+                  transform: `translateX(${listIndicator.left}px)`,
+                  width: listIndicator.width,
+                }}
+              />
+            )}
             {lists.map(list => {
               const isActive = activeListId === list.id
 
@@ -356,6 +367,7 @@ export default function PriceListsPanel({
                 <button
                   key={list.id}
                   type="button"
+                  ref={setListRef(list.id)}
                   onClick={() => setActiveListId(list.id)}
                   className={`pill-tab whitespace-nowrap${isActive ? ' pill-tab-active' : ''}`}
                 >
