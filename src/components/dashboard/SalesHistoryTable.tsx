@@ -16,6 +16,7 @@ import type { PaymentMethod } from '@/lib/constants/domain'
 import { isPaymentMethod, normalizePayment, PAYMENT_OPTIONS } from '@/lib/payments'
 import { useToast } from '@/hooks/useToast'
 import Toast from '@/components/shared/Toast'
+import SelectDropdown from '@/components/ui/SelectDropdown'
 
 interface SaleItem {
   id: string
@@ -76,9 +77,13 @@ function SalesHistoryTable({ rows, businessId, businessName, onSaleDeleted }: Pr
   const [loadingDetailId, setLoadingDetailId] = useState<string | null>(null)
   const [editingSale, setEditingSale] = useState<SaleDetail | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [confirmingDeleteId, setConfirmingDeleteId] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
+  const [filterMethod, setFilterMethod] = useState<PaymentMethod | null>(null)
+  const [filterStatus, setFilterStatus] = useState<string | null>(null)
+  const [filterOperatorName, setFilterOperatorName] = useState('')
   const [receiptPreview, setReceiptPreview] = useState<ReceiptData | null>(null)
-  const [receiptError, setReceiptError] = useState('')
+  const [localError, setLocalError] = useState<string | null>(null)
   const supabase = useMemo(() => createClient(), [])
   const { toast, showToast, dismissToast } = useToast()
 
@@ -87,27 +92,49 @@ function SalesHistoryTable({ rows, businessId, businessName, onSaleDeleted }: Pr
 
   const filteredRows = useMemo(() => {
     return visibleRows.filter(row => {
+      // text search (full-capability, unchanged)
       const q = searchQuery.trim().toLowerCase()
-      if (!q) return true
-      const normalizedMethod = normalizePayment(row.method).toLowerCase()
-      const matchesBasic =
-        row.id.toLowerCase().includes(q) ||
-        row.method.toLowerCase().includes(q) ||
-        normalizedMethod.includes(q) ||
-        row.total.toString().includes(q)
-      // Search in denormalized product names — no fetch needed
-      const matchesProducts = row.product_names.some(name => name.toLowerCase().includes(q))
-      // Search in denormalized operator name — no fetch needed
-      const matchesOperator = row.operator_name ? row.operator_name.toLowerCase().includes(q) : false
-      // Still support searching in detail items if already loaded
-      const detail = saleDetails[row.id]
-      const matchesDetail = detail
-        ? detail.items.some(i => i.product_name.toLowerCase().includes(q)) ||
-          (detail.operator_name?.toLowerCase().includes(q) ?? false)
-        : false
-      return matchesBasic || matchesProducts || matchesOperator || matchesDetail
+      if (q) {
+        const normalizedMethod = normalizePayment(row.method).toLowerCase()
+        const matchesBasic =
+          row.id.toLowerCase().includes(q) ||
+          row.method.toLowerCase().includes(q) ||
+          normalizedMethod.includes(q) ||
+          row.total.toString().includes(q)
+        const matchesProducts = row.product_names.some(name => name.toLowerCase().includes(q))
+        const matchesOperator = row.operator_name ? row.operator_name.toLowerCase().includes(q) : false
+        const detail = saleDetails[row.id]
+        const matchesDetail = detail
+          ? detail.items.some(i => i.product_name.toLowerCase().includes(q)) ||
+            (detail.operator_name?.toLowerCase().includes(q) ?? false)
+          : false
+        if (!matchesBasic && !matchesProducts && !matchesOperator && !matchesDetail) return false
+      }
+      // chip filters — AND with text search and each other
+      if (filterMethod !== null && row.method !== filterMethod) return false
+      if (filterStatus !== null && row.status !== filterStatus) return false
+      if (filterOperatorName !== '') {
+        if (filterOperatorName === '__owner__') {
+          if (row.operator_name !== null) return false
+        } else {
+          if (row.operator_name !== filterOperatorName) return false
+        }
+      }
+      return true
     })
-  }, [visibleRows, searchQuery, saleDetails])
+  }, [visibleRows, searchQuery, filterMethod, filterStatus, filterOperatorName, saleDetails])
+
+  const operatorOptions = useMemo(() => {
+    const names = [...new Set(visibleRows.map(r => r.operator_name).filter(Boolean))] as string[]
+    const hasOwnerSales = visibleRows.some(r => r.operator_name === null)
+    return [
+      { value: '', label: 'Todos' },
+      ...(hasOwnerSales ? [{ value: '__owner__', label: 'Dueño' }] : []),
+      ...names.map(name => ({ value: name, label: name })),
+    ]
+  }, [visibleRows])
+
+  const hasActiveFilters = !!searchQuery || filterMethod !== null || filterStatus !== null || filterOperatorName !== ''
 
   const summaryTotal = useMemo(
     () => filteredRows.reduce((acc, r) => acc + r.total, 0),
@@ -136,7 +163,7 @@ function SalesHistoryTable({ rows, businessId, businessName, onSaleDeleted }: Pr
     const data = detailResult as SaleDetailRpcResult | null
     if (error || !data?.success) {
       setLoadingDetailId(null)
-      setReceiptError(error?.message ?? 'No se pudo cargar el detalle de la venta.')
+      setLocalError(error?.message ?? 'No se pudo cargar el detalle de la venta.')
       return null
     }
     const row = rows.find(s => s.id === saleId)
@@ -175,7 +202,7 @@ function SalesHistoryTable({ rows, businessId, businessName, onSaleDeleted }: Pr
   }
 
   async function handleOpenReceiptPreview(saleId: string) {
-    setReceiptError('')
+    setLocalError(null)
     const detail = await loadSaleDetail(saleId)
     if (!detail) return
 
@@ -195,7 +222,7 @@ function SalesHistoryTable({ rows, businessId, businessName, onSaleDeleted }: Pr
       }))
     } catch (receiptBuildError) {
       console.error(receiptBuildError)
-      setReceiptError(
+      setLocalError(
         receiptBuildError instanceof Error
           ? receiptBuildError.message
           : 'No se pudo preparar el ticket de la venta.'
@@ -284,6 +311,20 @@ function SalesHistoryTable({ rows, businessId, businessName, onSaleDeleted }: Pr
   })
 
   const mutationError = deleteMutation.error?.message ?? updateMutation.error?.message ?? null
+  const displayError = localError ?? mutationError
+
+  function dismissError() {
+    setLocalError(null)
+    deleteMutation.reset()
+    updateMutation.reset()
+  }
+
+  function clearAllFilters() {
+    setSearchQuery('')
+    setFilterMethod(null)
+    setFilterStatus(null)
+    setFilterOperatorName('')
+  }
 
   function handleDeleteSale(saleId: string) {
     if (!businessId) return
@@ -312,42 +353,89 @@ function SalesHistoryTable({ rows, businessId, businessName, onSaleDeleted }: Pr
       {/* Filters + summary */}
       <div className="p-4 border-b border-edge-soft space-y-3">
         <p className="font-semibold text-heading font-display">Historial detallado</p>
-        <div className="flex flex-wrap gap-2">
+
+        {/* Row 1: search + method chips + clear */}
+        <div className="flex flex-wrap items-center gap-2">
           <Input
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
-            placeholder="Buscar por id, método, producto..."
-            className="h-9 flex-1 min-w-[160px] rounded-lg text-sm"
+            placeholder="Buscar por producto, operador..."
+            className="h-9 w-[260px] shrink-0 rounded-lg text-sm"
           />
-          {searchQuery && (
-            <Button
-              variant="outline"
-              size="sm"
-              className="rounded-lg text-xs h-9"
-              onClick={() => setSearchQuery('')}
-            >
-              Limpiar
-            </Button>
-          )}
-        </div>
-        <div className="flex flex-wrap gap-4 text-xs text-subtle">
-          <span>Total de ventas: <strong className="text-body">{filteredRows.length}</strong></span>
-          <span>Total recaudado: <strong className="text-body">{fmt(summaryTotal)}</strong></span>
-          {mostUsedMethod && (
-            <span>Método más usado: <strong className="text-body">{normalizePayment(mostUsedMethod)}</strong></span>
-          )}
-        </div>
-        {receiptError && (
-          <p className="text-xs text-red-500">{receiptError}</p>
-        )}
-        {mutationError && (
-          <div className="flex items-center justify-between bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-lg px-3 py-2">
-            <p className="text-xs text-red-600 dark:text-red-400">{mutationError}</p>
+          <div className="flex flex-wrap gap-1.5 flex-1">
+            {PAYMENT_OPTIONS.map(opt => (
+              <button
+                key={opt.value}
+                onClick={() => setFilterMethod(prev => prev === opt.value ? null : opt.value)}
+                className={`pill-tab ${filterMethod === opt.value ? 'bg-primary/10 text-primary border border-primary/20 dark:bg-primary/15 dark:border-primary/30' : ''}`}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+          {hasActiveFilters && (
             <button
-              className="text-xs text-red-500 hover:text-red-700 underline ml-2"
-              onClick={() => { deleteMutation.reset(); updateMutation.reset() }}
+              onClick={clearAllFilters}
+              className="pill-tab text-hint hover:text-body shrink-0"
             >
-              Cerrar
+              Limpiar todo
+            </button>
+          )}
+        </div>
+
+        {/* Row 2: status chips + operator dropdown */}
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            onClick={() => setFilterStatus(prev => prev === 'cancelled' ? null : 'cancelled')}
+            className={`pill-tab ${filterStatus === 'cancelled' ? 'bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-500/15 dark:text-amber-300 dark:border-amber-500/30' : ''}`}
+          >
+            Canceladas
+          </button>
+          <button
+            onClick={() => setFilterStatus(prev => prev === 'refunded' ? null : 'refunded')}
+            className={`pill-tab ${filterStatus === 'refunded' ? 'bg-red-50 text-red-600 border border-red-200 dark:bg-red-500/15 dark:text-red-400 dark:border-red-500/30' : ''}`}
+          >
+            Reembolsadas
+          </button>
+          {operatorOptions.length >= 3 && (
+            <SelectDropdown
+              value={filterOperatorName}
+              onChange={setFilterOperatorName}
+              options={operatorOptions}
+              className="w-[160px]"
+              usePortal
+            />
+          )}
+        </div>
+        <div className="flex flex-wrap items-stretch gap-x-5 gap-y-2 px-4 py-2.5 bg-muted/50 rounded-xl">
+          <div className="flex flex-col gap-0.5">
+            <span className="text-label text-hint">Ventas</span>
+            <span className="text-base font-semibold text-heading tabular-nums leading-tight">{filteredRows.length}</span>
+          </div>
+          <div className="w-px bg-border self-stretch hidden sm:block" />
+          <div className="flex flex-col gap-0.5">
+            <span className="text-label text-hint">Recaudado</span>
+            <span className="text-base font-semibold text-heading tabular-nums leading-tight">{fmt(summaryTotal)}</span>
+          </div>
+          {mostUsedMethod && (
+            <>
+              <div className="w-px bg-border self-stretch hidden sm:block" />
+              <div className="flex flex-col gap-0.5">
+                <span className="text-label text-hint">Método</span>
+                <span className="text-base font-semibold text-heading leading-tight">{normalizePayment(mostUsedMethod)}</span>
+              </div>
+            </>
+          )}
+        </div>
+        {displayError && (
+          <div className="flex items-center justify-between bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-lg px-3 py-2">
+            <p className="text-xs text-red-600 dark:text-red-400">{displayError}</p>
+            <button
+              className="p-0.5 rounded text-red-400 hover:text-red-600 dark:text-red-500 dark:hover:text-red-300 transition-colors ml-2 shrink-0"
+              onClick={dismissError}
+              aria-label="Cerrar"
+            >
+              <X className="w-3.5 h-3.5" />
             </button>
           </div>
         )}
@@ -355,7 +443,16 @@ function SalesHistoryTable({ rows, businessId, businessName, onSaleDeleted }: Pr
 
       {/* Sale list */}
       {filteredRows.length === 0 ? (
-        <div className="p-8 text-center text-sm text-hint">No hay ventas para mostrar</div>
+        <div className="p-8 text-center text-sm text-hint">
+          {hasActiveFilters ? (
+            <>
+              No hay ventas con los filtros activos.{' '}
+              <button className="underline hover:text-body transition-colors" onClick={clearAllFilters}>
+                Limpiar filtros
+              </button>
+            </>
+          ) : 'No hay ventas para mostrar'}
+        </div>
       ) : (
         <ul className="p-3 space-y-1.5">
           {filteredRows.map((sale, index) => {
@@ -364,6 +461,8 @@ function SalesHistoryTable({ rows, businessId, businessName, onSaleDeleted }: Pr
             const isLoadingDetail = loadingDetailId === sale.id
             const isDeleting = deletingId === sale.id
             const saleNumber = filteredRows.length - index
+
+            const totalQty = detail ? detail.items.reduce((sum, i) => sum + i.quantity, 0) : 0
 
             return (
               <li
@@ -377,6 +476,8 @@ function SalesHistoryTable({ rows, businessId, businessName, onSaleDeleted }: Pr
                 <button
                   className="w-full px-3.5 py-2.5 text-left"
                   onClick={() => fetchSaleDetail(sale.id)}
+                  aria-expanded={isExpanded}
+                  aria-label={`${isExpanded ? 'Contraer' : 'Ver'} detalle, Venta #${saleNumber}, ${fmt(sale.total)}`}
                 >
                   <div className="flex items-center justify-between gap-2">
                     <div className="flex items-center gap-1.5 min-w-0">
@@ -390,9 +491,9 @@ function SalesHistoryTable({ rows, businessId, businessName, onSaleDeleted }: Pr
                         {fmt(sale.total)}
                       </span>
                       {isLoadingDetail ? (
-                        <span className="w-3 h-3 border-2 border-hint border-t-transparent rounded-full animate-spin" />
+                        <span className="w-3 h-3 border-2 border-hint border-t-transparent rounded-full animate-spin" role="status" aria-label="Cargando" />
                       ) : (
-                        <span className={`text-[10px] text-hint transition-transform duration-150 inline-block ${isExpanded ? '-rotate-180' : ''}`}>
+                        <span className={`text-[10px] text-hint transition-transform duration-150 inline-block ${isExpanded ? '-rotate-180' : ''}`} aria-hidden="true">
                           ▾
                         </span>
                       )}
@@ -400,11 +501,7 @@ function SalesHistoryTable({ rows, businessId, businessName, onSaleDeleted }: Pr
                   </div>
 
                   <div className="flex items-center gap-1.5 mt-1 flex-wrap">
-                    <span className={`inline-flex items-center text-[11px] px-2 py-0.5 rounded-full border font-medium ${
-                      isExpanded
-                        ? 'bg-primary/10 border-primary/20 text-body dark:bg-primary/20 dark:border-primary/30'
-                        : 'bg-surface-alt border-edge text-body'
-                    }`}>
+                    <span className="inline-flex items-center text-[11px] px-2 py-0.5 rounded-full border font-medium bg-surface-alt border-edge text-body">
                       {normalizePayment(sale.method)}
                     </span>
                     {sale.status === 'cancelled' && (
@@ -420,11 +517,11 @@ function SalesHistoryTable({ rows, businessId, businessName, onSaleDeleted }: Pr
                     {detail && (
                       <>
                         <span className="text-[11px] text-hint">
-                          {detail.items.reduce((sum, i) => sum + i.quantity, 0)} item{detail.items.reduce((sum, i) => sum + i.quantity, 0) !== 1 ? 's' : ''}
+                          {totalQty} item{totalQty !== 1 ? 's' : ''}
                         </span>
                         {detail.items.slice(0, 4).map(item =>
                           item.product_icon ? (
-                            <span key={item.product_id} className="text-xs leading-none">{item.product_icon}</span>
+                            <span key={item.product_id} className="text-xs leading-none" aria-hidden="true">{item.product_icon}</span>
                           ) : null
                         )}
                       </>
@@ -439,7 +536,7 @@ function SalesHistoryTable({ rows, businessId, businessName, onSaleDeleted }: Pr
                         <li key={item.id} className="flex items-center justify-between text-sm">
                           <span className="flex items-center gap-1.5 text-body min-w-0">
                             {item.product_icon && (
-                              <span className="text-sm leading-none shrink-0">{item.product_icon}</span>
+                              <span className="text-sm leading-none shrink-0" aria-hidden="true">{item.product_icon}</span>
                             )}
                             <span className="truncate text-xs">{item.product_name}</span>
                             <span className="text-hint shrink-0 text-xs">×{item.quantity}</span>
@@ -462,30 +559,52 @@ function SalesHistoryTable({ rows, businessId, businessName, onSaleDeleted }: Pr
                       <p className="text-[11px] text-hint mb-2.5">Por: {detail.operator_name}</p>
                     )}
 
-                            <div className="flex items-center justify-between gap-2 mt-2.5">
-                              <div className="flex gap-1.5">
-                                <button
-                                  onClick={() => setEditingSale(detail)}
-                                  className="text-[11px] px-2.5 py-1 rounded-lg border border-edge text-body bg-surface hover:bg-hover-bg transition-colors"
-                                >
-                                  Editar
-                                </button>
-                                <button
-                                  onClick={() => handleDeleteSale(sale.id)}
-                                  disabled={isDeleting}
-                                  className="text-[11px] px-2.5 py-1 rounded-lg border border-red-200 text-red-500 bg-surface hover:bg-red-50 dark:border-red-500/30 dark:text-red-400 dark:bg-transparent dark:hover:bg-red-500/10 transition-colors disabled:opacity-50"
-                                >
-                                  {isDeleting ? '…' : 'Eliminar'}
-                                </button>
-                              </div>
-                              <button
-                                onClick={() => handleOpenReceiptPreview(sale.id)}
-                                className="text-[11px] px-2.5 py-1 rounded-lg border border-edge text-body bg-surface hover:bg-hover-bg transition-colors inline-flex items-center gap-1.5"
-                              >
-                                <Printer size={12} />
-                                Imprimir
-                              </button>
-                            </div>
+                    <div className="flex items-center justify-between gap-2 mt-3">
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          onClick={() => setEditingSale(detail)}
+                          className="h-8 px-3 text-xs rounded-lg border border-edge text-body bg-surface hover:bg-hover-bg transition-colors"
+                        >
+                          Editar
+                        </button>
+                        {confirmingDeleteId === sale.id ? (
+                          <>
+                            <span className="text-xs text-red-500 dark:text-red-400 font-medium">¿Eliminar?</span>
+                            <button
+                              onClick={() => { setConfirmingDeleteId(null); handleDeleteSale(sale.id) }}
+                              disabled={isDeleting}
+                              className="h-9 px-3 text-xs rounded-lg border border-red-300 text-red-600 bg-red-50 dark:border-red-500/40 dark:text-red-400 dark:bg-red-500/10 hover:bg-red-100 dark:hover:bg-red-500/20 transition-colors disabled:opacity-50"
+                            >
+                              Sí
+                            </button>
+                            <button
+                              onClick={() => setConfirmingDeleteId(null)}
+                              disabled={isDeleting}
+                              className="h-8 px-3 text-xs rounded-lg border border-edge text-body bg-surface hover:bg-hover-bg transition-colors disabled:opacity-50"
+                            >
+                              No
+                            </button>
+                          </>
+                        ) : (
+                          <button
+                            onClick={() => setConfirmingDeleteId(sale.id)}
+                            disabled={isDeleting}
+                            aria-busy={isDeleting || undefined}
+                            aria-label={isDeleting ? 'Eliminando venta…' : undefined}
+                            className="h-8 px-3 text-xs rounded-lg border border-red-200 text-red-500 bg-surface hover:bg-red-50 dark:border-red-500/30 dark:text-red-400 dark:bg-transparent dark:hover:bg-red-500/10 transition-colors disabled:opacity-50"
+                          >
+                            {isDeleting ? '…' : 'Eliminar'}
+                          </button>
+                        )}
+                      </div>
+                      <button
+                        onClick={() => handleOpenReceiptPreview(sale.id)}
+                        className="h-8 px-3 text-xs rounded-lg border border-edge text-body bg-surface hover:bg-hover-bg transition-colors inline-flex items-center gap-1.5"
+                      >
+                        <Printer size={11} />
+                        Imprimir
+                      </button>
+                    </div>
                   </div>
                 )}
               </li>
@@ -578,17 +697,17 @@ function EditSalePanel({
               <p className="text-sm font-medium text-heading truncate">{item.product_name}</p>
               <p className="text-xs text-hint">{fmt(item.unit_price)} c/u</p>
             </div>
-            <div className="flex items-center gap-1.5 shrink-0">
+            <div className="flex items-center gap-1 shrink-0">
               <button
                 onClick={() => updateQty(item.product_id, item.quantity - 1)}
-                className="w-6 h-6 rounded-md hover:bg-hover-bg flex items-center justify-center transition-colors text-xs"
+                className="w-8 h-8 rounded-lg border border-edge hover:bg-hover-bg flex items-center justify-center transition-colors text-sm text-body"
               >
                 −
               </button>
-              <span className="text-sm font-semibold w-6 text-center tabular-nums">{item.quantity}</span>
+              <span className="text-sm font-semibold w-8 text-center tabular-nums">{item.quantity}</span>
               <button
                 onClick={() => updateQty(item.product_id, item.quantity + 1)}
-                className="w-6 h-6 rounded-md hover:bg-hover-bg flex items-center justify-center transition-colors text-xs"
+                className="w-8 h-8 rounded-lg border border-edge hover:bg-hover-bg flex items-center justify-center transition-colors text-sm text-body"
               >
                 +
               </button>
@@ -598,7 +717,7 @@ function EditSalePanel({
             </p>
             <button
               onClick={() => removeItem(item.product_id)}
-              className="text-faint hover:text-red-400 transition-colors shrink-0"
+              className="w-8 h-8 flex items-center justify-center rounded-lg text-faint hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors shrink-0"
             >
               <Trash2 size={14} />
             </button>
@@ -614,7 +733,7 @@ function EditSalePanel({
               <button
                 key={opt.value}
                 onClick={() => setPaymentMethod(opt.value)}
-                className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${
+                className={`h-8 px-3 text-xs rounded-full border transition-colors ${
                   paymentMethod === opt.value
                     ? 'bg-primary text-primary-foreground border-primary'
                     : 'border-edge text-body hover:bg-hover-bg'
@@ -633,13 +752,13 @@ function EditSalePanel({
               <button
                 key={opt.value}
                 onClick={() => setSaleStatus(opt.value)}
-                className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${
+                className={`h-8 px-3 text-xs rounded-full border transition-colors ${
                   saleStatus === opt.value
                     ? opt.value === 'completed'
                       ? 'bg-primary text-primary-foreground border-primary'
                       : opt.value === 'cancelled'
-                        ? 'bg-amber-500 text-white border-amber-500'
-                        : 'bg-red-500 text-white border-red-500'
+                        ? 'bg-amber-100 border-amber-300 text-amber-800 dark:bg-amber-500/20 dark:border-amber-500/40 dark:text-amber-300'
+                        : 'bg-red-100 border-red-300 text-red-700 dark:bg-red-500/20 dark:border-red-500/40 dark:text-red-400'
                     : 'border-edge text-body hover:bg-hover-bg'
                 }`}
               >
