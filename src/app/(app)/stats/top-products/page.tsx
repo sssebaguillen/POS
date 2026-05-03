@@ -41,7 +41,6 @@ export default async function TopProductsDetailPage({
     <TopProductsDetailView
       rows={rows?.data ?? []}
       total={rows?.total ?? 0}
-      businessId={businessId}
       period={period}
       from={params.from}
       to={params.to}

@@ -27,7 +27,6 @@ function roleLabel(role: UserRole): string {
 
 interface Props {
   rows: OperatorSalesRow[]
-  businessId: string | null
   period: string
   from?: string
   to?: string

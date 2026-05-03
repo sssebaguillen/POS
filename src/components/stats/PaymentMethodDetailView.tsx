@@ -19,7 +19,6 @@ export interface PaymentMethodRow {
 
 interface Props {
   rows: PaymentMethodRow[]
-  businessId: string | null
   period: string
   from?: string
   to?: string

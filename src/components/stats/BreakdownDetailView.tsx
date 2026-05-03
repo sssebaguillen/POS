@@ -7,6 +7,7 @@ import { periodNeedsCustomDates, type DateRangePeriod } from '@/lib/date-utils'
 import ExportCSVButton from '@/components/shared/ExportCSVButton'
 import PageHeader from '@/components/shared/PageHeader'
 import { useFormatMoney } from '@/lib/context/CurrencyContext'
+import { usePillIndicator } from '@/hooks/usePillIndicator'
 
 export interface CategorySalesRow {
   category_id: string | null
@@ -17,9 +18,17 @@ export interface CategorySalesRow {
   distinct_products: number
 }
 
+export interface BrandRow {
+  brand_id: string
+  brand_name: string
+  transaction_count: number
+  units_sold: number
+  revenue: number
+  product_count: number
+}
+
 interface Props {
-  rows: CategorySalesRow[]
-  businessId: string | null
+  rows: CategorySalesRow[] | BrandRow[]
   period: string
   from?: string
   to?: string
@@ -30,6 +39,7 @@ export default function BreakdownDetailView({ rows, period, from, to, tab }: Pro
   const router = useRouter()
   const pathname = usePathname()
   const formatMoney = useFormatMoney()
+  const { setRef, indicator } = usePillIndicator(tab)
 
   function setTab(newTab: 'category' | 'brand') {
     const params = new URLSearchParams()
@@ -54,16 +64,24 @@ export default function BreakdownDetailView({ rows, period, from, to, tab }: Pro
   const sorted = useMemo(() => [...rows].sort((a, b) => (b.revenue ?? 0) - (a.revenue ?? 0)), [rows])
   const total = useMemo(() => sorted.reduce((acc, r) => acc + (r.revenue ?? 0), 0), [sorted])
 
-  const csvData = useMemo(() =>
-    sorted.map(r => ({
+  const csvData = useMemo(() => {
+    if (tab === 'brand') {
+      return (sorted as BrandRow[]).map(r => ({
+        Marca: r.brand_name,
+        Ingresos: r.revenue,
+        Unidades: r.units_sold,
+        Transacciones: r.transaction_count,
+        'Productos distintos': r.product_count,
+      }))
+    }
+    return (sorted as CategorySalesRow[]).map(r => ({
       Categoría: r.category_name,
       Ingresos: r.revenue,
       Unidades: r.units,
       Transacciones: r.transactions,
       'Productos distintos': r.distinct_products,
-    })),
-    [sorted]
-  )
+    }))
+  }, [sorted, tab])
 
   return (
     <div className="flex flex-col h-screen overflow-hidden">
@@ -81,13 +99,26 @@ export default function BreakdownDetailView({ rows, period, from, to, tab }: Pro
           />
 
           <div className="pill-tabs">
+            {indicator && (
+              <span
+                className="pill-tab-indicator"
+                style={{
+                  transform: `translateX(${indicator.left}px)`,
+                  width: indicator.width,
+                }}
+              />
+            )}
             <button
+              type="button"
+              ref={setRef('category')}
               onClick={() => setTab('category')}
               className={`pill-tab${tab === 'category' ? ' pill-tab-active' : ''}`}
             >
               Categoría
             </button>
             <button
+              type="button"
+              ref={setRef('brand')}
               onClick={() => setTab('brand')}
               className={`pill-tab${tab === 'brand' ? ' pill-tab-active' : ''}`}
             >
@@ -112,8 +143,20 @@ export default function BreakdownDetailView({ rows, period, from, to, tab }: Pro
                   <tr>
                     <td colSpan={6} className="text-center text-hint py-12 text-sm">Sin datos para el período</td>
                   </tr>
-                ) : (
-                  sorted.map(row => (
+                ) : tab === 'brand'
+                  ? (sorted as BrandRow[]).map(row => (
+                    <tr key={row.brand_id} className="border-b border-edge/40 hover:bg-hover-bg transition-colors">
+                      <td className="px-4 py-3 font-medium text-heading">{row.brand_name}</td>
+                      <td className="px-4 py-3 text-right font-semibold">{formatMoney(row.revenue ?? 0)}</td>
+                      <td className="px-4 py-3 text-right text-hint text-xs">
+                        {total > 0 ? `${(((row.revenue ?? 0) / total) * 100).toFixed(1)}%` : '—'}
+                      </td>
+                      <td className="px-4 py-3 text-right hidden md:table-cell">{row.units_sold}</td>
+                      <td className="px-4 py-3 text-right hidden md:table-cell">{row.transaction_count}</td>
+                      <td className="px-4 py-3 text-right hidden lg:table-cell">{row.product_count}</td>
+                    </tr>
+                  ))
+                  : (sorted as CategorySalesRow[]).map(row => (
                     <tr key={row.category_id ?? row.category_name} className="border-b border-edge/40 hover:bg-hover-bg transition-colors">
                       <td className="px-4 py-3 font-medium text-heading">{row.category_name}</td>
                       <td className="px-4 py-3 text-right font-semibold">{formatMoney(row.revenue ?? 0)}</td>
@@ -125,7 +168,7 @@ export default function BreakdownDetailView({ rows, period, from, to, tab }: Pro
                       <td className="px-4 py-3 text-right hidden lg:table-cell">{row.distinct_products}</td>
                     </tr>
                   ))
-                )}
+                }
               </tbody>
             </table>
           </div>

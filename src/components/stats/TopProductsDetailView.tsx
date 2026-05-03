@@ -36,7 +36,6 @@ function SortButton({ col, onSort }: { col: SortKey; onSort: (col: SortKey) => v
 interface Props {
   rows: TopProductRow[]
   total: number
-  businessId: string | null
   period: string
   from?: string
   to?: string
@@ -47,7 +46,7 @@ export default function TopProductsDetailView({ rows, total, period, from, to, p
   const router = useRouter()
   const pathname = usePathname()
   const formatMoney = useFormatMoney()
-  const [sortKey, setSortKey] = useState<SortKey>('revenue' as SortKey)
+  const [sortKey, setSortKey] = useState<SortKey>('revenue')
   const [sortAsc, setSortAsc] = useState(false)
 
   function handleSort(key: SortKey) {

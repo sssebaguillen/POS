@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import OperatorSalesDetailView from '@/components/stats/OperatorSalesDetailView'
 import type { OperatorSalesRow } from '@/components/stats/OperatorSalesDetailView'
 import { requireAuthenticatedBusinessId } from '@/lib/business'
+import { resolveDateRange } from '@/lib/date-utils'
 
 interface SearchParams {
   period?: string
@@ -19,13 +20,12 @@ export default async function OperatorsDetailPage({
   const businessId = await requireAuthenticatedBusinessId(supabase)
 
   const period = params.period ?? 'mes'
-  const from = params.from
-  const to = params.to
+  const { from, to } = resolveDateRange(period, params.from, params.to)
 
   const { data: rpcResult } = await supabase.rpc('get_sales_by_operator_detail', {
     p_business_id: businessId,
-    p_from: from ?? null,
-    p_to: to ?? null,
+    p_from: from,
+    p_to: to,
   })
 
   const rows = (rpcResult as unknown as { data: OperatorSalesRow[] } | null)?.data ?? []
@@ -33,10 +33,9 @@ export default async function OperatorsDetailPage({
   return (
     <OperatorSalesDetailView
       rows={rows}
-      businessId={businessId}
       period={period}
-      from={from}
-      to={to}
+      from={params.from}
+      to={params.to}
     />
   )
 }

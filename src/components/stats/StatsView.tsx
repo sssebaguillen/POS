@@ -184,16 +184,16 @@ export default function StatsView({ kpis, evolution, breakdown, topProducts, per
             <div className="surface-card p-6 space-y-3">
               <div className="flex items-center justify-between">
                 <p className="font-semibold text-heading font-display">Evolución</p>
-                <div className="flex gap-1.5">
+                <div className="pill-tabs">
                   <button
                     onClick={() => setEvolutionMode('revenue')}
-                    className={`h-7 px-3 rounded-full text-xs font-medium transition-colors ${evolutionMode === 'revenue' ? 'bg-primary text-primary-foreground' : 'bg-surface-alt text-body hover:bg-hover-bg'}`}
+                    className={`pill-tab${evolutionMode === 'revenue' ? ' pill-tab-active' : ''}`}
                   >
                     $ Ingresos
                   </button>
                   <button
                     onClick={() => setEvolutionMode('units')}
-                    className={`h-7 px-3 rounded-full text-xs font-medium transition-colors ${evolutionMode === 'units' ? 'bg-primary text-primary-foreground' : 'bg-surface-alt text-body hover:bg-hover-bg'}`}
+                    className={`pill-tab${evolutionMode === 'units' ? ' pill-tab-active' : ''}`}
                   >
                     Unidades
                   </button>
@@ -229,7 +229,7 @@ export default function StatsView({ kpis, evolution, breakdown, topProducts, per
                         tick={{ fontSize: 10, fill: '#6b7280' }}
                         tickFormatter={v =>
                           evolutionMode === 'revenue'
-                            ? v >= 1000 ? `$${(v / 1000).toFixed(0)}k` : `$${v}`
+                            ? v >= 1000 ? formatMoney(v / 1000) + 'k' : formatMoney(v)
                             : String(v)
                         }
                         width={52}
@@ -310,21 +310,21 @@ export default function StatsView({ kpis, evolution, breakdown, topProducts, per
             <div className="surface-card p-6 space-y-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <p className="font-semibold text-heading dont-display">Ranking de productos</p>
+                  <p className="font-semibold text-heading font-display">Ranking de productos</p>
                   <Link href="/stats/top-products" className="text-xs text-primary font-medium hover:underline">
                     Ver más →
                   </Link>
                 </div>
-                <div className="flex gap-1.5">
+                <div className="pill-tabs">
                   <button
                     onClick={() => setRankingMode('amount')}
-                    className={`h-7 px-3 rounded-full text-xs font-medium transition-colors ${rankingMode === 'amount' ? 'bg-primary text-primary-foreground' : 'bg-surface-alt text-body hover:bg-hover-bg'}`}
+                    className={`pill-tab${rankingMode === 'amount' ? ' pill-tab-active' : ''}`}
                   >
                     $ Monto
                   </button>
                   <button
                     onClick={() => setRankingMode('units')}
-                    className={`h-7 px-3 rounded-full text-xs font-medium transition-colors ${rankingMode === 'units' ? 'bg-primary text-primary-foreground' : 'bg-surface-alt text-body hover:bg-hover-bg'}`}
+                    className={`pill-tab${rankingMode === 'units' ? ' pill-tab-active' : ''}`}
                   >
                     Unidades
                   </button>
@@ -354,16 +354,16 @@ export default function StatsView({ kpis, evolution, breakdown, topProducts, per
                     Ver más →
                   </Link>
                 </div>
-                <div className="flex gap-1.5">
+                <div className="pill-tabs">
                   <button
                     onClick={() => setBreakdownMode('category')}
-                    className={`h-7 px-3 rounded-full text-xs font-medium transition-colors ${breakdownMode === 'category' ? 'bg-primary text-primary-foreground' : 'bg-surface-alt text-body hover:bg-hover-bg'}`}
+                    className={`pill-tab${breakdownMode === 'category' ? ' pill-tab-active' : ''}`}
                   >
                     Categoría
                   </button>
                   <button
                     onClick={() => setBreakdownMode('brand')}
-                    className={`h-7 px-3 rounded-full text-xs font-medium transition-colors ${breakdownMode === 'brand' ? 'bg-primary text-primary-foreground' : 'bg-surface-alt text-body hover:bg-hover-bg'}`}
+                    className={`pill-tab${breakdownMode === 'brand' ? ' pill-tab-active' : ''}`}
                   >
                     Marca
                   </button>
@@ -398,7 +398,7 @@ export default function StatsView({ kpis, evolution, breakdown, topProducts, per
                   <XAxis dataKey="day" tick={{ fontSize: 12, fill: '#6b7280' }} />
                   <YAxis
                     tick={{ fontSize: 10, fill: '#6b7280' }}
-                    tickFormatter={v => v >= 1000 ? `$${(v / 1000).toFixed(0)}k` : `$${v}`}
+                    tickFormatter={v => v >= 1000 ? formatMoney(v / 1000) + 'k' : formatMoney(v)}
                     width={50}
                   />
                   <Tooltip

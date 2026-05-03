@@ -1,7 +1,8 @@
 import { createClient } from '@/lib/supabase/server'
 import BreakdownDetailView from '@/components/stats/BreakdownDetailView'
-import type { CategorySalesRow } from '@/components/stats/BreakdownDetailView'
+import type { CategorySalesRow, BrandRow } from '@/components/stats/BreakdownDetailView'
 import { requireAuthenticatedBusinessId } from '@/lib/business'
+import { resolveDateRange } from '@/lib/date-utils'
 
 interface SearchParams {
   period?: string
@@ -20,27 +21,36 @@ export default async function BreakdownDetailPage({
   const businessId = await requireAuthenticatedBusinessId(supabase)
 
   const period = params.period ?? 'mes'
-  const from = params.from
-  const to = params.to
   const tab = params.tab === 'brand' ? 'brand' : 'category'
+  const { from, to } = resolveDateRange(period, params.from, params.to)
 
-  const { data: result } = await supabase.rpc('get_sales_by_category_detail', {
-    p_business_id: businessId,
-    p_from: from ?? null,
-    p_to: to ?? null,
-    p_limit: 100,
-    p_offset: 0,
-  })
-
-  const rows = (result as unknown as { data: CategorySalesRow[]; total: number } | null)
+  let rows: CategorySalesRow[] | BrandRow[]
+  if (tab === 'brand') {
+    const { data: result } = await supabase.rpc('get_sales_by_brand_detail', {
+      p_business_id: businessId,
+      p_from: from,
+      p_to: to,
+      p_limit: 100,
+      p_offset: 0,
+    })
+    rows = (result as unknown as { data: BrandRow[] } | null)?.data ?? []
+  } else {
+    const { data: result } = await supabase.rpc('get_sales_by_category_detail', {
+      p_business_id: businessId,
+      p_from: from,
+      p_to: to,
+      p_limit: 100,
+      p_offset: 0,
+    })
+    rows = (result as unknown as { data: CategorySalesRow[] } | null)?.data ?? []
+  }
 
   return (
     <BreakdownDetailView
-      rows={rows?.data ?? []}
-      businessId={businessId}
+      rows={rows}
       period={period}
-      from={from}
-      to={to}
+      from={params.from}
+      to={params.to}
       tab={tab}
     />
   )
