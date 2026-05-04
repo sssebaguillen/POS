@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -89,28 +89,52 @@ export default function OperatorMeView({
   const [newPin, setNewPin] = useState('')
   const [confirmPin, setConfirmPin] = useState('')
   const [savingPin, setSavingPin] = useState(false)
+  const [currentPinError, setCurrentPinError] = useState('')
+  const [newPinError, setNewPinError] = useState('')
+  const [confirmPinError, setConfirmPinError] = useState('')
+  const currentPinRef = useRef<HTMLInputElement>(null)
+  const newPinRef = useRef<HTMLInputElement>(null)
+  const confirmPinRef = useRef<HTMLInputElement>(null)
   const { toast, showToast, dismissToast } = useToast()
 
   async function handleChangePin(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
 
+    setCurrentPinError('')
+    setNewPinError('')
+    setConfirmPinError('')
+
+    let hasError = false
+
     if (!currentPin) {
-      showToast({ message: 'Ingresá tu PIN actual.' })
-      return
+      setCurrentPinError('Ingresá tu PIN actual.')
+      hasError = true
     }
 
-    if (!newPin || !confirmPin) {
-      showToast({ message: 'Completa el nuevo PIN y su confirmación.' })
-      return
+    if (!newPin) {
+      setNewPinError('Ingresá el nuevo PIN.')
+      hasError = true
+    } else if (!/^\d{4}$|^\d{6}$/.test(newPin)) {
+      setNewPinError('Debe tener exactamente 4 o 6 dígitos.')
+      hasError = true
     }
 
-    if (newPin !== confirmPin) {
-      showToast({ message: 'El nuevo PIN y la confirmación no coinciden.' })
-      return
+    if (!confirmPin) {
+      setConfirmPinError('Repetí el nuevo PIN.')
+      hasError = true
+    } else if (newPin && confirmPin !== newPin) {
+      setConfirmPinError('Los PINs no coinciden.')
+      hasError = true
     }
 
-    if (!/^\d{4}$|^\d{6}$/.test(newPin)) {
-      showToast({ message: 'El nuevo PIN debe contener exactamente 4 o 6 dígitos.' })
+    if (hasError) {
+      if (!currentPin) {
+        currentPinRef.current?.focus()
+      } else if (!newPin || !/^\d{4}$|^\d{6}$/.test(newPin)) {
+        newPinRef.current?.focus()
+      } else {
+        confirmPinRef.current?.focus()
+      }
       return
     }
 
@@ -124,7 +148,8 @@ export default function OperatorMeView({
 
     if (verifyError || verifyResult?.success !== true) {
       setSavingPin(false)
-      showToast({ message: verifyResult?.error ?? verifyError?.message ?? 'El PIN actual no es válido.' })
+      setCurrentPinError('PIN incorrecto.')
+      currentPinRef.current?.focus()
       return
     }
 
@@ -138,7 +163,7 @@ export default function OperatorMeView({
     setSavingPin(false)
 
     if (updateError) {
-      showToast({ message: updateError.message })
+      showToast({ message: 'No se pudo actualizar el PIN. Intentá de nuevo.' })
       return
     }
 
@@ -148,82 +173,36 @@ export default function OperatorMeView({
     showToast({ message: 'PIN actualizado correctamente.' })
   }
 
+  const initials = operatorName.charAt(0).toUpperCase()
+  const avgTicket = totalSales > 0 ? totalRevenue / totalSales : null
+
   return (
     <div className="flex h-full flex-col overflow-hidden">
       <div className="flex-1 overflow-y-auto p-6">
         <div className="mx-auto flex max-w-6xl flex-col gap-6">
-          <section className="surface-card p-6">
-            <p className="text-[10px] font-medium tracking-widest text-muted-foreground uppercase">Operario activo</p>
-            <h1 className="mt-2 text-3xl font-semibold text-foreground font-display">{operatorName}</h1>
-            <div className="mt-3 flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
-              <span>{roleLabel(operatorRole)}</span>
-              <span className="text-border">•</span>
-              <span>Miembro desde {memberSinceLabel}</span>
-            </div>
-          </section>
 
-          {canChangePin && (
-            <section className="surface-card p-6">
-              <div className="mb-5">
-                <h2 className="text-base font-semibold text-foreground">Cambiar PIN</h2>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  Verificá tu PIN actual antes de definir uno nuevo.
-                </p>
+          {/* Compact identity bar */}
+          <div className="surface-card px-5 py-4">
+            <div className="flex items-center gap-3">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary text-sm font-semibold font-display select-none" aria-hidden>
+                {initials}
               </div>
-
-              <form onSubmit={handleChangePin} className="grid gap-4 md:grid-cols-3">
-                <div className="space-y-1.5">
-                  <label className="text-xs uppercase tracking-wide text-muted-foreground">PIN actual</label>
-                  <Input
-                    type="password"
-                    inputMode="numeric"
-                    autoComplete="off"
-                    maxLength={6}
-                    value={currentPin}
-                    onChange={event => setCurrentPin(normalizePin(event.target.value))}
-                    placeholder="4 o 6 dígitos"
-                  />
+              <div className="min-w-0">
+                <p className="truncate text-base font-semibold text-foreground font-display leading-tight" title={operatorName}>{operatorName}</p>
+                <div className="mt-0.5 flex items-center gap-2 text-xs text-muted-foreground">
+                  <span>{roleLabel(operatorRole)}</span>
+                  <span className="text-muted-foreground/40" aria-hidden>•</span>
+                  <span>Miembro desde {memberSinceLabel}</span>
                 </div>
+              </div>
+            </div>
+          </div>
 
-                <div className="space-y-1.5">
-                  <label className="text-xs uppercase tracking-wide text-muted-foreground">PIN nuevo</label>
-                  <Input
-                    type="password"
-                    inputMode="numeric"
-                    autoComplete="off"
-                    maxLength={6}
-                    value={newPin}
-                    onChange={event => setNewPin(normalizePin(event.target.value))}
-                    placeholder="4 o 6 dígitos"
-                  />
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="text-xs uppercase tracking-wide text-muted-foreground">Confirmar PIN nuevo</label>
-                  <Input
-                    type="password"
-                    inputMode="numeric"
-                    autoComplete="off"
-                    maxLength={6}
-                    value={confirmPin}
-                    onChange={event => setConfirmPin(normalizePin(event.target.value))}
-                    placeholder="Repetí el PIN"
-                  />
-                </div>
-
-                <div className="md:col-span-3 flex justify-end">
-                  <Button type="submit" disabled={savingPin}>
-                    {savingPin ? 'Guardando...' : 'Actualizar PIN'}
-                  </Button>
-                </div>
-              </form>
-            </section>
-          )}
-
-          <section className="space-y-4">
+          {/* Stats — primary content */}
+          <section aria-labelledby="section-stats" className="space-y-4">
             <div className="flex flex-col gap-3">
               <div>
-                <h2 className="text-base font-semibold text-foreground font-display">Estadísticas personales</h2>
+                <h2 id="section-stats" className="text-base font-semibold text-foreground font-display">Estadísticas personales</h2>
                 <p className="mt-1 text-sm text-muted-foreground">
                   Revisá tus ventas, productos más vendidos e historial reciente.
                 </p>
@@ -231,26 +210,39 @@ export default function OperatorMeView({
               <DateRangeFilter value={period} from={from} to={to} useUrlParams />
             </div>
 
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="surface-card p-5">
-                <p className="text-xs uppercase tracking-wide text-muted-foreground">Ventas realizadas</p>
-                <p className="mt-3 text-3xl font-semibold text-foreground font-display tracking-tight">{totalSales.toLocaleString('es-AR')}</p>
-              </div>
-              <div className="surface-card p-5">
-                <p className="text-xs uppercase tracking-wide text-muted-foreground">Monto total</p>
-                <p className="mt-3 text-3xl font-semibold text-foreground font-display tracking-tight">{formatMoney(totalRevenue)}</p>
+            {/* KPI strip — stacked on mobile, side-by-side from sm */}
+            <div className="surface-card p-5">
+              <div className="grid grid-cols-1 divide-y divide-border sm:grid-cols-2 sm:divide-x sm:divide-y-0">
+                <div className="pb-4 sm:pb-0 sm:pr-5">
+                  <p className="text-xs uppercase tracking-wide text-muted-foreground">Ventas realizadas</p>
+                  <p className="mt-2 text-3xl font-semibold text-foreground font-display tracking-tight">
+                    {totalSales.toLocaleString('es-AR')}
+                  </p>
+                </div>
+                <div className="pt-4 sm:pt-0 sm:pl-5">
+                  <p className="text-xs uppercase tracking-wide text-muted-foreground">Monto total</p>
+                  <p className="mt-2 text-3xl font-semibold text-foreground font-display tracking-tight">
+                    {formatMoney(totalRevenue)}
+                  </p>
+                  {avgTicket !== null && (
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      ticket promedio {formatMoney(avgTicket)}
+                    </p>
+                  )}
+                </div>
               </div>
             </div>
 
-            <div className="grid gap-6 xl:grid-cols-[1.1fr,1.4fr]">
+            <div className="grid gap-6 lg:grid-cols-[1.1fr,1.4fr]">
               <section className="surface-card overflow-hidden">
                 <div className="border-b border-edge-soft px-5 py-4">
                   <h3 className="text-base font-semibold text-foreground font-display">Top productos</h3>
                 </div>
-                <div className="p-4">
+                <div className="overflow-x-auto p-4">
                   <Table>
                     <TableHeader>
                       <TableRow>
+                        <TableHead className="w-8">#</TableHead>
                         <TableHead>Producto</TableHead>
                         <TableHead className="text-right">Unidades</TableHead>
                         <TableHead className="text-right">Total</TableHead>
@@ -259,14 +251,17 @@ export default function OperatorMeView({
                     <TableBody>
                       {topProducts.length === 0 ? (
                         <TableRow>
-                          <TableCell colSpan={3} className="py-8 text-center text-sm text-muted-foreground">
+                          <TableCell colSpan={4} className="py-8 text-center text-sm text-muted-foreground">
                             No hay productos para mostrar en este período.
                           </TableCell>
                         </TableRow>
                       ) : (
-                        topProducts.map(product => (
-                          <TableRow key={product.product_name}>
-                            <TableCell className="max-w-[220px] truncate font-medium text-foreground">
+                        topProducts.map((product, index) => (
+                          <TableRow key={`${product.product_name}-${index}`}>
+                            <TableCell className="text-xs font-medium text-muted-foreground tabular-nums">
+                              {index + 1}
+                            </TableCell>
+                            <TableCell className="max-w-[200px] truncate font-medium text-foreground" title={product.product_name}>
                               {product.product_name}
                             </TableCell>
                             <TableCell className="text-right">{product.total_quantity.toLocaleString('es-AR')}</TableCell>
@@ -285,7 +280,7 @@ export default function OperatorMeView({
                 <div className="border-b border-edge-soft px-5 py-4">
                   <h3 className="text-base font-semibold text-foreground font-display">Historial de ventas</h3>
                 </div>
-                <div className="p-4">
+                <div className="overflow-x-auto p-4">
                   <Table>
                     <TableHeader>
                       <TableRow>
@@ -302,20 +297,23 @@ export default function OperatorMeView({
                           </TableCell>
                         </TableRow>
                       ) : (
-                        saleHistory.map(sale => (
-                          <TableRow key={sale.id}>
-                            <TableCell className="min-w-[180px]">
-                              <div className="flex flex-col">
-                                <span className="font-medium text-foreground">{formatDateTime(sale.created_at)}</span>
-                                <span className="text-xs text-muted-foreground">{statusLabel(sale.status)}</span>
-                              </div>
-                            </TableCell>
-                            <TableCell className="text-right">{sale.items_count.toLocaleString('es-AR')}</TableCell>
-                            <TableCell className="text-right font-medium text-foreground">
-                              {formatMoney(sale.total)}
-                            </TableCell>
-                          </TableRow>
-                        ))
+                        saleHistory.map(sale => {
+                          const isVoid = sale.status === 'cancelled' || sale.status === 'refunded'
+                          return (
+                            <TableRow key={sale.id} className={isVoid ? 'opacity-50' : undefined}>
+                              <TableCell className="min-w-[180px]">
+                                <div className="flex flex-col">
+                                  <span className="font-medium text-foreground">{formatDateTime(sale.created_at)}</span>
+                                  <span className="text-xs text-muted-foreground">{statusLabel(sale.status)}</span>
+                                </div>
+                              </TableCell>
+                              <TableCell className="text-right">{sale.items_count.toLocaleString('es-AR')}</TableCell>
+                              <TableCell className={`text-right font-medium ${isVoid ? 'line-through text-muted-foreground' : 'text-foreground'}`}>
+                                {formatMoney(sale.total)}
+                              </TableCell>
+                            </TableRow>
+                          )
+                        })
                       )}
                     </TableBody>
                   </Table>
@@ -323,6 +321,106 @@ export default function OperatorMeView({
               </section>
             </div>
           </section>
+
+          {/* PIN — secondary, below stats */}
+          {canChangePin && (
+            <section aria-labelledby="section-pin" className="surface-card p-6">
+              <div className="mb-5">
+                <h2 id="section-pin" className="text-base font-semibold text-foreground font-display">Cambiar PIN</h2>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Verificá tu PIN actual antes de definir uno nuevo.
+                </p>
+              </div>
+
+              <form onSubmit={handleChangePin} className="grid gap-4 md:grid-cols-3">
+                <div className="space-y-1.5">
+                  <label htmlFor="pin-current" className="text-xs uppercase tracking-wide text-muted-foreground">PIN actual</label>
+                  <Input
+                    ref={currentPinRef}
+                    id="pin-current"
+                    type="password"
+                    inputMode="numeric"
+                    autoComplete="off"
+                    maxLength={6}
+                    value={currentPin}
+                    aria-invalid={!!currentPinError || undefined}
+                    aria-describedby={currentPinError ? 'pin-current-error' : undefined}
+                    onChange={event => {
+                      setCurrentPin(normalizePin(event.target.value))
+                      if (currentPinError) setCurrentPinError('')
+                    }}
+                    placeholder="4 o 6 dígitos"
+                  />
+                  {currentPinError && (
+                    <p id="pin-current-error" role="alert" aria-live="polite" className="text-xs text-destructive">{currentPinError}</p>
+                  )}
+                </div>
+
+                <div className="space-y-1.5">
+                  <label htmlFor="pin-new" className="text-xs uppercase tracking-wide text-muted-foreground">PIN nuevo</label>
+                  <Input
+                    ref={newPinRef}
+                    id="pin-new"
+                    type="password"
+                    inputMode="numeric"
+                    autoComplete="off"
+                    maxLength={6}
+                    value={newPin}
+                    aria-invalid={!!newPinError || undefined}
+                    aria-describedby={newPinError ? 'pin-new-error' : undefined}
+                    onChange={event => {
+                      setNewPin(normalizePin(event.target.value))
+                      if (newPinError) setNewPinError('')
+                    }}
+                    onBlur={() => {
+                      if (newPin && !/^\d{4}$|^\d{6}$/.test(newPin)) {
+                        setNewPinError('Debe tener exactamente 4 o 6 dígitos.')
+                      }
+                    }}
+                    placeholder="4 o 6 dígitos"
+                  />
+                  {newPinError && (
+                    <p id="pin-new-error" role="alert" aria-live="polite" className="text-xs text-destructive">{newPinError}</p>
+                  )}
+                </div>
+
+                <div className="space-y-1.5">
+                  <label htmlFor="pin-confirm" className="text-xs uppercase tracking-wide text-muted-foreground">Confirmar PIN nuevo</label>
+                  <Input
+                    ref={confirmPinRef}
+                    id="pin-confirm"
+                    type="password"
+                    inputMode="numeric"
+                    autoComplete="off"
+                    maxLength={6}
+                    value={confirmPin}
+                    aria-invalid={!!confirmPinError || undefined}
+                    aria-describedby={confirmPinError ? 'pin-confirm-error' : undefined}
+                    onChange={event => {
+                      setConfirmPin(normalizePin(event.target.value))
+                      if (confirmPinError) setConfirmPinError('')
+                    }}
+                    onBlur={() => {
+                      if (confirmPin && newPin && confirmPin !== newPin) {
+                        setConfirmPinError('Los PINs no coinciden.')
+                      }
+                    }}
+                    placeholder="Repetí el PIN"
+                  />
+                  {confirmPinError && (
+                    <p id="pin-confirm-error" role="alert" aria-live="polite" className="text-xs text-destructive">{confirmPinError}</p>
+                  )}
+                </div>
+
+                <div className="md:col-span-3 flex justify-end">
+                  <Button type="submit" size="lg" disabled={savingPin} aria-busy={savingPin}>
+                    {savingPin ? 'Guardando...' : 'Actualizar PIN'}
+                  </Button>
+                </div>
+              </form>
+            </section>
+          )}
+
         </div>
       </div>
 

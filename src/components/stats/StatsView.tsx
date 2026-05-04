@@ -7,7 +7,7 @@ import Link from 'next/link'
 import PageHeader from '@/components/shared/PageHeader'
 import DateRangeFilter from '@/components/shared/DateRangeFilter'
 import { buildDateParams, periodNeedsCustomDates, type DateRangePeriod } from '@/lib/date-utils'
-import { PAYMENT_COLORS, isPaymentMethod, normalizePayment } from '@/lib/payments'
+import { isPaymentMethod, normalizePayment } from '@/lib/payments'
 import { useFormatMoney } from '@/lib/context/CurrencyContext'
 import { cn } from '@/lib/utils'
 import type {
@@ -21,6 +21,13 @@ type EvolutionMode = 'revenue' | 'units'
 type RankingMode = 'amount' | 'units'
 type BreakdownMode = 'category' | 'brand'
 type OperatorMode = 'amount' | 'transactions'
+
+const PAYMENT_BAR_COLORS = {
+  cash: 'bg-emerald-300 dark:bg-emerald-400/35',
+  card: 'bg-primary/35 dark:bg-primary/30',
+  transfer: 'bg-amber-300 dark:bg-amber-400/35',
+  mercadopago: 'bg-sky-300 dark:bg-sky-400/35',
+} as const
 
 function getWidgetToggleClass(isActive: boolean): string {
   return cn(
@@ -109,7 +116,7 @@ export default function StatsView({ kpis, evolution, breakdown, topProducts, ope
 
   const breakdownData = (() => {
     const rows = breakdownMode === 'category'
-      ? (breakdown?.by_category ?? []).map(r => ({ label: r.category_name || 'Sin categoria', value: r.revenue ?? 0 }))
+      ? (breakdown?.by_category ?? []).map(r => ({ label: r.category_name || 'Sin categoría', value: r.revenue ?? 0 }))
       : (breakdown?.by_brand ?? []).map(r => ({ label: r.brand_name || 'Sin marca', value: r.revenue ?? 0 }))
     const total = rows.reduce((acc, r) => acc + r.value, 0)
     return rows
@@ -244,7 +251,7 @@ export default function StatsView({ kpis, evolution, breakdown, topProducts, ope
                       data={evolutionData}
                       margin={{ top: 5, right: 10, left: 0, bottom: 5 }}
                     >
-                      <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.06)" />
+                      <CartesianGrid strokeDasharray="3 3" stroke="var(--color-edge)" />
                       <XAxis
                         dataKey="label"
                         tick={{ fontSize: 10, fill: 'var(--color-hint)' }}
@@ -316,12 +323,15 @@ export default function StatsView({ kpis, evolution, breakdown, topProducts, ope
               ) : (
                 paymentBreakdown.map(row => (
                   <div key={row.method} className="space-y-1.5">
-                    <div className="flex justify-between text-sm">
-                      <span className="text-body font-medium">{normalizePayment(row.method)}</span>
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="flex items-center gap-2 text-body font-medium">
+                        <span className={`h-2 w-2 rounded-full shrink-0 ${isPaymentMethod(row.method) ? PAYMENT_BAR_COLORS[row.method] : 'bg-hint'}`} />
+                        {normalizePayment(row.method)}
+                      </span>
                       <span className="text-subtle text-xs">{row.percent.toFixed(0)}%</span>
                     </div>
                     <div className="h-2 rounded-full bg-surface-alt">
-                      <div className={`h-2 rounded-full ${isPaymentMethod(row.method) ? PAYMENT_COLORS[row.method] : 'bg-hint'}`} style={{ width: `${row.percent}%` }} />
+                      <div className={`h-2 rounded-full ${isPaymentMethod(row.method) ? PAYMENT_BAR_COLORS[row.method] : 'bg-hint'}`} style={{ width: `${row.percent}%` }} />
                     </div>
                   </div>
                 ))
@@ -461,14 +471,14 @@ export default function StatsView({ kpis, evolution, breakdown, topProducts, ope
             </div>
 
             {/* Day of week distribution */}
-            <div className="surface-card px-5 pt-4 pb-3 space-y-2">
-            <p className="text-xs font-medium text-hint uppercase tracking-wide">Distribución por día</p>
+            <div className="surface-card p-6 space-y-4">
+            <p className="font-semibold text-heading font-display">Distribución por día</p>
             {dayOfWeekData.length === 0 || totalSales === 0 ? (
               <p className="text-sm text-hint h-24 flex items-center justify-center">Sin datos para el período</p>
             ) : (
               <ResponsiveContainer width="100%" height={130}>
                 <BarChart data={dayOfWeekData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.06)" vertical={false} />
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--color-edge)" vertical={false} />
                   <XAxis dataKey="day" tick={{ fontSize: 12, fill: 'var(--color-hint)' }} />
                   <YAxis
                     tick={{ fontSize: 10, fill: 'var(--color-hint)' }}

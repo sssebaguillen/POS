@@ -423,27 +423,27 @@ export default function DashboardView({
               {/* KPI Cards */}
               <div className="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-3 gap-4 animate-fade-in">
                 <KPICard
-                  icon={<DollarSign size={18} />}
-                  iconBg="bg-emerald-100 dark:bg-emerald-950/50"
-                  iconColor="text-emerald-700 dark:text-emerald-400"
+                  icon={<DollarSign size={16} />}
+                  iconBg="bg-muted"
+                  iconColor="text-body"
                   label="Total vendido"
                   value={fmt(totalSold)}
                   trend={trendLabel ? kpiTrends.total : undefined}
                   sparkline={chartData.map(point => point.value)}
                 />
                 <KPICard
-                  icon={<Receipt size={18} />}
-                  iconBg="bg-amber-100 dark:bg-amber-950/50"
-                  iconColor="text-amber-700 dark:text-amber-400"
+                  icon={<Receipt size={16} />}
+                  iconBg="bg-muted"
+                  iconColor="text-body"
                   label="Transacciones"
                   value={String(transactions)}
                   trend={trendLabel ? kpiTrends.transactions : undefined}
                   sparkline={transactionsChartData.map(point => point.transactions)}
                 />
                 <KPICard
-                  icon={<AlertTriangle size={18} />}
-                  iconBg="bg-red-100 dark:bg-red-950/50"
-                  iconColor="text-red-600 dark:text-red-400"
+                  icon={<AlertTriangle size={16} />}
+                  iconBg="bg-muted"
+                  iconColor="text-body"
                   label="Stock crítico"
                   value={String(lowStockProducts.length)}
                   subtitle={`${outOfStockCount} sin stock · ${lowStockCount} stock bajo`}
