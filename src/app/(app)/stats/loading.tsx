@@ -1,3 +1,5 @@
+// Shown only on the initial hard navigation to /stats.
+// Filter changes no longer trigger this — StatsView fetches via useQuery in the background.
 export default function StatsLoading() {
   return (
     <div className="flex flex-col h-full overflow-hidden">
