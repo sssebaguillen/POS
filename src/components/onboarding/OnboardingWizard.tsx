@@ -23,7 +23,7 @@ const FINAL_WIZARD_STEP = 5
 export interface OnboardingWizardProfile {
   id: string
   role: string
-  onboarding_state: unknown
+  onboarding_state: Record<string, unknown> | null
 }
 
 interface CategoryRow {
