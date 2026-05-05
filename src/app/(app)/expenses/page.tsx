@@ -68,7 +68,7 @@ export default async function ExpensesPage({
       period={period}
       from={from}
       to={to}
-      canUpdateStock={activeOperator?.permissions.stock_write ?? true}
+      canUpdateStock={activeOperator === null || activeOperator.permissions.stock_write === true}
     />
   )
 }

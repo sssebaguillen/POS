@@ -177,7 +177,7 @@ export default async function DashboardPage() {
       initialBusinessSettings={settingsRecord}
       initialCurrency={initialCurrency}
       operatorId={activeOperator?.profile_id ?? null}
-      stockWriteAllowed={activeOperator?.permissions.stock_write === true}
+      stockWriteAllowed={activeOperator === null || activeOperator.permissions.stock_write === true}
       wizardCategories={wizardCategories}
       wizardBrands={wizardBrands}
       wizardPriceLists={wizardPriceLists}
