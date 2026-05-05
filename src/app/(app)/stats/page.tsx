@@ -66,6 +66,7 @@ export default async function StatsPage({
 
   return (
     <StatsView
+      businessId={businessId}
       kpis={kpis}
       evolution={evolution}
       breakdown={breakdown}
