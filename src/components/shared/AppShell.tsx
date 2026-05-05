@@ -17,6 +17,7 @@ interface AppShellProps {
   activeOperatorName: string | null
   activeOperatorRole: UserRole | null
   businessName: string
+  businessSlug: string
   initialCollapsed?: boolean
   showOnboardingResume?: boolean
 }
@@ -38,6 +39,7 @@ export default function AppShell({
   activeOperatorName,
   activeOperatorRole,
   businessName,
+  businessSlug,
   initialCollapsed = false,
   showOnboardingResume = false,
 }: AppShellProps) {
@@ -73,6 +75,7 @@ export default function AppShell({
           activeOperatorName={activeOperatorName}
           activeOperatorRole={activeOperatorRole}
           businessName={businessName}
+          businessSlug={businessSlug}
           collapsed={collapsed}
           onToggleCollapse={toggleCollapse}
           showOnboardingResume={showOnboardingResume}

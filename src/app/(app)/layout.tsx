@@ -56,6 +56,7 @@ export default async function AppLayout({
 
   let primaryColor = '#7a3e10'
   let businessName = 'Negocio'
+  let businessSlug = ''
   let currencyCode = 'ARS'
   let onboardingProfileId: string | null = null
   let onboardingStateRaw: unknown = null
@@ -66,7 +67,7 @@ export default async function AppLayout({
     const [{ data: business }, { data: profile }] = await Promise.all([
       supabase
         .from('businesses')
-        .select('name, settings')
+        .select('name, slug, settings')
         .eq('id', businessId)
         .maybeSingle(),
       supabase
@@ -78,6 +79,10 @@ export default async function AppLayout({
 
     if (typeof business?.name === 'string' && business.name.trim().length > 0) {
       businessName = business.name
+    }
+
+    if (typeof business?.slug === 'string' && business.slug.length > 0) {
+      businessSlug = business.slug
     }
 
     const color = business?.settings?.primary_color
@@ -116,6 +121,7 @@ export default async function AppLayout({
         activeOperatorName={activeOperator?.name ?? null}
         activeOperatorRole={activeOperator?.role ?? null}
         businessName={businessName}
+        businessSlug={businessSlug}
         initialCollapsed={sidebarCollapsed}
         showOnboardingResume={(() => {
           if (!onboardingStateRaw) return false

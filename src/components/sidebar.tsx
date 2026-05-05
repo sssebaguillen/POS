@@ -2,7 +2,7 @@
 
 import { usePathname } from 'next/navigation'
 import Link from 'next/link'
-import { X, ShoppingCart, Package, ClipboardList, BarChart2, LineChart, Settings, Sun, Moon, LogOut, PanelLeftClose, PanelLeftOpen, Receipt, Building2, Sparkles } from 'lucide-react'
+import { X, ShoppingCart, Package, ClipboardList, BarChart2, LineChart, Settings, Sun, Moon, LogOut, PanelLeftClose, PanelLeftOpen, Receipt, Building2, Sparkles, Globe, ExternalLink } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useState, useEffect, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
@@ -67,6 +67,7 @@ interface Props {
   activeOperatorName: string | null
   activeOperatorRole: UserRole | null
   businessName: string
+  businessSlug: string
   collapsed: boolean
   onToggleCollapse: () => void
   showOnboardingResume?: boolean
@@ -78,6 +79,7 @@ export default function Sidebar({
   activeOperatorName,
   activeOperatorRole,
   businessName,
+  businessSlug,
   collapsed,
   onToggleCollapse,
   showOnboardingResume = false,
@@ -239,6 +241,28 @@ export default function Sidebar({
                     </Link>
                   )
                 })}
+                {section.label === 'Sistema' && businessSlug && (
+                  <a
+                    href={`/catalogo/${businessSlug}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    title={collapsed && !isMobileDrawer ? 'Catálogo online' : undefined}
+                    className={cn(
+                      'flex items-center rounded-xl text-sm font-medium transition-colors text-body hover:bg-hover-bg hover:text-heading',
+                      collapsed && !isMobileDrawer
+                        ? 'justify-center p-2.5'
+                        : 'gap-3 px-3 py-2.5'
+                    )}
+                  >
+                    <Globe size={18} />
+                    {(!collapsed || isMobileDrawer) && (
+                      <>
+                        <span className="flex-1">Catálogo online</span>
+                        <ExternalLink size={13} className="text-hint" />
+                      </>
+                    )}
+                  </a>
+                )}
               </div>
             </div>
           )
