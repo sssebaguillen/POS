@@ -1,6 +1,8 @@
 'use client'
 
 import { useMemo, useRef, useState } from 'react'
+import { usePathname } from 'next/navigation'
+import { useQuery } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -12,6 +14,27 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import type { UserRole } from '@/lib/operator'
 import { OPERATOR_ROLE_LABELS, PROFILE_ROLE_LABELS } from '@/lib/constants/domain'
 import { useFormatMoney } from '@/lib/context/CurrencyContext'
+import { resolveDateRange, buildDateParams, periodNeedsCustomDates } from '@/lib/date-utils'
+
+const BUSINESS_TIMEZONE_OFFSET = '-03:00'
+
+interface OperatorStatsRpcResult {
+  success: boolean
+  total_sales: number | null
+  total_revenue: number | null
+  top_products: Array<{
+    product_name: string
+    total_quantity: number | null
+    total_revenue: number | null
+  }> | null
+  sale_history: Array<{
+    id: string
+    total: number | null
+    created_at: string
+    status: string | null
+    items_count: number | null
+  }> | null
+}
 
 interface OperatorTopProduct {
   product_name: string
@@ -25,6 +48,13 @@ interface OperatorSaleHistoryRow {
   created_at: string
   status: string | null
   items_count: number
+}
+
+interface OperatorStatsQueryData {
+  totalSales: number
+  totalRevenue: number
+  topProducts: OperatorTopProduct[]
+  saleHistory: OperatorSaleHistoryRow[]
 }
 
 interface OperatorMeViewProps {
@@ -69,22 +99,24 @@ function statusLabel(status: string | null): string {
 }
 
 export default function OperatorMeView({
-  businessId,
+  businessId: _businessId,
   operatorId,
   operatorName,
   operatorRole,
   memberSinceLabel,
   canChangePin,
-  period,
-  from,
-  to,
-  totalSales,
-  totalRevenue,
-  topProducts,
-  saleHistory,
+  period: initialPeriod,
+  from: initialFrom,
+  to: initialTo,
+  totalSales: initialTotalSales,
+  totalRevenue: initialTotalRevenue,
+  topProducts: initialTopProducts,
+  saleHistory: initialSaleHistory,
 }: OperatorMeViewProps) {
   const formatMoney = useFormatMoney()
+  const pathname = usePathname()
   const supabase = useMemo(() => createClient(), [])
+
   const [currentPin, setCurrentPin] = useState('')
   const [newPin, setNewPin] = useState('')
   const [confirmPin, setConfirmPin] = useState('')
@@ -96,6 +128,92 @@ export default function OperatorMeView({
   const newPinRef = useRef<HTMLInputElement>(null)
   const confirmPinRef = useRef<HTMLInputElement>(null)
   const { toast, showToast, dismissToast } = useToast()
+
+  const [period, setPeriod] = useState<DateRangePeriod>(initialPeriod)
+  const [from, setFrom] = useState(initialFrom)
+  const [to, setTo] = useState(initialTo)
+  const [mountedAt] = useState(() => Date.now())
+
+  const isInitialPeriod = period === initialPeriod && from === initialFrom && to === initialTo
+
+  const { data, isFetching } = useQuery<OperatorStatsQueryData>({
+    queryKey: ['operator-stats', operatorId, period, from, to],
+    queryFn: async () => {
+      const resolvedRange = resolveDateRange(period, from, to)
+      const statsRange = {
+        from: resolvedRange.from ? `${resolvedRange.from}T00:00:00${BUSINESS_TIMEZONE_OFFSET}` : null,
+        to: resolvedRange.to ? `${resolvedRange.to}T23:59:59.999${BUSINESS_TIMEZONE_OFFSET}` : null,
+      }
+
+      let statsRaw: unknown
+      if (operatorRole === 'owner') {
+        const { data: raw, error } = await supabase.rpc('get_owner_stats', {
+          p_date_from: statsRange.from,
+          p_date_to: statsRange.to,
+        })
+        if (error) throw new Error(error.message)
+        statsRaw = raw
+      } else {
+        const { data: raw, error } = await supabase.rpc('get_operator_stats', {
+          p_operator_id: operatorId,
+          p_date_from: statsRange.from,
+          p_date_to: statsRange.to,
+        })
+        if (error) throw new Error(error.message)
+        statsRaw = raw
+      }
+
+      const stats = statsRaw as OperatorStatsRpcResult | null
+      if (!stats || stats.success !== true) throw new Error('No se pudieron cargar las estadísticas.')
+
+      return {
+        totalSales: Number(stats.total_sales ?? 0),
+        totalRevenue: Number(stats.total_revenue ?? 0),
+        topProducts: (stats.top_products ?? []).map(p => ({
+          product_name: p.product_name,
+          total_quantity: Number(p.total_quantity ?? 0),
+          total_revenue: Number(p.total_revenue ?? 0),
+        })),
+        saleHistory: (stats.sale_history ?? []).map(s => ({
+          id: s.id,
+          total: Number(s.total ?? 0),
+          created_at: s.created_at,
+          status: s.status,
+          items_count: Number(s.items_count ?? 0),
+        })),
+      }
+    },
+    initialData: isInitialPeriod
+      ? {
+          totalSales: initialTotalSales,
+          totalRevenue: initialTotalRevenue,
+          topProducts: initialTopProducts,
+          saleHistory: initialSaleHistory,
+        }
+      : undefined,
+    initialDataUpdatedAt: isInitialPeriod ? mountedAt : undefined,
+    staleTime: 30_000,
+  })
+
+  const totalSales = data?.totalSales ?? initialTotalSales
+  const totalRevenue = data?.totalRevenue ?? initialTotalRevenue
+  const topProducts = data?.topProducts ?? initialTopProducts
+  const saleHistory = data?.saleHistory ?? initialSaleHistory
+
+  function syncDateUrl(nextPeriod: DateRangePeriod, nextFrom?: string, nextTo?: string) {
+    if (typeof window === 'undefined') return
+    const query = buildDateParams(nextPeriod, nextFrom, nextTo)
+    window.history.replaceState(window.history.state, '', `${pathname}?${query}`)
+  }
+
+  function handlePeriodChange(nextPeriod: DateRangePeriod, nextFrom?: string, nextTo?: string) {
+    const resolvedFrom = periodNeedsCustomDates(nextPeriod) ? nextFrom : undefined
+    const resolvedTo = periodNeedsCustomDates(nextPeriod) ? nextTo : undefined
+    setPeriod(nextPeriod)
+    setFrom(resolvedFrom)
+    setTo(resolvedTo)
+    syncDateUrl(nextPeriod, resolvedFrom, resolvedTo)
+  }
 
   async function handleChangePin(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -141,7 +259,7 @@ export default function OperatorMeView({
     setSavingPin(true)
 
     const { data: verifyResult, error: verifyError } = await supabase.rpc('verify_operator_pin', {
-      p_business_id: businessId,
+      p_business_id: _businessId,
       p_operator_id: operatorId,
       p_pin: currentPin,
     })
@@ -207,118 +325,123 @@ export default function OperatorMeView({
                   Revisá tus ventas, productos más vendidos e historial reciente.
                 </p>
               </div>
-              <DateRangeFilter value={period} from={from} to={to} useUrlParams />
-            </div>
-
-            {/* KPI strip — stacked on mobile, side-by-side from sm */}
-            <div className="surface-card p-5">
-              <div className="grid grid-cols-1 divide-y divide-border sm:grid-cols-2 sm:divide-x sm:divide-y-0">
-                <div className="pb-4 sm:pb-0 sm:pr-5">
-                  <p className="text-xs uppercase tracking-wide text-muted-foreground">Ventas realizadas</p>
-                  <p className="mt-2 text-3xl font-semibold text-foreground font-display tracking-tight">
-                    {totalSales.toLocaleString('es-AR')}
-                  </p>
-                </div>
-                <div className="pt-4 sm:pt-0 sm:pl-5">
-                  <p className="text-xs uppercase tracking-wide text-muted-foreground">Monto total</p>
-                  <p className="mt-2 text-3xl font-semibold text-foreground font-display tracking-tight">
-                    {formatMoney(totalRevenue)}
-                  </p>
-                  {avgTicket !== null && (
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      ticket promedio {formatMoney(avgTicket)}
-                    </p>
-                  )}
-                </div>
+              <div className="flex items-center gap-4">
+                <DateRangeFilter value={period} from={from} to={to} onChange={handlePeriodChange} />
+                {isFetching && <span className="text-xs text-hint shrink-0">Actualizando...</span>}
               </div>
             </div>
 
-            <div className="grid gap-6 lg:grid-cols-[1.1fr,1.4fr]">
-              <section className="surface-card overflow-hidden">
-                <div className="border-b border-edge-soft px-5 py-4">
-                  <h3 className="text-base font-semibold text-foreground font-display">Top productos</h3>
+            <div className={`space-y-4 transition-opacity ${isFetching ? 'opacity-60' : ''}`}>
+              {/* KPI strip — stacked on mobile, side-by-side from sm */}
+              <div className="surface-card p-5">
+                <div className="grid grid-cols-1 divide-y divide-border sm:grid-cols-2 sm:divide-x sm:divide-y-0">
+                  <div className="pb-4 sm:pb-0 sm:pr-5">
+                    <p className="text-xs uppercase tracking-wide text-muted-foreground">Ventas realizadas</p>
+                    <p className="mt-2 text-3xl font-semibold text-foreground font-display tracking-tight">
+                      {totalSales.toLocaleString('es-AR')}
+                    </p>
+                  </div>
+                  <div className="pt-4 sm:pt-0 sm:pl-5">
+                    <p className="text-xs uppercase tracking-wide text-muted-foreground">Monto total</p>
+                    <p className="mt-2 text-3xl font-semibold text-foreground font-display tracking-tight">
+                      {formatMoney(totalRevenue)}
+                    </p>
+                    {avgTicket !== null && (
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        ticket promedio {formatMoney(avgTicket)}
+                      </p>
+                    )}
+                  </div>
                 </div>
-                <div className="overflow-x-auto p-4">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead className="w-8">#</TableHead>
-                        <TableHead>Producto</TableHead>
-                        <TableHead className="text-right">Unidades</TableHead>
-                        <TableHead className="text-right">Total</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {topProducts.length === 0 ? (
+              </div>
+
+              <div className="grid gap-6 lg:grid-cols-[1.1fr,1.4fr]">
+                <section className="surface-card overflow-hidden">
+                  <div className="border-b border-edge-soft px-5 py-4">
+                    <h3 className="text-base font-semibold text-foreground font-display">Top productos</h3>
+                  </div>
+                  <div className="overflow-x-auto p-4">
+                    <Table>
+                      <TableHeader>
                         <TableRow>
-                          <TableCell colSpan={4} className="py-8 text-center text-sm text-muted-foreground">
-                            No hay productos para mostrar en este período.
-                          </TableCell>
+                          <TableHead className="w-8">#</TableHead>
+                          <TableHead>Producto</TableHead>
+                          <TableHead className="text-right">Unidades</TableHead>
+                          <TableHead className="text-right">Total</TableHead>
                         </TableRow>
-                      ) : (
-                        topProducts.map((product, index) => (
-                          <TableRow key={`${product.product_name}-${index}`}>
-                            <TableCell className="text-xs font-medium text-muted-foreground tabular-nums">
-                              {index + 1}
-                            </TableCell>
-                            <TableCell className="max-w-[200px] truncate font-medium text-foreground" title={product.product_name}>
-                              {product.product_name}
-                            </TableCell>
-                            <TableCell className="text-right">{product.total_quantity.toLocaleString('es-AR')}</TableCell>
-                            <TableCell className="text-right font-medium text-foreground">
-                              {formatMoney(product.total_revenue)}
+                      </TableHeader>
+                      <TableBody>
+                        {topProducts.length === 0 ? (
+                          <TableRow>
+                            <TableCell colSpan={4} className="py-8 text-center text-sm text-muted-foreground">
+                              No hay productos para mostrar en este período.
                             </TableCell>
                           </TableRow>
-                        ))
-                      )}
-                    </TableBody>
-                  </Table>
-                </div>
-              </section>
-
-              <section className="surface-card overflow-hidden">
-                <div className="border-b border-edge-soft px-5 py-4">
-                  <h3 className="text-base font-semibold text-foreground font-display">Historial de ventas</h3>
-                </div>
-                <div className="overflow-x-auto p-4">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Fecha</TableHead>
-                        <TableHead className="text-right">Items</TableHead>
-                        <TableHead className="text-right">Total</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {saleHistory.length === 0 ? (
-                        <TableRow>
-                          <TableCell colSpan={3} className="py-8 text-center text-sm text-muted-foreground">
-                            No hay ventas registradas en este período.
-                          </TableCell>
-                        </TableRow>
-                      ) : (
-                        saleHistory.map(sale => {
-                          const isVoid = sale.status === 'cancelled' || sale.status === 'refunded'
-                          return (
-                            <TableRow key={sale.id} className={isVoid ? 'opacity-50' : undefined}>
-                              <TableCell className="min-w-[180px]">
-                                <div className="flex flex-col">
-                                  <span className="font-medium text-foreground">{formatDateTime(sale.created_at)}</span>
-                                  <span className="text-xs text-muted-foreground">{statusLabel(sale.status)}</span>
-                                </div>
+                        ) : (
+                          topProducts.map((product, index) => (
+                            <TableRow key={`${product.product_name}-${index}`}>
+                              <TableCell className="text-xs font-medium text-muted-foreground tabular-nums">
+                                {index + 1}
                               </TableCell>
-                              <TableCell className="text-right">{sale.items_count.toLocaleString('es-AR')}</TableCell>
-                              <TableCell className={`text-right font-medium ${isVoid ? 'line-through text-muted-foreground' : 'text-foreground'}`}>
-                                {formatMoney(sale.total)}
+                              <TableCell className="max-w-[200px] truncate font-medium text-foreground" title={product.product_name}>
+                                {product.product_name}
+                              </TableCell>
+                              <TableCell className="text-right">{product.total_quantity.toLocaleString('es-AR')}</TableCell>
+                              <TableCell className="text-right font-medium text-foreground">
+                                {formatMoney(product.total_revenue)}
                               </TableCell>
                             </TableRow>
-                          )
-                        })
-                      )}
-                    </TableBody>
-                  </Table>
-                </div>
-              </section>
+                          ))
+                        )}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </section>
+
+                <section className="surface-card overflow-hidden">
+                  <div className="border-b border-edge-soft px-5 py-4">
+                    <h3 className="text-base font-semibold text-foreground font-display">Historial de ventas</h3>
+                  </div>
+                  <div className="overflow-x-auto p-4">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Fecha</TableHead>
+                          <TableHead className="text-right">Items</TableHead>
+                          <TableHead className="text-right">Total</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {saleHistory.length === 0 ? (
+                          <TableRow>
+                            <TableCell colSpan={3} className="py-8 text-center text-sm text-muted-foreground">
+                              No hay ventas registradas en este período.
+                            </TableCell>
+                          </TableRow>
+                        ) : (
+                          saleHistory.map(sale => {
+                            const isVoid = sale.status === 'cancelled' || sale.status === 'refunded'
+                            return (
+                              <TableRow key={sale.id} className={isVoid ? 'opacity-50' : undefined}>
+                                <TableCell className="min-w-[180px]">
+                                  <div className="flex flex-col">
+                                    <span className="font-medium text-foreground">{formatDateTime(sale.created_at)}</span>
+                                    <span className="text-xs text-muted-foreground">{statusLabel(sale.status)}</span>
+                                  </div>
+                                </TableCell>
+                                <TableCell className="text-right">{sale.items_count.toLocaleString('es-AR')}</TableCell>
+                                <TableCell className={`text-right font-medium ${isVoid ? 'line-through text-muted-foreground' : 'text-foreground'}`}>
+                                  {formatMoney(sale.total)}
+                                </TableCell>
+                              </TableRow>
+                            )
+                          })
+                        )}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </section>
+              </div>
             </div>
           </section>
 
