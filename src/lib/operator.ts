@@ -1,5 +1,6 @@
 export type { UserRole } from '@/lib/types'
 import type { UserRole } from '@/lib/types'
+import { OPERATOR_ROLES } from '@/lib/constants/domain'
 
 export interface Permissions {
   sales: boolean
@@ -143,7 +144,7 @@ export function toOperatorManagementPermissions(
 }
 
 export function isUserRole(value: unknown): value is UserRole {
-  return value === 'owner' || value === 'manager' || value === 'cashier' || value === 'custom'
+  return value === 'owner' || (OPERATOR_ROLES as readonly string[]).includes(value as string)
 }
 
 export function parseActiveOperator(value: unknown): ActiveOperator | null {

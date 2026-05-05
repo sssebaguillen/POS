@@ -1,5 +1,3 @@
-// Shared date-range utilities — single source of truth for period → date-range resolution.
-
 export type DateRangePeriod = 'hoy' | 'semana' | 'mes' | 'trimestre' | 'año' | 'personalizado'
 
 export interface DateRange {
