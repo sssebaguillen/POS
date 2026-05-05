@@ -1,4 +1,5 @@
 import type { OperatorSalesStatsRow, PriceList, PriceListOverride, UserRole } from '@/lib/types'
+import { isUserRole } from '@/lib/operator'
 
 type RelationValue<T> = T | T[] | null | undefined
 
@@ -57,10 +58,6 @@ interface OperatorSalesStatsRowInput {
   revenue?: unknown
   avg_ticket?: unknown
   units_sold?: unknown
-}
-
-function isUserRole(value: unknown): value is UserRole {
-  return value === 'owner' || value === 'manager' || value === 'cashier' || value === 'custom'
 }
 
 function normalizeOperatorRole(input: OperatorSalesStatsRowInput, operatorId: string | null): UserRole {
