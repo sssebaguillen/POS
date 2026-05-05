@@ -11,6 +11,9 @@ export interface Business {
   plan: Plan
   settings: Record<string, unknown>
   created_at: string
+  whatsapp: string | null
+  logo_url: string | null
+  description: string | null
 }
 
 export interface Profile {
@@ -20,6 +23,8 @@ export interface Profile {
   name: string
   pin: string | null
   created_at: string
+  avatar_url: string | null
+  onboarding_state: Record<string, unknown> | null
 }
 
 export interface Category {
