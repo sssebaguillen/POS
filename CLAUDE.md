@@ -762,8 +762,8 @@ All SECURITY DEFINER, all with `set search_path = public, extensions`.
 | `create_operator(p_business_id, p_name, p_role, p_pin, p_permissions?)` | Returns `{success, operator_id?, error?}` |
 | `update_operator(p_operator_id, p_business_id, p_name, p_role, p_permissions)` | Returns `{success, error?}` |
 | `verify_operator_pin(p_business_id, p_operator_id, p_pin)` | Returns `{success, profile_id?, name?, role?, permissions?, error?}` |
-| `get_operator_stats(p_business_id, p_operator_id, p_date_from?, p_date_to?)` | Sales stats for a sub-operator |
-| `get_owner_stats(p_business_id, p_date_from?, p_date_to?)` | Sales stats for owner |
+| `get_operator_stats(p_operator_id, p_date_from?, p_date_to?)` | Sales stats for a sub-operator — derives business_id from auth.uid() |
+| `get_owner_stats(p_date_from?, p_date_to?)` | Sales stats for owner — derives business_id from auth.uid() |
 | `swap_default_price_list(p_price_list_id, p_business_id)` | Atomic default swap |
 | `update_business_slug(p_slug)` | Validates format + uniqueness; throws in Spanish on failure; GRANT EXECUTE TO authenticated |
 | `create_category_guarded(p_operator_id, p_business_id, p_name, p_icon)` | Verifies `stock_write` |
