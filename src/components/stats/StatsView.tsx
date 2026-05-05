@@ -1,15 +1,18 @@
 'use client'
 
-import { useState, memo } from 'react'
-import { useRouter, usePathname } from 'next/navigation'
+import { useMemo, useState, memo } from 'react'
+import { usePathname } from 'next/navigation'
+import { useQuery } from '@tanstack/react-query'
 import { TrendingDown, TrendingUp, DollarSign, ShoppingBag, Receipt, Hash } from 'lucide-react'
 import Link from 'next/link'
 import PageHeader from '@/components/shared/PageHeader'
 import DateRangeFilter from '@/components/shared/DateRangeFilter'
-import { buildDateParams, periodNeedsCustomDates, type DateRangePeriod } from '@/lib/date-utils'
+import { buildDateParams, periodNeedsCustomDates, resolveDateRange, type DateRangePeriod } from '@/lib/date-utils'
 import { isPaymentMethod, normalizePayment } from '@/lib/payments'
 import { useFormatMoney } from '@/lib/context/CurrencyContext'
 import { cn } from '@/lib/utils'
+import { createClient } from '@/lib/supabase/client'
+import { normalizeOperatorSalesStatsRows } from '@/lib/mappers'
 import type {
   OperatorSalesStatsRow, StatsKpis, StatsEvolution, StatsBreakdown,
 } from '@/lib/types'
@@ -43,7 +46,16 @@ export interface TopProductRow {
   revenue: number
 }
 
+interface StatsQueryData {
+  kpis: StatsKpis | null
+  evolution: StatsEvolution | null
+  breakdown: StatsBreakdown | null
+  topProducts: TopProductRow[]
+  operators: OperatorSalesStatsRow[]
+}
+
 interface Props {
+  businessId: string
   kpis: StatsKpis | null
   evolution: StatsEvolution | null
   breakdown: StatsBreakdown | null
@@ -72,14 +84,110 @@ const DeltaBadge = memo(function DeltaBadge({ current, previous }: { current: nu
   )
 })
 
-export default function StatsView({ kpis, evolution, breakdown, topProducts, operators, period: initialPeriod, from: initialFrom, to: initialTo }: Props) {
-  const router = useRouter()
+export default function StatsView({
+  businessId,
+  kpis: initialKpis,
+  evolution: initialEvolution,
+  breakdown: initialBreakdown,
+  topProducts: initialTopProducts,
+  operators: initialOperators,
+  period: initialPeriod,
+  from: initialFrom,
+  to: initialTo,
+}: Props) {
   const pathname = usePathname()
   const formatMoney = useFormatMoney()
+  const supabase = useMemo(() => createClient(), [])
+
   const [evolutionMode, setEvolutionMode] = useState<EvolutionMode>('revenue')
   const [rankingMode, setRankingMode] = useState<RankingMode>('amount')
   const [breakdownMode, setBreakdownMode] = useState<BreakdownMode>('category')
   const [operatorMode, setOperatorMode] = useState<OperatorMode>('amount')
+
+  const [period, setPeriod] = useState<DateRangePeriod>(initialPeriod as DateRangePeriod)
+  const [from, setFrom] = useState(initialFrom)
+  const [to, setTo] = useState(initialTo)
+  const [mountedAt] = useState(() => Date.now())
+
+  const isInitialPeriod = period === initialPeriod && from === initialFrom && to === initialTo
+
+  const { data, isFetching } = useQuery<StatsQueryData>({
+    queryKey: ['stats', businessId, period, from, to],
+    queryFn: async () => {
+      const resolvedRange = resolveDateRange(period, from, to)
+      const [kpisResult, evolutionResult, breakdownResult, topProductsResult, operatorsResult] = await Promise.all([
+        supabase.rpc('get_stats_kpis', {
+          p_business_id: businessId,
+          p_from: resolvedRange.from,
+          p_to: resolvedRange.to,
+        }),
+        supabase.rpc('get_stats_evolution', {
+          p_business_id: businessId,
+          p_from: resolvedRange.from,
+          p_to: resolvedRange.to,
+        }),
+        supabase.rpc('get_stats_breakdown', {
+          p_business_id: businessId,
+          p_from: resolvedRange.from,
+          p_to: resolvedRange.to,
+        }),
+        supabase.rpc('get_top_products_detail', {
+          p_business_id: businessId,
+          p_from: resolvedRange.from,
+          p_to: resolvedRange.to,
+          p_limit: 8,
+          p_offset: 0,
+        }),
+        supabase.rpc('get_sales_by_operator_detail', {
+          p_business_id: businessId,
+          p_from: resolvedRange.from,
+          p_to: resolvedRange.to,
+        }),
+      ])
+
+      return {
+        kpis: kpisResult.data as unknown as StatsKpis | null,
+        evolution: evolutionResult.data as unknown as StatsEvolution | null,
+        breakdown: breakdownResult.data as unknown as StatsBreakdown | null,
+        topProducts: (topProductsResult.data as unknown as { data: TopProductRow[] } | null)?.data ?? [],
+        operators: normalizeOperatorSalesStatsRows(
+          (operatorsResult.data as unknown as { data: unknown[] } | null)?.data ?? []
+        ),
+      }
+    },
+    initialData: isInitialPeriod
+      ? {
+          kpis: initialKpis,
+          evolution: initialEvolution,
+          breakdown: initialBreakdown,
+          topProducts: initialTopProducts,
+          operators: initialOperators,
+        }
+      : undefined,
+    initialDataUpdatedAt: isInitialPeriod ? mountedAt : undefined,
+    staleTime: 30_000,
+  })
+
+  const kpis = data?.kpis ?? null
+  const evolution = data?.evolution ?? null
+  const breakdown = data?.breakdown ?? null
+  const topProducts = data?.topProducts ?? []
+  const operators = data?.operators ?? []
+
+  function syncDateUrl(nextPeriod: DateRangePeriod, nextFrom?: string, nextTo?: string) {
+    if (typeof window === 'undefined') return
+    const query = buildDateParams(nextPeriod, nextFrom, nextTo)
+    window.history.replaceState(window.history.state, '', `${pathname}?${query}`)
+  }
+
+  function handlePeriodChange(nextPeriod: DateRangePeriod, nextFrom?: string, nextTo?: string) {
+    const resolvedFrom = periodNeedsCustomDates(nextPeriod) ? nextFrom : undefined
+    const resolvedTo = periodNeedsCustomDates(nextPeriod) ? nextTo : undefined
+    setPeriod(nextPeriod)
+    setFrom(resolvedFrom)
+    setTo(resolvedTo)
+    syncDateUrl(nextPeriod, resolvedFrom, resolvedTo)
+  }
 
   const totalRevenue = kpis?.total_revenue ?? 0
   const totalUnits = kpis?.total_units ?? 0
@@ -136,13 +244,6 @@ export default function StatsView({ kpis, evolution, breakdown, topProducts, ope
     )
     .slice(0, 5)
 
-  function handlePeriodChange(nextPeriod: DateRangePeriod, nextFrom?: string, nextTo?: string) {
-    const resolvedFrom = periodNeedsCustomDates(nextPeriod) ? nextFrom : undefined
-    const resolvedTo = periodNeedsCustomDates(nextPeriod) ? nextTo : undefined
-    const query = buildDateParams(nextPeriod, resolvedFrom, resolvedTo)
-    router.push(`${pathname}?${query}`)
-  }
-
   return (
     <div className="flex flex-col h-screen overflow-hidden">
       <PageHeader title="Estadísticas" />
@@ -150,357 +251,363 @@ export default function StatsView({ kpis, evolution, breakdown, topProducts, ope
       <div className="flex-1 overflow-y-auto">
         <div className="px-5 pt-4 pb-6 space-y-5">
           {/* Period filter */}
-          <DateRangeFilter
-            value={initialPeriod as DateRangePeriod}
-            from={initialFrom}
-            to={initialTo}
-            onChange={handlePeriodChange}
-          />
-
-          {/* KPI Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
-            <div className="surface-card p-5 flex flex-col gap-3">
-              <div className="flex items-start justify-between">
-                <span className="h-9 w-9 rounded-xl flex items-center justify-center shrink-0 bg-muted text-body">
-                  <DollarSign size={16} />
-                </span>
-                <DeltaBadge current={totalRevenue} previous={prevRevenue} />
-              </div>
-              <div>
-                <p className="text-label text-hint mb-1">Ingresos totales</p>
-                <p className="text-2xl font-bold text-heading leading-none">{formatMoney(totalRevenue)}</p>
-              </div>
-            </div>
-            <div className="surface-card p-5 flex flex-col gap-3">
-              <div className="flex items-start justify-between">
-                <span className="h-9 w-9 rounded-xl flex items-center justify-center shrink-0 bg-muted text-body">
-                  <ShoppingBag size={16} />
-                </span>
-                <DeltaBadge current={totalUnits} previous={prevUnits} />
-              </div>
-              <div>
-                <p className="text-label text-hint mb-1">Unidades vendidas</p>
-                <p className="text-2xl font-bold text-heading leading-none">{totalUnits}</p>
-              </div>
-            </div>
-            <div className="surface-card p-5 flex flex-col gap-3">
-              <div className="flex items-start justify-between">
-                <span className="h-9 w-9 rounded-xl flex items-center justify-center shrink-0 bg-muted text-body">
-                  <Receipt size={16} />
-                </span>
-                <DeltaBadge current={avgTicket} previous={prevAvgTicket} />
-              </div>
-              <div>
-                <p className="text-label text-hint mb-1">Ticket promedio</p>
-                <p className="text-2xl font-bold text-heading leading-none">{formatMoney(avgTicket)}</p>
-              </div>
-            </div>
-            <div className="surface-card p-5 flex flex-col gap-3">
-              <div className="flex items-start justify-between">
-                <span className="h-9 w-9 rounded-xl flex items-center justify-center shrink-0 bg-muted text-body">
-                  <Hash size={16} />
-                </span>
-              </div>
-              <div>
-                <p className="text-label text-hint mb-1">Total transacciones</p>
-                <p className="text-2xl font-bold text-heading leading-none">{totalSales.toLocaleString('es-AR')}</p>
-              </div>
-            </div>
+          <div className="flex items-center gap-4">
+            <DateRangeFilter
+              value={period}
+              from={from}
+              to={to}
+              onChange={handlePeriodChange}
+            />
+            {isFetching && <span className="text-xs text-hint shrink-0">Actualizando...</span>}
           </div>
 
-          {/* Charts row */}
-          <div className="grid grid-cols-1 xl:grid-cols-[2fr_1fr] gap-4">
-            {/* Evolution chart */}
-            <div className="surface-card p-6 space-y-3">
-              <div className="flex items-center justify-between">
-                <p className="font-semibold text-heading font-display">Evolución</p>
-                <div className="flex items-center gap-1.5">
-                  <button
-                    type="button"
-                    onClick={() => setEvolutionMode('revenue')}
-                    className={getWidgetToggleClass(evolutionMode === 'revenue')}
-                  >
-                    $ Ingresos
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setEvolutionMode('units')}
-                    className={getWidgetToggleClass(evolutionMode === 'units')}
-                  >
-                    Unidades
-                  </button>
+          <div className={`space-y-5 transition-opacity ${isFetching ? 'opacity-60' : ''}`}>
+            {/* KPI Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+              <div className="surface-card p-5 flex flex-col gap-3">
+                <div className="flex items-start justify-between">
+                  <span className="h-9 w-9 rounded-xl flex items-center justify-center shrink-0 bg-muted text-body">
+                    <DollarSign size={16} />
+                  </span>
+                  <DeltaBadge current={totalRevenue} previous={prevRevenue} />
+                </div>
+                <div>
+                  <p className="text-label text-hint mb-1">Ingresos totales</p>
+                  <p className="text-2xl font-bold text-heading leading-none">{formatMoney(totalRevenue)}</p>
                 </div>
               </div>
+              <div className="surface-card p-5 flex flex-col gap-3">
+                <div className="flex items-start justify-between">
+                  <span className="h-9 w-9 rounded-xl flex items-center justify-center shrink-0 bg-muted text-body">
+                    <ShoppingBag size={16} />
+                  </span>
+                  <DeltaBadge current={totalUnits} previous={prevUnits} />
+                </div>
+                <div>
+                  <p className="text-label text-hint mb-1">Unidades vendidas</p>
+                  <p className="text-2xl font-bold text-heading leading-none">{totalUnits}</p>
+                </div>
+              </div>
+              <div className="surface-card p-5 flex flex-col gap-3">
+                <div className="flex items-start justify-between">
+                  <span className="h-9 w-9 rounded-xl flex items-center justify-center shrink-0 bg-muted text-body">
+                    <Receipt size={16} />
+                  </span>
+                  <DeltaBadge current={avgTicket} previous={prevAvgTicket} />
+                </div>
+                <div>
+                  <p className="text-label text-hint mb-1">Ticket promedio</p>
+                  <p className="text-2xl font-bold text-heading leading-none">{formatMoney(avgTicket)}</p>
+                </div>
+              </div>
+              <div className="surface-card p-5 flex flex-col gap-3">
+                <div className="flex items-start justify-between">
+                  <span className="h-9 w-9 rounded-xl flex items-center justify-center shrink-0 bg-muted text-body">
+                    <Hash size={16} />
+                  </span>
+                </div>
+                <div>
+                  <p className="text-label text-hint mb-1">Total transacciones</p>
+                  <p className="text-2xl font-bold text-heading leading-none">{totalSales.toLocaleString('es-AR')}</p>
+                </div>
+              </div>
+            </div>
 
-              {evolutionData.length === 0 ? (
-                <p className="text-sm text-hint h-48 flex items-center justify-center">Sin datos</p>
-              ) : (
-                <>
-                  <div className="flex items-center gap-5 text-xs text-hint">
-                    <span className="flex items-center gap-1.5">
-                      <svg width="16" height="3" viewBox="0 0 16 3"><line x1="0" y1="1.5" x2="16" y2="1.5" stroke="var(--primary)" strokeWidth="2" /></svg>
-                      Período actual
-                    </span>
-                    <span className="flex items-center gap-1.5">
-                      <svg width="16" height="3" viewBox="0 0 16 3"><line x1="0" y1="1.5" x2="16" y2="1.5" style={{ stroke: 'var(--color-hint)' }} strokeWidth="2" strokeDasharray="4 4" /></svg>
-                      Período anterior
-                    </span>
-                  </div>
-                  <ResponsiveContainer width="100%" height={200}>
-                    <LineChart
-                      data={evolutionData}
-                      margin={{ top: 5, right: 10, left: 0, bottom: 5 }}
+            {/* Charts row */}
+            <div className="grid grid-cols-1 xl:grid-cols-[2fr_1fr] gap-4">
+              {/* Evolution chart */}
+              <div className="surface-card p-6 space-y-3">
+                <div className="flex items-center justify-between">
+                  <p className="font-semibold text-heading font-display">Evolución</p>
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => setEvolutionMode('revenue')}
+                      className={getWidgetToggleClass(evolutionMode === 'revenue')}
                     >
-                      <CartesianGrid strokeDasharray="3 3" stroke="var(--color-edge)" />
-                      <XAxis
-                        dataKey="label"
-                        tick={{ fontSize: 10, fill: 'var(--color-hint)' }}
-                        interval={evolutionData.length > 14 ? Math.floor(evolutionData.length / 7) : 0}
-                      />
+                      $ Ingresos
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setEvolutionMode('units')}
+                      className={getWidgetToggleClass(evolutionMode === 'units')}
+                    >
+                      Unidades
+                    </button>
+                  </div>
+                </div>
+
+                {evolutionData.length === 0 ? (
+                  <p className="text-sm text-hint h-48 flex items-center justify-center">Sin datos</p>
+                ) : (
+                  <>
+                    <div className="flex items-center gap-5 text-xs text-hint">
+                      <span className="flex items-center gap-1.5">
+                        <svg width="16" height="3" viewBox="0 0 16 3"><line x1="0" y1="1.5" x2="16" y2="1.5" stroke="var(--primary)" strokeWidth="2" /></svg>
+                        Período actual
+                      </span>
+                      <span className="flex items-center gap-1.5">
+                        <svg width="16" height="3" viewBox="0 0 16 3"><line x1="0" y1="1.5" x2="16" y2="1.5" style={{ stroke: 'var(--color-hint)' }} strokeWidth="2" strokeDasharray="4 4" /></svg>
+                        Período anterior
+                      </span>
+                    </div>
+                    <ResponsiveContainer width="100%" height={200}>
+                      <LineChart
+                        data={evolutionData}
+                        margin={{ top: 5, right: 10, left: 0, bottom: 5 }}
+                      >
+                        <CartesianGrid strokeDasharray="3 3" stroke="var(--color-edge)" />
+                        <XAxis
+                          dataKey="label"
+                          tick={{ fontSize: 10, fill: 'var(--color-hint)' }}
+                          interval={evolutionData.length > 14 ? Math.floor(evolutionData.length / 7) : 0}
+                        />
+                        <YAxis
+                          tick={{ fontSize: 10, fill: 'var(--color-hint)' }}
+                          tickFormatter={v =>
+                            evolutionMode === 'revenue'
+                              ? v >= 1000 ? formatMoney(v / 1000) + 'k' : formatMoney(v)
+                              : String(v)
+                          }
+                          width={52}
+                          tickCount={5}
+                        />
+                        <Tooltip
+                          content={({ active, payload, label }) => {
+                            if (!active || !payload?.length) return null
+                            const ck = evolutionMode === 'revenue' ? 'currentRevenue' : 'currentUnits'
+                            const pk = evolutionMode === 'revenue' ? 'previousRevenue' : 'previousUnits'
+                            const fmt = (v: number) =>
+                              evolutionMode === 'revenue'
+                                ? formatMoney(v)
+                                : String(v)
+                            const cur = payload.find(p => p.dataKey === ck)
+                            const prev = payload.find(p => p.dataKey === pk)
+                            return (
+                              <div className="surface-elevated rounded-xl p-3 text-xs space-y-1 shadow-sm">
+                                <p className="font-semibold text-heading">{label}</p>
+                                {cur && <p className="text-body">Actual: <span className="font-medium">{fmt(Number(cur.value))}</span></p>}
+                                {prev && <p className="text-hint">Anterior: {fmt(Number(prev.value))}</p>}
+                              </div>
+                            )
+                          }}
+                        />
+                        <Line
+                          type="monotone"
+                          dataKey={evolutionMode === 'revenue' ? 'currentRevenue' : 'currentUnits'}
+                          stroke="var(--primary)"
+                          strokeWidth={2}
+                          dot={false}
+                          name="Actual"
+                        />
+                        <Line
+                          type="monotone"
+                          dataKey={evolutionMode === 'revenue' ? 'previousRevenue' : 'previousUnits'}
+                          stroke="var(--color-hint)"
+                          strokeWidth={1.5}
+                          strokeDasharray="5 5"
+                          dot={false}
+                          name="Anterior"
+                        />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </>
+                )}
+              </div>
+
+              {/* Payment methods */}
+              <div className="surface-card p-6 space-y-4">
+                <div className="flex items-center gap-3">
+                  <p className="font-semibold text-heading font-display">Métodos de pago</p>
+                  <Link href="/stats/payment-methods" className="text-xs text-primary font-medium hover:underline">
+                    Ver más →
+                  </Link>
+                </div>
+                {paymentBreakdown.length === 0 ? (
+                  <p className="text-sm text-hint">Sin datos</p>
+                ) : (
+                  paymentBreakdown.map(row => (
+                    <div key={row.method} className="space-y-1.5">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="flex items-center gap-2 text-body font-medium">
+                          <span className={`h-2 w-2 rounded-full shrink-0 ${isPaymentMethod(row.method) ? PAYMENT_BAR_COLORS[row.method] : 'bg-hint'}`} />
+                          {normalizePayment(row.method)}
+                        </span>
+                        <span className="text-subtle text-xs">{row.percent.toFixed(0)}%</span>
+                      </div>
+                      <div className="h-2 rounded-full bg-surface-alt">
+                        <div className={`h-2 rounded-full ${isPaymentMethod(row.method) ? PAYMENT_BAR_COLORS[row.method] : 'bg-hint'}`} style={{ width: `${row.percent}%` }} />
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+
+            {/* Bottom row */}
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+              {/* Ranking */}
+              <div className="surface-card p-6 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <p className="font-semibold text-heading font-display">Ranking de productos</p>
+                    <Link href="/stats/top-products" className="text-xs text-primary font-medium hover:underline">
+                      Ver más →
+                    </Link>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => setRankingMode('amount')}
+                      className={getWidgetToggleClass(rankingMode === 'amount')}
+                    >
+                      $ Monto
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setRankingMode('units')}
+                      className={getWidgetToggleClass(rankingMode === 'units')}
+                    >
+                      Unidades
+                    </button>
+                  </div>
+                </div>
+                {sortedTopProducts.length === 0 ? (
+                  <p className="text-sm text-hint">Sin datos</p>
+                ) : (
+                  sortedTopProducts.map((row, idx) => (
+                    <div key={row.id} className="flex items-center gap-3">
+                      <span className="text-xs text-hint w-5 shrink-0">#{idx + 1}</span>
+                      <span className="flex-1 text-sm text-body truncate">{row.name}</span>
+                      <span className="text-sm font-semibold text-body shrink-0">
+                        {rankingMode === 'amount' ? formatMoney(row.revenue ?? 0) : `${row.units_sold ?? 0} uds`}
+                      </span>
+                    </div>
+                  ))
+                )}
+              </div>
+
+              {/* Breakdown */}
+              <div className="surface-card p-6 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <p className="font-semibold text-heading font-display">Desglose</p>
+                    <Link href="/stats/breakdown" className="text-xs text-primary font-medium hover:underline">
+                      Ver más →
+                    </Link>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => setBreakdownMode('category')}
+                      className={getWidgetToggleClass(breakdownMode === 'category')}
+                    >
+                      Categoría
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setBreakdownMode('brand')}
+                      className={getWidgetToggleClass(breakdownMode === 'brand')}
+                    >
+                      Marca
+                    </button>
+                  </div>
+                </div>
+                {breakdownData.length === 0 ? (
+                  <p className="text-sm text-hint">Sin datos</p>
+                ) : (
+                  breakdownData.map(row => (
+                    <div key={row.label} className="space-y-1.5">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-body font-medium">{row.label}</span>
+                        <span className="text-xs text-subtle">{row.percent.toFixed(0)}%</span>
+                      </div>
+                      <div className="h-2 rounded-full bg-surface-alt">
+                        <div className="h-2 rounded-full bg-primary" style={{ width: `${row.percent}%` }} />
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+
+            {/* Operators + Day of week */}
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+              {/* Operator sales widget */}
+              <div className="surface-card p-6 space-y-3">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <p className="font-semibold text-heading font-display">Ventas por operador</p>
+                    <Link href="/stats/operators" className="text-xs text-primary font-medium hover:underline">
+                      Ver más →
+                    </Link>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => setOperatorMode('amount')}
+                      className={getWidgetToggleClass(operatorMode === 'amount')}
+                    >
+                      $ Monto
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setOperatorMode('transactions')}
+                      className={getWidgetToggleClass(operatorMode === 'transactions')}
+                    >
+                      Operaciones
+                    </button>
+                  </div>
+                </div>
+                {sortedOperators.length === 0 ? (
+                  <p className="text-sm text-hint">Sin datos</p>
+                ) : (
+                  sortedOperators.map((row, idx) => (
+                    <div key={row.operator_id ?? row.operator_name} className="flex items-center gap-3">
+                      <span className="text-xs text-hint w-5 shrink-0">#{idx + 1}</span>
+                      <span className="flex-1 text-sm text-body truncate">{row.operator_name}</span>
+                      <span className="text-sm font-semibold text-body shrink-0">
+                        {operatorMode === 'amount'
+                          ? formatMoney(row.total_revenue ?? 0)
+                          : `${row.transactions ?? 0} ventas`}
+                      </span>
+                    </div>
+                  ))
+                )}
+              </div>
+
+              {/* Day of week distribution */}
+              <div className="surface-card p-6 space-y-4">
+                <p className="font-semibold text-heading font-display">Distribución por día</p>
+                {dayOfWeekData.length === 0 || totalSales === 0 ? (
+                  <p className="text-sm text-hint h-24 flex items-center justify-center">Sin datos para el período</p>
+                ) : (
+                  <ResponsiveContainer width="100%" height={130}>
+                    <BarChart data={dayOfWeekData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="var(--color-edge)" vertical={false} />
+                      <XAxis dataKey="day" tick={{ fontSize: 12, fill: 'var(--color-hint)' }} />
                       <YAxis
                         tick={{ fontSize: 10, fill: 'var(--color-hint)' }}
-                        tickFormatter={v =>
-                          evolutionMode === 'revenue'
-                            ? v >= 1000 ? formatMoney(v / 1000) + 'k' : formatMoney(v)
-                            : String(v)
-                        }
-                        width={52}
-                        tickCount={5}
+                        tickFormatter={v => v >= 1000 ? formatMoney(v / 1000) + 'k' : formatMoney(v)}
+                        width={50}
                       />
                       <Tooltip
+                        cursor={{ fill: 'color-mix(in srgb, var(--primary) 5%, transparent)' }}
                         content={({ active, payload, label }) => {
                           if (!active || !payload?.length) return null
-                          const ck = evolutionMode === 'revenue' ? 'currentRevenue' : 'currentUnits'
-                          const pk = evolutionMode === 'revenue' ? 'previousRevenue' : 'previousUnits'
-                          const fmt = (v: number) =>
-                            evolutionMode === 'revenue'
-                              ? formatMoney(v)
-                              : String(v)
-                          const cur = payload.find(p => p.dataKey === ck)
-                          const prev = payload.find(p => p.dataKey === pk)
                           return (
-                            <div className="surface-elevated rounded-xl p-3 text-xs space-y-1 shadow-sm">
+                            <div className="surface-elevated rounded-xl p-2.5 text-xs shadow-sm">
                               <p className="font-semibold text-heading">{label}</p>
-                              {cur && <p className="text-body">Actual: <span className="font-medium">{fmt(Number(cur.value))}</span></p>}
-                              {prev && <p className="text-hint">Anterior: {fmt(Number(prev.value))}</p>}
+                              <p className="text-body">{formatMoney(Number(payload[0]?.value ?? 0))}</p>
                             </div>
                           )
                         }}
                       />
-                      <Line
-                        type="monotone"
-                        dataKey={evolutionMode === 'revenue' ? 'currentRevenue' : 'currentUnits'}
-                        stroke="var(--primary)"
-                        strokeWidth={2}
-                        dot={false}
-                        name="Actual"
-                      />
-                      <Line
-                        type="monotone"
-                        dataKey={evolutionMode === 'revenue' ? 'previousRevenue' : 'previousUnits'}
-                        stroke="var(--color-hint)"
-                        strokeWidth={1.5}
-                        strokeDasharray="5 5"
-                        dot={false}
-                        name="Anterior"
-                      />
-                    </LineChart>
+                      <Bar dataKey="revenue" fill="var(--primary)" radius={[4, 4, 0, 0]} />
+                    </BarChart>
                   </ResponsiveContainer>
-                </>
-              )}
-            </div>
-
-            {/* Payment methods */}
-            <div className="surface-card p-6 space-y-4">
-              <div className="flex items-center gap-3">
-                <p className="font-semibold text-heading font-display">Métodos de pago</p>
-                <Link href="/stats/payment-methods" className="text-xs text-primary font-medium hover:underline">
-                  Ver más →
-                </Link>
+                )}
               </div>
-              {paymentBreakdown.length === 0 ? (
-                <p className="text-sm text-hint">Sin datos</p>
-              ) : (
-                paymentBreakdown.map(row => (
-                  <div key={row.method} className="space-y-1.5">
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="flex items-center gap-2 text-body font-medium">
-                        <span className={`h-2 w-2 rounded-full shrink-0 ${isPaymentMethod(row.method) ? PAYMENT_BAR_COLORS[row.method] : 'bg-hint'}`} />
-                        {normalizePayment(row.method)}
-                      </span>
-                      <span className="text-subtle text-xs">{row.percent.toFixed(0)}%</span>
-                    </div>
-                    <div className="h-2 rounded-full bg-surface-alt">
-                      <div className={`h-2 rounded-full ${isPaymentMethod(row.method) ? PAYMENT_BAR_COLORS[row.method] : 'bg-hint'}`} style={{ width: `${row.percent}%` }} />
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-
-          {/* Bottom row */}
-          <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-            {/* Ranking */}
-            <div className="surface-card p-6 space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <p className="font-semibold text-heading font-display">Ranking de productos</p>
-                  <Link href="/stats/top-products" className="text-xs text-primary font-medium hover:underline">
-                    Ver más →
-                  </Link>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <button
-                    type="button"
-                    onClick={() => setRankingMode('amount')}
-                    className={getWidgetToggleClass(rankingMode === 'amount')}
-                  >
-                    $ Monto
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setRankingMode('units')}
-                    className={getWidgetToggleClass(rankingMode === 'units')}
-                  >
-                    Unidades
-                  </button>
-                </div>
-              </div>
-              {sortedTopProducts.length === 0 ? (
-                <p className="text-sm text-hint">Sin datos</p>
-              ) : (
-                sortedTopProducts.map((row, idx) => (
-                  <div key={row.id} className="flex items-center gap-3">
-                    <span className="text-xs text-hint w-5 shrink-0">#{idx + 1}</span>
-                    <span className="flex-1 text-sm text-body truncate">{row.name}</span>
-                    <span className="text-sm font-semibold text-body shrink-0">
-                      {rankingMode === 'amount' ? formatMoney(row.revenue ?? 0) : `${row.units_sold ?? 0} uds`}
-                    </span>
-                  </div>
-                ))
-              )}
-            </div>
-
-            {/* Breakdown */}
-            <div className="surface-card p-6 space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <p className="font-semibold text-heading font-display">Desglose</p>
-                  <Link href="/stats/breakdown" className="text-xs text-primary font-medium hover:underline">
-                    Ver más →
-                  </Link>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <button
-                    type="button"
-                    onClick={() => setBreakdownMode('category')}
-                    className={getWidgetToggleClass(breakdownMode === 'category')}
-                  >
-                    Categoría
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setBreakdownMode('brand')}
-                    className={getWidgetToggleClass(breakdownMode === 'brand')}
-                  >
-                    Marca
-                  </button>
-                </div>
-              </div>
-              {breakdownData.length === 0 ? (
-                <p className="text-sm text-hint">Sin datos</p>
-              ) : (
-                breakdownData.map(row => (
-                  <div key={row.label} className="space-y-1.5">
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-body font-medium">{row.label}</span>
-                      <span className="text-xs text-subtle">{row.percent.toFixed(0)}%</span>
-                    </div>
-                    <div className="h-2 rounded-full bg-surface-alt">
-                      <div className="h-2 rounded-full bg-primary" style={{ width: `${row.percent}%` }} />
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-          {/* Operators + Day of week */}
-          <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-            {/* Operator sales widget */}
-            <div className="surface-card p-6 space-y-3">
-              <div className="flex items-center justify-between gap-3">
-                <div className="flex items-center gap-3">
-                  <p className="font-semibold text-heading font-display">Ventas por operador</p>
-                  <Link href="/stats/operators" className="text-xs text-primary font-medium hover:underline">
-                    Ver más →
-                  </Link>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <button
-                    type="button"
-                    onClick={() => setOperatorMode('amount')}
-                    className={getWidgetToggleClass(operatorMode === 'amount')}
-                  >
-                    $ Monto
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setOperatorMode('transactions')}
-                    className={getWidgetToggleClass(operatorMode === 'transactions')}
-                  >
-                    Operaciones
-                  </button>
-                </div>
-              </div>
-              {sortedOperators.length === 0 ? (
-                <p className="text-sm text-hint">Sin datos</p>
-              ) : (
-                sortedOperators.map((row, idx) => (
-                  <div key={row.operator_id ?? row.operator_name} className="flex items-center gap-3">
-                    <span className="text-xs text-hint w-5 shrink-0">#{idx + 1}</span>
-                    <span className="flex-1 text-sm text-body truncate">{row.operator_name}</span>
-                    <span className="text-sm font-semibold text-body shrink-0">
-                      {operatorMode === 'amount'
-                        ? formatMoney(row.total_revenue ?? 0)
-                        : `${row.transactions ?? 0} ventas`}
-                    </span>
-                  </div>
-                ))
-              )}
-            </div>
-
-            {/* Day of week distribution */}
-            <div className="surface-card p-6 space-y-4">
-            <p className="font-semibold text-heading font-display">Distribución por día</p>
-            {dayOfWeekData.length === 0 || totalSales === 0 ? (
-              <p className="text-sm text-hint h-24 flex items-center justify-center">Sin datos para el período</p>
-            ) : (
-              <ResponsiveContainer width="100%" height={130}>
-                <BarChart data={dayOfWeekData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="var(--color-edge)" vertical={false} />
-                  <XAxis dataKey="day" tick={{ fontSize: 12, fill: 'var(--color-hint)' }} />
-                  <YAxis
-                    tick={{ fontSize: 10, fill: 'var(--color-hint)' }}
-                    tickFormatter={v => v >= 1000 ? formatMoney(v / 1000) + 'k' : formatMoney(v)}
-                    width={50}
-                  />
-                  <Tooltip
-                    cursor={{ fill: 'color-mix(in srgb, var(--primary) 5%, transparent)' }}
-                    content={({ active, payload, label }) => {
-                      if (!active || !payload?.length) return null
-                      return (
-                        <div className="surface-elevated rounded-xl p-2.5 text-xs shadow-sm">
-                          <p className="font-semibold text-heading">{label}</p>
-                          <p className="text-body">{formatMoney(Number(payload[0]?.value ?? 0))}</p>
-                        </div>
-                      )
-                    }}
-                  />
-                  <Bar dataKey="revenue" fill="var(--primary)" radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            )}
             </div>
           </div>
         </div>
