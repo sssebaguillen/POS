@@ -121,20 +121,24 @@ export default async function OperatorMePage({
   }[] = []
 
   if (activeOperator.role === 'owner') {
-    const { data: ownerProfile, error: profileError } = await supabase
-      .from('profiles')
-      .select('id, name, created_at')
-      .eq('id', activeOperator.profile_id)
-      .single<OwnerProfileRow>()
+    const [
+      { data: ownerProfile, error: profileError },
+      { data: statsRaw, error: statsError },
+    ] = await Promise.all([
+      supabase
+        .from('profiles')
+        .select('id, name, created_at')
+        .eq('id', activeOperator.profile_id)
+        .single<OwnerProfileRow>(),
+      supabase.rpc('get_owner_stats', {
+        p_date_from: statsRange.from,
+        p_date_to: statsRange.to,
+      }),
+    ])
 
     if (profileError || !ownerProfile) {
       throw new Error(profileError?.message ?? 'No se pudo cargar el perfil del owner.')
     }
-
-    const { data: statsRaw, error: statsError } = await supabase.rpc('get_owner_stats', {
-      p_date_from: statsRange.from,
-      p_date_to: statsRange.to,
-    })
 
     if (statsError) throw new Error(statsError.message)
 
