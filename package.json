@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "next dev --webpack",
     "build": "next build",
-    "postbuild": "posthog-cli sourcemaps upload .next --api-key=$POSTHOG_CLI_API_KEY",
+    "postbuild": "npx --yes posthog-cli@latest sourcemaps upload .next --api-key=$POSTHOG_CLI_API_KEY",
     "start": "next start",
     "lint": "eslint"
   },
@@ -43,7 +43,6 @@
     "babel-plugin-react-compiler": "1.0.0",
     "eslint": "^9",
     "eslint-config-next": "^16.1.7",
-    "posthog-cli": "latest",
     "supabase": "^2.78.1",
     "tailwindcss": "^4",
     "typescript": "^5"
