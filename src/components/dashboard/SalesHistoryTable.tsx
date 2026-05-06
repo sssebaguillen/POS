@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo, memo } from 'react'
+import { useState, useMemo, memo, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { useMutation } from '@tanstack/react-query'
 import { Printer, Trash2, X } from 'lucide-react'
@@ -76,7 +76,6 @@ function SalesHistoryTable({ rows, businessId, businessName, onSaleDeleted }: Pr
   const [saleDetails, setSaleDetails] = useState<Record<string, SaleDetail>>({})
   const [loadingDetailId, setLoadingDetailId] = useState<string | null>(null)
   const [editingSale, setEditingSale] = useState<SaleDetail | null>(null)
-  const [deletingId, setDeletingId] = useState<string | null>(null)
   const [confirmingDeleteId, setConfirmingDeleteId] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [filterMethod, setFilterMethod] = useState<PaymentMethod | null>(null)
@@ -86,6 +85,7 @@ function SalesHistoryTable({ rows, businessId, businessName, onSaleDeleted }: Pr
   const [localError, setLocalError] = useState<string | null>(null)
   const supabase = useMemo(() => createClient(), [])
   const { toast, showToast, dismissToast } = useToast()
+  const deleteTimersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map())
 
   // Filter out deleted items
   const visibleRows = useMemo(() => rows.filter(r => !deletedIds.has(r.id)), [rows, deletedIds])
@@ -230,34 +230,6 @@ function SalesHistoryTable({ rows, businessId, businessName, onSaleDeleted }: Pr
     }
   }
 
-  const deleteMutation = useMutation({
-    mutationFn: async (saleId: string) => {
-      if (!businessId) throw new Error('businessId requerido')
-      const { data, error } = await supabase.rpc('delete_sale', {
-        p_sale_id: saleId,
-        p_business_id: businessId,
-      })
-      if (error || !data?.success) {
-        throw new Error(error?.message ?? 'No se pudo eliminar la venta')
-      }
-      return saleId
-    },
-    onMutate: (saleId) => {
-      setDeletingId(saleId)
-    },
-    onSuccess: (saleId) => {
-      setDeletedIds(prev => new Set([...prev, saleId]))
-      onSaleDeleted?.(saleId)
-      setSaleDetails(prev => { const next = { ...prev }; delete next[saleId]; return next })
-      if (expandedSaleId === saleId) setExpandedSaleId(null)
-      showToast({ message: 'Venta eliminada' })
-      router.refresh()
-    },
-    onSettled: () => {
-      setDeletingId(null)
-    },
-  })
-
   const updateMutation = useMutation({
     mutationFn: async (vars: {
       saleId: string
@@ -310,12 +282,11 @@ function SalesHistoryTable({ rows, businessId, businessName, onSaleDeleted }: Pr
     },
   })
 
-  const mutationError = deleteMutation.error?.message ?? updateMutation.error?.message ?? null
+  const mutationError = updateMutation.error?.message ?? null
   const displayError = localError ?? mutationError
 
   function dismissError() {
     setLocalError(null)
-    deleteMutation.reset()
     updateMutation.reset()
   }
 
@@ -328,7 +299,52 @@ function SalesHistoryTable({ rows, businessId, businessName, onSaleDeleted }: Pr
 
   function handleDeleteSale(saleId: string) {
     if (!businessId) return
-    deleteMutation.mutate(saleId)
+
+    const TOAST_DURATION = 6000
+
+    setLocalError(null)
+    setDeletedIds(prev => new Set([...prev, saleId]))
+    if (expandedSaleId === saleId) setExpandedSaleId(null)
+
+    showToast({
+      message: 'Venta eliminada',
+      duration: TOAST_DURATION,
+      onUndo: () => {
+        const timer = deleteTimersRef.current.get(saleId)
+        if (timer !== undefined) {
+          clearTimeout(timer)
+          deleteTimersRef.current.delete(saleId)
+        }
+
+        setDeletedIds(prev => {
+          const next = new Set(prev)
+          next.delete(saleId)
+          return next
+        })
+      },
+    })
+
+    const timer = setTimeout(async () => {
+      deleteTimersRef.current.delete(saleId)
+      const { data, error } = await supabase.rpc('delete_sale', {
+        p_sale_id: saleId,
+        p_business_id: businessId,
+      })
+      if (error || !data?.success) {
+        setDeletedIds(prev => {
+          const next = new Set(prev)
+          next.delete(saleId)
+          return next
+        })
+        setLocalError(error?.message ?? 'No se pudo eliminar la venta')
+        return
+      }
+      onSaleDeleted?.(saleId)
+      setSaleDetails(prev => { const next = { ...prev }; delete next[saleId]; return next })
+      router.refresh()
+    }, TOAST_DURATION + 500)
+
+    deleteTimersRef.current.set(saleId, timer)
   }
 
   function handleUpdateSale(
@@ -459,7 +475,6 @@ function SalesHistoryTable({ rows, businessId, businessName, onSaleDeleted }: Pr
             const isExpanded = expandedSaleId === sale.id
             const detail = saleDetails[sale.id]
             const isLoadingDetail = loadingDetailId === sale.id
-            const isDeleting = deletingId === sale.id
             const saleNumber = filteredRows.length - index
 
             const totalQty = detail ? detail.items.reduce((sum, i) => sum + i.quantity, 0) : 0
@@ -572,15 +587,13 @@ function SalesHistoryTable({ rows, businessId, businessName, onSaleDeleted }: Pr
                             <span className="text-xs text-red-500 dark:text-red-400 font-medium">¿Eliminar?</span>
                             <button
                               onClick={() => { setConfirmingDeleteId(null); handleDeleteSale(sale.id) }}
-                              disabled={isDeleting}
-                              className="h-9 px-3 text-xs rounded-lg border border-red-300 text-red-600 bg-red-50 dark:border-red-500/40 dark:text-red-400 dark:bg-red-500/10 hover:bg-red-100 dark:hover:bg-red-500/20 transition-colors disabled:opacity-50"
+                              className="h-9 px-3 text-xs rounded-lg border border-red-300 text-red-600 bg-red-50 dark:border-red-500/40 dark:text-red-400 dark:bg-red-500/10 hover:bg-red-100 dark:hover:bg-red-500/20 transition-colors"
                             >
                               Sí
                             </button>
                             <button
                               onClick={() => setConfirmingDeleteId(null)}
-                              disabled={isDeleting}
-                              className="h-8 px-3 text-xs rounded-lg border border-edge text-body bg-surface hover:bg-hover-bg transition-colors disabled:opacity-50"
+                              className="h-8 px-3 text-xs rounded-lg border border-edge text-body bg-surface hover:bg-hover-bg transition-colors"
                             >
                               No
                             </button>
@@ -588,12 +601,9 @@ function SalesHistoryTable({ rows, businessId, businessName, onSaleDeleted }: Pr
                         ) : (
                           <button
                             onClick={() => setConfirmingDeleteId(sale.id)}
-                            disabled={isDeleting}
-                            aria-busy={isDeleting || undefined}
-                            aria-label={isDeleting ? 'Eliminando venta…' : undefined}
-                            className="h-8 px-3 text-xs rounded-lg border border-red-200 text-red-500 bg-surface hover:bg-red-50 dark:border-red-500/30 dark:text-red-400 dark:bg-transparent dark:hover:bg-red-500/10 transition-colors disabled:opacity-50"
+                            className="h-8 px-3 text-xs rounded-lg border border-red-200 text-red-500 bg-surface hover:bg-red-50 dark:border-red-500/30 dark:text-red-400 dark:bg-transparent dark:hover:bg-red-500/10 transition-colors"
                           >
-                            {isDeleting ? '…' : 'Eliminar'}
+                            Eliminar
                           </button>
                         )}
                       </div>
@@ -650,7 +660,7 @@ function SalesHistoryTable({ rows, businessId, businessName, onSaleDeleted }: Pr
         />
       )}
 
-      {toast && <Toast message={toast.message} duration={toast.duration} onDismiss={dismissToast} />}
+      {toast && <Toast message={toast.message} duration={toast.duration} onUndo={toast.onUndo} onDismiss={dismissToast} />}
     </div>
   )
 }

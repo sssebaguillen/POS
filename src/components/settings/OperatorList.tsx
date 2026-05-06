@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { type SettingsOperator } from '@/components/settings/types'
@@ -31,32 +31,55 @@ export default function OperatorList({
   const [operatorList, setOperatorList] = useState<SettingsOperator[]>(initialOperators)
   const [showNewOperatorModal, setShowNewOperatorModal] = useState(false)
   const [editingOperator, setEditingOperator] = useState<SettingsOperator | null>(null)
-  const [deletingOperatorId, setDeletingOperatorId] = useState<string | null>(null)
   const [pendingConfirm, setPendingConfirm] = useState<ConfirmState>(null)
   const { toast, showToast, dismissToast } = useToast()
+  const deleteTimersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map())
 
   function handleDeleteOperator(operator: SettingsOperator) {
     setPendingConfirm({
       title: `Eliminar operador "${operator.name}"`,
-      message: 'Esta accion no se puede deshacer.',
-      onConfirm: async () => {
-        setDeletingOperatorId(operator.id)
-
-        const { error: deleteError } = await supabase
-          .from('operators')
-          .delete()
-          .eq('id', operator.id)
-          .eq('business_id', businessId)
-
-        setDeletingOperatorId(null)
-
-        if (deleteError) {
-          showToast({ message: deleteError.message })
-          return
+      message: 'El operario será eliminado. Tendrás unos segundos para deshacer.',
+      onConfirm: () => {
+        const TOAST_DURATION = 6000
+        const restoreOperator = () => {
+          setOperatorList(prev =>
+            prev.some(item => item.id === operator.id)
+              ? [...prev].sort((a, b) => a.name.localeCompare(b.name))
+              : [operator, ...prev].sort((a, b) => a.name.localeCompare(b.name))
+          )
         }
 
-        showToast({ message: 'Operario eliminado correctamente.' })
         setOperatorList(prev => prev.filter(item => item.id !== operator.id))
+
+        showToast({
+          message: 'Operario eliminado correctamente.',
+          duration: TOAST_DURATION,
+          onUndo: () => {
+            const timer = deleteTimersRef.current.get(operator.id)
+            if (timer !== undefined) {
+              clearTimeout(timer)
+              deleteTimersRef.current.delete(operator.id)
+            }
+
+            restoreOperator()
+          },
+        })
+
+        const timer = setTimeout(async () => {
+          deleteTimersRef.current.delete(operator.id)
+          const { error: deleteError } = await supabase
+            .from('operators')
+            .delete()
+            .eq('id', operator.id)
+            .eq('business_id', businessId)
+
+          if (deleteError) {
+            restoreOperator()
+            showToast({ message: deleteError.message })
+          }
+        }, TOAST_DURATION + 500)
+
+        deleteTimersRef.current.set(operator.id, timer)
       },
     })
   }
@@ -106,10 +129,9 @@ export default function OperatorList({
                 type="button"
                 variant="destructive"
                 className="h-8 px-3 text-xs"
-                disabled={deletingOperatorId === operator.id}
                 onClick={() => handleDeleteOperator(operator)}
               >
-                {deletingOperatorId === operator.id ? 'Eliminando...' : 'Eliminar'}
+                Eliminar
               </Button>
             </div>
           </div>

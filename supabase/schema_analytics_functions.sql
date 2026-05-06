@@ -227,8 +227,11 @@ begin
   into v_by_operator
   from (
     select
-      coalesce(o.id::text, 'unknown')   as operator_id,
-      coalesce(o.name, 'Sin operador')  as operator_name,
+      o.id                              as operator_id,
+      case
+        when o.id is null then 'Dueño'
+        else o.name
+      end                               as operator_name,
       round(sum(s.total), 2)            as revenue,
       count(s.id)::int                  as cnt
     from sales s
@@ -386,22 +389,32 @@ BEGIN
   INTO v_rows
   FROM (
     SELECT
-      COALESCE(op.id::text, 'unknown')   AS operator_id,
-      COALESCE(op.name, 'Sin operador')  AS operator_name,
-      COALESCE(op.role, 'unknown')       AS operator_role,
-      COUNT(DISTINCT s.id)::int          AS transaction_count,
-      SUM(s.total)                       AS revenue,
-      AVG(s.total)                       AS avg_ticket,
-      SUM(si.quantity)::int              AS units_sold
+      op.id                              AS operator_id,
+      CASE
+        WHEN op.id IS NULL THEN 'Dueño'
+        ELSE op.name
+      END                                AS operator_name,
+      CASE
+        WHEN op.id IS NULL THEN 'owner'
+        ELSE op.role
+      END                                AS role,
+      COUNT(*)::int                      AS transactions,
+      ROUND(SUM(s.total), 2)             AS total_revenue,
+      ROUND(AVG(s.total), 2)             AS avg_ticket,
+      SUM(item_totals.units)::int        AS units_sold
     FROM public.sales s
-    LEFT JOIN public.operators op   ON op.id = s.operator_id
-    LEFT JOIN public.sale_items si  ON si.sale_id = s.id
+    LEFT JOIN public.operators op ON op.id = s.operator_id
+    LEFT JOIN LATERAL (
+      SELECT COALESCE(SUM(si.quantity), 0) AS units
+      FROM public.sale_items si
+      WHERE si.sale_id = s.id
+    ) item_totals ON true
     WHERE s.business_id = p_business_id
       AND s.status = 'completed'
       AND (p_from IS NULL OR s.created_at::date >= p_from)
       AND (p_to   IS NULL OR s.created_at::date <= p_to)
     GROUP BY op.id, op.name, op.role
-    ORDER BY revenue DESC
+    ORDER BY total_revenue DESC
   ) r;
 
   RETURN jsonb_build_object('data', COALESCE(v_rows, '[]'::jsonb));

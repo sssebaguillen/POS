@@ -547,7 +547,7 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
   if (!businessId) {
     return (
       <div className="flex flex-col h-full overflow-hidden">
-        <PageHeader title="Stock" />
+        <PageHeader title="Inventario" />
         <div className="flex-1 overflow-y-auto p-6">
           <div className="surface-card p-6">
             <p className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
@@ -561,7 +561,7 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
-      <PageHeader title="Stock">
+      <PageHeader title="Inventario">
         <Button
           variant="outline"
           size="sm"
