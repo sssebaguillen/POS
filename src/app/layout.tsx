@@ -34,7 +34,7 @@ export default async function RootLayout({
 }) {
   return (
     <html lang="es" className={`${dmSans.variable} ${sora.variable}`} suppressHydrationWarning>
-      <body className="font-sans antialiased">
+      <body className="font-sans antialiased" suppressHydrationWarning>
         <ThemeProvider>
           {children}
           <PostHogPageView />

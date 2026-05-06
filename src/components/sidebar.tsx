@@ -89,6 +89,7 @@ export default function Sidebar({
   const router = useRouter()
   const supabase = useMemo(() => createClient(), [])
   const [toast, setToast] = useState<string | null>(null)
+  const [mounted, setMounted] = useState(false)
   const [themeToggleMounted, setThemeToggleMounted] = useState(false)
   const permissions: Permissions | null = (() => {
     if (typeof document === 'undefined') {
@@ -115,13 +116,14 @@ export default function Sidebar({
   }, [toast])
 
   useEffect(() => {
+    setMounted(true)
     setThemeToggleMounted(true)
   }, [])
 
   const themeForUi = themeToggleMounted ? theme : 'light'
 
   const isRestricted = (check: (p: Permissions) => boolean): boolean =>
-    permissions !== null && !check(permissions)
+    mounted && permissions !== null && !check(permissions)
 
   function handleRestrictedClick(label: string) {
     setToast(`No tenés permisos para acceder a ${label}`)
