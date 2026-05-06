@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "next dev --webpack",
     "build": "next build",
-    "postbuild": "npx --yes posthog-cli@latest sourcemaps upload .next --api-key=$POSTHOG_CLI_API_KEY",
+    "postbuild": "curl -sL https://github.com/PostHog/posthog-cli/releases/latest/download/posthog-cli-x86_64-unknown-linux-musl.tar.gz | tar -xz && ./posthog-cli sourcemaps upload .next --api-key=$POSTHOG_CLI_API_KEY",
     "start": "next start",
     "lint": "eslint"
   },
