@@ -105,6 +105,7 @@ export interface SaleItem {
   unit_price: number
   unit_price_override: number | null
   override_reason: string | null
+  free_line_description: string | null
   total: number
 }
 
@@ -220,9 +221,15 @@ export interface OperatorSalesStatsRow {
 
 // Cart types (client-side only)
 export interface CartItem {
-  product: Product
+  product: Product | null
+  free_line_id: string | null
+  free_line_description: string | null
   quantity: number
   unit_price: number
   total: number
   priceIsManual?: boolean
+}
+
+export function getCartItemId(item: CartItem): string {
+  return item.free_line_id ?? item.product!.id
 }

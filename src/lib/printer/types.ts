@@ -9,6 +9,7 @@ export interface SaleItemInput {
   total: number
   unit_price_override: number | null
   override_reason: string | null
+  free_line_description: string | null
 }
 
 export interface ReceiptItemInput extends SaleItemInput {

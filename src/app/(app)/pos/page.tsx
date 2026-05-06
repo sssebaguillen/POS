@@ -22,7 +22,7 @@ export default async function POSPage() {
   ] = await Promise.all([
     supabase
       .from('businesses')
-      .select('id, name')
+      .select('id, name, settings')
       .eq('id', businessId)
       .single(),
     supabase
@@ -82,6 +82,7 @@ export default async function POSPage() {
       }))}
       businessId={businessId}
       businessName={business?.name ?? 'Negocio'}
+      freeLineEnabled={(business?.settings as Record<string, unknown> | null)?.free_line_enabled === true}
       priceLists={(priceLists ?? []).map(normalizePriceList)}
       priceListOverrides={priceListOverrides}
       activeOperator={activeOperator}

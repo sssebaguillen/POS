@@ -10,7 +10,7 @@ import { isSettingsOperator, type SettingsOperator } from '@/components/settings
 import { OPERATOR_ROLES, OPERATOR_ROLE_LABELS, type OperatorRole } from '@/lib/constants/domain'
 import type { Permissions } from '@/lib/operator'
 
-// price_override is a sub-toggle of sales (only meaningful in POS context, not a standalone permission)
+// Sub-toggles are shown nested under their parent; standalone permissions are shown directly
 type VisiblePermissionKey = Exclude<keyof Permissions, 'operators_write' | 'stock_write' | 'price_lists_write' | 'price_override'>
 type BaseRole = Exclude<OperatorRole, 'custom'>
 
@@ -21,11 +21,12 @@ const PERMISSION_LABELS: { key: VisiblePermissionKey; label: string }[] = [
   { key: 'expenses',    label: 'Gastos' },
   { key: 'price_lists', label: 'Ver listas de precios' },
   { key: 'settings',    label: 'Configuración' },
+  { key: 'free_line',   label: 'Producto Libre' },
 ]
 
 const ROLE_DEFAULTS: Record<BaseRole, Permissions> = {
-  manager: { sales: true, stock: true, stock_write: true,  stats: true,  expenses: true,  price_lists: true,  price_lists_write: true,  settings: false, operators_write: false, price_override: true },
-  cashier: { sales: true, stock: true, stock_write: false, stats: false, expenses: false, price_lists: false, price_lists_write: false, settings: false, operators_write: false, price_override: false },
+  manager: { sales: true, stock: true, stock_write: true,  stats: true,  expenses: true,  price_lists: true,  price_lists_write: true,  settings: false, operators_write: false, price_override: true,  free_line: true  },
+  cashier: { sales: true, stock: true, stock_write: false, stats: false, expenses: false, price_lists: false, price_lists_write: false, settings: false, operators_write: false, price_override: false, free_line: false },
 }
 
 const BASE_ROLES: BaseRole[] = OPERATOR_ROLES.filter((role): role is BaseRole => role !== 'custom')

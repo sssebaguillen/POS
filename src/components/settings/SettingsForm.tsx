@@ -38,6 +38,7 @@ interface FormState {
   logoUrl: string
   primaryColor: string
   currencyCode: SupportedCurrencyCode
+  freeLineEnabled: boolean
 }
 
 function isValidHttpUrl(value: string): boolean {
@@ -86,6 +87,7 @@ export default function SettingsForm({
     logoUrl: business.logo_url ?? '',
     primaryColor: business.settings?.primary_color ?? '#7a3e10',
     currencyCode: initialCurrency,
+    freeLineEnabled: business.settings?.free_line_enabled === true,
   })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -230,6 +232,7 @@ export default function SettingsForm({
           ...(business.settings as Record<string, unknown> | null | undefined),
           primary_color: form.primaryColor,
           currency: form.currencyCode,
+          free_line_enabled: form.freeLineEnabled,
         },
       })
       .eq('id', business.id)
@@ -549,6 +552,26 @@ export default function SettingsForm({
                 <p className="text-xs text-muted-foreground">
                   Se aplica a botones, badges y acentos del sistema.
                 </p>
+              </div>
+
+              <div className="flex items-center justify-between rounded-lg border border-border px-4 py-3">
+                <div>
+                  <p className="text-sm font-medium text-foreground">Producto Libre en ventas</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Permite agregar líneas de venta manuales sin producto registrado
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={form.freeLineEnabled}
+                  onClick={() => setField('freeLineEnabled', !form.freeLineEnabled)}
+                  className={`relative h-6 w-11 rounded-full transition-colors shrink-0 ml-4 ${form.freeLineEnabled ? 'bg-primary' : 'bg-muted-foreground'}`}
+                >
+                  <span
+                    className={`absolute top-1 left-1 h-4 w-4 rounded-full bg-white shadow-sm transition-transform ${form.freeLineEnabled ? 'translate-x-5' : 'translate-x-0'}`}
+                  />
+                </button>
               </div>
 
               {error && (

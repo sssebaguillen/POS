@@ -39,6 +39,7 @@ export function buildReceiptData({ businessName, sale, items, currency }: BuildR
     total: item.quantity * item.unit_price,
     unit_price_override: null,
     override_reason: null,
+    free_line_description: null,
   }))
 
   return {

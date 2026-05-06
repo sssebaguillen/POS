@@ -13,6 +13,7 @@ export interface Permissions {
   expenses: boolean
   operators_write: boolean
   price_override: boolean
+  free_line: boolean
 }
 
 export const DEFAULT_PERMISSIONS: Permissions = {
@@ -26,6 +27,7 @@ export const DEFAULT_PERMISSIONS: Permissions = {
   expenses: false,
   operators_write: false,
   price_override: false,
+  free_line: false,
 }
 
 export const OPERATOR_MANAGEMENT_PERMISSION_KEYS = [
@@ -39,6 +41,7 @@ export const OPERATOR_MANAGEMENT_PERMISSION_KEYS = [
   'settings',
   'operators_write',
   'price_override',
+  'free_line',
 ] as const
 
 export type OperatorManagementPermissionKey = (typeof OPERATOR_MANAGEMENT_PERMISSION_KEYS)[number]
@@ -56,6 +59,7 @@ export const OWNER_PERMISSIONS: Permissions = {
   expenses: true,
   operators_write: true,
   price_override: true,
+  free_line: true,
 }
 
 export interface ActiveOperator {
@@ -103,8 +107,9 @@ export function parsePermissions(value: unknown): Permissions | null {
     settings: record.settings,
     expenses: record.expenses,
     operators_write: record.operators_write === true,
-    // Soft default: old cookies without this field stay valid (defaults to false)
+    // Soft defaults: old cookies without these fields stay valid (default to false)
     price_override: record.price_override === true,
+    free_line: record.free_line === true,
   }
 }
 
@@ -121,6 +126,7 @@ export function normalizePermissions(value: Partial<Permissions> | null | undefi
     expenses: value?.expenses === true,
     operators_write: value?.operators_write === true,
     price_override: value?.price_override === true,
+    free_line: value?.free_line === true,
   }
 }
 
@@ -140,6 +146,7 @@ export function toOperatorManagementPermissions(
     settings: permissions.settings,
     operators_write: permissions.operators_write,
     price_override: permissions.price_override,
+    free_line: permissions.free_line,
   }
 }
 

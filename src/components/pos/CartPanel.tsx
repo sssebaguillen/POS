@@ -3,10 +3,11 @@
 import { useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { Minus, Pencil, Plus, Printer, ShoppingCart, Trash2 } from 'lucide-react'
+import { Minus, Pencil, Plus, Printer, ShoppingCart, Trash2, PenLine } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { useCartStore } from '@/lib/store/cart.store'
+import { getCartItemId } from '@/lib/types'
 import PaymentModal from '@/components/pos/PaymentModal'
 import ReceiptPreviewModal from '@/components/pos/ReceiptPreviewModal'
 import EditSalePanel from '@/components/pos/EditSalePanel'
@@ -44,22 +45,32 @@ interface SaleItemQueryRow {
   product_icon: string | null
   quantity: number
   unit_price: number
+  free_line_description: string | null
+}
+
+interface FreeLineForm {
+  description: string
+  price: string
+  quantity: string
 }
 
 interface Props {
   businessId: string | null
   businessName: string
+  freeLineEnabled: boolean
   activePriceList: PriceList | null
   priceListOverrides: PriceListOverride[]
   operatorId: string | null
   permissions: Permissions | null
 }
 
-export default function CartPanel({ businessId, businessName, activePriceList, priceListOverrides, operatorId, permissions }: Props) {
+export default function CartPanel({ businessId, businessName, freeLineEnabled, activePriceList, priceListOverrides, operatorId, permissions }: Props) {
   const currency = useCurrency()
   const formatMoney = useFormatMoney()
   const router = useRouter()
-  const { items, removeItem, updateQuantity, updatePrice, discount, clearCart, restoreCart } = useCartStore()
+  const { items, removeItem, updateQuantity, updatePrice, addFreeLineItem, discount, clearCart, restoreCart } = useCartStore()
+  const [showFreeLineForm, setShowFreeLineForm] = useState(false)
+  const [freeLineForm, setFreeLineForm] = useState<FreeLineForm>({ description: '', price: '', quantity: '1' })
   const [showPayment, setShowPayment] = useState(false)
   const { toast, showToast, dismissToast } = useToast()
   const [activeTab, setActiveTab] = useState<RightTab>('current')
@@ -83,6 +94,17 @@ export default function CartPanel({ businessId, businessName, activePriceList, p
 
   const adjustedItems = useMemo(() => {
     return items.map(item => {
+      if (item.product === null) {
+        return {
+          product_id: null,
+          quantity: item.quantity,
+          unit_price: item.unit_price,
+          total: item.quantity * item.unit_price,
+          unit_price_override: item.unit_price,
+          override_reason: 'free_line',
+          free_line_description: item.free_line_description,
+        }
+      }
       const unitPrice = item.priceIsManual || !activePriceList
         ? item.unit_price
         : calculateProductPrice(
@@ -100,6 +122,7 @@ export default function CartPanel({ businessId, businessName, activePriceList, p
         total: item.quantity * unitPrice,
         unit_price_override: item.priceIsManual ? unitPrice : null,
         override_reason: null,
+        free_line_description: null,
       }
     })
   }, [items, activePriceList, priceListOverrides])
@@ -107,7 +130,9 @@ export default function CartPanel({ businessId, businessName, activePriceList, p
   const adjustedByProductId = useMemo(() => {
     const map = new Map<string, { unit_price: number; total: number }>()
     for (const ai of adjustedItems) {
-      map.set(ai.product_id, { unit_price: ai.unit_price, total: ai.total })
+      if (ai.product_id !== null) {
+        map.set(ai.product_id, { unit_price: ai.unit_price, total: ai.total })
+      }
     }
     return map
   }, [adjustedItems])
@@ -116,6 +141,19 @@ export default function CartPanel({ businessId, businessName, activePriceList, p
   const adjustedTotal = Math.max(0, adjustedSubtotal - discount)
   const receiptItems = useMemo<ReceiptItemInput[]>(() => {
     return items.map(item => {
+      if (item.product === null) {
+        return {
+          product_id: null,
+          name: item.free_line_description ?? 'Producto Libre',
+          icon: null,
+          quantity: item.quantity,
+          unit_price: item.unit_price,
+          total: item.quantity * item.unit_price,
+          unit_price_override: item.unit_price,
+          override_reason: 'free_line',
+          free_line_description: item.free_line_description,
+        }
+      }
       const adjusted = adjustedByProductId.get(item.product.id)
       const product = item.product as ProductWithCategory
       return {
@@ -127,12 +165,13 @@ export default function CartPanel({ businessId, businessName, activePriceList, p
         total: adjusted?.total ?? item.total,
         unit_price_override: item.priceIsManual ? (adjusted?.unit_price ?? item.unit_price) : null,
         override_reason: null,
+        free_line_description: null,
       }
     })
   }, [adjustedByProductId, items])
 
   const hasStockWarning = items.some(
-    item => item.quantity >= item.product.stock
+    item => item.product !== null && item.quantity >= item.product.stock
   )
 
   const dailyHistoryQuery = useQuery<SaleRow[]>({
@@ -231,6 +270,7 @@ export default function CartPanel({ businessId, businessName, activePriceList, p
         product_icon: row.product_icon ?? null,
         quantity: row.quantity,
         unit_price: Number(row.unit_price),
+        free_line_description: row.free_line_description ?? null,
       })),
     }
     setSaleDetails(prev => ({ ...prev, [saleId]: detail }))
@@ -351,6 +391,7 @@ export default function CartPanel({ businessId, businessName, activePriceList, p
                 product_icon: found?.product_icon ?? null,
                 quantity: i.quantity,
                 unit_price: i.unit_price,
+                free_line_description: found?.free_line_description ?? null,
               }
             }),
           },
@@ -375,20 +416,20 @@ export default function CartPanel({ businessId, businessName, activePriceList, p
     })
   }
 
-  function startPriceEdit(productId: string, currentValue: number, mode: 'unit' | 'total') {
+  function startPriceEdit(itemId: string, currentValue: number, mode: 'unit' | 'total') {
     if (permissions?.price_override !== true) return
     priceEditResolvedRef.current = false
-    setEditingPrice({ productId, mode })
+    setEditingPrice({ productId: itemId, mode })
     setEditPriceValue(String(currentValue))
   }
 
-  function commitPriceEdit(productId: string, quantity: number) {
+  function commitPriceEdit(itemId: string, quantity: number) {
     if (priceEditResolvedRef.current) return
     priceEditResolvedRef.current = true
     const parsed = parseFloat(editPriceValue)
     if (!isNaN(parsed) && parsed > 0) {
       const unitPrice = editingPrice?.mode === 'total' ? parsed / quantity : parsed
-      updatePrice(productId, unitPrice)
+      updatePrice(itemId, unitPrice)
     }
     setEditingPrice(null)
     setEditPriceValue('')
@@ -398,6 +439,19 @@ export default function CartPanel({ businessId, businessName, activePriceList, p
     priceEditResolvedRef.current = true
     setEditingPrice(null)
     setEditPriceValue('')
+  }
+
+  function handleAddFreeLine() {
+    const description = freeLineForm.description.trim()
+    const price = parseFloat(freeLineForm.price)
+    const quantity = Math.max(1, parseInt(freeLineForm.quantity, 10) || 1)
+
+    if (!description || isNaN(price) || price < 0) return
+
+    const id = `fl-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
+    addFreeLineItem(id, description, price, quantity)
+    setFreeLineForm({ description: '', price: '', quantity: '1' })
+    setShowFreeLineForm(false)
   }
 
   function formatTime(dateString: string) {
@@ -486,31 +540,42 @@ export default function CartPanel({ businessId, businessName, activePriceList, p
               ) : (
                 <ul className="divide-y divide-edge-soft">
                   {items.map(item => {
-                    const effectivePrice = adjustedByProductId.get(item.product.id)?.unit_price ?? item.unit_price
-                    const effectiveTotal = adjustedByProductId.get(item.product.id)?.total ?? item.total
-                    const isEditingUnit = editingPrice?.productId === item.product.id && editingPrice.mode === 'unit'
-                    const isEditingTotal = editingPrice?.productId === item.product.id && editingPrice.mode === 'total'
-                    const canOverridePrice = permissions?.price_override === true
+                    const itemId = getCartItemId(item)
+                    const isFreeLine = item.product === null
+                    const effectivePrice = isFreeLine
+                      ? item.unit_price
+                      : (adjustedByProductId.get(item.product!.id)?.unit_price ?? item.unit_price)
+                    const effectiveTotal = isFreeLine
+                      ? item.quantity * item.unit_price
+                      : (adjustedByProductId.get(item.product!.id)?.total ?? item.total)
+                    const isEditingUnit = editingPrice?.productId === itemId && editingPrice.mode === 'unit'
+                    const isEditingTotal = editingPrice?.productId === itemId && editingPrice.mode === 'total'
+                    const canOverridePrice = !isFreeLine && permissions?.price_override === true
 
-                    const originalPrice = item.priceIsManual
+                    const originalPrice = !isFreeLine && item.priceIsManual
                       ? !activePriceList
-                        ? item.product.price
+                        ? item.product!.price
                         : calculateProductPrice(
-                            item.product.cost,
-                            item.product.price,
-                            item.product.id,
-                            item.product.brand_id,
+                            item.product!.cost,
+                            item.product!.price,
+                            item.product!.id,
+                            item.product!.brand_id,
                             activePriceList,
                             priceListOverrides
                           )
                       : null
 
                     return (
-                      <li key={item.product.id} className="px-4 py-3 flex items-start gap-3">
+                      <li key={itemId} className="px-4 py-3 flex items-start gap-3">
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-heading leading-tight truncate">
-                            {item.product.name}
-                          </p>
+                          <div className="flex items-center gap-1.5">
+                            {isFreeLine && (
+                              <PenLine size={12} className="text-primary shrink-0" />
+                            )}
+                            <p className="text-sm font-medium text-heading leading-tight truncate">
+                              {isFreeLine ? item.free_line_description : item.product!.name}
+                            </p>
+                          </div>
                           <div className="flex items-center gap-1.5 mt-0.5">
                               <div className="flex items-center gap-1">
                                 {originalPrice !== null && originalPrice !== effectivePrice && (
@@ -526,9 +591,9 @@ export default function CartPanel({ businessId, businessName, activePriceList, p
                                     autoFocus
                                     value={editPriceValue}
                                     onChange={e => setEditPriceValue(e.target.value)}
-                                    onBlur={() => commitPriceEdit(item.product.id, item.quantity)}
+                                    onBlur={() => commitPriceEdit(itemId, item.quantity)}
                                     onKeyDown={e => {
-                                      if (e.key === 'Enter') commitPriceEdit(item.product.id, item.quantity)
+                                      if (e.key === 'Enter') commitPriceEdit(itemId, item.quantity)
                                       if (e.key === 'Escape') cancelPriceEdit()
                                     }}
                                     className="w-20 text-right text-xs bg-surface border border-primary rounded px-1 py-0.5 tabular-nums focus:outline-none"
@@ -537,7 +602,7 @@ export default function CartPanel({ businessId, businessName, activePriceList, p
                                   <>
                                     <p
                                       className={`text-xs tabular-nums ${
-                                        item.priceIsManual ? 'text-primary font-medium' : 'text-hint'
+                                        item.priceIsManual || isFreeLine ? 'text-primary font-medium' : 'text-hint'
                                       }`}
                                     >
                                       {formatMoney(effectivePrice)} c/u
@@ -545,7 +610,7 @@ export default function CartPanel({ businessId, businessName, activePriceList, p
                                     {canOverridePrice && (
                                       <button
                                         type="button"
-                                        onClick={() => startPriceEdit(item.product.id, effectivePrice, 'unit')}
+                                        onClick={() => startPriceEdit(itemId, effectivePrice, 'unit')}
                                         className="text-faint hover:text-primary transition-colors"
                                         aria-label="Editar precio unitario"
                                       >
@@ -555,8 +620,8 @@ export default function CartPanel({ businessId, businessName, activePriceList, p
                                   </>
                                 )}
                               </div>
-                            {(() => {
-                              const indicator = getStockIndicator(item.quantity, item.product.stock, item.product.min_stock)
+                            {!isFreeLine && (() => {
+                              const indicator = getStockIndicator(item.quantity, item.product!.stock, item.product!.min_stock)
                               if (!indicator) return null
                               const isRed = indicator.type === 'zero' || indicator.type === 'negative'
                               return (
@@ -573,8 +638,8 @@ export default function CartPanel({ businessId, businessName, activePriceList, p
 
                         <div className="flex items-center gap-1.5 shrink-0">
                           <button
-                            onClick={() => updateQuantity(item.product.id, item.quantity - 1)}
-                            aria-label={`Quitar una unidad de ${item.product.name}`}
+                            onClick={() => updateQuantity(itemId, item.quantity - 1)}
+                            aria-label={`Quitar una unidad`}
                             className="w-8 h-8 rounded-md bg-surface hover:bg-hover-bg flex items-center justify-center transition-colors"
                           >
                             <Minus size={12} />
@@ -583,8 +648,8 @@ export default function CartPanel({ businessId, businessName, activePriceList, p
                             {item.quantity}
                           </span>
                           <button
-                            onClick={() => updateQuantity(item.product.id, item.quantity + 1)}
-                            aria-label={`Agregar una unidad de ${item.product.name}`}
+                            onClick={() => updateQuantity(itemId, item.quantity + 1)}
+                            aria-label={`Agregar una unidad`}
                             className="w-8 h-8 rounded-md bg-surface hover:bg-hover-bg flex items-center justify-center transition-colors"
                           >
                             <Plus size={12} />
@@ -600,15 +665,15 @@ export default function CartPanel({ businessId, businessName, activePriceList, p
                               autoFocus
                               value={editPriceValue}
                               onChange={e => setEditPriceValue(e.target.value)}
-                              onBlur={() => commitPriceEdit(item.product.id, item.quantity)}
+                              onBlur={() => commitPriceEdit(itemId, item.quantity)}
                               onKeyDown={e => {
-                                if (e.key === 'Enter') commitPriceEdit(item.product.id, item.quantity)
+                                if (e.key === 'Enter') commitPriceEdit(itemId, item.quantity)
                                 if (e.key === 'Escape') cancelPriceEdit()
                               }}
                               className="w-20 text-right text-sm bg-surface border border-primary rounded px-1 py-0.5 tabular-nums focus:outline-none"
                             />
                           ) : (
-                            <p className={`text-sm font-semibold tabular-nums ${item.priceIsManual ? 'text-primary' : 'text-heading'}`}>
+                            <p className={`text-sm font-semibold tabular-nums ${item.priceIsManual || isFreeLine ? 'text-primary' : 'text-heading'}`}>
                               {formatMoney(effectiveTotal)}
                             </p>
                           )}
@@ -616,7 +681,7 @@ export default function CartPanel({ businessId, businessName, activePriceList, p
                             {canOverridePrice && !isEditingTotal && (
                               <button
                                 type="button"
-                                onClick={() => startPriceEdit(item.product.id, effectiveTotal, 'total')}
+                                onClick={() => startPriceEdit(itemId, effectiveTotal, 'total')}
                                 className="text-faint hover:text-primary transition-colors"
                                 aria-label="Editar total"
                               >
@@ -624,8 +689,8 @@ export default function CartPanel({ businessId, businessName, activePriceList, p
                               </button>
                             )}
                             <button
-                              onClick={() => removeItem(item.product.id)}
-                              aria-label={`Quitar ${item.product.name} del carrito`}
+                              onClick={() => removeItem(itemId)}
+                              aria-label="Quitar del carrito"
                               className="text-faint hover:text-red-400 transition-colors"
                             >
                               <Trash2 size={12} />
@@ -667,6 +732,87 @@ export default function CartPanel({ businessId, businessName, activePriceList, p
                   Hay ítems con stock insuficiente
                 </p>
               )}
+
+              {freeLineEnabled && permissions?.free_line === true && (
+                showFreeLineForm ? (
+                  <div className="rounded-xl border border-primary/30 bg-primary/5 p-3 space-y-2">
+                    <p className="text-xs font-medium text-primary">Producto Libre</p>
+                    <input
+                      type="text"
+                      autoFocus
+                      placeholder="Descripción (ej: Envío, servicio…)"
+                      value={freeLineForm.description}
+                      onChange={e => setFreeLineForm(prev => ({ ...prev, description: e.target.value }))}
+                      onKeyDown={e => {
+                        if (e.key === 'Enter') handleAddFreeLine()
+                        if (e.key === 'Escape') setShowFreeLineForm(false)
+                      }}
+                      className="w-full rounded-lg border border-edge bg-surface px-3 py-1.5 text-sm text-heading placeholder:text-hint focus:outline-none focus:border-primary"
+                    />
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="space-y-0.5">
+                        <label className="text-[10px] text-hint uppercase tracking-wide">Precio</label>
+                        <input
+                          type="number"
+                          min={0}
+                          step="any"
+                          placeholder="0"
+                          value={freeLineForm.price}
+                          onChange={e => setFreeLineForm(prev => ({ ...prev, price: e.target.value }))}
+                          onKeyDown={e => {
+                            if (e.key === 'Enter') handleAddFreeLine()
+                            if (e.key === 'Escape') setShowFreeLineForm(false)
+                          }}
+                          className="w-full rounded-lg border border-edge bg-surface px-3 py-1.5 text-sm text-heading placeholder:text-hint focus:outline-none focus:border-primary tabular-nums"
+                        />
+                      </div>
+                      <div className="space-y-0.5">
+                        <label className="text-[10px] text-hint uppercase tracking-wide">Cantidad</label>
+                        <input
+                          type="number"
+                          min={1}
+                          step={1}
+                          placeholder="1"
+                          value={freeLineForm.quantity}
+                          onChange={e => setFreeLineForm(prev => ({ ...prev, quantity: e.target.value }))}
+                          onKeyDown={e => {
+                            if (e.key === 'Enter') handleAddFreeLine()
+                            if (e.key === 'Escape') setShowFreeLineForm(false)
+                          }}
+                          className="w-full rounded-lg border border-edge bg-surface px-3 py-1.5 text-sm text-heading placeholder:text-hint focus:outline-none focus:border-primary tabular-nums"
+                        />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => { setShowFreeLineForm(false); setFreeLineForm({ description: '', price: '', quantity: '1' }) }}
+                        className="h-8 rounded-lg border border-edge text-sm text-hint hover:text-body hover:bg-hover-bg transition-colors"
+                      >
+                        Cancelar
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleAddFreeLine}
+                        disabled={!freeLineForm.description.trim() || !freeLineForm.price}
+                        className="h-8 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-40"
+                      >
+                        Agregar
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setShowFreeLineForm(true)}
+                    className="flex items-center justify-center gap-1.5 w-full h-8 rounded-xl border border-dashed border-primary/40 text-xs text-primary/70 hover:text-primary hover:border-primary hover:bg-primary/5 transition-colors"
+                  >
+                    <PenLine size={12} />
+                    Producto Libre
+                  </button>
+                )
+              )}
+
               <div className="grid grid-cols-2 gap-2">
                 <Button
                   variant="cancel"

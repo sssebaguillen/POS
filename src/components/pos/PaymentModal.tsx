@@ -148,6 +148,7 @@ export default function PaymentModal({
         total: item.total,
         unit_price_override: item.unit_price_override,
         override_reason: item.override_reason,
+        free_line_description: item.free_line_description,
       })),
       p_payments: payments,
     })

@@ -34,6 +34,7 @@ export interface SaleItem {
   product_icon: string | null
   quantity: number
   unit_price: number
+  free_line_description: string | null
 }
 
 export interface SaleDetail extends SaleRow {

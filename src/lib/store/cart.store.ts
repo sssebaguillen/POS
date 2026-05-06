@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import type { CartItem, Product } from '@/lib/types'
+import { getCartItemId } from '@/lib/types'
 
 interface CartStore {
   items: CartItem[]
@@ -7,9 +8,10 @@ interface CartStore {
   customerId: string | null
 
   addItem: (product: Product) => void
-  removeItem: (productId: string) => void
-  updateQuantity: (productId: string, quantity: number) => void
-  updatePrice: (productId: string, price: number) => void
+  addFreeLineItem: (id: string, description: string, price: number, quantity: number) => void
+  removeItem: (itemId: string) => void
+  updateQuantity: (itemId: string, quantity: number) => void
+  updatePrice: (itemId: string, price: number) => void
   setDiscount: (discount: number) => void
   setCustomer: (customerId: string | null) => void
   clearCart: () => void
@@ -26,11 +28,11 @@ export const useCartStore = create<CartStore>((set, get) => ({
 
   addItem: (product) => {
     const items = get().items
-    const existing = items.find(i => i.product.id === product.id)
+    const existing = items.find(i => i.product?.id === product.id)
     if (existing) {
       set({
         items: items.map(i =>
-          i.product.id === product.id
+          i.product?.id === product.id
             ? { ...i, quantity: i.quantity + 1, total: (i.quantity + 1) * i.unit_price }
             : i
         ),
@@ -39,6 +41,8 @@ export const useCartStore = create<CartStore>((set, get) => ({
       set({
         items: [...items, {
           product,
+          free_line_id: null,
+          free_line_description: null,
           quantity: 1,
           unit_price: product.price,
           total: product.price,
@@ -47,28 +51,42 @@ export const useCartStore = create<CartStore>((set, get) => ({
     }
   },
 
-  removeItem: (productId) => {
-    set({ items: get().items.filter(i => i.product.id !== productId) })
+  addFreeLineItem: (id, description, price, quantity) => {
+    set({
+      items: [...get().items, {
+        product: null,
+        free_line_id: id,
+        free_line_description: description,
+        quantity,
+        unit_price: price,
+        total: quantity * price,
+        priceIsManual: true,
+      }],
+    })
   },
 
-  updateQuantity: (productId, quantity) => {
+  removeItem: (itemId) => {
+    set({ items: get().items.filter(i => getCartItemId(i) !== itemId) })
+  },
+
+  updateQuantity: (itemId, quantity) => {
     if (quantity <= 0) {
-      get().removeItem(productId)
+      get().removeItem(itemId)
       return
     }
     set({
       items: get().items.map(i =>
-        i.product.id === productId
+        getCartItemId(i) === itemId
           ? { ...i, quantity, total: quantity * i.unit_price }
           : i
       ),
     })
   },
 
-  updatePrice: (productId, price) => {
+  updatePrice: (itemId, price) => {
     set({
       items: get().items.map(i =>
-        i.product.id === productId
+        getCartItemId(i) === itemId
           ? { ...i, unit_price: price, total: i.quantity * price, priceIsManual: true }
           : i
       ),

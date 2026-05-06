@@ -30,6 +30,7 @@ interface EditOperatorModalProps {
 interface PermissionField {
   key: Exclude<OperatorManagementPermissionKey, 'operators_write' | 'stock_write' | 'price_lists_write' | 'price_override'>
   label: string
+  description?: string
 }
 
 interface PermissionToggleRowProps {
@@ -47,6 +48,7 @@ const PERMISSION_FIELDS: PermissionField[] = [
   { key: 'price_lists', label: 'Ver listas de precios' },
   { key: 'expenses', label: 'Gastos' },
   { key: 'settings', label: 'Configuración' },
+  { key: 'free_line', label: 'Producto Libre', description: 'Puede agregar líneas de venta sin producto' },
 ]
 
 function PermissionToggleRow({
@@ -59,6 +61,7 @@ function PermissionToggleRow({
   return (
     <div className={`flex items-center justify-between px-3 py-2.5 ${indented ? 'pl-8' : ''}`}>
       <span className={`text-sm ${indented ? 'text-hint' : 'text-body'}`}>{label}</span>
+
       <button
         type="button"
         role="switch"

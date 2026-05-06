@@ -108,6 +108,7 @@ function parseVerifyResult(value: unknown): ActiveOperator | null {
       expenses: permissionRecord.expenses === true,
       operators_write: permissionRecord.operators_write === true,
       price_override: permissionRecord.price_override === true,
+      free_line: permissionRecord.free_line === true,
     }),
   }
 }
