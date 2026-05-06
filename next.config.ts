@@ -55,6 +55,7 @@ const nextConfig: NextConfig = {
       },
     ];
   },
+  productionBrowserSourceMaps: true,
   skipTrailingSlashRedirect: true,
 };
 
