@@ -148,7 +148,7 @@ export default function ProductGrid({
             onClick={() => onSelectCategory(null)}
             className={`rounded-full border px-3 py-1 text-sm transition-colors ${
               selectedCategory === null
-                ? 'border-primary bg-primary text-primary-foreground'
+                ? 'bg-primary/10 text-primary border border-primary/20 dark:bg-primary/15 dark:border-primary/30'
                 : 'border-border bg-background text-foreground hover:border-primary/40'
             }`}
           >
@@ -162,7 +162,7 @@ export default function ProductGrid({
               onClick={() => onSelectCategory(category.id)}
               className={`rounded-full border px-3 py-1 text-sm transition-colors ${
                 selectedCategory === category.id
-                  ? 'border-primary bg-primary text-primary-foreground'
+                  ? 'bg-primary/10 text-primary border border-primary/20 dark:bg-primary/15 dark:border-primary/30'
                   : 'border-border bg-background text-foreground hover:border-primary/40'
               }`}
             >

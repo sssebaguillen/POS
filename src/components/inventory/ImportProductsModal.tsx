@@ -7,6 +7,8 @@ import { Button } from '@/components/ui/button'
 import SelectDropdown from '@/components/ui/SelectDropdown'
 import type { InventoryBrand, InventoryCategory } from '@/components/inventory/types'
 import { useFormatMoney } from '@/lib/context/CurrencyContext'
+import { useToast } from '@/hooks/useToast'
+import Toast from '@/components/shared/Toast'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -45,6 +47,20 @@ interface ResolvedRow {
   category_name: string | null
   brand_name: string | null
   is_active: boolean
+}
+
+interface ProductImportRow {
+  business_id: string
+  name: string
+  sku: string | null
+  barcode: string | null
+  price: number
+  cost: number
+  stock: number
+  min_stock: number
+  is_active: boolean
+  brand_id: string | null
+  category_id: string | null
 }
 
 interface Props {
@@ -148,13 +164,33 @@ async function insertInBatches<T extends object>(
   table: string,
   rows: T[],
   batchSize = 200,
-): Promise<string | null> {
+): Promise<{ error: string | null; ids: string[] }> {
+  const ids: string[] = []
   for (let i = 0; i < rows.length; i += batchSize) {
     const batch = rows.slice(i, i + batchSize)
-    const { error } = await supabase.from(table).insert(batch)
-    if (error) return error.message
+    const { data, error } = await supabase.from(table).insert(batch).select('id')
+    if (error) return { error: error.message, ids: [] }
+    if (data) ids.push(...data.map((r: { id: string }) => r.id))
   }
-  return null
+  return { error: null, ids }
+}
+
+async function selectProductIdsByField(
+  supabase: ReturnType<typeof createClient>,
+  businessId: string,
+  field: 'sku' | 'barcode',
+  values: string[],
+): Promise<{ error: string | null; ids: string[] }> {
+  if (values.length === 0) return { error: null, ids: [] }
+
+  const { data, error } = await supabase
+    .from('products')
+    .select('id')
+    .eq('business_id', businessId)
+    .in(field, values)
+
+  if (error) return { error: error.message, ids: [] }
+  return { error: null, ids: data?.map(product => product.id) ?? [] }
 }
 
 // ---------------------------------------------------------------------------
@@ -172,6 +208,7 @@ export default function ImportProductsModal({
 }: Props) {
   const supabase = useMemo(() => createClient(), [])
   const formatMoney = useFormatMoney()
+  const { toast, showToast, dismissToast } = useToast()
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   // step: 'upload' | 'mapping' | 'preview'
@@ -356,6 +393,7 @@ export default function ImportProductsModal({
     if (!businessId) return
     setImporting(true)
     setImportError(null)
+    const importedIds: string[] = []
 
     try {
       // 1. Create new brands via guarded RPC (enforces stock_write at DB level)
@@ -395,9 +433,9 @@ export default function ImportProductsModal({
       }
 
       // 3. Build product rows with resolved FKs
-      const withSku: object[] = []
-      const withBarcode: object[] = []
-      const plain: object[] = []
+      const withSku: ProductImportRow[] = []
+      const withBarcode: ProductImportRow[] = []
+      const plain: ProductImportRow[] = []
 
       for (const row of resolvedRows) {
         const brandId = row.brand_name
@@ -432,6 +470,13 @@ export default function ImportProductsModal({
 
       // 4. Upsert rows with SKU
       if (withSku.length > 0) {
+        const skus = Array.from(new Set(withSku.map(row => row.sku).filter((sku): sku is string => Boolean(sku))))
+        const existingSkuProducts = await selectProductIdsByField(supabase, businessId, 'sku', skus)
+        if (existingSkuProducts.error) {
+          throw new Error(`Error al obtener productos existentes (SKU): ${existingSkuProducts.error}`)
+        }
+        const existingSkuIds = new Set(existingSkuProducts.ids)
+
         for (let i = 0; i < withSku.length; i += 200) {
           const batch = withSku.slice(i, i + 200)
           const { error } = await supabase
@@ -442,10 +487,21 @@ export default function ImportProductsModal({
             })
           if (error) throw new Error(`Error al importar productos (SKU): ${error.message}`)
         }
+
+        const skuProducts = await selectProductIdsByField(supabase, businessId, 'sku', skus)
+        if (skuProducts.error) throw new Error(`Error al obtener productos importados (SKU): ${skuProducts.error}`)
+        importedIds.push(...skuProducts.ids.filter(id => !existingSkuIds.has(id)))
       }
 
       // 5. Upsert rows with barcode (no SKU)
       if (withBarcode.length > 0) {
+        const barcodes = Array.from(new Set(withBarcode.map(row => row.barcode).filter((barcode): barcode is string => Boolean(barcode))))
+        const existingBarcodeProducts = await selectProductIdsByField(supabase, businessId, 'barcode', barcodes)
+        if (existingBarcodeProducts.error) {
+          throw new Error(`Error al obtener productos existentes (barcode): ${existingBarcodeProducts.error}`)
+        }
+        const existingBarcodeIds = new Set(existingBarcodeProducts.ids)
+
         for (let i = 0; i < withBarcode.length; i += 200) {
           const batch = withBarcode.slice(i, i + 200)
           const { error } = await supabase
@@ -456,20 +512,48 @@ export default function ImportProductsModal({
             })
           if (error) throw new Error(`Error al importar productos (barcode): ${error.message}`)
         }
+
+        const barcodeProducts = await selectProductIdsByField(supabase, businessId, 'barcode', barcodes)
+        if (barcodeProducts.error) throw new Error(`Error al obtener productos importados (barcode): ${barcodeProducts.error}`)
+        importedIds.push(...barcodeProducts.ids.filter(id => !existingBarcodeIds.has(id)))
       }
 
       // 6. Insert rows with neither
       if (plain.length > 0) {
-        const err = await insertInBatches(supabase, 'products', plain)
-        if (err) throw new Error(`Error al importar productos: ${err}`)
+        const result = await insertInBatches(supabase, 'products', plain)
+        if (result.error) throw new Error(`Error al importar productos: ${result.error}`)
+        importedIds.push(...result.ids)
       }
 
-      onImported()
+      if (importedIds.length > 0) {
+        showToast({
+          message: `${importedIds.length} producto${importedIds.length !== 1 ? 's' : ''} importados`,
+          duration: 6000,
+          onUndo: async () => {
+            await supabase
+              .from('products')
+              .delete()
+              .in('id', importedIds)
+              .eq('business_id', businessId)
+            onImported()
+            onClose()
+          },
+        })
+        onImported()
+      } else {
+        onImported()
+        onClose()
+      }
     } catch (err: unknown) {
       setImportError(err instanceof Error ? err.message : 'Error desconocido al importar.')
     } finally {
       setImporting(false)
     }
+  }
+
+  function handleDismissToast() {
+    dismissToast()
+    onClose()
   }
 
   // ---------------------------------------------------------------------------
@@ -485,7 +569,7 @@ export default function ImportProductsModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-foreground/50" onClick={!importing ? onClose : undefined} />
+      <div className="absolute inset-0 bg-foreground/50" onClick={!importing && toast === null ? onClose : undefined} />
 
       <div className="relative surface-elevated rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-hidden flex flex-col">
         {/* Header */}
@@ -518,7 +602,7 @@ export default function ImportProductsModal({
 
           <button
             onClick={onClose}
-            disabled={importing}
+            disabled={importing || toast !== null}
             className="text-hint hover:text-body transition-colors disabled:opacity-50"
             aria-label="Cerrar"
           >
@@ -760,6 +844,14 @@ export default function ImportProductsModal({
           )}
         </div>
       </div>
+      {toast && (
+        <Toast
+          message={toast.message}
+          duration={toast.duration}
+          onUndo={toast.onUndo}
+          onDismiss={handleDismissToast}
+        />
+      )}
     </div>
   )
 }
