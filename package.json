@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "next dev --webpack",
     "build": "next build",
-    "postbuild": "curl -sL https://github.com/PostHog/posthog-cli/releases/latest/download/posthog-cli-x86_64-unknown-linux-musl.tar.gz | tar -xz && ./posthog-cli sourcemaps upload .next --api-key=$POSTHOG_CLI_API_KEY",
+    "postbuild": "npx @posthog/cli sourcemap inject .next && npx @posthog/cli sourcemap upload .next --api-key=$POSTHOG_CLI_API_KEY --posthog-url=https://eu.posthog.com",
     "start": "next start",
     "lint": "eslint"
   },
@@ -36,6 +36,7 @@
     "zustand": "^5.0.11"
   },
   "devDependencies": {
+    "@posthog/cli": "latest",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20.19.37",
     "@types/react": "^19",
