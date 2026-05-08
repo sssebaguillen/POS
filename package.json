@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev --webpack",
-    "build": "next build --webpack",
+    "build": "next build",
     "postbuild": "npx @posthog/cli --host https://eu.posthog.com sourcemap inject --directory .next && npx @posthog/cli --host https://eu.posthog.com sourcemap upload --directory .next",
     "start": "next start",
     "lint": "eslint"
