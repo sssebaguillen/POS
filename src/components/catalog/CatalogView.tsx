@@ -41,8 +41,21 @@ function getStoredCartItems(
       return []
     }
 
-    const productIds = new Set(products.map(product => product.id))
-    return items.filter(item => productIds.has(item.product.id))
+    const productsById = new Map(products.map(product => [product.id, product]))
+
+    return items.flatMap(item => {
+      const product = productsById.get(item.product.id)
+      if (!product) {
+        return []
+      }
+
+      const quantity = Math.min(item.quantity, product.stock)
+      if (quantity <= 0) {
+        return []
+      }
+
+      return [{ product, quantity }]
+    })
   } catch {
     return []
   }

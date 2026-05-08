@@ -57,7 +57,7 @@ export default function CartPanel({
   const [notes, setNotes] = useState('')
 
   const subtotal = useMemo(
-    () => cartItems.reduce((acc, item) => acc + item.product.price * item.quantity, 0),
+    () => cartItems.reduce((acc, item) => acc + item.product.salePrice * item.quantity, 0),
     [cartItems]
   )
 
@@ -82,7 +82,7 @@ export default function CartPanel({
   function buildMessage(): string {
     const itemsText = cartItems
       .map(item => {
-        const lineTotal = item.product.price * item.quantity
+        const lineTotal = item.product.salePrice * item.quantity
         return `${item.quantity}x ${item.product.name} - $${currencyFormatter.format(lineTotal)}`
       })
       .join('\n')
@@ -187,7 +187,7 @@ export default function CartPanel({
                     <div className="min-w-0">
                       <p className="line-clamp-1 text-sm font-medium text-foreground">{item.product.name}</p>
                       <p className="mt-0.5 text-sm text-muted-foreground">
-                        ${currencyFormatter.format(item.product.price * item.quantity)}
+                        ${currencyFormatter.format(item.product.salePrice * item.quantity)}
                       </p>
                     </div>
                     <button

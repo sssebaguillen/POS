@@ -1328,10 +1328,10 @@ $$;
 
 -- get_catalog_products (SECURITY DEFINER + GRANT anon)
 -- Price resolution mirrors calculateProductPrice in src/lib/price-lists.ts:
---   cost > 0  → cost × effective_multiplier (product override > brand override > list)
---   cost = 0  → use explicit products.price
+--   cost > 0 + default list  → cost × effective_multiplier (product override > brand override > list)
+--   no list or cost = 0      → use products.price (the sale price column — NOT cost)
 CREATE OR REPLACE FUNCTION public.get_catalog_products(p_slug text)
-RETURNS TABLE(id uuid, category_id uuid, name text, price numeric, stock integer, image_url text)
+RETURNS TABLE(id uuid, category_id uuid, name text, sale_price numeric, stock integer, image_url text)
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path TO 'public'
@@ -1367,9 +1367,8 @@ BEGIN
           END,
           v_list_mult
         ))::numeric
-      WHEN p.cost > 0 THEN p.cost::numeric
       ELSE p.price::numeric
-    END AS price,
+    END AS sale_price,
     p.stock::integer,
     p.image_url
   FROM products p

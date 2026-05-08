@@ -57,8 +57,8 @@ function sortProducts(products: CatalogProduct[], sortBy: SortBy): CatalogProduc
     switch (sortBy) {
       case 'name-asc':  return a.name.localeCompare(b.name, 'es')
       case 'name-desc': return b.name.localeCompare(a.name, 'es')
-      case 'price-asc':  return a.price - b.price
-      case 'price-desc': return b.price - a.price
+      case 'price-asc':  return a.salePrice - b.salePrice
+      case 'price-desc': return b.salePrice - a.salePrice
     }
   })
 }
@@ -219,7 +219,7 @@ export default function ProductGrid({
                   <div>
                     <h3 className="text-sm font-medium text-foreground">{product.name}</h3>
                     <p className="mt-1 text-base font-bold text-foreground">
-                      ${currencyFormatter.format(product.price)}
+                      ${currencyFormatter.format(product.salePrice)}
                     </p>
                   </div>
 
@@ -267,7 +267,7 @@ export default function ProductGrid({
                 <div className="min-w-0 flex-1">
                   <h3 className="truncate text-sm font-medium text-foreground">{product.name}</h3>
                   <p className="mt-0.5 text-sm font-bold text-foreground">
-                    ${currencyFormatter.format(product.price)}
+                    ${currencyFormatter.format(product.salePrice)}
                   </p>
                   {isOutOfStock && (
                     <span className="mt-0.5 inline-block rounded-md bg-destructive/90 px-2 py-0.5 text-xs font-medium text-destructive-foreground">

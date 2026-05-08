@@ -18,7 +18,7 @@ interface ProductRow {
   id: string
   category_id: string | null
   name: string
-  price: number | string
+  sale_price: number | string
   stock: number | string
   image_url: string | null
 }
@@ -97,7 +97,7 @@ export default async function CatalogSlugPage({ params }: CatalogPageProps) {
           id: product.id,
           categoryId: product.category_id,
           name: product.name,
-          price: Number(product.price),
+          salePrice: Number(product.sale_price),
           stock: Number(product.stock),
           imageUrl: product.image_url,
         }))}
