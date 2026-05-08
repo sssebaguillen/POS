@@ -170,9 +170,7 @@ export async function proxy(request: NextRequest) {
 
   const isInventoryRoute =
     pathname === '/inventory' ||
-    pathname.startsWith('/inventory/') ||
-    pathname === '/products' ||
-    pathname.startsWith('/products/')
+    pathname.startsWith('/inventory/')
 
   if (isInventoryRoute && !hasPermission(operator, 'stock')) {
     return flashRedirect(new URL('/pos', request.url), cspHeader)
@@ -184,13 +182,6 @@ export async function proxy(request: NextRequest) {
 
   if (isPriceListsRoute && !hasPermission(operator, 'price_lists')) {
     return flashRedirect(new URL('/pos', request.url), cspHeader)
-  }
-
-  if (
-    (pathname === '/products' || pathname.startsWith('/products/')) &&
-    !hasPermission(operator, 'stock_write')
-  ) {
-    return withCsp(NextResponse.redirect(new URL('/inventory', request.url)))
   }
 
   const isSettingsRoute = pathname === '/settings' || pathname.startsWith('/settings/')
