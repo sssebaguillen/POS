@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev --webpack",
-    "build": "next build",
+    "build": "next build --webpack",
     "postbuild": "npx @posthog/cli --host https://eu.posthog.com sourcemap inject --directory .next && npx @posthog/cli --host https://eu.posthog.com sourcemap upload --directory .next",
     "start": "next start",
     "lint": "eslint"
@@ -13,7 +13,7 @@
     "@e965/xlsx": "^0.20.3",
     "@floating-ui/react": "^0.27.19",
     "@hono/node-server": "^2.0.2",
-    "@supabase/ssr": "^0.9.0",
+    "@supabase/ssr": "^0.10.3",
     "@supabase/supabase-js": "^2.99.1",
     "@tanstack/react-query": "^5.96.2",
     "@tanstack/react-query-devtools": "^5.96.2",
