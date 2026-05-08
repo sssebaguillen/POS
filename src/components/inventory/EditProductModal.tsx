@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { ChevronRight, Upload, X } from 'lucide-react'
-import { Dialog, DialogContent } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import type { PriceList, PriceListOverride } from '@/lib/types'
 import type { InventoryBrand, InventoryCategory, InventoryProduct } from '@/components/inventory/types'
 import { validateImageUrl } from '@/lib/validation'
@@ -337,9 +337,9 @@ export default function EditProductModal({
 
   return (
     <Dialog open={open} onOpenChange={nextOpen => !nextOpen && handleClose()}>
-      <DialogContent className="sm:max-w-[640px] p-0 gap-0 overflow-hidden bg-card" showCloseButton={false}>
+      <DialogContent className="flex max-h-[calc(100dvh-2rem)] flex-col gap-0 overflow-hidden bg-card p-0 sm:max-w-[640px]" showCloseButton={false}>
         <div className="flex items-center justify-between px-5 py-4 border-b border-edge shrink-0">
-          <h2 className="text-base font-semibold text-heading">Editar producto</h2>
+          <DialogTitle className="text-base font-semibold text-heading">Editar producto</DialogTitle>
           <button
             type="button"
             onClick={handleClose}
@@ -350,15 +350,15 @@ export default function EditProductModal({
           </button>
         </div>
 
-        <div className="flex flex-col">
-          <div className="px-6 py-4">
+        <div className="flex min-h-0 flex-1 flex-col">
+          <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-6">
             <div className="space-y-3.5">
 
               {/* Información */}
               <div>
                 <p className="mb-2 text-[10px] font-semibold text-subtle uppercase tracking-widest">Información</p>
-                <div className="grid grid-cols-2 gap-3.5">
-                  <div className="col-span-2">
+                <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
+                  <div className="sm:col-span-2">
                     <FieldGroup label="Nombre" required error={errors.name}>
                       <Input
                         value={form.name}
@@ -483,7 +483,7 @@ export default function EditProductModal({
               {/* Precios */}
               <div>
                 <p className="mb-2 text-[10px] font-semibold text-subtle uppercase tracking-widest">Precios</p>
-                <div className="grid grid-cols-2 gap-3.5">
+                <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
                   <FieldGroup label="Costo" error={errors.cost}>
                     <div className="relative">
                       <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-hint">{currencySymbol}</span>
@@ -529,7 +529,7 @@ export default function EditProductModal({
                   </FieldGroup>
 
                   {isPriceEdited && priceLists.length > 0 && (
-                    <div className="col-span-2 rounded-xl border border-edge bg-surface-alt px-3 py-2.5 flex flex-col gap-2">
+                    <div className="rounded-xl border border-edge bg-surface-alt px-3 py-2.5 flex flex-col gap-2 sm:col-span-2">
                       <p className="text-xs text-subtle">Aplicar este precio personalizado en:</p>
                       <div className="flex flex-wrap gap-x-4 gap-y-1.5">
                         {priceLists.map(list => (
@@ -571,7 +571,7 @@ export default function EditProductModal({
               {/* Stock */}
               <div>
                 <p className="mb-2 text-[10px] font-semibold text-subtle uppercase tracking-widest">Stock</p>
-                <div className="grid grid-cols-2 gap-3.5">
+                <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
                   <FieldGroup label="Stock actual" required error={errors.stock}>
                     <Input
                       type="number"
@@ -610,7 +610,7 @@ export default function EditProductModal({
               </button>
 
               {showAdvanced && (
-                <div className="grid grid-cols-2 gap-3.5">
+                <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
                   <FieldGroup label="SKU">
                     <Input
                       value={form.sku}
@@ -629,7 +629,7 @@ export default function EditProductModal({
                     />
                   </FieldGroup>
 
-                  <div className="col-span-2">
+                  <div className="sm:col-span-2">
                     <p className="text-label text-subtle mb-2">Imagen del producto</p>
                     {imageUrl && imageSource === 'upload' ? (
                       <div className="flex items-start gap-3 rounded-xl border border-edge bg-surface px-3 py-3">
@@ -777,22 +777,28 @@ export default function EditProductModal({
           </div>
 
           {/* Footer */}
-          <div className="border-t border-edge px-5 py-4 flex items-center gap-3">
-            <button
-              type="button"
-              onClick={() => setField('show_in_catalog', !form.show_in_catalog)}
-              className={`relative w-9 h-5 rounded-full transition-colors cursor-pointer shrink-0 ${form.show_in_catalog ? 'bg-primary' : 'bg-muted-foreground'}`}
-              aria-label="Cambiar visibilidad en catálogo"
-            >
-              <span className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-card shadow-sm transition-transform ${form.show_in_catalog ? 'translate-x-4' : 'translate-x-0'}`} />
-            </button>
-            <span className="text-xs text-subtle mr-auto">{form.show_in_catalog ? 'Visible en catálogo' : 'Oculto en catálogo'}</span>
-            <Button type="button" variant="cancel" onClick={handleClose} disabled={isSaving} className="h-9 px-5 rounded-xl text-sm">
-              Cancelar
-            </Button>
-            <Button type="button" onClick={() => void handleSubmit()} disabled={isSaving} className="h-9 px-5 rounded-lg text-sm bg-primary hover:bg-primary/90 text-primary-foreground">
-              {isSaving ? 'Guardando…' : 'Guardar cambios'}
-            </Button>
+          <div className="shrink-0 border-t border-edge px-4 py-3 sm:px-5 sm:py-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+              <div className="flex min-w-0 items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setField('show_in_catalog', !form.show_in_catalog)}
+                  className={`relative w-9 h-5 rounded-full transition-colors cursor-pointer shrink-0 ${form.show_in_catalog ? 'bg-primary' : 'bg-muted-foreground'}`}
+                  aria-label="Cambiar visibilidad en catálogo"
+                >
+                  <span className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-card shadow-sm transition-transform ${form.show_in_catalog ? 'translate-x-4' : 'translate-x-0'}`} />
+                </button>
+                <span className="min-w-0 text-xs text-subtle">{form.show_in_catalog ? 'Visible en catálogo' : 'Oculto en catálogo'}</span>
+              </div>
+              <div className="flex w-full flex-col-reverse gap-2 sm:ml-auto sm:w-auto sm:flex-row">
+                <Button type="button" variant="cancel" onClick={handleClose} disabled={isSaving} className="h-9 w-full rounded-xl px-5 text-sm sm:w-auto">
+                  Cancelar
+                </Button>
+                <Button type="button" onClick={() => void handleSubmit()} disabled={isSaving} className="h-9 w-full rounded-lg bg-primary px-5 text-sm text-primary-foreground hover:bg-primary/90 sm:w-auto">
+                  {isSaving ? 'Guardando…' : 'Guardar cambios'}
+                </Button>
+              </div>
+            </div>
           </div>
         </div>
       </DialogContent>
