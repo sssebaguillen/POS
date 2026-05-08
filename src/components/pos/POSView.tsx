@@ -311,39 +311,37 @@ export default function POSView({ products, businessId, businessName, freeLineEn
           </div>
         </div>
 
-        {priceLists.length > 0 && (
-          <div ref={listDropdownRef} className="relative shrink-0" data-tour="pos-price-list-selector">
-            <button
-              disabled={!canSelectList}
-              onClick={() => canSelectList && setListDropdownOpen(prev => !prev)}
-              title={!canSelectList ? 'Solo operadores con permiso de stock pueden cambiar la lista de precios' : undefined}
-              className={
-                'flex items-center gap-1.5 h-8 px-3 rounded-lg border border-edge text-sm font-medium transition-colors select-none ' +
-                (canSelectList
-                  ? 'hover:bg-hover-bg text-body'
-                  : 'opacity-60 cursor-not-allowed text-subtle')
-              }
-            >
-              <span className="text-hint text-xs">Lista:</span>
-              <span>{activePriceList?.name ?? 'Sin lista'}</span>
-              {canSelectList && <ChevronDown size={14} className="text-hint" />}
-            </button>
-            {listDropdownOpen && (
-              <div className="absolute top-full right-0 mt-1 surface-elevated z-30 py-1 min-w-[180px] rounded-lg overflow-hidden">
-                {priceLists.map(pl => (
-                  <button
-                    key={pl.id}
-                    onClick={() => { setActivePriceListId(pl.id); setListDropdownOpen(false) }}
-                    className="w-full flex items-center justify-between px-3 py-2 text-sm text-body hover:bg-hover-bg transition-colors"
-                  >
-                    <span>{pl.name}</span>
-                    {pl.id === activePriceListId && <Check size={14} className="text-primary" />}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
+        <div ref={listDropdownRef} className="relative shrink-0" data-tour="pos-price-list-selector">
+          <button
+            disabled={!canSelectList || priceLists.length === 0}
+            onClick={() => canSelectList && priceLists.length > 0 && setListDropdownOpen(prev => !prev)}
+            title={!canSelectList ? 'Solo operadores con permiso de stock pueden cambiar la lista de precios' : undefined}
+            className={
+              'flex items-center gap-1.5 h-8 px-3 rounded-lg border border-edge text-sm font-medium transition-colors select-none ' +
+              (canSelectList && priceLists.length > 0
+                ? 'hover:bg-hover-bg text-body'
+                : 'opacity-60 cursor-not-allowed text-subtle')
+            }
+          >
+            <span className="text-hint text-xs">Lista:</span>
+            <span>{priceLists.length === 0 ? '—' : (activePriceList?.name ?? 'Sin lista')}</span>
+            {canSelectList && priceLists.length > 0 && <ChevronDown size={14} className="text-hint" />}
+          </button>
+          {listDropdownOpen && priceLists.length > 0 && (
+            <div className="absolute top-full right-0 mt-1 surface-elevated z-30 py-1 min-w-[180px] rounded-lg overflow-hidden">
+              {priceLists.map(pl => (
+                <button
+                  key={pl.id}
+                  onClick={() => { setActivePriceListId(pl.id); setListDropdownOpen(false) }}
+                  className="w-full flex items-center justify-between px-3 py-2 text-sm text-body hover:bg-hover-bg transition-colors"
+                >
+                  <span>{pl.name}</span>
+                  {pl.id === activePriceListId && <Check size={14} className="text-primary" />}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
 
         <span className="text-sm text-subtle capitalize shrink-0 hidden lg:block">
           {formatDate(new Date())}

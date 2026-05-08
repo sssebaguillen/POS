@@ -165,7 +165,8 @@ export default function OperatorSelectView({
     }
 
     trackOperatorSwitch()
-    window.location.href = '/pos'
+    const isDashboardRole = isOwnerSelected || payload.role === 'manager'
+    window.location.href = isDashboardRole ? '/dashboard' : '/pos'
   }
 
   function handlePinChange(value: string) {

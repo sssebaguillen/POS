@@ -145,7 +145,8 @@ export async function proxy(request: NextRequest) {
   }
 
   if (isOperatorSelectRoute) {
-    return withCsp(NextResponse.redirect(new URL('/pos', request.url)))
+    const dest = operator.role === 'manager' ? '/dashboard' : '/pos'
+    return withCsp(NextResponse.redirect(new URL(dest, request.url)))
   }
 
   const isProfileRoute = pathname === '/profile' || pathname.startsWith('/profile/')
