@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -14,6 +14,8 @@ import type { PriceList } from '@/lib/types'
 import type { InventoryBrand, InventoryCategory, InventoryProduct } from '@/components/inventory/types'
 import { validateImageUrl } from '@/lib/validation'
 import FieldGroup from '@/components/inventory/FieldGroup'
+import VariantEditor from '@/components/inventory/VariantEditor'
+import type { VariantPayloadNew, VariantPayloadEdit } from '@/components/inventory/VariantEditor'
 import { useCurrency } from '@/lib/context/CurrencyContext'
 import { getCurrencySymbol, toTitleCase } from '@/lib/format'
 
@@ -68,6 +70,8 @@ export default function NewProductModal({
   const [loading, setLoading] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [isPriceEdited, setIsPriceEdited] = useState(false)
+  const [hasVariants, setHasVariants] = useState(false)
+  const [variantPayload, setVariantPayload] = useState<VariantPayloadNew | null>(null)
   const [brandInput, setBrandInput] = useState('')
   const [showBrandOptions, setShowBrandOptions] = useState(false)
   const [categoryInput, setCategoryInput] = useState('')
@@ -125,7 +129,13 @@ export default function NewProductModal({
     setExternalUrlInput('')
     setUrlError('')
     setShowAdvanced(false)
+    setHasVariants(false)
+    setVariantPayload(null)
   }
+
+  const handleVariantPayloadChange = useCallback((payload: VariantPayloadNew | VariantPayloadEdit | null) => {
+    setVariantPayload(payload as VariantPayloadNew | null)
+  }, [])
 
   function set(field: string, value: string | boolean) {
     setForm(prev => ({ ...prev, [field]: value }))
@@ -217,7 +227,73 @@ export default function NewProductModal({
       return
     }
 
+    if (!form.name.trim()) {
+      setErrors({ name: 'El nombre es obligatorio' })
+      return
+    }
+
     setLoading(true)
+
+    if (hasVariants && variantPayload) {
+      const productPayload = {
+        name: toTitleCase(form.name.trim()),
+        sku: form.sku.trim() || null,
+        brand_id: form.brand_id || null,
+        barcode: form.barcode.trim() || null,
+        category_id: form.category_id || null,
+        price: Number(form.price) || 0,
+        cost: Number(form.cost) || 0,
+        min_stock: Number(form.min_stock) || 0,
+        is_active: form.is_active,
+        image_url: imageUrl ?? null,
+        image_source: imageSource ?? null,
+      }
+
+      const { data: rpcResult, error: rpcError } = await supabase.rpc('create_product_with_variants', {
+        p_product: productPayload,
+        p_options: variantPayload.options,
+        p_variants: variantPayload.variants,
+      })
+
+      setLoading(false)
+      const result = rpcResult as { success: boolean; product_id?: string; error?: string } | null
+
+      if (rpcError || !result?.success) {
+        setErrors({ _global: result?.error ?? rpcError?.message ?? 'Error al crear el producto con variantes' })
+        return
+      }
+
+      // Fetch the created product for the onCreated callback
+      const { data: newProduct } = await supabase
+        .from('products')
+        .select('id, name, price, cost, stock, min_stock, is_active, category_id, sku, brand_id, brands(id, name), barcode, image_url, image_source, has_variants, categories(name, icon)')
+        .eq('id', result.product_id!)
+        .single()
+
+      if (newProduct) {
+        const created: InventoryProduct = {
+          ...newProduct,
+          price: Number(newProduct.price),
+          cost: Number(newProduct.cost),
+          brand: Array.isArray(newProduct.brands)
+            ? (newProduct.brands[0] ?? null)
+            : (newProduct.brands ?? null),
+          image_url: newProduct.image_url ?? null,
+          image_source: (newProduct.image_source as 'upload' | 'url' | null) ?? null,
+          categories: Array.isArray(newProduct.categories)
+            ? (newProduct.categories[0] ?? null)
+            : (newProduct.categories ?? null),
+          has_variants: true,
+        }
+        onCreated(created)
+        onSuccess?.(created)
+      }
+
+      resetFormState()
+      if (!embedded) onClose()
+      return
+    }
+
     const payload = {
       business_id: businessId,
       name: toTitleCase(form.name.trim()),
@@ -237,7 +313,7 @@ export default function NewProductModal({
     const { data, error } = await supabase
       .from('products')
       .insert(payload)
-      .select('id, name, price, cost, stock, min_stock, is_active, category_id, sku, brand_id, brands(id, name), barcode, image_url, image_source, categories(name, icon)')
+      .select('id, name, price, cost, stock, min_stock, is_active, category_id, sku, brand_id, brands(id, name), barcode, image_url, image_source, has_variants, categories(name, icon)')
       .single()
 
     setLoading(false)
@@ -569,6 +645,12 @@ export default function NewProductModal({
 
               {showAdvanced && (
                 <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
+                  <VariantEditor
+                    mode="new"
+                    hasVariants={hasVariants}
+                    onHasVariantsChange={setHasVariants}
+                    onPayloadChange={handleVariantPayloadChange}
+                  />
                   <FieldGroup label="SKU">
                     <Input
                       value={form.sku}

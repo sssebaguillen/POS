@@ -1,15 +1,17 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { ChevronRight, Upload, X } from 'lucide-react'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
-import type { PriceList, PriceListOverride } from '@/lib/types'
+import type { PriceList, PriceListOverride, ProductOption, ProductVariant, ProductWithVariants } from '@/lib/types'
 import type { InventoryBrand, InventoryCategory, InventoryProduct } from '@/components/inventory/types'
 import { validateImageUrl } from '@/lib/validation'
 import FieldGroup from '@/components/inventory/FieldGroup'
+import VariantEditor from '@/components/inventory/VariantEditor'
+import type { VariantPayloadEdit, VariantPayloadNew } from '@/components/inventory/VariantEditor'
 import { useCurrency } from '@/lib/context/CurrencyContext'
 import { getCurrencySymbol, toTitleCase } from '@/lib/format'
 
@@ -98,6 +100,31 @@ export default function EditProductModal({
   const supabase = useMemo(() => createClient(), [])
   const currency = useCurrency()
   const currencySymbol = getCurrencySymbol(currency)
+
+  // Variant state
+  const [hasVariants, setHasVariants] = useState(product.has_variants ?? false)
+  const [variantPayload, setVariantPayload] = useState<VariantPayloadEdit | null>(null)
+  const [variantOptions, setVariantOptions] = useState<ProductOption[]>([])
+  const [variantVariants, setVariantVariants] = useState<ProductVariant[]>([])
+  const [variantLoading, setVariantLoading] = useState(false)
+  const variantLoadedRef = useRef(false)
+
+  const handleVariantPayloadChange = useCallback((payload: VariantPayloadNew | VariantPayloadEdit | null) => {
+    setVariantPayload(payload as VariantPayloadEdit | null)
+  }, [])
+
+  // Load variant data when collapsable opens and product has_variants
+  useEffect(() => {
+    if (!product.has_variants || variantLoadedRef.current) return
+    variantLoadedRef.current = true
+    setVariantLoading(true)
+    supabase.rpc('get_product_with_variants', { p_product_id: product.id }).then(({ data }) => {
+      setVariantLoading(false)
+      const result = data as ProductWithVariants | null
+      if (result?.options) setVariantOptions(result.options)
+      if (result?.variants) setVariantVariants(result.variants)
+    })
+  }, [product.has_variants, product.id, supabase])
 
   const suggestedPrice = useMemo(() => {
     const cost = Number(form.cost)
@@ -311,6 +338,46 @@ export default function EditProductModal({
         image_source: imageSource,
       },
       nextOverrides
+    )
+  }
+
+  async function handleSubmitWithVariants() {
+    if (!variantPayload) return
+
+    setIsSaving(true)
+    const { data: rpcResult, error: rpcError } = await supabase.rpc('update_product_variants', {
+      p_product_id: product.id,
+      p_options: variantPayload.options,
+      p_variants: variantPayload.variants,
+    })
+    setIsSaving(false)
+
+    const result = rpcResult as { success: boolean; error?: string } | null
+    if (rpcError || !result?.success) {
+      setErrors({ _global: result?.error ?? rpcError?.message ?? 'Error al guardar variantes' })
+      return
+    }
+
+    // Also save product-level fields
+    const parsedPrice = Number(form.price)
+    const parsedCost = Number(form.cost)
+    onSaved(
+      {
+        name: toTitleCase(form.name.trim()),
+        price: parsedPrice,
+        cost: parsedCost || 0,
+        stock: Math.trunc(Number(form.stock) || 0),
+        min_stock: Math.trunc(Number(form.min_stock) || 0),
+        sku: form.sku.trim() || null,
+        brand_id: form.brand_id || null,
+        barcode: form.barcode.trim() || null,
+        category_id: form.category_id || null,
+        show_in_catalog: form.show_in_catalog,
+        image_url: imageUrl,
+        image_source: imageSource,
+        has_variants: true,
+      },
+      existingOverrides
     )
   }
 
@@ -611,6 +678,19 @@ export default function EditProductModal({
 
               {showAdvanced && (
                 <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
+                  {variantLoading ? (
+                    <div className="sm:col-span-2 py-2 text-xs text-hint">Cargando variantes…</div>
+                  ) : (
+                    <VariantEditor
+                      mode="edit"
+                      initialOptions={variantOptions}
+                      initialVariants={variantVariants}
+                      hasSalesHistory={(product as InventoryProduct & { sales_count?: number }).sales_count ? (product as InventoryProduct & { sales_count?: number }).sales_count! > 0 : false}
+                      hasVariants={hasVariants}
+                      onHasVariantsChange={setHasVariants}
+                      onPayloadChange={handleVariantPayloadChange}
+                    />
+                  )}
                   <FieldGroup label="SKU">
                     <Input
                       value={form.sku}
@@ -794,7 +874,12 @@ export default function EditProductModal({
                 <Button type="button" variant="cancel" onClick={handleClose} disabled={isSaving} className="h-9 w-full rounded-xl px-5 text-sm sm:w-auto">
                   Cancelar
                 </Button>
-                <Button type="button" onClick={() => void handleSubmit()} disabled={isSaving} className="h-9 w-full rounded-lg bg-primary px-5 text-sm text-primary-foreground hover:bg-primary/90 sm:w-auto">
+                <Button
+                  type="button"
+                  onClick={() => void (hasVariants && variantPayload ? handleSubmitWithVariants() : handleSubmit())}
+                  disabled={isSaving}
+                  className="h-9 w-full rounded-lg bg-primary px-5 text-sm text-primary-foreground hover:bg-primary/90 sm:w-auto"
+                >
                   {isSaving ? 'Guardando…' : 'Guardar cambios'}
                 </Button>
               </div>

@@ -109,8 +109,16 @@ const ProductListRow = memo(function ProductListRow({
       </TableCell>
 
       <TableCell className="text-right">
-        <p className="text-sm font-semibold text-heading tabular-nums">{product.stock} <span className="text-xs font-normal text-hint">uds</span></p>
-        <p className="text-xs text-hint">min. {product.min_stock}</p>
+        {product.has_variants ? (
+          <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-primary/10 text-primary border border-primary/20 whitespace-nowrap">
+            {product.variant_count ?? '?'} variantes
+          </span>
+        ) : (
+          <>
+            <p className="text-sm font-semibold text-heading tabular-nums">{product.stock} <span className="text-xs font-normal text-hint">uds</span></p>
+            <p className="text-xs text-hint">min. {product.min_stock}</p>
+          </>
+        )}
       </TableCell>
 
       {!readOnly && (

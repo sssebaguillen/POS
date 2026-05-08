@@ -4,10 +4,16 @@ import Image from 'next/image'
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useCartStore } from '@/lib/store/cart.store'
 import { calculateProductPrice } from '@/lib/price-lists'
-import type { Product } from '@/lib/types'
+import type { Product, ProductWithVariants, ProductVariant } from '@/lib/types'
 import type { ProductWithCategory, ActiveFilter } from '@/components/pos/types'
 import type { PriceList, PriceListOverride } from '@/lib/types'
 import { useFormatMoney } from '@/lib/context/CurrencyContext'
+import { createClient } from '@/lib/supabase/client'
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover'
 
 const PAGE_SIZE = 80
 
@@ -32,9 +38,10 @@ interface Props {
 
 export default function ProductPanel({ products, search, activeFilter, activePriceList, priceListOverrides }: Props) {
   const addItem = useCartStore(s => s.addItem)
+  const addVariantItem = useCartStore(s => s.addVariantItem)
   const formatMoney = useFormatMoney()
+  const supabase = useMemo(() => createClient(), [])
 
-  // IntersectionObserver — load more when sentinel comes into view
   const filtered = useMemo(() => {
     let result = products
     if (activeFilter?.type === 'category') {
@@ -63,6 +70,10 @@ export default function ProductPanel({ products, search, activeFilter, activePri
     addItem(product)
   }, [addItem])
 
+  const handleAddVariant = useCallback((product: ProductWithCategory, variant: ProductVariant, label: string) => {
+    addVariantItem(product, variant, label)
+  }, [addVariantItem])
+
   return (
     <div className="p-6 space-y-6">
       {/* Más vendidos */}
@@ -80,7 +91,9 @@ export default function ProductPanel({ products, search, activeFilter, activePri
                 activePriceList={activePriceList}
                 priceListOverrides={priceListOverrides}
                 onAdd={handleAdd}
+                onAddVariant={handleAddVariant}
                 formatMoney={formatMoney}
+                supabase={supabase}
               />
             ))}
           </div>
@@ -106,7 +119,9 @@ export default function ProductPanel({ products, search, activeFilter, activePri
             activePriceList={activePriceList}
             priceListOverrides={priceListOverrides}
             onAdd={handleAdd}
+            onAddVariant={handleAddVariant}
             formatMoney={formatMoney}
+            supabase={supabase}
           />
         )}
       </section>
@@ -119,7 +134,9 @@ interface PaginatedProductGridProps {
   activePriceList: PriceList | null
   priceListOverrides: PriceListOverride[]
   onAdd: (product: Product) => void
+  onAddVariant: (product: ProductWithCategory, variant: ProductVariant, label: string) => void
   formatMoney: (v: number) => string
+  supabase: ReturnType<typeof createClient>
 }
 
 function PaginatedProductGrid({
@@ -127,7 +144,9 @@ function PaginatedProductGrid({
   activePriceList,
   priceListOverrides,
   onAdd,
+  onAddVariant,
   formatMoney,
+  supabase,
 }: PaginatedProductGridProps) {
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
   const sentinelRef = useRef<HTMLDivElement>(null)
@@ -166,7 +185,9 @@ function PaginatedProductGrid({
             activePriceList={activePriceList}
             priceListOverrides={priceListOverrides}
             onAdd={onAdd}
+            onAddVariant={onAddVariant}
             formatMoney={formatMoney}
+            supabase={supabase}
           />
         ))}
       </div>
@@ -196,21 +217,150 @@ function CategorySwatch({ categoryId, brandName }: { categoryId: string | null; 
   )
 }
 
+// ─── Variant selector popover content ────────────────────────────────────────
+
+function VariantSelectorContent({
+  product,
+  onAdd,
+  onClose,
+}: {
+  product: ProductWithCategory
+  onAdd: (variant: ProductVariant, label: string) => void
+  onClose: () => void
+}) {
+  const supabase = useMemo(() => createClient(), [])
+  const [data, setData] = useState<ProductWithVariants | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [selectedValues, setSelectedValues] = useState<Record<string, string>>({})
+
+  useEffect(() => {
+    setLoading(true)
+    supabase.rpc('get_product_with_variants', { p_product_id: product.id }).then(({ data: rpc }) => {
+      setLoading(false)
+      if (rpc) setData(rpc as ProductWithVariants)
+    })
+  }, [product.id, supabase])
+
+  const allSelected = data
+    ? data.options.every(o => selectedValues[o.id])
+    : false
+
+  const matchedVariant = useMemo<ProductVariant | null>(() => {
+    if (!data || !allSelected) return null
+    return data.variants.find(v =>
+      v.is_active &&
+      v.option_values.every(ov => selectedValues[ov.option_id] === ov.option_value_id)
+    ) ?? null
+  }, [data, allSelected, selectedValues])
+
+  function selectValue(optionId: string, valueId: string) {
+    setSelectedValues(prev => ({ ...prev, [optionId]: valueId }))
+  }
+
+  function handleAdd() {
+    if (!matchedVariant || !data) return
+    const label = data.options.map(o => {
+      const ov = matchedVariant.option_values.find(v => v.option_id === o.id)
+      return ov?.value ?? ''
+    }).filter(Boolean).join(' / ')
+    onAdd(matchedVariant, label)
+    onClose()
+  }
+
+  if (loading) {
+    return (
+      <div className="p-4 text-xs text-hint text-center">Cargando variantes…</div>
+    )
+  }
+
+  if (!data || data.options.length === 0) {
+    return (
+      <div className="p-4 text-xs text-hint text-center">Sin variantes disponibles</div>
+    )
+  }
+
+  return (
+    <div className="p-3 space-y-3 w-56">
+      <p className="text-sm font-semibold text-heading leading-tight line-clamp-2">
+        {product.name}
+      </p>
+
+      {data.options.map(option => (
+        <div key={option.id}>
+          <p className="text-[10px] font-semibold text-subtle uppercase tracking-wider mb-1.5">
+            {option.name}
+          </p>
+          <div className="flex flex-wrap gap-1">
+            {option.values.map(val => {
+              const variantForValue = data.variants.find(v =>
+                v.is_active && v.option_values.some(ov => ov.option_value_id === val.id)
+              )
+              const outOfStock = variantForValue ? !variantForValue.is_in_stock : false
+              const isSelected = selectedValues[option.id] === val.id
+
+              return (
+                <button
+                  key={val.id}
+                  type="button"
+                  disabled={outOfStock}
+                  onClick={() => selectValue(option.id, val.id)}
+                  title={outOfStock ? 'Sin stock' : undefined}
+                  className={[
+                    'px-2 py-1 rounded-lg border text-xs font-medium transition-colors',
+                    isSelected
+                      ? 'bg-primary border-primary text-primary-foreground'
+                      : outOfStock
+                        ? 'border-edge text-hint bg-surface opacity-40 cursor-not-allowed'
+                        : 'border-edge text-body bg-surface hover:border-primary/50 hover:bg-primary/5',
+                  ].join(' ')}
+                >
+                  {val.value}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      ))}
+
+      {matchedVariant && !matchedVariant.is_in_stock && (
+        <p className="text-xs text-amber-600 dark:text-amber-400">Sin stock para esta combinación</p>
+      )}
+
+      <button
+        type="button"
+        disabled={!allSelected}
+        onClick={handleAdd}
+        className="w-full h-8 rounded-lg bg-primary text-primary-foreground text-xs font-semibold disabled:opacity-40 hover:bg-primary/90 transition-colors"
+      >
+        Agregar al carrito
+      </button>
+    </div>
+  )
+}
+
+// ─── Product card ─────────────────────────────────────────────────────────────
+
 const ProductCard = memo(function ProductCard({
   product,
   index,
   activePriceList,
   priceListOverrides,
   onAdd,
+  onAddVariant,
   formatMoney,
+  supabase: _supabase,
 }: {
   product: ProductWithCategory
   index: number
   activePriceList: PriceList | null
   priceListOverrides: PriceListOverride[]
   onAdd: (p: Product) => void
+  onAddVariant: (p: ProductWithCategory, v: ProductVariant, label: string) => void
   formatMoney: (v: number) => string
+  supabase: ReturnType<typeof createClient>
 }) {
+  const [popoverOpen, setPopoverOpen] = useState(false)
+
   const rawPrice = activePriceList
     ? calculateProductPrice(product.cost, product.price, product.id, product.brand_id, activePriceList, priceListOverrides)
     : product.price
@@ -218,19 +368,32 @@ const ProductCard = memo(function ProductCard({
 
   const displayName = product.name || 'Sin nombre'
 
-  const stockLabel = product.stock === 0
-    ? 'Sin stock'
-    : product.stock > 0 && product.stock <= product.min_stock
-      ? 'Stock bajo'
-      : null
+  const stockLabel = !product.has_variants
+    ? product.stock === 0
+      ? 'Sin stock'
+      : product.stock > 0 && product.stock <= product.min_stock
+        ? 'Stock bajo'
+        : null
+    : null
 
-  return (
+  function handleClick() {
+    if (product.has_variants) {
+      setPopoverOpen(true)
+    } else {
+      onAdd(product)
+    }
+  }
+
+  const cardContent = (
     <button
-      onClick={() => onAdd(product)}
+      onClick={handleClick}
       aria-label={`${displayName}, ${formatMoney(displayPrice)}${stockLabel ? `, ${stockLabel}` : ''}`}
-      className="group relative text-left p-4 rounded-2xl border border-edge/60 bg-surface hover:border-primary/50 transition-all flex flex-col"
+      className={[
+        'group relative text-left p-4 rounded-2xl border border-edge/60 bg-surface hover:border-primary/50 transition-all flex flex-col w-full',
+        product.has_variants ? 'ring-0 hover:ring-1 hover:ring-primary/20' : '',
+      ].join(' ')}
     >
-      {/* Top zone — always h-20, keeps all cards identical height */}
+      {/* Top zone */}
       {product.image_url ? (
         <div className="relative w-full h-20 mb-3 rounded-md overflow-hidden shrink-0">
           <Image
@@ -242,7 +405,6 @@ const ProductCard = memo(function ProductCard({
             unoptimized={product.image_source === 'url'}
             priority={index === 0}
           />
-
         </div>
       ) : (
         <CategorySwatch
@@ -261,7 +423,7 @@ const ProductCard = memo(function ProductCard({
 
       {/* Price */}
       <p className="text-sm font-medium text-body tabular-nums">
-        {formatMoney(displayPrice)}
+        {product.has_variants ? 'Desde ' : ''}{formatMoney(displayPrice)}
       </p>
 
       {stockLabel && (
@@ -276,6 +438,37 @@ const ProductCard = memo(function ProductCard({
           {stockLabel}
         </span>
       )}
+
+      {product.has_variants && (
+        <span className="absolute top-2 right-2 text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20">
+          Variantes
+        </span>
+      )}
     </button>
+  )
+
+  if (!product.has_variants) {
+    return cardContent
+  }
+
+  return (
+    <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
+      <PopoverTrigger asChild>
+        {cardContent}
+      </PopoverTrigger>
+      <PopoverContent
+        className="p-0 w-auto"
+        side="bottom"
+        align="start"
+        sideOffset={4}
+        style={{ animation: 'none' }}
+      >
+        <VariantSelectorContent
+          product={product}
+          onAdd={(variant, label) => onAddVariant(product, variant, label)}
+          onClose={() => setPopoverOpen(false)}
+        />
+      </PopoverContent>
+    </Popover>
   )
 })

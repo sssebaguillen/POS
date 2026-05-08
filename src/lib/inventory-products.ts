@@ -5,7 +5,7 @@ import type { PostgrestError, SupabaseClient } from '@supabase/supabase-js'
 const INVENTORY_PRODUCTS_PAGE_SIZE = 1000
 
 export const INVENTORY_PRODUCTS_SELECT =
-  'id, business_id, name, price, cost, stock, min_stock, is_active, show_in_catalog, category_id, sku, barcode, brand_id, image_url, image_source, brands(id, name), categories(name, icon)'
+  'id, business_id, name, price, cost, stock, min_stock, is_active, show_in_catalog, category_id, sku, barcode, brand_id, image_url, image_source, has_variants, brands(id, name), categories(name, icon)'
 
 interface InventoryBrandRelation {
   id: string
@@ -33,6 +33,7 @@ interface InventoryProductRow {
   brand_id: string | null
   image_url: string | null
   image_source: 'upload' | 'url' | null
+  has_variants: boolean
   brands: InventoryBrandRelation | InventoryBrandRelation[] | null
   categories: InventoryCategoryRelation | InventoryCategoryRelation[] | null
 }
@@ -41,7 +42,10 @@ function toNumber(value: number | string | null): number {
   return Number(value ?? 0)
 }
 
-export function normalizeInventoryProduct(product: InventoryProductRow): InventoryProduct {
+export function normalizeInventoryProduct(
+  product: InventoryProductRow,
+  variantCountMap?: Map<string, number>
+): InventoryProduct {
   return {
     ...product,
     price: toNumber(product.price),
@@ -53,6 +57,8 @@ export function normalizeInventoryProduct(product: InventoryProductRow): Invento
     image_url: product.image_url ?? null,
     image_source: product.image_source ?? null,
     categories: unwrapRelation(product.categories),
+    has_variants: product.has_variants ?? false,
+    variant_count: variantCountMap?.get(product.id),
   }
 }
 
@@ -84,8 +90,28 @@ export async function fetchInventoryProducts(
     }
   }
 
+  // Fetch variant counts for products that have variants
+  const variantProductIds = rows.filter(p => p.has_variants).map(p => p.id)
+  let variantCountMap: Map<string, number> | undefined
+
+  if (variantProductIds.length > 0) {
+    const { data: variantRows } = await supabase
+      .from('product_variants')
+      .select('product_id')
+      .eq('business_id', businessId)
+      .eq('is_active', true)
+      .in('product_id', variantProductIds)
+
+    if (variantRows) {
+      variantCountMap = new Map()
+      for (const row of variantRows as { product_id: string }[]) {
+        variantCountMap.set(row.product_id, (variantCountMap.get(row.product_id) ?? 0) + 1)
+      }
+    }
+  }
+
   return {
-    data: rows.map(normalizeInventoryProduct),
+    data: rows.map(row => normalizeInventoryProduct(row, variantCountMap)),
     error: null,
   }
 }

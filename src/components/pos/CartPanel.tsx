@@ -97,6 +97,7 @@ export default function CartPanel({ businessId, businessName, freeLineEnabled, a
       if (item.product === null) {
         return {
           product_id: null,
+          variant_id: null,
           quantity: item.quantity,
           unit_price: item.unit_price,
           total: item.quantity * item.unit_price,
@@ -105,7 +106,8 @@ export default function CartPanel({ businessId, businessName, freeLineEnabled, a
           free_line_description: item.free_line_description,
         }
       }
-      const unitPrice = item.priceIsManual || !activePriceList
+      // Variant items use their own price; skip price list calculation
+      const unitPrice = item.variant_id || item.priceIsManual || !activePriceList
         ? item.unit_price
         : calculateProductPrice(
             item.product.cost,
@@ -117,6 +119,7 @@ export default function CartPanel({ businessId, businessName, freeLineEnabled, a
           )
       return {
         product_id: item.product.id,
+        variant_id: item.variant_id ?? null,
         quantity: item.quantity,
         unit_price: unitPrice,
         total: item.quantity * unitPrice,
@@ -127,11 +130,13 @@ export default function CartPanel({ businessId, businessName, freeLineEnabled, a
     })
   }, [items, activePriceList, priceListOverrides])
 
-  const adjustedByProductId = useMemo(() => {
+  // Key is variant_id when present, otherwise product_id
+  const adjustedByItemKey = useMemo(() => {
     const map = new Map<string, { unit_price: number; total: number }>()
     for (const ai of adjustedItems) {
       if (ai.product_id !== null) {
-        map.set(ai.product_id, { unit_price: ai.unit_price, total: ai.total })
+        const key = ai.variant_id ?? ai.product_id
+        map.set(key, { unit_price: ai.unit_price, total: ai.total })
       }
     }
     return map
@@ -144,6 +149,7 @@ export default function CartPanel({ businessId, businessName, freeLineEnabled, a
       if (item.product === null) {
         return {
           product_id: null,
+          variant_id: null,
           name: item.free_line_description ?? 'Producto Libre',
           icon: null,
           quantity: item.quantity,
@@ -154,10 +160,12 @@ export default function CartPanel({ businessId, businessName, freeLineEnabled, a
           free_line_description: item.free_line_description,
         }
       }
-      const adjusted = adjustedByProductId.get(item.product.id)
+      const itemKey = item.variant_id ?? item.product.id
+      const adjusted = adjustedByItemKey.get(itemKey)
       const product = item.product as ProductWithCategory
       return {
         product_id: item.product.id,
+        variant_id: item.variant_id ?? null,
         name: item.product.name,
         icon: product.categories?.icon ?? null,
         quantity: item.quantity,
@@ -168,7 +176,7 @@ export default function CartPanel({ businessId, businessName, freeLineEnabled, a
         free_line_description: null,
       }
     })
-  }, [adjustedByProductId, items])
+  }, [adjustedByItemKey, items])
 
   const hasStockWarning = items.some(
     item => item.product !== null && item.quantity >= item.product.stock
@@ -542,12 +550,13 @@ export default function CartPanel({ businessId, businessName, freeLineEnabled, a
                   {items.map(item => {
                     const itemId = getCartItemId(item)
                     const isFreeLine = item.product === null
+                    const adjustedKey = isFreeLine ? '' : (item.variant_id ?? item.product!.id)
                     const effectivePrice = isFreeLine
                       ? item.unit_price
-                      : (adjustedByProductId.get(item.product!.id)?.unit_price ?? item.unit_price)
+                      : (adjustedByItemKey.get(adjustedKey)?.unit_price ?? item.unit_price)
                     const effectiveTotal = isFreeLine
                       ? item.quantity * item.unit_price
-                      : (adjustedByProductId.get(item.product!.id)?.total ?? item.total)
+                      : (adjustedByItemKey.get(adjustedKey)?.total ?? item.total)
                     const isEditingUnit = editingPrice?.productId === itemId && editingPrice.mode === 'unit'
                     const isEditingTotal = editingPrice?.productId === itemId && editingPrice.mode === 'total'
                     const canOverridePrice = !isFreeLine && permissions?.price_override === true
@@ -576,6 +585,11 @@ export default function CartPanel({ businessId, businessName, freeLineEnabled, a
                               {isFreeLine ? item.free_line_description : item.product!.name}
                             </p>
                           </div>
+                          {!isFreeLine && item.variant_label && (
+                            <p className="text-[11px] text-subtle leading-tight truncate">
+                              {item.variant_label}
+                            </p>
+                          )}
                           <div className="flex items-center gap-1.5 mt-0.5">
                               <div className="flex items-center gap-1">
                                 {originalPrice !== null && originalPrice !== effectivePrice && (
