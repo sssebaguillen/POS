@@ -545,10 +545,10 @@ export default function EditProductModal({
                 </div>
               </div>
 
-              <div className="border-t border-edge my-1" />
+              {!hasVariants && <div className="border-t border-edge my-1" />}
 
               {/* Precios */}
-              <div>
+              {!hasVariants && <div>
                 <p className="mb-2 text-[10px] font-semibold text-subtle uppercase tracking-widest">Precios</p>
                 <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
                   <FieldGroup label="Costo" error={errors.cost}>
@@ -631,12 +631,12 @@ export default function EditProductModal({
                     </div>
                   )}
                 </div>
-              </div>
+              </div>}
 
-              <div className="border-t border-edge my-1" />
+              {!hasVariants && <div className="border-t border-edge my-1" />}
 
               {/* Stock */}
-              <div>
+              {!hasVariants && <div>
                 <p className="mb-2 text-[10px] font-semibold text-subtle uppercase tracking-widest">Stock</p>
                 <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
                   <FieldGroup label="Stock actual" required error={errors.stock}>
@@ -663,7 +663,22 @@ export default function EditProductModal({
                     />
                   </FieldGroup>
                 </div>
-              </div>
+              </div>}
+
+              {/* Variantes — siempre visible entre Stock y el collapsable */}
+              {variantLoading ? (
+                <div className="py-2 text-xs text-hint">Cargando variantes…</div>
+              ) : (
+                <VariantEditor
+                  mode="edit"
+                  initialOptions={variantOptions}
+                  initialVariants={variantVariants}
+                  hasSalesHistory={(product as InventoryProduct & { sales_count?: number }).sales_count ? (product as InventoryProduct & { sales_count?: number }).sales_count! > 0 : false}
+                  hasVariants={hasVariants}
+                  onHasVariantsChange={setHasVariants}
+                  onPayloadChange={handleVariantPayloadChange}
+                />
+              )}
 
               {/* Collapsable — Imagen y detalles adicionales */}
               <button
@@ -673,41 +688,34 @@ export default function EditProductModal({
               >
                 <ChevronRight className={`w-3.5 h-3.5 text-hint transition-transform shrink-0 ${showAdvanced ? 'rotate-90' : ''}`} />
                 <span className="text-xs font-medium text-subtle">Imagen y detalles adicionales</span>
-                <span className="text-xs text-hint ml-1">· SKU, código de barras, foto</span>
+                <span className="text-xs text-hint ml-1">
+                  {hasVariants ? '· Foto del producto base' : '· SKU, código de barras, foto'}
+                </span>
               </button>
 
               {showAdvanced && (
                 <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
-                  {variantLoading ? (
-                    <div className="sm:col-span-2 py-2 text-xs text-hint">Cargando variantes…</div>
-                  ) : (
-                    <VariantEditor
-                      mode="edit"
-                      initialOptions={variantOptions}
-                      initialVariants={variantVariants}
-                      hasSalesHistory={(product as InventoryProduct & { sales_count?: number }).sales_count ? (product as InventoryProduct & { sales_count?: number }).sales_count! > 0 : false}
-                      hasVariants={hasVariants}
-                      onHasVariantsChange={setHasVariants}
-                      onPayloadChange={handleVariantPayloadChange}
-                    />
+                  {!hasVariants && (
+                    <FieldGroup label="SKU">
+                      <Input
+                        value={form.sku}
+                        onChange={event => setField('sku', event.target.value)}
+                        placeholder="Ej: PSTACC-500"
+                        className="h-9 rounded-xl text-sm bg-surface border-edge focus-visible:ring-ring/50 focus-visible:border-ring"
+                      />
+                    </FieldGroup>
                   )}
-                  <FieldGroup label="SKU">
-                    <Input
-                      value={form.sku}
-                      onChange={event => setField('sku', event.target.value)}
-                      placeholder="Ej: PSTACC-500"
-                      className="h-9 rounded-xl text-sm bg-surface border-edge focus-visible:ring-ring/50 focus-visible:border-ring"
-                    />
-                  </FieldGroup>
 
-                  <FieldGroup label="Código de barras">
-                    <Input
-                      value={form.barcode}
-                      onChange={event => setField('barcode', event.target.value)}
-                      placeholder="Ej: 7790001234567"
-                      className="h-9 rounded-xl text-sm bg-surface border-edge focus-visible:ring-ring/50 focus-visible:border-ring"
-                    />
-                  </FieldGroup>
+                  {!hasVariants && (
+                    <FieldGroup label="Código de barras">
+                      <Input
+                        value={form.barcode}
+                        onChange={event => setField('barcode', event.target.value)}
+                        placeholder="Ej: 7790001234567"
+                        className="h-9 rounded-xl text-sm bg-surface border-edge focus-visible:ring-ring/50 focus-visible:border-ring"
+                      />
+                    </FieldGroup>
+                  )}
 
                   <div className="sm:col-span-2">
                     <p className="text-label text-subtle mb-2">Imagen del producto</p>

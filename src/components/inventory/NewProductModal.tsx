@@ -510,10 +510,10 @@ export default function NewProductModal({
                 </div>
               </div>
 
-              <div className="border-t border-edge my-1" />
+              {!hasVariants && <div className="border-t border-edge my-1" />}
 
               {/* Precios */}
-              <div>
+              {!hasVariants && <div>
                 <p className="mb-2 text-[10px] font-semibold text-subtle uppercase tracking-widest">Precios</p>
                 <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
                   <FieldGroup
@@ -599,12 +599,12 @@ export default function NewProductModal({
                     </div>
                   )}
                 </div>
-              </div>
+              </div>}
 
-              <div className="border-t border-edge my-1" />
+              {!hasVariants && <div className="border-t border-edge my-1" />}
 
               {/* Stock */}
-              <div>
+              {!hasVariants && <div>
                 <p className="mb-2 text-[10px] font-semibold text-subtle uppercase tracking-widest">Stock</p>
                 <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
                   <FieldGroup label="Stock inicial" error={errors.stock}>
@@ -630,7 +630,15 @@ export default function NewProductModal({
                     />
                   </FieldGroup>
                 </div>
-              </div>
+              </div>}
+
+              {/* Variantes — siempre visible entre Stock y el collapsable */}
+              <VariantEditor
+                mode="new"
+                hasVariants={hasVariants}
+                onHasVariantsChange={setHasVariants}
+                onPayloadChange={handleVariantPayloadChange}
+              />
 
               {/* Collapsable — Imagen y detalles adicionales */}
               <button
@@ -640,34 +648,34 @@ export default function NewProductModal({
               >
                 <ChevronRight className={`w-3.5 h-3.5 text-hint transition-transform shrink-0 ${showAdvanced ? 'rotate-90' : ''}`} />
                 <span className="text-xs font-medium text-subtle">Imagen y detalles adicionales</span>
-                <span className="text-xs text-hint ml-1">· SKU, código de barras, foto</span>
+                <span className="text-xs text-hint ml-1">
+                  {hasVariants ? '· Foto del producto base' : '· SKU, código de barras, foto'}
+                </span>
               </button>
 
               {showAdvanced && (
                 <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
-                  <VariantEditor
-                    mode="new"
-                    hasVariants={hasVariants}
-                    onHasVariantsChange={setHasVariants}
-                    onPayloadChange={handleVariantPayloadChange}
-                  />
-                  <FieldGroup label="SKU">
-                    <Input
-                      value={form.sku}
-                      onChange={e => set('sku', e.target.value)}
-                      placeholder="Ej: PSTACC-500"
-                      className="h-9 rounded-xl text-sm bg-surface border-edge focus-visible:ring-ring/50 focus-visible:border-ring"
-                    />
-                  </FieldGroup>
+                  {!hasVariants && (
+                    <FieldGroup label="SKU">
+                      <Input
+                        value={form.sku}
+                        onChange={e => set('sku', e.target.value)}
+                        placeholder="Ej: PSTACC-500"
+                        className="h-9 rounded-xl text-sm bg-surface border-edge focus-visible:ring-ring/50 focus-visible:border-ring"
+                      />
+                    </FieldGroup>
+                  )}
 
-                  <FieldGroup label="Código de barras">
-                    <Input
-                      value={form.barcode}
-                      onChange={e => set('barcode', e.target.value)}
-                      placeholder="Ej: 7790001234567"
-                      className="h-9 rounded-xl text-sm bg-surface border-edge focus-visible:ring-ring/50 focus-visible:border-ring"
-                    />
-                  </FieldGroup>
+                  {!hasVariants && (
+                    <FieldGroup label="Código de barras">
+                      <Input
+                        value={form.barcode}
+                        onChange={e => set('barcode', e.target.value)}
+                        placeholder="Ej: 7790001234567"
+                        className="h-9 rounded-xl text-sm bg-surface border-edge focus-visible:ring-ring/50 focus-visible:border-ring"
+                      />
+                    </FieldGroup>
+                  )}
 
                   <div className="sm:col-span-2">
                     <p className="text-label text-subtle mb-2">Imagen del producto</p>
