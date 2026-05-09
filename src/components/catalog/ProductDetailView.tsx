@@ -101,6 +101,7 @@ export default function ProductDetailView({
       stock: displayStock,
       imageUrl: displayImage,
       brandId: null,
+      brandName: null,
       hasVariants: product.has_variants,
     }
 

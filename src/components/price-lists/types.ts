@@ -5,6 +5,7 @@ export interface PriceListProduct {
   name: string
   cost: number
   price: number
+  has_variants?: boolean
   brand_id: string | null
   brand?: {
     id: string

@@ -14,6 +14,7 @@ export interface CatalogProduct {
   stock: number
   imageUrl: string | null
   brandId: string | null
+  brandName: string | null
   hasVariants: boolean
 }
 

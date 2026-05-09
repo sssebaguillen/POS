@@ -6,10 +6,17 @@ import CartPanel from '@/components/catalog/CartPanel'
 import CatalogHeader from '@/components/catalog/CatalogHeader'
 import ProductFilter, {
   EMPTY_FILTER,
+  countActiveFilters,
   type FilterCategory,
   type FilterBrand,
   type ProductFilterValue,
 } from '@/components/shared/ProductFilter'
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from '@/components/ui/sheet'
 import type {
   CatalogBusiness,
   CatalogCartItem,
@@ -21,7 +28,7 @@ import type {
 type ViewMode = 'grid' | 'list'
 
 const VIEW_MODE_KEY = 'catalog-view-mode'
-const CART_TTL_MS = 8 * 60 * 60 * 1000 // 8 hours
+const CART_TTL_MS = 8 * 60 * 60 * 1000
 
 interface StoredCart {
   items: CatalogCartItem[]
@@ -32,44 +39,25 @@ function cartItemKey(item: CatalogCartItem): string {
   return `${item.product.id}:${item.variantId ?? ''}`
 }
 
-function getStoredCartItems(
-  cartKey: string,
-  products: CatalogProduct[]
-): CatalogCartItem[] {
-  if (typeof window === 'undefined') {
-    return []
-  }
-
+function getStoredCartItems(cartKey: string, products: CatalogProduct[]): CatalogCartItem[] {
+  if (typeof window === 'undefined') return []
   const raw = localStorage.getItem(cartKey)
-  if (!raw) {
-    return []
-  }
-
+  if (!raw) return []
   try {
     const stored = JSON.parse(raw) as StoredCart | CatalogCartItem[]
     const items = Array.isArray(stored) ? stored : stored.items
     const savedAt = Array.isArray(stored) ? 0 : stored.savedAt
-
     if (Date.now() - savedAt > CART_TTL_MS) {
       localStorage.removeItem(cartKey)
       return []
     }
-
-    const productsById = new Map(products.map(product => [product.id, product]))
-
+    const productsById = new Map(products.map(p => [p.id, p]))
     return items.flatMap(item => {
       const product = productsById.get(item.product.id)
       if (!product) return []
-
       const quantity = Math.min(item.quantity, product.stock)
       if (quantity <= 0) return []
-
-      return [{
-        product,
-        quantity,
-        variantId: (item as CatalogCartItem).variantId ?? null,
-        variantLabel: (item as CatalogCartItem).variantLabel ?? null,
-      }]
+      return [{ product, quantity, variantId: item.variantId ?? null, variantLabel: item.variantLabel ?? null }]
     })
   } catch {
     return []
@@ -94,12 +82,22 @@ export default function CatalogView({
   const cartKey = `catalog-cart-${business.id}`
 
   const [filterValue, setFilterValue] = useState<ProductFilterValue>(EMPTY_FILTER)
+  const [isFilterOpen, setIsFilterOpen] = useState(false)
+  const [isMobileView, setIsMobileView] = useState(false)
   const [isMobileCartOpen, setIsMobileCartOpen] = useState(false)
   const [cartItems, setCartItems] = useState<CatalogCartItem[]>(() =>
     getStoredCartItems(cartKey, products)
   )
   const [viewMode, setViewMode] = useState<ViewMode>('grid')
   const [hasLoadedViewMode, setHasLoadedViewMode] = useState(false)
+
+  // Detect mobile breakpoint after mount (lg = 1024px)
+  useEffect(() => {
+    const check = () => setIsMobileView(window.innerWidth < 1024)
+    check()
+    window.addEventListener('resize', check)
+    return () => window.removeEventListener('resize', check)
+  }, [])
 
   useEffect(() => {
     const payload: StoredCart = { items: cartItems, savedAt: Date.now() }
@@ -108,9 +106,7 @@ export default function CatalogView({
 
   useEffect(() => {
     const stored = localStorage.getItem(VIEW_MODE_KEY)
-    if (stored === 'list' || stored === 'grid') {
-      setViewMode(stored)
-    }
+    if (stored === 'list' || stored === 'grid') setViewMode(stored)
     setHasLoadedViewMode(true)
   }, [])
 
@@ -124,11 +120,11 @@ export default function CatalogView({
     [cartItems]
   )
 
+  const activeFilterCount = countActiveFilters(filterValue)
+
   function addToCart(product: CatalogProduct, variantId: string | null = null, variantLabel: string | null = null) {
     if (product.stock <= 0) return
-
     const key = `${product.id}:${variantId ?? ''}`
-
     setCartItems(prev => {
       const existing = prev.find(item => cartItemKey(item) === key)
       if (!existing) {
@@ -136,9 +132,7 @@ export default function CatalogView({
       }
       if (existing.quantity >= product.stock) return prev
       return prev.map(item =>
-        cartItemKey(item) === key
-          ? { ...item, quantity: item.quantity + 1 }
-          : item
+        cartItemKey(item) === key ? { ...item, quantity: item.quantity + 1 } : item
       )
     })
   }
@@ -156,10 +150,7 @@ export default function CatalogView({
   function decreaseQuantity(key: string) {
     setCartItems(prev =>
       prev
-        .map(item => {
-          if (cartItemKey(item) !== key) return item
-          return { ...item, quantity: item.quantity - 1 }
-        })
+        .map(item => (cartItemKey(item) !== key ? item : { ...item, quantity: item.quantity - 1 }))
         .filter(item => item.quantity > 0)
     )
   }
@@ -173,18 +164,35 @@ export default function CatalogView({
     localStorage.removeItem(cartKey)
   }
 
-  // Build filter options from catalog data
   const filterCategories: FilterCategory[] = categories.map(c => ({ id: c.id, name: c.name }))
 
   const filterBrands: FilterBrand[] = useMemo(() => {
     const seen = new Map<string, string>()
     for (const p of products) {
-      if (p.brandId && !seen.has(p.brandId)) {
-        seen.set(p.brandId, p.brandId)
+      if (p.brandId && p.brandName && !seen.has(p.brandId)) {
+        seen.set(p.brandId, p.brandName)
       }
     }
-    return Array.from(seen.entries()).map(([id]) => ({ id, name: id }))
+    return Array.from(seen.entries()).map(([id, name]) => ({ id, name }))
   }, [products])
+
+  const filterContent = (
+    <ProductFilter
+      modules={['category', 'brand', 'variant-attributes', 'price-range', 'sort']}
+      layout="sidebar"
+      value={filterValue}
+      onChange={setFilterValue}
+      categories={filterCategories}
+      brands={filterBrands}
+      variantAttributeGroups={variantAttributeGroups}
+      sortOptions={[
+        { field: 'name-asc', label: 'Nombre A-Z' },
+        { field: 'name-desc', label: 'Nombre Z-A' },
+        { field: 'price-asc', label: 'Precio menor' },
+        { field: 'price-desc', label: 'Precio mayor' },
+      ]}
+    />
+  )
 
   return (
     <div className="mx-auto w-full max-w-7xl space-y-4 md:space-y-6">
@@ -194,38 +202,37 @@ export default function CatalogView({
         onToggleMobileCart={() => setIsMobileCartOpen(prev => !prev)}
       />
 
-      <section className="grid grid-cols-1 gap-4 lg:grid-cols-[220px_minmax(0,1fr)_360px] lg:gap-6">
-        {/* Sidebar filter */}
-        <div className="hidden lg:block">
-          <div className="surface-card p-4 rounded-xl border border-border/70 sticky top-0">
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-4">Filtros</p>
-            <ProductFilter
-              modules={['search', 'category', 'brand', 'variant-attributes', 'price-range', 'sort']}
-              layout="sidebar"
-              value={filterValue}
-              onChange={setFilterValue}
-              categories={filterCategories}
-              brands={filterBrands}
-              variantAttributeGroups={variantAttributeGroups}
-              sortOptions={[
-                { field: 'name-asc', label: 'Nombre A-Z' },
-                { field: 'name-desc', label: 'Nombre Z-A' },
-                { field: 'price-asc', label: 'Precio menor' },
-                { field: 'price-desc', label: 'Precio mayor' },
-              ]}
-            />
+      <section
+        className={[
+          'grid grid-cols-1 gap-4 lg:gap-6',
+          isFilterOpen && !isMobileView
+            ? 'lg:grid-cols-[240px_minmax(0,1fr)_360px]'
+            : 'lg:grid-cols-[minmax(0,1fr)_360px]',
+        ].join(' ')}
+      >
+        {/* Desktop filter sidebar — shown inline when open */}
+        {isFilterOpen && !isMobileView && (
+          <div className="hidden lg:block">
+            <div className="surface-card rounded-xl border border-border/70 p-4 sticky top-4">
+              <p className="mb-4 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Filtros
+              </p>
+              {filterContent}
+            </div>
           </div>
-        </div>
+        )}
 
         <ProductGrid
           slug={slug}
           products={products}
-          categories={categories}
           filterValue={filterValue}
           onFilterChange={setFilterValue}
           onAddToCart={addToCart}
           viewMode={viewMode}
           onViewModeChange={setViewMode}
+          onToggleFilter={() => setIsFilterOpen(prev => !prev)}
+          isFilterOpen={isFilterOpen}
+          activeFilterCount={activeFilterCount}
         />
 
         <div className={`${isMobileCartOpen ? 'block' : 'hidden'} lg:sticky lg:top-0 lg:block lg:h-screen lg:overflow-hidden`}>
@@ -240,6 +247,20 @@ export default function CatalogView({
           />
         </div>
       </section>
+
+      {/* Mobile filter — bottom sheet */}
+      <Sheet open={isFilterOpen && isMobileView} onOpenChange={open => setIsFilterOpen(open)}>
+        <SheetContent side="bottom" className="max-h-[85vh] overflow-y-auto rounded-t-2xl">
+          <SheetHeader className="pb-2">
+            <SheetTitle className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+              Filtros
+            </SheetTitle>
+          </SheetHeader>
+          <div className="px-4 pb-6">
+            {filterContent}
+          </div>
+        </SheetContent>
+      </Sheet>
     </div>
   )
 }

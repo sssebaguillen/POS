@@ -332,7 +332,7 @@ function SidebarLayout({
                 value={value.search}
                 onChange={e => onChange({ ...value, search: e.target.value })}
                 placeholder="Nombre, SKU, código..."
-                className="w-full pl-8 pr-3 py-1.5 text-xs rounded-lg border border-edge bg-surface-alt text-body placeholder:text-hint focus:outline-none focus:ring-1 focus:ring-primary/40"
+                className="w-full pl-8 pr-3 py-1.5 text-xs rounded-lg border border-edge bg-card text-body placeholder:text-hint focus:outline-none focus:ring-1 focus:ring-primary/40"
               />
             </div>
           </Section>
@@ -536,7 +536,7 @@ function SidebarLayout({
                 value={value.priceMin}
                 onChange={e => onChange({ ...value, priceMin: e.target.value })}
                 placeholder="Mín."
-                className="w-full py-1.5 px-3 text-xs rounded-lg border border-edge bg-surface-alt text-body placeholder:text-hint focus:outline-none focus:ring-1 focus:ring-primary/40"
+                className="w-full py-1.5 px-3 text-xs rounded-lg border border-edge bg-card text-body placeholder:text-hint focus:outline-none focus:ring-1 focus:ring-primary/40"
               />
               <span className="text-hint text-xs shrink-0">—</span>
               <input
@@ -545,7 +545,7 @@ function SidebarLayout({
                 value={value.priceMax}
                 onChange={e => onChange({ ...value, priceMax: e.target.value })}
                 placeholder="Máx."
-                className="w-full py-1.5 px-3 text-xs rounded-lg border border-edge bg-surface-alt text-body placeholder:text-hint focus:outline-none focus:ring-1 focus:ring-primary/40"
+                className="w-full py-1.5 px-3 text-xs rounded-lg border border-edge bg-card text-body placeholder:text-hint focus:outline-none focus:ring-1 focus:ring-primary/40"
               />
             </div>
           </Section>

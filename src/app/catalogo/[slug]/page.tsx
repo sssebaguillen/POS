@@ -15,6 +15,7 @@ interface BusinessRow {
   whatsapp: string | null
 }
 
+// get_catalog_products now returns has_variants + brand_id directly
 interface ProductRow {
   id: string
   category_id: string | null
@@ -22,19 +23,15 @@ interface ProductRow {
   sale_price: number | string
   stock: number | string
   image_url: string | null
+  has_variants: boolean
+  brand_id: string | null
+  brand_name: string | null
 }
 
 interface CategoryRow {
   id: string
   name: string
   sort_order: number
-}
-
-interface ProductSupplementRow {
-  id: string
-  has_variants: boolean
-  brand_id: string | null
-  default_variant_id: string | null
 }
 
 interface VariantFilterRow {
@@ -61,25 +58,18 @@ export default async function CatalogSlugPage({ params }: CatalogPageProps) {
     }
   )
 
-  // Fetch the business
   const { data: business, error: businessError } = await supabase
     .from('businesses')
     .select('id, name, description, logo_url, whatsapp')
     .eq('slug', slug)
     .maybeSingle<BusinessRow>()
 
-  if (businessError) {
-    throw new Error(businessError.message)
-  }
+  if (businessError) throw new Error(businessError.message)
+  if (!business) notFound()
 
-  if (!business) {
-    notFound()
-  }
-
-  // Fetch products, categories, supplement data and variant filters in parallel.
-  // get_catalog_products now returns the default variant's price/stock directly
-  // via SECURITY DEFINER LEFT JOIN — no separate variant fetch needed.
-  const [productsResult, categoriesResult, supplementResult, variantFiltersResult] = await Promise.all([
+  // get_catalog_products now returns has_variants + brand_id directly (SECURITY DEFINER)
+  // so we don't need a separate anon query to the products table
+  const [productsResult, categoriesResult, variantFiltersResult] = await Promise.all([
     supabase
       .rpc('get_catalog_products', { p_slug: slug })
       .returns<ProductRow[]>(),
@@ -87,28 +77,15 @@ export default async function CatalogSlugPage({ params }: CatalogPageProps) {
       .rpc('get_catalog_categories', { p_slug: slug })
       .returns<CategoryRow[]>(),
     supabase
-      .from('products')
-      .select('id, has_variants, brand_id')
-      .eq('business_id', business.id)
-      .eq('is_active', true)
-      .eq('show_in_catalog', true)
-      .returns<Omit<ProductSupplementRow, 'default_variant_id'>[]>(),
-    supabase
       .rpc('get_catalog_variant_filters', { p_slug: slug }),
   ])
 
   if (productsResult.error) throw new Error(productsResult.error.message)
   if (categoriesResult.error) throw new Error(categoriesResult.error.message)
-  if (supplementResult.error) throw new Error(supplementResult.error.message)
 
   const products = (productsResult.data ?? []) as ProductRow[]
   const categories = (categoriesResult.data ?? []) as CategoryRow[]
-  const supplementRows = (supplementResult.data ?? []) as Omit<ProductSupplementRow, 'default_variant_id'>[]
 
-  // Build a lookup map for has_variants + brand_id (supplement uses anon-accessible products table)
-  const supplementById = new Map(supplementRows.map(r => [r.id, r]))
-
-  // Parse variant filter groups
   let variantAttributeGroups: CatalogVariantAttributeGroup[] = []
   if (!variantFiltersResult.error && variantFiltersResult.data) {
     const raw = variantFiltersResult.data as unknown
@@ -127,7 +104,7 @@ export default async function CatalogSlugPage({ params }: CatalogPageProps) {
   return (
     <main className="h-screen overflow-y-auto bg-background px-4 py-6 md:px-6 md:py-8">
       <CatalogView
-          slug={slug}
+        slug={slug}
         business={{
           id: business.id,
           name: business.name,
@@ -135,19 +112,17 @@ export default async function CatalogSlugPage({ params }: CatalogPageProps) {
           logoUrl: business.logo_url,
           whatsapp: business.whatsapp,
         }}
-        products={products.map(product => {
-          const supplement = supplementById.get(product.id)
-          return {
-            id: product.id,
-            categoryId: product.category_id,
-            name: product.name,
-            salePrice: Number(product.sale_price),
-            stock: Number(product.stock),
-            imageUrl: product.image_url,
-            brandId: supplement?.brand_id ?? null,
-            hasVariants: supplement?.has_variants ?? false,
-          }
-        })}
+        products={products.map(product => ({
+          id: product.id,
+          categoryId: product.category_id,
+          name: product.name,
+          salePrice: Number(product.sale_price),
+          stock: Number(product.stock),
+          imageUrl: product.image_url,
+          hasVariants: product.has_variants ?? false,
+          brandId: product.brand_id ?? null,
+          brandName: product.brand_name ?? null,
+        }))}
         categories={categories.map(category => ({
           id: category.id,
           name: category.name,

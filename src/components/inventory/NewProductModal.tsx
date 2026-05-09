@@ -281,15 +281,35 @@ export default function NewProductModal({
       // Fetch the created product for the onCreated callback
       const { data: newProduct } = await supabase
         .from('products')
-        .select('id, name, price, cost, stock, min_stock, is_active, category_id, sku, brand_id, brands(id, name), barcode, image_url, image_source, has_variants, categories(name, icon)')
+        .select('id, name, price, cost, stock, min_stock, is_active, category_id, sku, brand_id, brands(id, name), barcode, image_url, image_source, has_variants, default_variant_id, categories(name, icon)')
         .eq('id', result.product_id!)
         .single()
 
       if (newProduct) {
+        let displayPrice = Number(newProduct.price)
+        let displayCost = Number(newProduct.cost)
+        let displayStock = Number(newProduct.stock)
+
+        if (newProduct.default_variant_id) {
+          const { data: variantData } = await supabase
+            .from('product_variants')
+            .select('price, cost, stock')
+            .eq('id', newProduct.default_variant_id)
+            .single()
+
+          if (variantData) {
+            displayPrice = Number(variantData.price)
+            displayCost = Number(variantData.cost)
+            displayStock = Number(variantData.stock)
+          }
+        }
+
         const created: InventoryProduct = {
           ...newProduct,
-          price: Number(newProduct.price),
-          cost: Number(newProduct.cost),
+          price: displayPrice,
+          cost: displayCost,
+          stock: displayStock,
+          default_variant_id: newProduct.default_variant_id ?? null,
           brand: Array.isArray(newProduct.brands)
             ? (newProduct.brands[0] ?? null)
             : (newProduct.brands ?? null),

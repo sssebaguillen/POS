@@ -193,6 +193,9 @@ export default function CartPanel({
                     <div className="flex min-w-0 flex-1 items-start justify-between gap-2">
                       <div className="min-w-0">
                         <p className="line-clamp-1 text-sm font-medium text-foreground">{item.product.name}</p>
+                        {item.product.brandName && (
+                          <p className="mt-0.5 text-xs text-muted-foreground">{item.product.brandName}</p>
+                        )}
                         {item.variantLabel && (
                           <p className="mt-0.5 text-xs text-muted-foreground">{item.variantLabel}</p>
                         )}

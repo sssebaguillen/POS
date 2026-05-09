@@ -433,127 +433,6 @@ export default function SettingsForm({
                 )}
               </div>
 
-              <div className="space-y-1.5">
-                <span className="text-xs uppercase tracking-wide text-muted-foreground">Logo</span>
-                <div className="rounded-lg border border-border overflow-hidden">
-                  <div className="flex border-b border-border">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setLogoInputTab('upload')
-                        setLogoUploadError('')
-                      }}
-                      className={`flex-1 px-4 py-2 text-xs font-medium transition-colors ${
-                        logoInputTab === 'upload'
-                          ? 'bg-background text-foreground border-b-2 border-primary'
-                          : 'bg-muted/30 text-muted-foreground hover:text-foreground'
-                      }`}
-                    >
-                      Subir archivo
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setLogoInputTab('url')
-                        setLogoUploadError('')
-                      }}
-                      className={`flex-1 px-4 py-2 text-xs font-medium transition-colors ${
-                        logoInputTab === 'url'
-                          ? 'bg-background text-foreground border-b-2 border-primary'
-                          : 'bg-muted/30 text-muted-foreground hover:text-foreground'
-                      }`}
-                    >
-                      URL externa
-                    </button>
-                  </div>
-                  <div className="p-3 space-y-3">
-                    {logoInputTab === 'upload' && (
-                      <>
-                        <label className="flex flex-col items-center gap-2 cursor-pointer rounded-lg border border-dashed border-border bg-muted/20 px-4 py-5 hover:border-primary/40 transition-colors">
-                          <Upload className="h-5 w-5 text-muted-foreground" />
-                          <span className="text-xs text-muted-foreground">
-                            {logoUploading ? 'Subiendo...' : 'Arrastrá o hacé clic para seleccionar'}
-                          </span>
-                          <span className="text-[10px] text-muted-foreground">
-                            JPEG, PNG, WebP, SVG · máx. 2 MB
-                          </span>
-                          <input
-                            type="file"
-                            accept="image/jpeg,image/jpg,image/png,image/webp,image/svg+xml"
-                            className="sr-only"
-                            disabled={logoUploading}
-                            onChange={e => {
-                              const file = e.target.files?.[0]
-                              if (file) void handleLogoFileUpload(file)
-                              e.target.value = ''
-                            }}
-                          />
-                        </label>
-                        {logoUploadError && <p className="text-xs text-destructive">{logoUploadError}</p>}
-                      </>
-                    )}
-                    {logoInputTab === 'url' && (
-                      <Input
-                        id="business-logo-url"
-                        value={form.logoUrl}
-                        onChange={event => setField('logoUrl', event.target.value)}
-                        placeholder="https://..."
-                      />
-                    )}
-                  </div>
-                </div>
-
-                {hasLogoUrl && !canPreviewLogo && logoInputTab === 'url' && (
-                  <p className="text-xs text-destructive">Ingresá una URL válida con http:// o https://.</p>
-                )}
-
-                {hasLogoUrl && canPreviewLogo && !logoPreviewError && (
-                  <div className="mt-2 inline-flex items-center gap-3 rounded-lg border border-border bg-muted/30 px-3 py-2">
-                    <Image
-                      src={normalizedLogoUrl}
-                      alt="Vista previa del logo"
-                      width={48}
-                      height={48}
-                      className="rounded-md object-cover border border-border"
-                      onError={() => setLogoPreviewError(true)}
-                      unoptimized
-                    />
-                    <span className="text-xs text-muted-foreground">Vista previa del logo</span>
-                  </div>
-                )}
-
-                {canPreviewLogo && logoPreviewError && (
-                  <p className="text-xs text-destructive">No se pudo cargar la imagen desde esa URL.</p>
-                )}
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-xs uppercase tracking-wide text-muted-foreground">
-                  Color primario
-                </label>
-                <div className="flex items-center gap-3">
-                  <input
-                    type="color"
-                    value={form.primaryColor}
-                    onChange={e => setField('primaryColor', e.target.value)}
-                    className="h-10 w-10 rounded-lg border border-input cursor-pointer bg-transparent p-0.5"
-                  />
-                  <span className="text-sm font-mono text-muted-foreground">
-                    {form.primaryColor}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setField('primaryColor', '#7a3e10')}
-                    className="text-xs text-muted-foreground hover:text-foreground transition-colors ml-auto"
-                  >
-                    Restablecer
-                  </button>
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Se aplica a botones, badges y acentos del sistema.
-                </p>
-              </div>
-
               <div className="flex items-center justify-between rounded-lg border border-border px-4 py-3">
                 <div>
                   <p className="text-sm font-medium text-foreground">Producto Libre en ventas</p>
@@ -572,6 +451,60 @@ export default function SettingsForm({
                     className={`absolute top-1 left-1 h-4 w-4 rounded-full bg-white shadow-sm transition-transform ${form.freeLineEnabled ? 'translate-x-5' : 'translate-x-0'}`}
                   />
                 </button>
+              </div>
+
+              {/* Logo y Color primario — deshabilitados hasta implementación futura */}
+              <div className="relative rounded-xl border border-dashed border-border overflow-hidden">
+                <div className="absolute inset-0 z-10 flex items-center justify-center bg-background/60 pointer-events-auto cursor-not-allowed" />
+                <div className="absolute top-3 right-3 z-20">
+                  <span className="inline-flex items-center rounded-full border border-border bg-muted px-2.5 py-1 text-[11px] font-medium text-muted-foreground">
+                    Próximamente
+                  </span>
+                </div>
+                <div className="p-4 space-y-5 pointer-events-none select-none opacity-50">
+                  <div className="space-y-1.5">
+                    <span className="text-xs uppercase tracking-wide text-muted-foreground">Logo</span>
+                    <div className="rounded-lg border border-border overflow-hidden">
+                      <div className="flex border-b border-border">
+                        <button
+                          type="button"
+                          tabIndex={-1}
+                          className="flex-1 px-4 py-2 text-xs font-medium bg-background text-foreground border-b-2 border-primary"
+                        >
+                          Subir archivo
+                        </button>
+                        <button
+                          type="button"
+                          tabIndex={-1}
+                          className="flex-1 px-4 py-2 text-xs font-medium bg-muted/30 text-muted-foreground"
+                        >
+                          URL externa
+                        </button>
+                      </div>
+                      <div className="p-3">
+                        <div className="flex flex-col items-center gap-2 rounded-lg border border-dashed border-border bg-muted/20 px-4 py-5">
+                          <Upload className="h-5 w-5 text-muted-foreground" />
+                          <span className="text-xs text-muted-foreground">Arrastrá o hacé clic para seleccionar</span>
+                          <span className="text-[10px] text-muted-foreground">JPEG, PNG, WebP, SVG · máx. 2 MB</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-xs uppercase tracking-wide text-muted-foreground">
+                      Color primario
+                    </label>
+                    <div className="flex items-center gap-3">
+                      <div className="h-10 w-10 rounded-lg border border-input bg-[#7a3e10]" />
+                      <span className="text-sm font-mono text-muted-foreground">#7a3e10</span>
+                      <span className="text-xs text-muted-foreground ml-auto">Restablecer</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Se aplica a botones, badges y acentos del sistema.
+                    </p>
+                  </div>
+                </div>
               </div>
 
               {error && (

@@ -691,15 +691,26 @@ function GroupedPriceRowsTable({
                         {formatMoney(row.product.cost)}
                       </TableCell>
                       <TableCell className="text-right tabular-nums">
-                        {formatMoney(row.finalPrice)}
-                        {(row.productOverride ?? row.brandOverride) && (
-                          <span className="ml-1.5 inline-flex rounded-full px-2 py-0.5 text-[10px] font-medium bg-primary/10 text-primary border border-primary/20">
-                            Ajuste
-                          </span>
+                        {row.product.has_variants ? (
+                          <div className="flex flex-col items-end gap-0.5">
+                            <span>{formatMoney(row.product.price)}</span>
+                            <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-primary/10 text-primary border border-primary/20 whitespace-nowrap">
+                              por variante
+                            </span>
+                          </div>
+                        ) : (
+                          <>
+                            {formatMoney(row.finalPrice)}
+                            {(row.productOverride ?? row.brandOverride) && (
+                              <span className="ml-1.5 inline-flex rounded-full px-2 py-0.5 text-[10px] font-medium bg-primary/10 text-primary border border-primary/20">
+                                Ajuste
+                              </span>
+                            )}
+                          </>
                         )}
                       </TableCell>
                       <TableCell className="text-right tabular-nums">
-                        {row.margin === null ? (
+                        {row.product.has_variants || row.margin === null ? (
                           <span className="text-hint">—</span>
                         ) : (
                           <span className={
@@ -714,20 +725,22 @@ function GroupedPriceRowsTable({
                         )}
                       </TableCell>
                       <TableCell>
-                        <div className="flex justify-end">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="rounded-lg text-xs gap-1.5"
-                            onClick={() => onEditProductOverride(row.product.id)}
-                            aria-label={`Ajustar precio de ${row.product.name}`}
-                            title="Ajustar precio de este producto"
-                            disabled={readOnly}
-                          >
-                            <Pencil size={13} />
-                            Ajustar
-                          </Button>
-                        </div>
+                        {!row.product.has_variants && (
+                          <div className="flex justify-end">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="rounded-lg text-xs gap-1.5"
+                              onClick={() => onEditProductOverride(row.product.id)}
+                              aria-label={`Ajustar precio de ${row.product.name}`}
+                              title="Ajustar precio de este producto"
+                              disabled={readOnly}
+                            >
+                              <Pencil size={13} />
+                              Ajustar
+                            </Button>
+                          </div>
+                        )}
                       </TableCell>
                     </TableRow>
                   ))}
