@@ -5,19 +5,13 @@ import Link from 'next/link'
 import { ChevronRight, ImageIcon, LayoutGrid, List, Plus } from 'lucide-react'
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
-import SelectDropdown from '@/components/ui/SelectDropdown'
+
 import type { CatalogCategory, CatalogProduct } from '@/components/catalog/types'
 import type { ProductFilterValue } from '@/components/shared/ProductFilter'
 import { EMPTY_FILTER } from '@/components/shared/ProductFilter'
 
 type ViewMode = 'grid' | 'list'
 
-const SORT_OPTIONS = [
-  { value: 'name-asc', label: 'Nombre A-Z' },
-  { value: 'name-desc', label: 'Nombre Z-A' },
-  { value: 'price-asc', label: 'Precio menor' },
-  { value: 'price-desc', label: 'Precio mayor' },
-]
 
 interface ProductGridProps {
   slug: string
@@ -120,14 +114,6 @@ export default function ProductGrid({
         <div className="flex items-center justify-between gap-3">
           <p className="text-xs uppercase tracking-wide text-muted-foreground">Categorías</p>
           <div className="flex items-center gap-2">
-            <div className="w-36">
-              <SelectDropdown
-                value={filterValue.sortField}
-                onChange={value => onFilterChange({ ...filterValue, sortField: value })}
-                options={SORT_OPTIONS}
-                usePortal
-              />
-            </div>
             <div className="flex overflow-hidden rounded-lg border border-border">
               <button
                 type="button"
