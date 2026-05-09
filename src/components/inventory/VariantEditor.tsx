@@ -33,7 +33,7 @@ export interface DraftVariantRow {
   price: string
   cost: string
   stock: string
-  sku: string
+  barcode: string
   is_active: boolean
 }
 
@@ -75,7 +75,7 @@ function buildVariantRows(
       price: '',
       cost: '',
       stock: '',
-      sku: '',
+      barcode: '',
       is_active: true,
     }
   })
@@ -91,7 +91,7 @@ export interface VariantPayloadNew {
     values: { value: string; position: number }[]
   }[]
   variants: {
-    sku: string | null
+    barcode: string | null
     price: number
     cost: number
     stock: number
@@ -111,7 +111,7 @@ export interface VariantPayloadEdit {
   }[]
   variants: {
     id?: string
-    sku: string | null
+    barcode: string | null
     price: number
     cost: number
     stock: number
@@ -198,7 +198,7 @@ export default function VariantEditor({
         price: String(v.price),
         cost: String(v.cost),
         stock: String(v.stock),
-        sku: v.sku ?? '',
+        barcode: v.barcode ?? '',
         is_active: v.is_active,
       }
     })
@@ -235,7 +235,7 @@ export default function VariantEditor({
           values: o.values.map((v, vIdx) => ({ value: v.value, position: vIdx })),
         })),
         variants: variants.map(v => ({
-          sku: v.sku.trim() || null,
+          barcode: v.barcode.trim() || null,
           price: Number(v.price) || 0,
           cost: Number(v.cost) || 0,
           stock: Math.trunc(Number(v.stock) || 0),
@@ -261,7 +261,7 @@ export default function VariantEditor({
         })),
         variants: variants.map(v => ({
           id: v.id,
-          sku: v.sku.trim() || null,
+          barcode: v.barcode.trim() || null,
           price: Number(v.price) || 0,
           cost: Number(v.cost) || 0,
           stock: Math.trunc(Number(v.stock) || 0),
@@ -460,7 +460,7 @@ export default function VariantEditor({
                     <th className="text-left px-3 py-2 font-medium text-subtle whitespace-nowrap">Precio ({currencySymbol})</th>
                     <th className="text-left px-3 py-2 font-medium text-subtle whitespace-nowrap">Costo ({currencySymbol})</th>
                     <th className="text-left px-3 py-2 font-medium text-subtle whitespace-nowrap">Stock inicial</th>
-                    <th className="text-left px-3 py-2 font-medium text-subtle whitespace-nowrap">SKU</th>
+                    <th className="text-left px-3 py-2 font-medium text-subtle whitespace-nowrap">Cód. de barras</th>
                     <th className="text-left px-3 py-2 font-medium text-subtle">Activo</th>
                   </tr>
                 </thead>
@@ -506,10 +506,10 @@ export default function VariantEditor({
                       <td className="px-3 py-2">
                         <input
                           type="text"
-                          value={variant.sku}
-                          onChange={e => updateVariant(varIdx, 'sku', e.target.value)}
-                          placeholder="Opcional"
-                          className="w-24 h-7 rounded-lg border border-edge bg-surface px-2 text-xs text-body focus:outline-none focus:border-primary"
+                          value={variant.barcode}
+                          onChange={e => updateVariant(varIdx, 'barcode', e.target.value)}
+                          placeholder="Ej: 7790001234567"
+                          className="w-28 h-7 rounded-lg border border-edge bg-surface px-2 text-xs text-body tabular-nums focus:outline-none focus:border-primary"
                         />
                       </td>
                       <td className="px-3 py-2">
