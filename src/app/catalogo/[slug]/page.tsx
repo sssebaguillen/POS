@@ -76,11 +76,10 @@ export default async function CatalogSlugPage({ params }: CatalogPageProps) {
     notFound()
   }
 
-  // Fetch products, categories, supplement data, variant filters and default
-  // variant prices all in parallel.
-  // NOTE: product_variants has tenant RLS — the anon client cannot query it
-  // directly. get_catalog_default_variant_prices is SECURITY DEFINER + GRANT TO anon.
-  const [productsResult, categoriesResult, supplementResult, variantFiltersResult, variantPricesResult] = await Promise.all([
+  // Fetch products, categories, supplement data and variant filters in parallel.
+  // get_catalog_products now returns the default variant's price/stock directly
+  // via SECURITY DEFINER LEFT JOIN — no separate variant fetch needed.
+  const [productsResult, categoriesResult, supplementResult, variantFiltersResult] = await Promise.all([
     supabase
       .rpc('get_catalog_products', { p_slug: slug })
       .returns<ProductRow[]>(),
@@ -96,9 +95,6 @@ export default async function CatalogSlugPage({ params }: CatalogPageProps) {
       .returns<Omit<ProductSupplementRow, 'default_variant_id'>[]>(),
     supabase
       .rpc('get_catalog_variant_filters', { p_slug: slug }),
-    supabase
-      .rpc('get_catalog_default_variant_prices', { p_slug: slug })
-      .returns<{ product_id: string; price: number; stock: number }[]>(),
   ])
 
   if (productsResult.error) throw new Error(productsResult.error.message)
@@ -109,14 +105,8 @@ export default async function CatalogSlugPage({ params }: CatalogPageProps) {
   const categories = (categoriesResult.data ?? []) as CategoryRow[]
   const supplementRows = (supplementResult.data ?? []) as Omit<ProductSupplementRow, 'default_variant_id'>[]
 
-  // Build a lookup map for has_variants + brand_id
+  // Build a lookup map for has_variants + brand_id (supplement uses anon-accessible products table)
   const supplementById = new Map(supplementRows.map(r => [r.id, r]))
-
-  // Default variant prices keyed by product_id (from SECURITY DEFINER RPC)
-  const variantPriceMap = new Map<string, { price: number; stock: number }>()
-  for (const v of (variantPricesResult.data ?? []) as { product_id: string; price: number; stock: number }[]) {
-    variantPriceMap.set(v.product_id, { price: Number(v.price), stock: Number(v.stock) })
-  }
 
   // Parse variant filter groups
   let variantAttributeGroups: CatalogVariantAttributeGroup[] = []
@@ -146,15 +136,12 @@ export default async function CatalogSlugPage({ params }: CatalogPageProps) {
         }}
         products={products.map(product => {
           const supplement = supplementById.get(product.id)
-          const defaultVariant = supplement?.has_variants
-            ? variantPriceMap.get(product.id)
-            : undefined
           return {
             id: product.id,
             categoryId: product.category_id,
             name: product.name,
-            salePrice: defaultVariant ? defaultVariant.price : Number(product.sale_price),
-            stock: defaultVariant ? defaultVariant.stock : Number(product.stock),
+            salePrice: Number(product.sale_price),
+            stock: Number(product.stock),
             imageUrl: product.image_url,
             brandId: supplement?.brand_id ?? null,
             hasVariants: supplement?.has_variants ?? false,
