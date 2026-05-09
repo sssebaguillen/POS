@@ -405,7 +405,6 @@ export default function VariantEditor({
                           value={option.attribute_type_id}
                           onChange={typeId => updateOptionType(optIdx, typeId)}
                           options={attributeTypeOptions}
-                          usePortal
                         />
                       </div>
                     )}
