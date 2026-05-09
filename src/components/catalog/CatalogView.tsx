@@ -78,6 +78,7 @@ function getStoredCartItems(
 
 interface CatalogViewProps {
   business: CatalogBusiness
+  slug: string
   products: CatalogProduct[]
   categories: CatalogCategory[]
   variantAttributeGroups: CatalogVariantAttributeGroup[]
@@ -85,6 +86,7 @@ interface CatalogViewProps {
 
 export default function CatalogView({
   business,
+  slug,
   products,
   categories,
   variantAttributeGroups,
@@ -216,7 +218,7 @@ export default function CatalogView({
         </div>
 
         <ProductGrid
-          slug={business.id}
+          slug={slug}
           products={products}
           categories={categories}
           filterValue={filterValue}

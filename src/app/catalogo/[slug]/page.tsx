@@ -127,6 +127,7 @@ export default async function CatalogSlugPage({ params }: CatalogPageProps) {
   return (
     <main className="h-screen overflow-y-auto bg-background px-4 py-6 md:px-6 md:py-8">
       <CatalogView
+          slug={slug}
         business={{
           id: business.id,
           name: business.name,

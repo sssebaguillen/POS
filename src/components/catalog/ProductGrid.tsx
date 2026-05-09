@@ -244,9 +244,10 @@ export default function ProductGrid({
             }
 
             return (
-              <article
+              <Link
                 key={product.id}
-                className={`rounded-xl border border-border/70 bg-card p-3 ${isOutOfStock ? 'opacity-60' : ''}`}
+                href={`/catalogo/${slug}/${product.id}`}
+                className={`rounded-xl border border-border/70 bg-card p-3 block hover:border-primary/40 transition-colors ${isOutOfStock ? 'opacity-60' : ''}`}
               >
                 <div className="relative h-36 w-full overflow-hidden rounded-lg bg-muted/40">
                   {product.imageUrl ? (
@@ -276,14 +277,14 @@ export default function ProductGrid({
                   <Button
                     type="button"
                     size="icon-sm"
-                    onClick={() => onAddToCart(product, null, null)}
+                    onClick={e => { e.preventDefault(); onAddToCart(product, null, null) }}
                     disabled={isOutOfStock}
                     aria-label={`Agregar ${product.name} al carrito`}
                   >
                     <Plus className="h-4 w-4" />
                   </Button>
                 </div>
-              </article>
+              </Link>
             )
           })}
         </div>
@@ -325,9 +326,10 @@ export default function ProductGrid({
             }
 
             return (
-              <article
+              <Link
                 key={product.id}
-                className={`flex items-center gap-3 rounded-xl border border-border/70 bg-card p-3 ${isOutOfStock ? 'opacity-60' : ''}`}
+                href={`/catalogo/${slug}/${product.id}`}
+                className={`flex items-center gap-3 rounded-xl border border-border/70 bg-card p-3 hover:border-primary/40 transition-colors ${isOutOfStock ? 'opacity-60' : ''}`}
               >
                 <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-lg bg-muted/40">
                   {product.imageUrl ? (
@@ -352,14 +354,14 @@ export default function ProductGrid({
                 <Button
                   type="button"
                   size="icon-sm"
-                  onClick={() => onAddToCart(product, null, null)}
+                  onClick={e => { e.preventDefault(); onAddToCart(product, null, null) }}
                   disabled={isOutOfStock}
                   aria-label={`Agregar ${product.name} al carrito`}
                   className="shrink-0"
                 >
                   <Plus className="h-4 w-4" />
                 </Button>
-              </article>
+              </Link>
             )
           })}
         </div>
