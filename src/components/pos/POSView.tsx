@@ -9,6 +9,7 @@ import { useCartStore } from '@/lib/store/cart.store'
 import { createClient } from '@/lib/supabase/client'
 import ProductPanel from '@/components/pos/ProductPanel'
 import CartPanel from '@/components/pos/CartPanel'
+import ProductFilter, { EMPTY_FILTER, type ProductFilterValue } from '@/components/shared/ProductFilter'
 import type { ProductWithCategory, ActiveFilter } from '@/components/pos/types'
 import type { PriceList, PriceListOverride, ProductVariant, ProductWithVariants } from '@/lib/types'
 import type { ActiveOperator } from '@/lib/operator'
@@ -38,8 +39,7 @@ function formatDate(date: Date) {
 
 export default function POSView({ products, businessId, businessName, freeLineEnabled, priceLists, priceListOverrides, activeOperator }: Props) {
   const { toggle } = useSidebar()
-  const [search, setSearch] = useState('')
-  const [activeFilter, setActiveFilter] = useState<ActiveFilter>(null)
+  const [filterValue, setFilterValue] = useState<ProductFilterValue>(EMPTY_FILTER)
   const [scanFeedback, setScanFeedback] = useState<ScanFeedback>(null)
   const searchRef = useRef<HTMLInputElement>(null)
   const scanFeedbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -51,22 +51,6 @@ export default function POSView({ products, businessId, businessName, freeLineEn
   const supabase = useMemo(() => createClient(), [])
   const [confirmingNewSale, setConfirmingNewSale] = useState(false)
   const confirmNewSaleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-
-  const filterScrollRef = useRef<HTMLDivElement>(null)
-
-  const handleFilterWheel = useCallback((e: WheelEvent) => {
-    const el = filterScrollRef.current
-    if (!el) return
-    e.preventDefault()
-    el.scrollLeft += e.deltaY + e.deltaX
-  }, [])
-
-  useEffect(() => {
-    const el = filterScrollRef.current
-    if (!el) return
-    el.addEventListener('wheel', handleFilterWheel, { passive: false })
-    return () => el.removeEventListener('wheel', handleFilterWheel)
-  }, [handleFilterWheel])
 
   useEffect(() => {
     return () => {
@@ -149,8 +133,7 @@ export default function POSView({ products, businessId, businessName, freeLineEn
     if (confirmNewSaleTimerRef.current) clearTimeout(confirmNewSaleTimerRef.current)
     setConfirmingNewSale(false)
     clearCart()
-    setSearch('')
-    setActiveFilter(null)
+    setFilterValue(EMPTY_FILTER)
     setScanFeedback(null)
     searchRef.current?.focus()
   }, [itemCount, confirmingNewSale, clearCart])
@@ -271,7 +254,7 @@ export default function POSView({ products, businessId, businessName, freeLineEn
         e.preventDefault()
         lastGlobalPrintableKeyAtRef.current = Date.now()
         searchRef.current.focus()
-        setSearch(prev => prev + e.key)
+        setFilterValue(prev => ({ ...prev, search: prev.search + e.key }))
       } else if (e.key === 'Enter') {
         const activeIsInteractive =
           active instanceof HTMLButtonElement ||
@@ -288,7 +271,7 @@ export default function POSView({ products, businessId, businessName, freeLineEn
         if (currentValue.trim()) {
           const added = tryAddBySearch(currentValue)
           if (added) {
-            setSearch('')
+            setFilterValue(prev => ({ ...prev, search: '' }))
           }
         }
         searchRef.current.focus()
@@ -301,13 +284,13 @@ export default function POSView({ products, businessId, businessName, freeLineEn
 
   const handleSearchKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
-      const added = tryAddBySearch(search)
+      const added = tryAddBySearch(filterValue.search)
       if (added) {
-        setSearch('')
+        setFilterValue(prev => ({ ...prev, search: '' }))
         searchRef.current?.focus()
       }
     }
-  }, [search, tryAddBySearch])
+  }, [filterValue.search, tryAddBySearch])
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
@@ -341,8 +324,8 @@ export default function POSView({ products, businessId, businessName, freeLineEn
             </div>
             <Input
               ref={searchRef}
-              value={search}
-              onChange={e => setSearch(e.target.value)}
+              value={filterValue.search}
+              onChange={e => setFilterValue(prev => ({ ...prev, search: e.target.value }))}
               onKeyDown={handleSearchKeyDown}
               placeholder="Buscar producto o escanear código..."
               className={[
@@ -421,67 +404,30 @@ export default function POSView({ products, businessId, businessName, freeLineEn
         <div className="flex-1 min-w-0 flex flex-col min-h-0">
           {/* Filter chips strip — scoped to product column only */}
           {(topCategories.length > 0 || topBrands.length > 0) && (
-            <div className="border-b border-edge/60 shrink-0 overflow-hidden py-2 px-6">
-              <div
-                ref={filterScrollRef}
-                className="flex flex-nowrap gap-1.5 overflow-x-auto"
-                style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
-              >
-                {(() => {
-                  const chip = (active: boolean) =>
-                    `shrink-0 rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
-                      active
-                        ? 'bg-primary/10 text-primary border border-primary/20 dark:bg-primary/15 dark:border-primary/30'
-                        : 'text-muted-foreground hover:text-foreground hover:bg-muted'
-                    }`
-                  return (
-                    <>
-                      <button onClick={() => setActiveFilter(null)} className={chip(activeFilter === null)}>
-                        Todos
-                      </button>
-                      {topCategories.length > 0 && <span className="shrink-0 w-px bg-edge/60 mx-0.5" />}
-                      {topCategories.map(cat => (
-                        <button
-                          key={cat.id}
-                          onClick={() =>
-                            setActiveFilter(
-                              activeFilter?.type === 'category' && activeFilter.id === cat.id
-                                ? null
-                                : { type: 'category', id: cat.id }
-                            )
-                          }
-                          className={chip(activeFilter?.type === 'category' && activeFilter.id === cat.id)}
-                        >
-                          {cat.name}
-                        </button>
-                      ))}
-                      {topBrands.length > 0 && <span className="shrink-0 w-px bg-edge/60 mx-0.5" />}
-                      {topBrands.map(brand => (
-                        <button
-                          key={brand.id}
-                          onClick={() =>
-                            setActiveFilter(
-                              activeFilter?.type === 'brand' && activeFilter.id === brand.id
-                                ? null
-                                : { type: 'brand', id: brand.id }
-                            )
-                          }
-                          className={chip(activeFilter?.type === 'brand' && activeFilter.id === brand.id)}
-                        >
-                          {brand.name}
-                        </button>
-                      ))}
-                    </>
-                  )
-                })()}
+            <div className="border-b border-edge/60 shrink-0 overflow-x-auto">
+              <div className="flex items-center px-4 py-2 min-w-0">
+                <ProductFilter
+                  modules={['category', 'brand']}
+                  layout="topbar"
+                  value={filterValue}
+                  onChange={setFilterValue}
+                  categories={topCategories.map(c => ({ id: c.id, name: c.name }))}
+                  brands={topBrands.map(b => ({ id: b.id, name: b.name }))}
+                />
               </div>
             </div>
           )}
           <div className="flex-1 overflow-y-auto">
             <ProductPanel
               products={products}
-              search={search}
-              activeFilter={activeFilter}
+              search={filterValue.search}
+              activeFilter={
+                filterValue.categoryIds.length > 0
+                  ? { type: 'category', id: filterValue.categoryIds[0] }
+                  : filterValue.brandIds.length > 0
+                    ? { type: 'brand', id: filterValue.brandIds[0] }
+                    : null
+              }
               activePriceList={activePriceList}
               priceListOverrides={priceListOverrides}
             />

@@ -1,15 +1,16 @@
 'use client'
 
 import Image from 'next/image'
-import { ImageIcon, LayoutGrid, List, Plus, Search } from 'lucide-react'
+import Link from 'next/link'
+import { ChevronRight, ImageIcon, LayoutGrid, List, Plus } from 'lucide-react'
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import SelectDropdown from '@/components/ui/SelectDropdown'
 import type { CatalogCategory, CatalogProduct } from '@/components/catalog/types'
+import type { ProductFilterValue } from '@/components/shared/ProductFilter'
+import { EMPTY_FILTER } from '@/components/shared/ProductFilter'
 
 type ViewMode = 'grid' | 'list'
-type SortBy = 'name-asc' | 'name-desc' | 'price-asc' | 'price-desc'
 
 const SORT_OPTIONS = [
   { value: 'name-asc', label: 'Nombre A-Z' },
@@ -19,17 +20,14 @@ const SORT_OPTIONS = [
 ]
 
 interface ProductGridProps {
+  slug: string
   products: CatalogProduct[]
   categories: CatalogCategory[]
-  selectedCategory: string | null
-  onSelectCategory: (categoryId: string | null) => void
-  onAddToCart: (product: CatalogProduct) => void
+  filterValue: ProductFilterValue
+  onFilterChange: (next: ProductFilterValue) => void
+  onAddToCart: (product: CatalogProduct, variantId: string | null, variantLabel: string | null) => void
   viewMode: ViewMode
   onViewModeChange: (mode: ViewMode) => void
-  searchQuery: string
-  onSearchChange: (query: string) => void
-  sortBy: SortBy
-  onSortChange: (sort: SortBy) => void
 }
 
 const currencyFormatter = new Intl.NumberFormat('es-AR')
@@ -52,63 +50,80 @@ function ProductImage({ imageUrl, name, sizes }: { imageUrl: string; name: strin
   )
 }
 
-function sortProducts(products: CatalogProduct[], sortBy: SortBy): CatalogProduct[] {
-  return [...products].sort((a, b) => {
-    switch (sortBy) {
-      case 'name-asc':  return a.name.localeCompare(b.name, 'es')
-      case 'name-desc': return b.name.localeCompare(a.name, 'es')
+function applyFilters(products: CatalogProduct[], f: ProductFilterValue): CatalogProduct[] {
+  const query = f.search.trim().toLowerCase()
+  const priceMin = f.priceMin !== '' ? Number(f.priceMin) : null
+  const priceMax = f.priceMax !== '' ? Number(f.priceMax) : null
+  const hasVariantFilter = Object.values(f.variantAttributes).some(arr => arr.length > 0)
+
+  let result = products.filter(product => {
+    if (query && !product.name.toLowerCase().includes(query)) return false
+
+    if (f.categoryIds.length > 0) {
+      if (!product.categoryId || !f.categoryIds.includes(product.categoryId)) return false
+    }
+
+    if (f.brandIds.length > 0) {
+      if (!product.brandId || !f.brandIds.includes(product.brandId)) return false
+    }
+
+    if (priceMin !== null && product.salePrice < priceMin) return false
+    if (priceMax !== null && product.salePrice > priceMax) return false
+
+    // Variant attributes: AND across types, OR within same type
+    if (hasVariantFilter) {
+      for (const [, selectedValues] of Object.entries(f.variantAttributes)) {
+        if (selectedValues.length === 0) continue
+        // Check if product appears in any of the selected values' productIds
+        // (productIds come from CatalogVariantAttributeGroup, but here we only have CatalogProduct)
+        // We just require product.hasVariants to be true when variant filters active
+        if (!product.hasVariants) return false
+      }
+    }
+
+    return true
+  })
+
+  // Sort
+  result = [...result].sort((a, b) => {
+    switch (f.sortField) {
+      case 'name-asc':   return a.name.localeCompare(b.name, 'es')
+      case 'name-desc':  return b.name.localeCompare(a.name, 'es')
       case 'price-asc':  return a.salePrice - b.salePrice
       case 'price-desc': return b.salePrice - a.salePrice
+      default:           return a.name.localeCompare(b.name, 'es')
     }
   })
+
+  return result
 }
 
 export default function ProductGrid({
+  slug,
   products,
   categories,
-  selectedCategory,
-  onSelectCategory,
+  filterValue,
+  onFilterChange,
   onAddToCart,
   viewMode,
   onViewModeChange,
-  searchQuery,
-  onSearchChange,
-  sortBy,
-  onSortChange,
 }: ProductGridProps) {
-  const query = searchQuery.trim().toLowerCase()
+  const filteredProducts = applyFilters(products, filterValue)
 
-  const filteredProducts = sortProducts(
-    products.filter(product => {
-      const matchesCategory = selectedCategory === null || product.categoryId === selectedCategory
-      const matchesSearch = query === '' || product.name.toLowerCase().includes(query)
-      return matchesCategory && matchesSearch
-    }),
-    sortBy
-  )
+  // selectedCategory: first element or null
+  const selectedCategory = filterValue.categoryIds[0] ?? null
 
   return (
     <div className="space-y-4">
-      {/* Search bar */}
-      <div className="relative">
-        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <Input
-          value={searchQuery}
-          onChange={event => onSearchChange(event.target.value)}
-          placeholder="Buscar productos..."
-          className="pl-9"
-        />
-      </div>
-
       {/* Categories + toolbar */}
       <div className="rounded-xl border border-border/70 bg-card p-4">
         <div className="flex items-center justify-between gap-3">
-          <p className="text-xs uppercase tracking-wide text-muted-foreground">Categorias</p>
+          <p className="text-xs uppercase tracking-wide text-muted-foreground">Categorías</p>
           <div className="flex items-center gap-2">
             <div className="w-36">
               <SelectDropdown
-                value={sortBy}
-                onChange={value => onSortChange(value as SortBy)}
+                value={filterValue.sortField}
+                onChange={value => onFilterChange({ ...filterValue, sortField: value })}
                 options={SORT_OPTIONS}
                 usePortal
               />
@@ -145,7 +160,7 @@ export default function ProductGrid({
         <div className="mt-3 flex flex-wrap gap-2">
           <button
             type="button"
-            onClick={() => onSelectCategory(null)}
+            onClick={() => onFilterChange({ ...filterValue, categoryIds: [] })}
             className={`rounded-full border px-3 py-1 text-sm transition-colors ${
               selectedCategory === null
                 ? 'bg-primary/10 text-primary border border-primary/20 dark:bg-primary/15 dark:border-primary/30'
@@ -159,7 +174,12 @@ export default function ProductGrid({
             <button
               key={category.id}
               type="button"
-              onClick={() => onSelectCategory(category.id)}
+              onClick={() =>
+                onFilterChange({
+                  ...filterValue,
+                  categoryIds: selectedCategory === category.id ? [] : [category.id],
+                })
+              }
               className={`rounded-full border px-3 py-1 text-sm transition-colors ${
                 selectedCategory === category.id
                   ? 'bg-primary/10 text-primary border border-primary/20 dark:bg-primary/15 dark:border-primary/30'
@@ -174,13 +194,20 @@ export default function ProductGrid({
 
       {products.length === 0 && (
         <div className="rounded-xl border border-border/70 bg-card p-8 text-center">
-          <p className="text-sm text-muted-foreground">Este catalogo aun no tiene productos publicados.</p>
+          <p className="text-sm text-muted-foreground">Este catálogo aún no tiene productos publicados.</p>
         </div>
       )}
 
       {products.length > 0 && filteredProducts.length === 0 && (
         <div className="rounded-xl border border-border/70 bg-card p-8 text-center">
           <p className="text-sm text-muted-foreground">No se encontraron productos.</p>
+          <button
+            type="button"
+            onClick={() => onFilterChange(EMPTY_FILTER)}
+            className="mt-2 text-xs text-primary hover:underline"
+          >
+            Limpiar filtros
+          </button>
         </div>
       )}
 
@@ -189,6 +216,46 @@ export default function ProductGrid({
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {filteredProducts.map(product => {
             const isOutOfStock = product.stock <= 0
+
+            if (product.hasVariants) {
+              return (
+                <Link
+                  key={product.id}
+                  href={`/catalogo/${slug}/${product.id}`}
+                  className={`rounded-xl border border-border/70 bg-card p-3 block hover:border-primary/40 transition-colors ${isOutOfStock ? 'opacity-60' : ''}`}
+                >
+                  <div className="relative h-36 w-full overflow-hidden rounded-lg bg-muted/40">
+                    {product.imageUrl ? (
+                      <ProductImage
+                        imageUrl={product.imageUrl}
+                        name={product.name}
+                        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                      />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center text-muted-foreground">
+                        <ImageIcon className="h-8 w-8" />
+                      </div>
+                    )}
+                    {isOutOfStock && (
+                      <span className="absolute left-2 top-2 rounded-md bg-destructive/90 px-2 py-0.5 text-xs font-medium text-destructive-foreground">
+                        Sin stock
+                      </span>
+                    )}
+                  </div>
+                  <div className="mt-3 flex items-start justify-between gap-2">
+                    <div>
+                      <h3 className="text-sm font-medium text-foreground">{product.name}</h3>
+                      <p className="mt-1 text-base font-bold text-foreground">
+                        ${currencyFormatter.format(product.salePrice)}
+                      </p>
+                    </div>
+                    <span className="flex items-center gap-1 text-xs text-primary font-medium mt-1 shrink-0">
+                      Ver variantes <ChevronRight className="h-3 w-3" />
+                    </span>
+                  </div>
+                </Link>
+              )
+            }
 
             return (
               <article
@@ -207,14 +274,12 @@ export default function ProductGrid({
                       <ImageIcon className="h-8 w-8" />
                     </div>
                   )}
-
                   {isOutOfStock && (
                     <span className="absolute left-2 top-2 rounded-md bg-destructive/90 px-2 py-0.5 text-xs font-medium text-destructive-foreground">
                       Sin stock
                     </span>
                   )}
                 </div>
-
                 <div className="mt-3 flex items-start justify-between gap-2">
                   <div>
                     <h3 className="text-sm font-medium text-foreground">{product.name}</h3>
@@ -222,11 +287,10 @@ export default function ProductGrid({
                       ${currencyFormatter.format(product.salePrice)}
                     </p>
                   </div>
-
                   <Button
                     type="button"
                     size="icon-sm"
-                    onClick={() => onAddToCart(product)}
+                    onClick={() => onAddToCart(product, null, null)}
                     disabled={isOutOfStock}
                     aria-label={`Agregar ${product.name} al carrito`}
                   >
@@ -245,6 +309,35 @@ export default function ProductGrid({
           {filteredProducts.map(product => {
             const isOutOfStock = product.stock <= 0
 
+            if (product.hasVariants) {
+              return (
+                <Link
+                  key={product.id}
+                  href={`/catalogo/${slug}/${product.id}`}
+                  className={`flex items-center gap-3 rounded-xl border border-border/70 bg-card p-3 hover:border-primary/40 transition-colors ${isOutOfStock ? 'opacity-60' : ''}`}
+                >
+                  <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-lg bg-muted/40">
+                    {product.imageUrl ? (
+                      <ProductImage imageUrl={product.imageUrl} name={product.name} sizes="56px" />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center text-muted-foreground">
+                        <ImageIcon className="h-5 w-5" />
+                      </div>
+                    )}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <h3 className="truncate text-sm font-medium text-foreground">{product.name}</h3>
+                    <p className="mt-0.5 text-sm font-bold text-foreground">
+                      ${currencyFormatter.format(product.salePrice)}
+                    </p>
+                  </div>
+                  <span className="flex items-center gap-1 text-xs text-primary font-medium shrink-0">
+                    Ver variantes <ChevronRight className="h-3 w-3" />
+                  </span>
+                </Link>
+              )
+            }
+
             return (
               <article
                 key={product.id}
@@ -252,18 +345,13 @@ export default function ProductGrid({
               >
                 <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-lg bg-muted/40">
                   {product.imageUrl ? (
-                    <ProductImage
-                      imageUrl={product.imageUrl}
-                      name={product.name}
-                      sizes="56px"
-                    />
+                    <ProductImage imageUrl={product.imageUrl} name={product.name} sizes="56px" />
                   ) : (
                     <div className="flex h-full w-full items-center justify-center text-muted-foreground">
                       <ImageIcon className="h-5 w-5" />
                     </div>
                   )}
                 </div>
-
                 <div className="min-w-0 flex-1">
                   <h3 className="truncate text-sm font-medium text-foreground">{product.name}</h3>
                   <p className="mt-0.5 text-sm font-bold text-foreground">
@@ -275,11 +363,10 @@ export default function ProductGrid({
                     </span>
                   )}
                 </div>
-
                 <Button
                   type="button"
                   size="icon-sm"
-                  onClick={() => onAddToCart(product)}
+                  onClick={() => onAddToCart(product, null, null)}
                   disabled={isOutOfStock}
                   aria-label={`Agregar ${product.name} al carrito`}
                   className="shrink-0"
