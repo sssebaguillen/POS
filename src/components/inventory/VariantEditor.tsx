@@ -97,6 +97,7 @@ export interface VariantPayloadNew {
     stock: number
     min_stock: number
     is_active: boolean
+    is_default?: boolean
     option_value_indices: [number, number][]
   }[]
 }
@@ -117,6 +118,7 @@ export interface VariantPayloadEdit {
     stock: number
     min_stock: number
     is_active: boolean
+    is_default?: boolean
     option_value_ids?: string[]
   }[]
 }
@@ -127,6 +129,7 @@ interface Props {
   mode: 'new' | 'edit'
   initialOptions?: ProductOption[]
   initialVariants?: ProductVariant[]
+  initialDefaultVariantId?: string
   hasSalesHistory?: boolean
   hasVariants: boolean
   onHasVariantsChange: (v: boolean) => void
@@ -137,6 +140,7 @@ export default function VariantEditor({
   mode,
   initialOptions,
   initialVariants,
+  initialDefaultVariantId,
   hasSalesHistory,
   hasVariants,
   onHasVariantsChange,
@@ -151,6 +155,7 @@ export default function VariantEditor({
   const [variants, setVariants] = useState<DraftVariantRow[]>([])
   const [valueInputs, setValueInputs] = useState<Record<number, string>>({})
   const [filterPillValue, setFilterPillValue] = useState<string | null>(null)
+  const [defaultVariantKey, setDefaultVariantKey] = useState<string | null>(null)
   const initialized = useRef(false)
 
   // Load attribute types
@@ -189,7 +194,7 @@ export default function VariantEditor({
         return [oIdx, vIdx] as [number, number]
       })
       const label = v.option_values.map(ov => ov.value).join(' / ')
-      const combinationKey = combo.map(([o, v]) => `${o}:${v}`).join('|')
+      const combinationKey = combo.map(([o, vi]) => `${o}:${vi}`).join('|')
 
       return {
         id: v.id,
@@ -204,15 +209,32 @@ export default function VariantEditor({
       }
     })
 
+    // Set default variant key from initialDefaultVariantId
+    if (initialDefaultVariantId) {
+      const defaultDraft = draftVariants.find(dv => dv.id === initialDefaultVariantId)
+      if (defaultDraft) {
+        setDefaultVariantKey(defaultDraft.combinationKey)
+      }
+    }
+
     setOptions(draftOptions)
     setVariants(draftVariants)
-  }, [mode, initialOptions, initialVariants])
+  }, [mode, initialOptions, initialVariants, initialDefaultVariantId])
 
   // Regenerate variants when options change (new mode only)
   useEffect(() => {
     if (mode !== 'new') return
     setVariants(prev => buildVariantRows(options, prev))
   }, [options, mode])
+
+  // Auto-select first variant as default when defaultVariantKey is null or no longer valid
+  useEffect(() => {
+    if (variants.length === 0) return
+    const keys = variants.map(v => v.combinationKey)
+    if (!defaultVariantKey || !keys.includes(defaultVariantKey)) {
+      setDefaultVariantKey(keys[0] ?? null)
+    }
+  }, [variants, defaultVariantKey])
 
   // Emit payload on change
   useEffect(() => {
@@ -242,6 +264,7 @@ export default function VariantEditor({
           stock: Math.trunc(Number(v.stock) || 0),
           min_stock: 0,
           is_active: v.is_active,
+          is_default: v.combinationKey === defaultVariantKey,
           option_value_indices: v.optionValueIndices,
         })),
       }
@@ -267,12 +290,13 @@ export default function VariantEditor({
           stock: Math.trunc(Number(v.stock) || 0),
           min_stock: 0,
           is_active: v.is_active,
+          is_default: v.combinationKey === defaultVariantKey,
           ...(v.id ? {} : { option_value_ids: v.optionValueIds ?? [] }),
         })),
       }
       onPayloadChange(payload)
     }
-  }, [hasVariants, options, variants, mode, onPayloadChange])
+  }, [hasVariants, options, variants, mode, onPayloadChange, defaultVariantKey])
 
   function addOption() {
     const defaultType = attributeTypes[0]
@@ -513,6 +537,7 @@ export default function VariantEditor({
                 <table className="w-full text-xs">
                   <thead>
                     <tr className="border-b border-edge bg-surface-alt">
+                      <th className="text-left px-3 py-2 font-medium text-subtle whitespace-nowrap">Default</th>
                       <th className="text-left px-3 py-2 font-medium text-subtle whitespace-nowrap">Variante</th>
                       <th className="text-left px-3 py-2 font-medium text-subtle whitespace-nowrap">Costo ({currencySymbol})</th>
                       <th className="text-left px-3 py-2 font-medium text-subtle whitespace-nowrap">Precio ({currencySymbol})</th>
@@ -522,11 +547,24 @@ export default function VariantEditor({
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-edge">
-                    {displayedVariants.map((variant, displayIdx) => {
+                    {displayedVariants.map((variant) => {
                       // Find the real index in variants array for updateVariant
                       const varIdx = variants.indexOf(variant)
+                      const isDefault = variant.combinationKey === defaultVariantKey
                       return (
                         <tr key={variant.combinationKey} className={`bg-surface ${!variant.is_active ? 'opacity-50' : ''}`}>
+                          <td className="px-3 py-2">
+                            <button
+                              type="button"
+                              onClick={() => setDefaultVariantKey(variant.combinationKey)}
+                              aria-label={`Marcar ${variant.label} como variante por defecto`}
+                              className={`w-4 h-4 rounded-full border-2 flex items-center justify-center cursor-pointer transition-colors ${isDefault ? 'border-primary bg-primary' : 'border-edge bg-surface hover:border-primary/60'}`}
+                            >
+                              {isDefault && (
+                                <span className="w-2 h-2 rounded-full bg-primary-foreground" />
+                              )}
+                            </button>
+                          </td>
                           <td className="px-3 py-2 text-body font-medium whitespace-nowrap">
                             {variant.label}
                           </td>

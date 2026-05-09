@@ -5,7 +5,7 @@ import type { PostgrestError, SupabaseClient } from '@supabase/supabase-js'
 const INVENTORY_PRODUCTS_PAGE_SIZE = 1000
 
 export const INVENTORY_PRODUCTS_SELECT =
-  'id, business_id, name, price, cost, stock, min_stock, is_active, show_in_catalog, category_id, sku, barcode, brand_id, image_url, image_source, has_variants, brands(id, name), categories(name, icon)'
+  'id, business_id, name, price, cost, stock, min_stock, is_active, show_in_catalog, category_id, sku, barcode, brand_id, image_url, image_source, has_variants, default_variant_id, brands(id, name), categories(name, icon)'
 
 interface InventoryBrandRelation {
   id: string
@@ -34,6 +34,7 @@ interface InventoryProductRow {
   image_url: string | null
   image_source: 'upload' | 'url' | null
   has_variants: boolean
+  default_variant_id: string | null
   brands: InventoryBrandRelation | InventoryBrandRelation[] | null
   categories: InventoryCategoryRelation | InventoryCategoryRelation[] | null
 }
@@ -44,13 +45,18 @@ function toNumber(value: number | string | null): number {
 
 export function normalizeInventoryProduct(
   product: InventoryProductRow,
-  variantCountMap?: Map<string, number>
+  variantCountMap?: Map<string, number>,
+  defaultVariantMap?: Map<string, { price: number; cost: number; stock: number }>
 ): InventoryProduct {
+  const defaultVariant = product.has_variants && product.default_variant_id
+    ? defaultVariantMap?.get(product.default_variant_id)
+    : undefined
+
   return {
     ...product,
-    price: toNumber(product.price),
-    cost: toNumber(product.cost),
-    stock: toNumber(product.stock),
+    price: defaultVariant ? defaultVariant.price : toNumber(product.price),
+    cost: defaultVariant ? defaultVariant.cost : toNumber(product.cost),
+    stock: defaultVariant ? defaultVariant.stock : toNumber(product.stock),
     min_stock: toNumber(product.min_stock),
     brand_id: product.brand_id ?? null,
     brand: unwrapRelation(product.brands),
@@ -59,6 +65,7 @@ export function normalizeInventoryProduct(
     categories: unwrapRelation(product.categories),
     has_variants: product.has_variants ?? false,
     variant_count: variantCountMap?.get(product.id),
+    default_variant_id: product.default_variant_id ?? null,
   }
 }
 
@@ -110,8 +117,33 @@ export async function fetchInventoryProducts(
     }
   }
 
+  // Fetch price/cost/stock from default variants for variant products
+  const defaultVariantIds = rows
+    .filter(p => p.has_variants && p.default_variant_id)
+    .map(p => p.default_variant_id as string)
+
+  let defaultVariantMap: Map<string, { price: number; cost: number; stock: number }> | undefined
+
+  if (defaultVariantIds.length > 0) {
+    const { data: variantData } = await supabase
+      .from('product_variants')
+      .select('id, price, cost, stock')
+      .in('id', defaultVariantIds)
+
+    if (variantData) {
+      defaultVariantMap = new Map()
+      for (const v of variantData as { id: string; price: number; cost: number; stock: number }[]) {
+        defaultVariantMap.set(v.id, {
+          price: Number(v.price),
+          cost: Number(v.cost),
+          stock: Number(v.stock),
+        })
+      }
+    }
+  }
+
   return {
-    data: rows.map(row => normalizeInventoryProduct(row, variantCountMap)),
+    data: rows.map(row => normalizeInventoryProduct(row, variantCountMap, defaultVariantMap)),
     error: null,
   }
 }

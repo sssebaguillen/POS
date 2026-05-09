@@ -691,6 +691,7 @@ export default function EditProductModal({
                   mode="edit"
                   initialOptions={variantOptions}
                   initialVariants={variantVariants}
+                  initialDefaultVariantId={product.default_variant_id ?? undefined}
                   hasSalesHistory={(product as InventoryProduct & { sales_count?: number }).sales_count ? (product as InventoryProduct & { sales_count?: number }).sales_count! > 0 : false}
                   hasVariants={hasVariants}
                   onHasVariantsChange={setHasVariants}

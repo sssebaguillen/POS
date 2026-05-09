@@ -186,7 +186,6 @@ DECLARE
   v_business_id uuid;
   v_result      json;
 BEGIN
-  -- Resolve business from slug
   SELECT id INTO v_business_id
   FROM public.businesses
   WHERE slug = p_slug
@@ -196,62 +195,47 @@ BEGIN
     RETURN '[]'::json;
   END IF;
 
-  -- Aggregate variant filter groups
   SELECT json_agg(type_group ORDER BY type_position)
   INTO v_result
   FROM (
     SELECT
-      at.id                AS type_id,
-      at.label             AS type_name,
-      at.position          AS type_position,
-      json_agg(
-        json_build_object(
-          'value',       val_group.value,
-          'product_ids', val_group.product_ids
-        ) ORDER BY val_group.value
-      )                    AS values
+      at.id       AS type_id,
+      at.label    AS type_name,
+      at.position AS type_position,
+      (
+        SELECT json_agg(val_row ORDER BY val_row->>'value')
+        FROM (
+          SELECT
+            pov.value,
+            json_agg(DISTINCT pr2.id::text ORDER BY pr2.id::text) AS product_ids
+          FROM public.product_option_values pov
+          JOIN public.product_options po2 ON po2.id = pov.option_id
+            AND po2.attribute_type_id = at.id
+            AND po2.business_id = v_business_id
+          JOIN public.products pr2 ON pr2.id = po2.product_id
+            AND pr2.business_id = v_business_id
+            AND pr2.is_active = true
+            AND pr2.show_in_catalog = true
+            AND pr2.has_variants = true
+          JOIN public.product_variant_option_values pvov ON pvov.option_value_id = pov.id
+          JOIN public.product_variants pv ON pv.id = pvov.variant_id
+            AND pv.is_active = true
+          GROUP BY pov.value
+        ) val_data,
+        json_build_object('value', val_data.value, 'product_ids', val_data.product_ids) AS val_row
+      ) AS values
     FROM public.attribute_types at
-    JOIN public.product_options po
-      ON po.attribute_type_id = at.id
-      AND po.business_id = v_business_id
-    JOIN public.products pr
-      ON pr.id = po.product_id
-      AND pr.business_id = v_business_id
-      AND pr.is_active = true
-      AND pr.show_in_catalog = true
-      AND pr.has_variants = true
-    JOIN public.product_option_values pov
-      ON pov.option_id = po.id
-    JOIN public.product_variant_option_values pvov
-      ON pvov.option_value_id = pov.id
-    JOIN public.product_variants pv
-      ON pv.id = pvov.variant_id
-      AND pv.is_active = true
-    -- Group by value text per type, collect distinct product_ids
-    CROSS JOIN LATERAL (
-      SELECT
-        pov2.value,
-        json_agg(DISTINCT pr2.id) AS product_ids
-      FROM public.product_option_values pov2
-      JOIN public.product_options po2
-        ON po2.id = pov2.option_id
-        AND po2.attribute_type_id = at.id
-        AND po2.business_id = v_business_id
-      JOIN public.products pr2
-        ON pr2.id = po2.product_id
-        AND pr2.business_id = v_business_id
-        AND pr2.is_active = true
-        AND pr2.show_in_catalog = true
-        AND pr2.has_variants = true
-      JOIN public.product_variant_option_values pvov2
-        ON pvov2.option_value_id = pov2.id
-      JOIN public.product_variants pv2
-        ON pv2.id = pvov2.variant_id
-        AND pv2.is_active = true
-      GROUP BY pov2.value
-    ) val_group
-    GROUP BY at.id, at.label, at.position
-    HAVING COUNT(DISTINCT pr.id) > 0
+    WHERE EXISTS (
+      SELECT 1
+      FROM public.product_options po
+      JOIN public.products pr ON pr.id = po.product_id
+        AND pr.business_id = v_business_id
+        AND pr.is_active = true
+        AND pr.show_in_catalog = true
+        AND pr.has_variants = true
+      WHERE po.attribute_type_id = at.id
+        AND po.business_id = v_business_id
+    )
   ) type_group;
 
   RETURN COALESCE(v_result, '[]'::json);
