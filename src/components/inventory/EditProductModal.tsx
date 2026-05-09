@@ -229,27 +229,29 @@ export default function EditProductModal({
       nextErrors.name = 'El nombre es obligatorio'
     }
 
-    const parsedPrice = Number(form.price)
-    if (!form.price || !Number.isFinite(parsedPrice) || parsedPrice < 0) {
-      nextErrors.price = 'Precio inválido'
-    }
-
-    if (form.cost) {
-      const parsedCost = Number(form.cost)
-      if (!Number.isFinite(parsedCost) || parsedCost < 0) {
-        nextErrors.cost = 'Costo inválido'
+    if (!hasVariants) {
+      const parsedPrice = Number(form.price)
+      if (!form.price || !Number.isFinite(parsedPrice) || parsedPrice < 0) {
+        nextErrors.price = 'Precio inválido'
       }
-    }
 
-    const parsedStock = Number(form.stock)
-    if (!form.stock || !Number.isFinite(parsedStock) || parsedStock < 0) {
-      nextErrors.stock = 'Stock inválido'
-    }
+      if (form.cost) {
+        const parsedCost = Number(form.cost)
+        if (!Number.isFinite(parsedCost) || parsedCost < 0) {
+          nextErrors.cost = 'Costo inválido'
+        }
+      }
 
-    if (form.min_stock) {
-      const parsedMinStock = Number(form.min_stock)
-      if (!Number.isFinite(parsedMinStock) || parsedMinStock < 0) {
-        nextErrors.min_stock = 'Stock mínimo inválido'
+      const parsedStock = Number(form.stock)
+      if (!form.stock || !Number.isFinite(parsedStock) || parsedStock < 0) {
+        nextErrors.stock = 'Stock inválido'
+      }
+
+      if (form.min_stock) {
+        const parsedMinStock = Number(form.min_stock)
+        if (!Number.isFinite(parsedMinStock) || parsedMinStock < 0) {
+          nextErrors.min_stock = 'Stock mínimo inválido'
+        }
       }
     }
 
@@ -342,7 +344,26 @@ export default function EditProductModal({
   }
 
   async function handleSubmitWithVariants() {
-    if (!variantPayload) return
+    if (!form.name.trim()) {
+      setErrors({ name: 'El nombre es obligatorio' })
+      return
+    }
+
+    if (!variantPayload || variantPayload.options.length === 0) {
+      setErrors({ _global: 'Definí al menos un atributo con valores para las variantes' })
+      return
+    }
+
+    const activeVariants = variantPayload.variants.filter(v => v.is_active)
+    if (activeVariants.length === 0) {
+      setErrors({ _global: 'La tabla de variantes debe tener al menos una variante activa' })
+      return
+    }
+
+    if (!activeVariants.every(v => v.price > 0)) {
+      setErrors({ _global: 'Cada variante activa debe tener un precio de venta mayor a 0' })
+      return
+    }
 
     setIsSaving(true)
     const { data: rpcResult, error: rpcError } = await supabase.rpc('update_product_variants', {
@@ -358,19 +379,16 @@ export default function EditProductModal({
       return
     }
 
-    // Also save product-level fields
-    const parsedPrice = Number(form.price)
-    const parsedCost = Number(form.cost)
     onSaved(
       {
         name: toTitleCase(form.name.trim()),
-        price: parsedPrice,
-        cost: parsedCost || 0,
-        stock: Math.trunc(Number(form.stock) || 0),
-        min_stock: Math.trunc(Number(form.min_stock) || 0),
-        sku: form.sku.trim() || null,
+        price: 0,
+        cost: 0,
+        stock: 0,
+        min_stock: 0,
+        sku: null,
         brand_id: form.brand_id || null,
-        barcode: form.barcode.trim() || null,
+        barcode: null,
         category_id: form.category_id || null,
         show_in_catalog: form.show_in_catalog,
         image_url: imageUrl,
@@ -884,7 +902,7 @@ export default function EditProductModal({
                 </Button>
                 <Button
                   type="button"
-                  onClick={() => void (hasVariants && variantPayload ? handleSubmitWithVariants() : handleSubmit())}
+                  onClick={() => void (hasVariants ? handleSubmitWithVariants() : handleSubmit())}
                   disabled={isSaving}
                   className="h-9 w-full rounded-lg bg-primary px-5 text-sm text-primary-foreground hover:bg-primary/90 sm:w-auto"
                 >

@@ -211,10 +211,25 @@ export default function NewProductModal({
   function validate() {
     const e: Record<string, string> = {}
     if (!form.name.trim()) e.name = 'El nombre es obligatorio'
-    if (!form.price || isNaN(Number(form.price)) || Number(form.price) < 0) e.price = 'Precio inválido'
-    if (form.cost && (isNaN(Number(form.cost)) || Number(form.cost) < 0)) e.cost = 'Costo inválido'
-    if (form.stock && (isNaN(Number(form.stock)) || Number(form.stock) < 0)) e.stock = 'Stock inválido'
-    if (form.min_stock && (isNaN(Number(form.min_stock)) || Number(form.min_stock) < 0)) e.min_stock = 'Mínimo inválido'
+
+    if (!hasVariants) {
+      if (!form.price || isNaN(Number(form.price)) || Number(form.price) < 0) e.price = 'Precio inválido'
+      if (form.cost && (isNaN(Number(form.cost)) || Number(form.cost) < 0)) e.cost = 'Costo inválido'
+      if (form.stock && (isNaN(Number(form.stock)) || Number(form.stock) < 0)) e.stock = 'Stock inválido'
+      if (form.min_stock && (isNaN(Number(form.min_stock)) || Number(form.min_stock) < 0)) e.min_stock = 'Mínimo inválido'
+    } else {
+      if (!variantPayload || variantPayload.options.length === 0) {
+        e._global = 'Definí al menos un atributo con valores para las variantes'
+      } else {
+        const activeVariants = variantPayload.variants.filter(v => v.is_active)
+        if (activeVariants.length === 0) {
+          e._global = 'La tabla de variantes debe tener al menos una variante activa'
+        } else if (!activeVariants.every(v => v.price > 0)) {
+          e._global = 'Cada variante activa debe tener un precio de venta mayor a 0'
+        }
+      }
+    }
+
     return e
   }
 
@@ -237,13 +252,13 @@ export default function NewProductModal({
     if (hasVariants && variantPayload) {
       const productPayload = {
         name: toTitleCase(form.name.trim()),
-        sku: form.sku.trim() || null,
+        sku: null,
         brand_id: form.brand_id || null,
-        barcode: form.barcode.trim() || null,
+        barcode: null,
         category_id: form.category_id || null,
-        price: Number(form.price) || 0,
-        cost: Number(form.cost) || 0,
-        min_stock: Number(form.min_stock) || 0,
+        price: 0,
+        cost: 0,
+        min_stock: 0,
         is_active: form.is_active,
         image_url: imageUrl ?? null,
         image_source: imageSource ?? null,
