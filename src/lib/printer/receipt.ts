@@ -32,6 +32,7 @@ export function buildReceiptData({ businessName, sale, items, currency }: BuildR
 
   const receiptItems: ReceiptItemInput[] = items.map(item => ({
     product_id: item.product_id,
+    variant_id: null,
     name: item.product_name,
     icon: item.product_icon,
     quantity: item.quantity,

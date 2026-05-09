@@ -4,6 +4,7 @@ export type { PaymentMethod }
 
 export interface SaleItemInput {
   product_id: string | null
+  variant_id: string | null
   quantity: number
   unit_price: number
   total: number

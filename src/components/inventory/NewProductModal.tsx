@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -14,6 +14,8 @@ import type { PriceList } from '@/lib/types'
 import type { InventoryBrand, InventoryCategory, InventoryProduct } from '@/components/inventory/types'
 import { validateImageUrl } from '@/lib/validation'
 import FieldGroup from '@/components/inventory/FieldGroup'
+import VariantEditor from '@/components/inventory/VariantEditor'
+import type { VariantPayloadNew, VariantPayloadEdit } from '@/components/inventory/VariantEditor'
 import { useCurrency } from '@/lib/context/CurrencyContext'
 import { getCurrencySymbol, toTitleCase } from '@/lib/format'
 
@@ -68,6 +70,8 @@ export default function NewProductModal({
   const [loading, setLoading] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [isPriceEdited, setIsPriceEdited] = useState(false)
+  const [hasVariants, setHasVariants] = useState(false)
+  const [variantPayload, setVariantPayload] = useState<VariantPayloadNew | null>(null)
   const [brandInput, setBrandInput] = useState('')
   const [showBrandOptions, setShowBrandOptions] = useState(false)
   const [categoryInput, setCategoryInput] = useState('')
@@ -125,7 +129,13 @@ export default function NewProductModal({
     setExternalUrlInput('')
     setUrlError('')
     setShowAdvanced(false)
+    setHasVariants(false)
+    setVariantPayload(null)
   }
+
+  const handleVariantPayloadChange = useCallback((payload: VariantPayloadNew | VariantPayloadEdit | null) => {
+    setVariantPayload(payload as VariantPayloadNew | null)
+  }, [])
 
   function set(field: string, value: string | boolean) {
     setForm(prev => ({ ...prev, [field]: value }))
@@ -201,10 +211,25 @@ export default function NewProductModal({
   function validate() {
     const e: Record<string, string> = {}
     if (!form.name.trim()) e.name = 'El nombre es obligatorio'
-    if (!form.price || isNaN(Number(form.price)) || Number(form.price) < 0) e.price = 'Precio inválido'
-    if (form.cost && (isNaN(Number(form.cost)) || Number(form.cost) < 0)) e.cost = 'Costo inválido'
-    if (form.stock && (isNaN(Number(form.stock)) || Number(form.stock) < 0)) e.stock = 'Stock inválido'
-    if (form.min_stock && (isNaN(Number(form.min_stock)) || Number(form.min_stock) < 0)) e.min_stock = 'Mínimo inválido'
+
+    if (!hasVariants) {
+      if (!form.price || isNaN(Number(form.price)) || Number(form.price) < 0) e.price = 'Precio inválido'
+      if (form.cost && (isNaN(Number(form.cost)) || Number(form.cost) < 0)) e.cost = 'Costo inválido'
+      if (form.stock && (isNaN(Number(form.stock)) || Number(form.stock) < 0)) e.stock = 'Stock inválido'
+      if (form.min_stock && (isNaN(Number(form.min_stock)) || Number(form.min_stock) < 0)) e.min_stock = 'Mínimo inválido'
+    } else {
+      if (!variantPayload || variantPayload.options.length === 0) {
+        e._global = 'Definí al menos un atributo con valores para las variantes'
+      } else {
+        const activeVariants = variantPayload.variants.filter(v => v.is_active)
+        if (activeVariants.length === 0) {
+          e._global = 'La tabla de variantes debe tener al menos una variante activa'
+        } else if (!activeVariants.every(v => v.price > 0)) {
+          e._global = 'Cada variante activa debe tener un precio de venta mayor a 0'
+        }
+      }
+    }
+
     return e
   }
 
@@ -217,7 +242,93 @@ export default function NewProductModal({
       return
     }
 
+    if (!form.name.trim()) {
+      setErrors({ name: 'El nombre es obligatorio' })
+      return
+    }
+
     setLoading(true)
+
+    if (hasVariants && variantPayload) {
+      const productPayload = {
+        name: toTitleCase(form.name.trim()),
+        sku: null,
+        brand_id: form.brand_id || null,
+        barcode: null,
+        category_id: form.category_id || null,
+        price: 0,
+        cost: 0,
+        min_stock: 0,
+        is_active: form.is_active,
+        image_url: imageUrl ?? null,
+        image_source: imageSource ?? null,
+      }
+
+      const { data: rpcResult, error: rpcError } = await supabase.rpc('create_product_with_variants', {
+        p_product: productPayload,
+        p_options: variantPayload.options,
+        p_variants: variantPayload.variants,
+      })
+
+      setLoading(false)
+      const result = rpcResult as { success: boolean; product_id?: string; error?: string } | null
+
+      if (rpcError || !result?.success) {
+        setErrors({ _global: result?.error ?? rpcError?.message ?? 'Error al crear el producto con variantes' })
+        return
+      }
+
+      // Fetch the created product for the onCreated callback
+      const { data: newProduct } = await supabase
+        .from('products')
+        .select('id, name, price, cost, stock, min_stock, is_active, category_id, sku, brand_id, brands(id, name), barcode, image_url, image_source, has_variants, default_variant_id, categories(name, icon)')
+        .eq('id', result.product_id!)
+        .single()
+
+      if (newProduct) {
+        let displayPrice = Number(newProduct.price)
+        let displayCost = Number(newProduct.cost)
+        let displayStock = Number(newProduct.stock)
+
+        if (newProduct.default_variant_id) {
+          const { data: variantData } = await supabase
+            .from('product_variants')
+            .select('price, cost, stock')
+            .eq('id', newProduct.default_variant_id)
+            .single()
+
+          if (variantData) {
+            displayPrice = Number(variantData.price)
+            displayCost = Number(variantData.cost)
+            displayStock = Number(variantData.stock)
+          }
+        }
+
+        const created: InventoryProduct = {
+          ...newProduct,
+          price: displayPrice,
+          cost: displayCost,
+          stock: displayStock,
+          default_variant_id: newProduct.default_variant_id ?? null,
+          brand: Array.isArray(newProduct.brands)
+            ? (newProduct.brands[0] ?? null)
+            : (newProduct.brands ?? null),
+          image_url: newProduct.image_url ?? null,
+          image_source: (newProduct.image_source as 'upload' | 'url' | null) ?? null,
+          categories: Array.isArray(newProduct.categories)
+            ? (newProduct.categories[0] ?? null)
+            : (newProduct.categories ?? null),
+          has_variants: true,
+        }
+        onCreated(created)
+        onSuccess?.(created)
+      }
+
+      resetFormState()
+      if (!embedded) onClose()
+      return
+    }
+
     const payload = {
       business_id: businessId,
       name: toTitleCase(form.name.trim()),
@@ -237,7 +348,7 @@ export default function NewProductModal({
     const { data, error } = await supabase
       .from('products')
       .insert(payload)
-      .select('id, name, price, cost, stock, min_stock, is_active, category_id, sku, brand_id, brands(id, name), barcode, image_url, image_source, categories(name, icon)')
+      .select('id, name, price, cost, stock, min_stock, is_active, category_id, sku, brand_id, brands(id, name), barcode, image_url, image_source, has_variants, categories(name, icon)')
       .single()
 
     setLoading(false)
@@ -434,10 +545,10 @@ export default function NewProductModal({
                 </div>
               </div>
 
-              <div className="border-t border-edge my-1" />
+              {!hasVariants && <div className="border-t border-edge my-1" />}
 
               {/* Precios */}
-              <div>
+              {!hasVariants && <div>
                 <p className="mb-2 text-[10px] font-semibold text-subtle uppercase tracking-widest">Precios</p>
                 <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
                   <FieldGroup
@@ -523,12 +634,12 @@ export default function NewProductModal({
                     </div>
                   )}
                 </div>
-              </div>
+              </div>}
 
-              <div className="border-t border-edge my-1" />
+              {!hasVariants && <div className="border-t border-edge my-1" />}
 
               {/* Stock */}
-              <div>
+              {!hasVariants && <div>
                 <p className="mb-2 text-[10px] font-semibold text-subtle uppercase tracking-widest">Stock</p>
                 <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
                   <FieldGroup label="Stock inicial" error={errors.stock}>
@@ -554,7 +665,15 @@ export default function NewProductModal({
                     />
                   </FieldGroup>
                 </div>
-              </div>
+              </div>}
+
+              {/* Variantes — siempre visible entre Stock y el collapsable */}
+              <VariantEditor
+                mode="new"
+                hasVariants={hasVariants}
+                onHasVariantsChange={setHasVariants}
+                onPayloadChange={handleVariantPayloadChange}
+              />
 
               {/* Collapsable — Imagen y detalles adicionales */}
               <button
@@ -564,28 +683,34 @@ export default function NewProductModal({
               >
                 <ChevronRight className={`w-3.5 h-3.5 text-hint transition-transform shrink-0 ${showAdvanced ? 'rotate-90' : ''}`} />
                 <span className="text-xs font-medium text-subtle">Imagen y detalles adicionales</span>
-                <span className="text-xs text-hint ml-1">· SKU, código de barras, foto</span>
+                <span className="text-xs text-hint ml-1">
+                  {hasVariants ? '· Foto del producto base' : '· SKU, código de barras, foto'}
+                </span>
               </button>
 
               {showAdvanced && (
                 <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
-                  <FieldGroup label="SKU">
-                    <Input
-                      value={form.sku}
-                      onChange={e => set('sku', e.target.value)}
-                      placeholder="Ej: PSTACC-500"
-                      className="h-9 rounded-xl text-sm bg-surface border-edge focus-visible:ring-ring/50 focus-visible:border-ring"
-                    />
-                  </FieldGroup>
+                  {!hasVariants && (
+                    <FieldGroup label="SKU">
+                      <Input
+                        value={form.sku}
+                        onChange={e => set('sku', e.target.value)}
+                        placeholder="Ej: PSTACC-500"
+                        className="h-9 rounded-xl text-sm bg-surface border-edge focus-visible:ring-ring/50 focus-visible:border-ring"
+                      />
+                    </FieldGroup>
+                  )}
 
-                  <FieldGroup label="Código de barras">
-                    <Input
-                      value={form.barcode}
-                      onChange={e => set('barcode', e.target.value)}
-                      placeholder="Ej: 7790001234567"
-                      className="h-9 rounded-xl text-sm bg-surface border-edge focus-visible:ring-ring/50 focus-visible:border-ring"
-                    />
-                  </FieldGroup>
+                  {!hasVariants && (
+                    <FieldGroup label="Código de barras">
+                      <Input
+                        value={form.barcode}
+                        onChange={e => set('barcode', e.target.value)}
+                        placeholder="Ej: 7790001234567"
+                        className="h-9 rounded-xl text-sm bg-surface border-edge focus-visible:ring-ring/50 focus-visible:border-ring"
+                      />
+                    </FieldGroup>
+                  )}
 
                   <div className="sm:col-span-2">
                     <p className="text-label text-subtle mb-2">Imagen del producto</p>

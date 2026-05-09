@@ -54,6 +54,7 @@ export interface Product {
   is_active: boolean
   show_in_catalog: boolean
   sales_count: number
+  has_variants: boolean
   created_at: string
 }
 
@@ -224,6 +225,8 @@ export interface CartItem {
   product: Product | null
   free_line_id: string | null
   free_line_description: string | null
+  variant_id: string | null
+  variant_label: string | null
   quantity: number
   unit_price: number
   total: number
@@ -231,5 +234,51 @@ export interface CartItem {
 }
 
 export function getCartItemId(item: CartItem): string {
-  return item.free_line_id ?? item.product!.id
+  if (item.free_line_id) return item.free_line_id
+  if (item.variant_id) return `${item.product!.id}:${item.variant_id}`
+  return item.product!.id
+}
+
+export interface AttributeType {
+  id: string
+  label: string
+  position: number
+}
+
+export interface ProductOptionValue {
+  id: string
+  option_id: string
+  value: string
+  position: number
+}
+
+export interface ProductOption {
+  id: string
+  product_id: string
+  attribute_type_id: string
+  name: string
+  position: number
+  values: ProductOptionValue[]
+}
+
+export interface ProductVariant {
+  id: string
+  product_id: string
+  sku: string | null
+  barcode: string | null
+  price: number
+  cost: number
+  stock: number
+  min_stock: number
+  image_url: string | null
+  image_source: 'upload' | 'url' | null
+  is_active: boolean
+  is_in_stock: boolean
+  option_values: { option_id: string; option_value_id: string; value: string }[]
+}
+
+export interface ProductWithVariants {
+  product: Product
+  options: ProductOption[]
+  variants: ProductVariant[]
 }

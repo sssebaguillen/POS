@@ -403,3 +403,21 @@
     animation: fade-in 0.25s ease-out both;
   }
 }
+
+/* ─── Catalog card hover (variant products) ───────────────────────────────────
+   Using plain CSS :hover selectors to avoid Tailwind v4 class-scanning issues
+   with new files. Both effects (border lift + panel reveal) fire when any part
+   of the card wrapper is hovered, including the absolutely-positioned panel.
+─────────────────────────────────────────────────────────────────────────────── */
+.catalog-card:hover .catalog-card-inner {
+  border-color: color-mix(in oklab, var(--primary) 40%, transparent);
+  border-bottom-width: 0;
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px -6px rgb(0 0 0 / 0.18);
+}
+
+.catalog-card:hover .catalog-card-panel {
+  display: block;
+}

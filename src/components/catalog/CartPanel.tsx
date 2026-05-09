@@ -26,13 +26,17 @@ function CartItemImage({ imageUrl, name }: { imageUrl: string; name: string }) {
   )
 }
 
+function cartItemKey(item: CatalogCartItem): string {
+  return `${item.product.id}:${item.variantId ?? ''}`
+}
+
 interface CartPanelProps {
   businessName: string
   businessWhatsapp: string | null
   cartItems: CatalogCartItem[]
-  onIncreaseQuantity: (productId: string) => void
-  onDecreaseQuantity: (productId: string) => void
-  onRemoveItem: (productId: string) => void
+  onIncreaseQuantity: (key: string) => void
+  onDecreaseQuantity: (key: string) => void
+  onRemoveItem: (key: string) => void
   onClearCart: () => void
 }
 
@@ -83,7 +87,8 @@ export default function CartPanel({
     const itemsText = cartItems
       .map(item => {
         const lineTotal = item.product.salePrice * item.quantity
-        return `${item.quantity}x ${item.product.name} - $${currencyFormatter.format(lineTotal)}`
+        const variantPart = item.variantLabel ? ` (${item.variantLabel})` : ''
+        return `${item.quantity}x ${item.product.name}${variantPart} - $${currencyFormatter.format(lineTotal)}`
       })
       .join('\n')
 
@@ -168,66 +173,75 @@ export default function CartPanel({
           </div>
         ) : (
           <ul className="space-y-2">
-            {cartItems.map(item => (
-              <li key={item.product.id} className="rounded-lg border border-border/70 p-3">
-                <div className="flex items-start gap-2.5">
-                  {/* Thumbnail */}
-                  <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-md bg-muted/40">
-                    {item.product.imageUrl ? (
-                      <CartItemImage imageUrl={item.product.imageUrl} name={item.product.name} />
-                    ) : (
-                      <div className="flex h-full w-full items-center justify-center text-muted-foreground">
-                        <ImageIcon className="h-4 w-4" />
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Name, price, remove */}
-                  <div className="flex min-w-0 flex-1 items-start justify-between gap-2">
-                    <div className="min-w-0">
-                      <p className="line-clamp-1 text-sm font-medium text-foreground">{item.product.name}</p>
-                      <p className="mt-0.5 text-sm text-muted-foreground">
-                        ${currencyFormatter.format(item.product.salePrice * item.quantity)}
-                      </p>
+            {cartItems.map(item => {
+              const key = cartItemKey(item)
+              return (
+                <li key={key} className="rounded-lg border border-border/70 p-3">
+                  <div className="flex items-start gap-2.5">
+                    {/* Thumbnail */}
+                    <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-md bg-muted/40">
+                      {item.product.imageUrl ? (
+                        <CartItemImage imageUrl={item.product.imageUrl} name={item.product.name} />
+                      ) : (
+                        <div className="flex h-full w-full items-center justify-center text-muted-foreground">
+                          <ImageIcon className="h-4 w-4" />
+                        </div>
+                      )}
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => onRemoveItem(item.product.id)}
-                      className="shrink-0 rounded-md p-1 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
-                      aria-label={`Quitar ${item.product.name}`}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
+
+                    {/* Name, variant, price, remove */}
+                    <div className="flex min-w-0 flex-1 items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="line-clamp-1 text-sm font-medium text-foreground">{item.product.name}</p>
+                        {item.product.brandName && (
+                          <p className="mt-0.5 text-xs text-muted-foreground">{item.product.brandName}</p>
+                        )}
+                        {item.variantLabel && (
+                          <p className="mt-0.5 text-xs text-muted-foreground">{item.variantLabel}</p>
+                        )}
+                        <p className="mt-0.5 text-sm text-muted-foreground">
+                          ${currencyFormatter.format(item.product.salePrice * item.quantity)}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => onRemoveItem(key)}
+                        className="shrink-0 rounded-md p-1 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+                        aria-label={`Quitar ${item.product.name}`}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
                   </div>
-                </div>
 
-                {/* Quantity controls */}
-                <div className="mt-2.5 flex items-center gap-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="icon-sm"
-                    onClick={() => onDecreaseQuantity(item.product.id)}
-                    aria-label={`Restar ${item.product.name}`}
-                  >
-                    <Minus className="h-4 w-4" />
-                  </Button>
+                  {/* Quantity controls */}
+                  <div className="mt-2.5 flex items-center gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon-sm"
+                      onClick={() => onDecreaseQuantity(key)}
+                      aria-label={`Restar ${item.product.name}`}
+                    >
+                      <Minus className="h-4 w-4" />
+                    </Button>
 
-                  <span className="w-8 text-center text-sm font-medium text-foreground">{item.quantity}</span>
+                    <span className="w-8 text-center text-sm font-medium text-foreground">{item.quantity}</span>
 
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="icon-sm"
-                    onClick={() => onIncreaseQuantity(item.product.id)}
-                    disabled={item.quantity >= item.product.stock}
-                    aria-label={`Sumar ${item.product.name}`}
-                  >
-                    <Plus className="h-4 w-4" />
-                  </Button>
-                </div>
-              </li>
-            ))}
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon-sm"
+                      onClick={() => onIncreaseQuantity(key)}
+                      disabled={item.quantity >= item.product.stock}
+                      aria-label={`Sumar ${item.product.name}`}
+                    >
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </li>
+              )
+            })}
           </ul>
         )}
       </div>

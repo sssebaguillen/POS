@@ -2,13 +2,18 @@
 
 import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { LayoutGrid, LayoutList, SlidersHorizontal, X, CheckSquare, Plus } from 'lucide-react'
+import { LayoutGrid, LayoutList, X, CheckSquare, Plus, SlidersHorizontal as FilterIcon } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Table, TableBody, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import PageHeader from '@/components/shared/PageHeader'
-import FilterSidebar from '@/components/inventory/FilterSidebar'
+import { createPortal } from 'react-dom'
+import ProductFilter, {
+  EMPTY_FILTER,
+  countActiveFilters,
+  type ProductFilterValue,
+} from '@/components/shared/ProductFilter'
 import NewProductModal from '@/components/inventory/NewProductModal'
 import EditProductModal from '@/components/inventory/EditProductModal'
 import CategoryModal from '@/components/inventory/CategoryModal'
@@ -53,11 +58,16 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
   const [categories, setCategories] = useState<InventoryCategory[]>(initialCategories)
   const [brands, setBrands] = useState<InventoryBrand[]>(initialBrands)
   const [productOverrides, setProductOverrides] = useState<PriceListOverride[]>(initialProductOverrides)
-  const [query, setQuery] = useState('')
-  const [selectedCategories, setSelectedCategories] = useState<string[]>([])
-  const [selectedBrands, setSelectedBrands] = useState<string[]>([])
-  const [showFilterSidebar, setShowFilterSidebar] = useState(false)
+  const [filterValue, setFilterValue] = useState<ProductFilterValue>(EMPTY_FILTER)
+  const [filterOpen, setFilterOpen] = useState(false)
   const [statusFilter, setStatusFilter] = useState<FilterStatus>('all')
+
+  // Derived from filterValue for backward compat with existing logic
+  const query = filterValue.search
+  const selectedCategories = filterValue.categoryIds
+  const selectedBrands = filterValue.brandIds
+  const showInCatalogOnly = filterValue.showInCatalogOnly
+  const sort: SortOption = { field: filterValue.sortField as SortOption['field'], dir: filterValue.sortDir }
   const [loadingId, setLoadingId] = useState<string | null>(null)
   const [showNewProduct, setShowNewProduct] = useState(false)
   const [showImport, setShowImport] = useState(false)
@@ -69,8 +79,6 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
   const [crudError, setCrudError] = useState<string | null>(null)
   const [pendingConfirm, setPendingConfirm] = useState<ConfirmState>(null)
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
-  const [sort, setSort] = useState<SortOption>({ field: 'name', dir: 'asc' })
-  const [showInCatalogOnly, setShowInCatalogOnly] = useState(false)
   const [viewMode, setViewMode] = useState<'grid' | 'list'>(initialViewMode)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [selectionMode, setSelectionMode] = useState(false)
@@ -85,10 +93,23 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
   const supabase = useMemo(() => createClient(), [])
   const { setRef, indicator } = usePillIndicator(statusFilter)
 
-  const activeFilterCount = selectedCategories.length + selectedBrands.length + (showInCatalogOnly ? 1 : 0)
+  const activeFilterCount = countActiveFilters(filterValue)
+
+  // Map filterValue.stockStatus to the FilterStatus enum used internally
+  const derivedStatusFilter: FilterStatus = (() => {
+    if (filterValue.stockStatus === 'low-stock') return 'low'
+    if (filterValue.stockStatus === 'out-of-stock') return 'out'
+    if (filterValue.stockStatus === 'discontinued') return 'discontinued'
+    return 'all'
+  })()
+
+  // Also keep the pill-tabs statusFilter in sync: when filterValue.stockStatus changes, sync pill
+  // The pill-tabs write back to filterValue via setStatusFilter
+  const effectiveStatusFilter = statusFilter !== 'all' ? statusFilter : derivedStatusFilter
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
+    const catalogOnly = filterValue.showInCatalogOnly
     return products.filter(product => {
       const status = getStatus(product)
       const matchesQuery =
@@ -102,33 +123,36 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
       const matchesBrand =
         selectedBrands.length === 0 ||
         (product.brand_id != null && selectedBrands.includes(product.brand_id))
-      const matchesStatus = statusFilter === 'all' || status === statusFilter
-      const matchesCatalog = !showInCatalogOnly || product.show_in_catalog === true
+      const matchesStatus = effectiveStatusFilter === 'all' || status === effectiveStatusFilter
+      const matchesCatalog = !catalogOnly || product.show_in_catalog === true
       return matchesQuery && matchesCategory && matchesBrand && matchesStatus && matchesCatalog
     })
-  }, [products, query, selectedCategories, selectedBrands, statusFilter, showInCatalogOnly])
+  }, [products, query, selectedCategories, selectedBrands, effectiveStatusFilter, filterValue.showInCatalogOnly])
+
+  const sortField = filterValue.sortField
+  const sortDir = filterValue.sortDir
 
   const sorted = useMemo(() => {
-    if (sort.field === 'name' && sort.dir === 'asc') return filtered
+    if (sortField === 'name' && sortDir === 'asc') return filtered
     const arr = [...filtered]
-    if (sort.field === 'name') {
+    if (sortField === 'name') {
       arr.sort((a, b) => b.name.localeCompare(a.name))
       return arr
     }
     arr.sort((a, b) => {
       let va = 0
       let vb = 0
-      if (sort.field === 'price') { va = a.price; vb = b.price }
-      else if (sort.field === 'cost') { va = a.cost; vb = b.cost }
-      else if (sort.field === 'stock') { va = a.stock; vb = b.stock }
-      else if (sort.field === 'margin') {
+      if (sortField === 'price') { va = a.price; vb = b.price }
+      else if (sortField === 'cost') { va = a.cost; vb = b.cost }
+      else if (sortField === 'stock') { va = a.stock; vb = b.stock }
+      else if (sortField === 'margin') {
         va = a.cost > 0 && a.price > 0 ? ((a.price - a.cost) / a.price) * 100 : 0
         vb = b.cost > 0 && b.price > 0 ? ((b.price - b.cost) / b.price) * 100 : 0
       }
-      return sort.dir === 'asc' ? va - vb : vb - va
+      return sortDir === 'asc' ? va - vb : vb - va
     })
     return arr
-  }, [filtered, sort])
+  }, [filtered, sortField, sortDir])
 
   const visibleProducts = useMemo(() => sorted.slice(0, visibleCount), [sorted, visibleCount])
 
@@ -617,20 +641,20 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
         <div className="flex items-center gap-3">
           <Input
             value={query}
-            onChange={e => setQuery(e.target.value)}
+            onChange={e => setFilterValue(prev => ({ ...prev, search: e.target.value }))}
             placeholder="Buscar producto, marca o código..."
             className="h-9 max-w-xs rounded-lg text-sm"
           />
           <button
             type="button"
-            onClick={() => setShowFilterSidebar(true)}
+            onClick={() => setFilterOpen(true)}
             className={`h-9 px-4 rounded-xl border text-sm font-medium flex items-center gap-2 transition-colors shrink-0 ${
               activeFilterCount > 0
                 ? 'border-primary bg-primary/5 text-primary'
                 : 'border-edge bg-surface text-body hover:bg-surface-alt'
             }`}
           >
-            <SlidersHorizontal size={14} />
+            <FilterIcon size={14} />
             Filtros
             {activeFilterCount > 0 && (
               <span className="bg-primary text-primary-foreground text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
@@ -740,7 +764,7 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
                 {cat.icon} {cat.name}
                 <button
                   type="button"
-                  onClick={() => setSelectedCategories(prev => prev.filter(c => c !== id))}
+                  onClick={() => setFilterValue(prev => ({ ...prev, categoryIds: prev.categoryIds.filter(c => c !== id) }))}
                   aria-label={`Quitar categoría ${cat.name}`}
                   className="hover:opacity-70 transition-opacity p-0.5 -m-0.5 touch-manipulation"
                 >
@@ -757,7 +781,7 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
                 {brand.name}
                 <button
                   type="button"
-                  onClick={() => setSelectedBrands(prev => prev.filter(b => b !== id))}
+                  onClick={() => setFilterValue(prev => ({ ...prev, brandIds: prev.brandIds.filter(b => b !== id) }))}
                   aria-label={`Quitar marca ${brand.name}`}
                   className="hover:opacity-70 transition-opacity p-0.5 -m-0.5 touch-manipulation"
                 >
@@ -768,7 +792,7 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
           })}
           <button
             type="button"
-            onClick={() => { setSelectedCategories([]); setSelectedBrands([]) }}
+            onClick={() => setFilterValue(prev => ({ ...prev, categoryIds: [], brandIds: [] }))}
             className="text-xs text-subtle hover:text-body transition-colors"
           >
             Limpiar todo
@@ -1008,20 +1032,62 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
         onCancel={() => setPendingConfirm(null)}
       />
 
-      <FilterSidebar
-        open={showFilterSidebar}
-        onClose={() => setShowFilterSidebar(false)}
-        categories={categories}
-        brands={brands}
-        selectedCategories={selectedCategories}
-        selectedBrands={selectedBrands}
-        onCategoriesChange={setSelectedCategories}
-        onBrandsChange={setSelectedBrands}
-        sort={sort}
-        onSortChange={setSort}
-        showInCatalogOnly={showInCatalogOnly}
-        onShowInCatalogChange={setShowInCatalogOnly}
-      />
+      {typeof document !== 'undefined' && createPortal(
+        <>
+          <div
+            className={`fixed inset-0 z-40 bg-foreground/30 transition-opacity duration-200 ${filterOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}
+            onClick={() => setFilterOpen(false)}
+          />
+          <div
+            className={`fixed right-0 top-0 bottom-0 z-50 w-72 bg-card border-l border-edge flex flex-col transition-transform duration-200 ease-in-out ${filterOpen ? 'translate-x-0' : 'translate-x-full'}`}
+            style={{ boxShadow: '-4px 0 32px rgba(0,0,0,0.10)' }}
+          >
+            <div className="flex items-center justify-between px-5 py-4 border-b border-edge shrink-0">
+              <div className="flex items-center gap-2">
+                <FilterIcon size={16} className="text-subtle" />
+                <span className="font-semibold text-sm text-heading">Filtros</span>
+                {activeFilterCount > 0 && (
+                  <span className="text-xs font-bold bg-primary text-primary-foreground rounded-full w-5 h-5 flex items-center justify-center">
+                    {activeFilterCount}
+                  </span>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => setFilterOpen(false)}
+                className="text-subtle hover:text-body transition-colors rounded-lg p-1 hover:bg-hover-bg"
+              >
+                <X size={16} />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-4">
+              <ProductFilter
+                modules={['category', 'brand', 'price-range', 'stock-status', 'sort']}
+                layout="sidebar"
+                value={filterValue}
+                onChange={setFilterValue}
+                categories={categories.map(c => ({ id: c.id, name: c.name, icon: c.icon }))}
+                brands={brands.map(b => ({ id: b.id, name: b.name }))}
+                sortOptions={[
+                  { field: 'name', label: 'Nombre' },
+                  { field: 'price', label: 'Precio de venta' },
+                  { field: 'cost', label: 'Costo' },
+                  { field: 'stock', label: 'Stock' },
+                  { field: 'margin', label: 'Margen' },
+                ]}
+                stockStatusOptions={[
+                  { value: 'all', label: 'Todos' },
+                  { value: 'low-stock', label: 'Stock bajo' },
+                  { value: 'out-of-stock', label: 'Sin stock' },
+                  { value: 'discontinued', label: 'Discontinuados' },
+                  { value: 'catalog-only', label: 'Solo en catálogo' },
+                ]}
+              />
+            </div>
+          </div>
+        </>,
+        document.body
+      )}
 
       {toast && <Toast message={toast.message} duration={toast.duration} onUndo={toast.onUndo} onDismiss={dismissToast} />}
 

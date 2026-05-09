@@ -6,10 +6,12 @@ import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { useSidebar } from '@/components/shared/AppShell'
 import { useCartStore } from '@/lib/store/cart.store'
+import { createClient } from '@/lib/supabase/client'
 import ProductPanel from '@/components/pos/ProductPanel'
 import CartPanel from '@/components/pos/CartPanel'
+import ProductFilter, { EMPTY_FILTER, type ProductFilterValue } from '@/components/shared/ProductFilter'
 import type { ProductWithCategory, ActiveFilter } from '@/components/pos/types'
-import type { PriceList, PriceListOverride } from '@/lib/types'
+import type { PriceList, PriceListOverride, ProductVariant, ProductWithVariants } from '@/lib/types'
 import type { ActiveOperator } from '@/lib/operator'
 import { OWNER_PERMISSIONS } from '@/lib/operator'
 import { trackFeatureUsed } from '@/lib/analytics'
@@ -37,8 +39,7 @@ function formatDate(date: Date) {
 
 export default function POSView({ products, businessId, businessName, freeLineEnabled, priceLists, priceListOverrides, activeOperator }: Props) {
   const { toggle } = useSidebar()
-  const [search, setSearch] = useState('')
-  const [activeFilter, setActiveFilter] = useState<ActiveFilter>(null)
+  const [filterValue, setFilterValue] = useState<ProductFilterValue>(EMPTY_FILTER)
   const [scanFeedback, setScanFeedback] = useState<ScanFeedback>(null)
   const searchRef = useRef<HTMLInputElement>(null)
   const scanFeedbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -46,24 +47,10 @@ export default function POSView({ products, businessId, businessName, freeLineEn
   const itemCount = useCartStore(s => s.items.length)
   const clearCart = useCartStore(s => s.clearCart)
   const addItem = useCartStore(s => s.addItem)
+  const addVariantItem = useCartStore(s => s.addVariantItem)
+  const supabase = useMemo(() => createClient(), [])
   const [confirmingNewSale, setConfirmingNewSale] = useState(false)
   const confirmNewSaleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-
-  const filterScrollRef = useRef<HTMLDivElement>(null)
-
-  const handleFilterWheel = useCallback((e: WheelEvent) => {
-    const el = filterScrollRef.current
-    if (!el) return
-    e.preventDefault()
-    el.scrollLeft += e.deltaY + e.deltaX
-  }, [])
-
-  useEffect(() => {
-    const el = filterScrollRef.current
-    if (!el) return
-    el.addEventListener('wheel', handleFilterWheel, { passive: false })
-    return () => el.removeEventListener('wheel', handleFilterWheel)
-  }, [handleFilterWheel])
 
   useEffect(() => {
     return () => {
@@ -146,8 +133,7 @@ export default function POSView({ products, businessId, businessName, freeLineEn
     if (confirmNewSaleTimerRef.current) clearTimeout(confirmNewSaleTimerRef.current)
     setConfirmingNewSale(false)
     clearCart()
-    setSearch('')
-    setActiveFilter(null)
+    setFilterValue(EMPTY_FILTER)
     setScanFeedback(null)
     searchRef.current?.focus()
   }, [itemCount, confirmingNewSale, clearCart])
@@ -158,18 +144,66 @@ export default function POSView({ products, businessId, businessName, freeLineEn
     scanFeedbackTimerRef.current = setTimeout(() => setScanFeedback(null), 900)
   }, [])
 
+  const tryAddVariantByBarcode = useCallback(async (barcode: string): Promise<boolean> => {
+    if (!businessId) return false
+    const { data } = await supabase
+      .from('product_variants')
+      .select('id, product_id, price, cost, stock, min_stock, sku, barcode, image_url, image_source, is_active')
+      .eq('business_id', businessId)
+      .eq('barcode', barcode)
+      .eq('is_active', true)
+      .limit(1)
+      .single()
+
+    if (!data) return false
+
+    const parentProduct = products.find(p => p.id === (data as { product_id: string }).product_id)
+    if (!parentProduct) return false
+
+    // Fetch option values to build the label
+    const { data: variantFull } = await supabase.rpc('get_product_with_variants', {
+      p_product_id: parentProduct.id,
+    })
+    const result = variantFull as ProductWithVariants | null
+    const variantDetail = result?.variants.find(v => v.id === (data as { id: string }).id)
+
+    const variant: ProductVariant = {
+      id: (data as { id: string }).id,
+      product_id: parentProduct.id,
+      sku: (data as { sku: string | null }).sku,
+      barcode: barcode,
+      price: Number((data as { price: number }).price),
+      cost: Number((data as { cost: number }).cost),
+      stock: Number((data as { stock: number }).stock),
+      min_stock: Number((data as { min_stock: number }).min_stock),
+      image_url: (data as { image_url: string | null }).image_url,
+      image_source: (data as { image_source: 'upload' | 'url' | null }).image_source,
+      is_active: true,
+      is_in_stock: Number((data as { stock: number }).stock) > 0,
+      option_values: variantDetail?.option_values ?? [],
+    }
+
+    const label = variantDetail?.option_values.map(ov => ov.value).join(' / ') ?? barcode
+    addVariantItem(parentProduct, variant, label)
+    return true
+  }, [businessId, supabase, products, addVariantItem])
+
   // resolves barcode > unique name/SKU match; returns true if added (caller clears input)
   const tryAddBySearch = useCallback((value: string): boolean => {
     const trimmed = value.trim()
     if (!trimmed) return false
 
-    // 1. Match exacto por barcode
+    // 1. Match exacto por barcode de producto
     const barcodeMatch = products.find(p => p.barcode === trimmed)
     if (barcodeMatch) {
-      addItem(barcodeMatch)
-      trackFeatureUsed('barcode_scan')
-      showScanFeedback('found')
-      return true
+      if (barcodeMatch.has_variants) {
+        // Product with variants — handled asynchronously via variant barcode
+      } else {
+        addItem(barcodeMatch)
+        trackFeatureUsed('barcode_scan')
+        showScanFeedback('found')
+        return true
+      }
     }
 
     // 2. Resultado único por nombre o SKU
@@ -178,21 +212,28 @@ export default function POSView({ products, businessId, businessName, freeLineEn
       p.name.toLowerCase().includes(q) ||
       p.sku?.toLowerCase().includes(q)
     )
-    if (nameMatches.length === 1) {
+    if (nameMatches.length === 1 && !nameMatches[0].has_variants) {
       addItem(nameMatches[0])
       showScanFeedback('found')
       return true
     }
 
-    // No encontrado — solo mostrar feedback si parece un barcode numérico.
-    // Evita marcar como error búsquedas de texto como "coca" o "leche".
+    // 3. Si parece un barcode, buscar en variantes de forma asíncrona
     const looksLikeBarcode = /^\d{4,}$/.test(trimmed)
     if (looksLikeBarcode) {
-      showScanFeedback('not-found')
+      void tryAddVariantByBarcode(trimmed).then(found => {
+        if (found) {
+          trackFeatureUsed('barcode_scan')
+          showScanFeedback('found')
+        } else {
+          showScanFeedback('not-found')
+        }
+      })
+      return true // Indicate handled (async)
     }
 
     return false
-  }, [products, addItem, showScanFeedback])
+  }, [products, addItem, showScanFeedback, tryAddVariantByBarcode])
 
   // redirect global keystrokes to the search input; enables USB barcode readers
   useEffect(() => {
@@ -213,7 +254,7 @@ export default function POSView({ products, businessId, businessName, freeLineEn
         e.preventDefault()
         lastGlobalPrintableKeyAtRef.current = Date.now()
         searchRef.current.focus()
-        setSearch(prev => prev + e.key)
+        setFilterValue(prev => ({ ...prev, search: prev.search + e.key }))
       } else if (e.key === 'Enter') {
         const activeIsInteractive =
           active instanceof HTMLButtonElement ||
@@ -230,7 +271,7 @@ export default function POSView({ products, businessId, businessName, freeLineEn
         if (currentValue.trim()) {
           const added = tryAddBySearch(currentValue)
           if (added) {
-            setSearch('')
+            setFilterValue(prev => ({ ...prev, search: '' }))
           }
         }
         searchRef.current.focus()
@@ -243,13 +284,13 @@ export default function POSView({ products, businessId, businessName, freeLineEn
 
   const handleSearchKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
-      const added = tryAddBySearch(search)
+      const added = tryAddBySearch(filterValue.search)
       if (added) {
-        setSearch('')
+        setFilterValue(prev => ({ ...prev, search: '' }))
         searchRef.current?.focus()
       }
     }
-  }, [search, tryAddBySearch])
+  }, [filterValue.search, tryAddBySearch])
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
@@ -283,8 +324,8 @@ export default function POSView({ products, businessId, businessName, freeLineEn
             </div>
             <Input
               ref={searchRef}
-              value={search}
-              onChange={e => setSearch(e.target.value)}
+              value={filterValue.search}
+              onChange={e => setFilterValue(prev => ({ ...prev, search: e.target.value }))}
               onKeyDown={handleSearchKeyDown}
               placeholder="Buscar producto o escanear código..."
               className={[
@@ -363,67 +404,30 @@ export default function POSView({ products, businessId, businessName, freeLineEn
         <div className="flex-1 min-w-0 flex flex-col min-h-0">
           {/* Filter chips strip — scoped to product column only */}
           {(topCategories.length > 0 || topBrands.length > 0) && (
-            <div className="border-b border-edge/60 shrink-0 overflow-hidden py-2 px-6">
-              <div
-                ref={filterScrollRef}
-                className="flex flex-nowrap gap-1.5 overflow-x-auto"
-                style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
-              >
-                {(() => {
-                  const chip = (active: boolean) =>
-                    `shrink-0 rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
-                      active
-                        ? 'bg-primary/10 text-primary border border-primary/20 dark:bg-primary/15 dark:border-primary/30'
-                        : 'text-muted-foreground hover:text-foreground hover:bg-muted'
-                    }`
-                  return (
-                    <>
-                      <button onClick={() => setActiveFilter(null)} className={chip(activeFilter === null)}>
-                        Todos
-                      </button>
-                      {topCategories.length > 0 && <span className="shrink-0 w-px bg-edge/60 mx-0.5" />}
-                      {topCategories.map(cat => (
-                        <button
-                          key={cat.id}
-                          onClick={() =>
-                            setActiveFilter(
-                              activeFilter?.type === 'category' && activeFilter.id === cat.id
-                                ? null
-                                : { type: 'category', id: cat.id }
-                            )
-                          }
-                          className={chip(activeFilter?.type === 'category' && activeFilter.id === cat.id)}
-                        >
-                          {cat.name}
-                        </button>
-                      ))}
-                      {topBrands.length > 0 && <span className="shrink-0 w-px bg-edge/60 mx-0.5" />}
-                      {topBrands.map(brand => (
-                        <button
-                          key={brand.id}
-                          onClick={() =>
-                            setActiveFilter(
-                              activeFilter?.type === 'brand' && activeFilter.id === brand.id
-                                ? null
-                                : { type: 'brand', id: brand.id }
-                            )
-                          }
-                          className={chip(activeFilter?.type === 'brand' && activeFilter.id === brand.id)}
-                        >
-                          {brand.name}
-                        </button>
-                      ))}
-                    </>
-                  )
-                })()}
+            <div className="border-b border-edge/60 shrink-0 overflow-x-auto">
+              <div className="flex items-center px-4 py-2 min-w-0">
+                <ProductFilter
+                  modules={['category', 'brand']}
+                  layout="topbar"
+                  value={filterValue}
+                  onChange={setFilterValue}
+                  categories={topCategories.map(c => ({ id: c.id, name: c.name }))}
+                  brands={topBrands.map(b => ({ id: b.id, name: b.name }))}
+                />
               </div>
             </div>
           )}
           <div className="flex-1 overflow-y-auto">
             <ProductPanel
               products={products}
-              search={search}
-              activeFilter={activeFilter}
+              search={filterValue.search}
+              activeFilter={
+                filterValue.categoryIds.length > 0
+                  ? { type: 'category', id: filterValue.categoryIds[0] }
+                  : filterValue.brandIds.length > 0
+                    ? { type: 'brand', id: filterValue.brandIds[0] }
+                    : null
+              }
               activePriceList={activePriceList}
               priceListOverrides={priceListOverrides}
             />

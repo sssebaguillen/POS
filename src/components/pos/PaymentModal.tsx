@@ -143,6 +143,7 @@ export default function PaymentModal({
       p_operator_id: operatorId ?? null,
       p_items: saleItems.map(item => ({
         product_id: item.product_id,
+        variant_id: item.variant_id ?? null,
         quantity: item.quantity,
         unit_price: item.unit_price,
         total: item.total,

@@ -19,7 +19,7 @@ export default async function PriceListsPage() {
       .order('created_at'),
     supabase
       .from('products')
-      .select('id, name, cost, price, brand_id, brands(id, name), category_id, categories(name, icon)')
+      .select('id, name, cost, price, has_variants, brand_id, brands(id, name), category_id, categories(name, icon), default_variant:product_variants!default_variant_id(price, cost)')
       .eq('business_id', businessId)
       .eq('is_active', true)
       .order('name'),
@@ -39,16 +39,22 @@ export default async function PriceListsPage() {
       businessId={businessId}
       readOnly={activeOperator?.permissions.price_lists_write !== true}
       initialLists={(lists ?? []).map(normalizePriceList)}
-      products={(products ?? []).map(product => ({
-        id: product.id,
-        name: product.name,
-        cost: Number(product.cost),
-        price: Number(product.price),
-        brand_id: product.brand_id ?? null,
-        brand: unwrapRelation(product.brands),
-        category_id: product.category_id,
-        categories: unwrapRelation(product.categories),
-      }))}
+      products={(products ?? []).map(product => {
+        const variant = product.default_variant as { price: number; cost: number } | null
+        const displayCost = product.has_variants ? Number(variant?.cost ?? 0) : Number(product.cost)
+        const displayPrice = product.has_variants ? Number(variant?.price ?? 0) : Number(product.price)
+        return {
+          id: product.id,
+          name: product.name,
+          cost: displayCost,
+          price: displayPrice,
+          has_variants: product.has_variants ?? false,
+          brand_id: product.brand_id ?? null,
+          brand: unwrapRelation(product.brands),
+          category_id: product.category_id,
+          categories: unwrapRelation(product.categories),
+        }
+      })}
       initialOverrides={(overrides ?? []).map(normalizePriceListOverride)}
     />
   )
