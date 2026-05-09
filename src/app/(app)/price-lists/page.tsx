@@ -40,7 +40,8 @@ export default async function PriceListsPage() {
       readOnly={activeOperator?.permissions.price_lists_write !== true}
       initialLists={(lists ?? []).map(normalizePriceList)}
       products={(products ?? []).map(product => {
-        const variant = product.default_variant as { price: number; cost: number } | null
+        const variantArr = product.default_variant as { price: number; cost: number }[] | null
+        const variant = variantArr?.[0] ?? null
         const displayCost = product.has_variants ? Number(variant?.cost ?? 0) : Number(product.cost)
         const displayPrice = product.has_variants ? Number(variant?.price ?? 0) : Number(product.price)
         return {
