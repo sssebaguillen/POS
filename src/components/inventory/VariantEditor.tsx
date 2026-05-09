@@ -514,8 +514,8 @@ export default function VariantEditor({
                   <thead>
                     <tr className="border-b border-edge bg-surface-alt">
                       <th className="text-left px-3 py-2 font-medium text-subtle whitespace-nowrap">Variante</th>
-                      <th className="text-left px-3 py-2 font-medium text-subtle whitespace-nowrap">Precio ({currencySymbol})</th>
                       <th className="text-left px-3 py-2 font-medium text-subtle whitespace-nowrap">Costo ({currencySymbol})</th>
+                      <th className="text-left px-3 py-2 font-medium text-subtle whitespace-nowrap">Precio ({currencySymbol})</th>
                       <th className="text-left px-3 py-2 font-medium text-subtle whitespace-nowrap">Stock inicial</th>
                       <th className="text-left px-3 py-2 font-medium text-subtle whitespace-nowrap">Cód. de barras</th>
                       <th className="text-left px-3 py-2 font-medium text-subtle">Activo</th>
@@ -535,8 +535,8 @@ export default function VariantEditor({
                               type="number"
                               min="0"
                               step="0.01"
-                              value={variant.price}
-                              onChange={e => updateVariant(varIdx, 'price', e.target.value)}
+                              value={variant.cost}
+                              onChange={e => updateVariant(varIdx, 'cost', e.target.value)}
                               placeholder="0"
                               className="w-20 h-7 rounded-lg border border-edge bg-surface px-2 text-xs text-body tabular-nums focus:outline-none focus:border-primary"
                             />
@@ -546,8 +546,8 @@ export default function VariantEditor({
                               type="number"
                               min="0"
                               step="0.01"
-                              value={variant.cost}
-                              onChange={e => updateVariant(varIdx, 'cost', e.target.value)}
+                              value={variant.price}
+                              onChange={e => updateVariant(varIdx, 'price', e.target.value)}
                               placeholder="0"
                               className="w-20 h-7 rounded-lg border border-edge bg-surface px-2 text-xs text-body tabular-nums focus:outline-none focus:border-primary"
                             />
