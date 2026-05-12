@@ -292,26 +292,18 @@ function VariantSelectorContent({
           </p>
           <div className="flex flex-wrap gap-1">
             {option.values.map(val => {
-              const variantForValue = data.variants.find(v =>
-                v.is_active && v.option_values.some(ov => ov.option_value_id === val.id)
-              )
-              const outOfStock = variantForValue ? !variantForValue.is_in_stock : false
               const isSelected = selectedValues[option.id] === val.id
 
               return (
                 <button
                   key={val.id}
                   type="button"
-                  disabled={outOfStock}
                   onClick={() => selectValue(option.id, val.id)}
-                  title={outOfStock ? 'Sin stock' : undefined}
                   className={[
                     'px-2 py-1 rounded-lg border text-xs font-medium transition-colors',
                     isSelected
                       ? 'bg-primary border-primary text-primary-foreground'
-                      : outOfStock
-                        ? 'border-edge text-hint bg-surface opacity-40 cursor-not-allowed'
-                        : 'border-edge text-body bg-surface hover:border-primary/50 hover:bg-primary/5',
+                      : 'border-edge text-body bg-surface hover:border-primary/50 hover:bg-primary/5',
                   ].join(' ')}
                 >
                   {val.value}
@@ -321,10 +313,6 @@ function VariantSelectorContent({
           </div>
         </div>
       ))}
-
-      {matchedVariant && !matchedVariant.is_in_stock && (
-        <p className="text-xs text-amber-600 dark:text-amber-400">Sin stock para esta combinación</p>
-      )}
 
       <button
         type="button"

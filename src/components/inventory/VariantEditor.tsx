@@ -40,6 +40,22 @@ export interface DraftVariantRow {
 
 // ─── Cartesian product helper ─────────────────────────────────────────────────
 
+// Build a stable combination key using DB IDs when available, falling back to
+// the option name + value string. Positional indices are deliberately avoided
+// so that removing a value from the middle of an array does not shift the keys
+// of unrelated variants and invalidate the preserved-data lookup.
+function buildCombinationKey(combo: [number, number][], validOptions: DraftOption[]): string {
+  return combo
+    .map(([oIdx, vIdx]) => {
+      const opt = validOptions[oIdx]
+      const val = opt.values[vIdx]
+      const optKey = opt.id ?? `attr:${opt.attribute_type_id}:${opt.name}`
+      const valKey = val.id ?? `val:${val.value}`
+      return `${optKey}~${valKey}`
+    })
+    .join('|')
+}
+
 function buildVariantRows(
   options: DraftOption[],
   existing: DraftVariantRow[]
@@ -63,15 +79,23 @@ function buildVariantRows(
     const label = combo
       .map(([oIdx, vIdx]) => validOptions[oIdx].values[vIdx].value)
       .join(' / ')
-    const combinationKey = combo.map(([o, v]) => `${o}:${v}`).join('|')
+    const combinationKey = buildCombinationKey(combo, validOptions)
 
     const preserved = existing.find(e => e.combinationKey === combinationKey)
-    if (preserved) return { ...preserved, label }
+    // Always update optionValueIndices to the current combo positions so that
+    // filter-pill lookups remain correct after index shifts caused by removals.
+    if (preserved) return { ...preserved, label, optionValueIndices: combo, combinationKey }
+
+    // For new rows in edit mode, collect known DB IDs so the RPC can link the
+    // new variant to its option values (works when all values already have IDs).
+    const knownIds = combo.map(([oIdx, vIdx]) => validOptions[oIdx].values[vIdx].id ?? '')
+    const allHaveIds = knownIds.every(id => id !== '')
 
     return {
       combinationKey,
       label,
       optionValueIndices: combo,
+      optionValueIds: allHaveIds ? (knownIds as string[]) : undefined,
       price: '',
       cost: '',
       stock: '',
@@ -194,7 +218,9 @@ export default function VariantEditor({
         return [oIdx, vIdx] as [number, number]
       })
       const label = v.option_values.map(ov => ov.value).join(' / ')
-      const combinationKey = combo.map(([o, vi]) => `${o}:${vi}`).join('|')
+      // Use the same stable key function so that subsequent regeneration passes
+      // can find and preserve these rows correctly.
+      const combinationKey = buildCombinationKey(combo, draftOptions)
 
       return {
         id: v.id,
@@ -221,11 +247,15 @@ export default function VariantEditor({
     setVariants(draftVariants)
   }, [mode, initialOptions, initialVariants, initialDefaultVariantId])
 
-  // Regenerate variants when options change (new mode only)
+  // Regenerate variants whenever options change (both new and edit mode).
+  // In edit mode, React batches the setOptions + setVariants calls from the init
+  // effect into a single render, so when this effect fires after init, `prev`
+  // already holds the initialized draftVariants — all existing keys match and
+  // the result is a no-op. Subsequent user-driven option changes (add/remove
+  // values) correctly rebuild the table while preserving data for surviving rows.
   useEffect(() => {
-    if (mode !== 'new') return
     setVariants(prev => buildVariantRows(options, prev))
-  }, [options, mode])
+  }, [options])
 
   // Auto-select first variant as default when defaultVariantKey is null or no longer valid
   useEffect(() => {

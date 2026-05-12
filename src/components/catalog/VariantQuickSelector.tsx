@@ -45,6 +45,9 @@ export interface VariantQuickSelectorProps {
   options: CatalogVariantOption[]
   variants: CatalogProductVariant[]
   onAddToCart: (variantId: string | null, variantLabel: string | null, price: number, stock: number) => void
+  /** When true, stock is ignored: all variant buttons are always clickable and
+   *  "Agregar" only requires that all options are selected. Use in POS context. */
+  allowOutOfStock?: boolean
 }
 
 export default function VariantQuickSelector({
@@ -52,6 +55,7 @@ export default function VariantQuickSelector({
   options,
   variants,
   onAddToCart,
+  allowOutOfStock = false,
 }: VariantQuickSelectorProps) {
   const [selectedValues, setSelectedValues] = useState<Record<string, string>>({})
 
@@ -74,9 +78,12 @@ export default function VariantQuickSelector({
 
   const displayPrice = selectedVariant?.price ?? product.salePrice
   const displayStock = selectedVariant?.stock ?? product.stock
-  const canAdd = !partiallySelected && displayStock > 0
+  const canAdd = allowOutOfStock
+    ? !partiallySelected
+    : !partiallySelected && displayStock > 0
 
   function hasStockForValue(optionId: string, value: string): boolean {
+    if (allowOutOfStock) return true
     return variants.some(
       v => v.is_active && v.stock > 0 &&
         v.option_values.some(ov => ov.option_id === optionId && ov.value === value)
@@ -115,12 +122,12 @@ export default function VariantQuickSelector({
         <span className="text-sm font-bold text-foreground">
           ${currencyFormatter.format(displayPrice)}
         </span>
-        {displayStock > 0 && displayStock <= 5 && (
+        {!allowOutOfStock && displayStock > 0 && displayStock <= 5 && (
           <span className="text-xs text-amber-600 dark:text-amber-400">
             Últimas {displayStock}
           </span>
         )}
-        {displayStock <= 0 && (
+        {!allowOutOfStock && displayStock <= 0 && (
           <span className="text-xs text-destructive">Sin stock</span>
         )}
       </div>
@@ -144,7 +151,7 @@ export default function VariantQuickSelector({
                     <button
                       key={optValue.id}
                       type="button"
-                      disabled={!inStock}
+                      disabled={!allowOutOfStock && !inStock}
                       title={optValue.value}
                       onClick={e => { e.preventDefault(); e.stopPropagation(); handleSelect(option.id, optValue.value) }}
                       className={[
@@ -164,7 +171,7 @@ export default function VariantQuickSelector({
                   <button
                     key={optValue.id}
                     type="button"
-                    disabled={!inStock}
+                    disabled={!allowOutOfStock && !inStock}
                     onClick={e => { e.preventDefault(); e.stopPropagation(); handleSelect(option.id, optValue.value) }}
                     className={[
                       'px-2.5 py-0.5 rounded-md border text-xs font-medium transition-colors duration-150',
