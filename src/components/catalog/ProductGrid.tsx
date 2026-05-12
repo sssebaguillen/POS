@@ -203,7 +203,7 @@ export default function ProductGrid({
       {filteredProducts.length > 0 && viewMode === 'list' && (
         <div className="space-y-2">
           {filteredProducts.map(product => {
-            const isOutOfStock = product.stock <= 0
+            const isOutOfStock = product.hasVariants ? false : product.stock <= 0
 
             return (
               <Link

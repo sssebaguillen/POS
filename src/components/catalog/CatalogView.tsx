@@ -123,7 +123,7 @@ export default function CatalogView({
   const activeFilterCount = countActiveFilters(filterValue)
 
   function addToCart(product: CatalogProduct, variantId: string | null = null, variantLabel: string | null = null) {
-    if (product.stock <= 0) return
+    if (!product.hasVariants && product.stock <= 0) return
     const key = `${product.id}:${variantId ?? ''}`
     setCartItems(prev => {
       const existing = prev.find(item => cartItemKey(item) === key)

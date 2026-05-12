@@ -460,7 +460,7 @@ export default function NewProductModal({
                         className="h-9 rounded-xl text-sm bg-surface border-edge focus-visible:ring-ring/50 focus-visible:border-ring"
                       />
                       {showCategoryOptions && (
-                        <div className="absolute z-20 mt-1 w-full overflow-y-auto max-h-52 surface-elevated">
+                        <div className="mt-1 w-full overflow-y-auto max-h-52 surface-elevated" onMouseDown={e => e.preventDefault()}>
                           <button
                             type="button"
                             className="w-full px-3 py-2 text-left text-sm text-body hover:bg-hover-bg transition-colors"
@@ -516,7 +516,7 @@ export default function NewProductModal({
                         className="h-9 rounded-xl text-sm bg-surface border-edge focus-visible:ring-ring/50 focus-visible:border-ring"
                       />
                       {showBrandOptions && (
-                        <div className="absolute z-20 mt-1 w-full overflow-y-auto max-h-52 surface-elevated">
+                        <div className="mt-1 w-full overflow-y-auto max-h-52 surface-elevated" onMouseDown={e => e.preventDefault()}>
                           {filteredBrands.length === 0 ? (
                             <div className="px-3 py-2 text-xs text-hint">
                               No se encontró la marca. Creala desde el botón Marcas.

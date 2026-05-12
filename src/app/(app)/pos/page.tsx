@@ -54,20 +54,34 @@ export default async function POSPage() {
 
   // Fetch default variant data for variant products
   type ProductWithVariant = { has_variants?: boolean; default_variant_id?: string | null }
+  const variantProductIds = (products ?? [])
+    .filter(p => (p as typeof p & ProductWithVariant).has_variants)
+    .map(p => p.id)
+
   const defaultVariantIds = (products ?? [])
     .filter(p => (p as typeof p & ProductWithVariant).has_variants && (p as typeof p & ProductWithVariant).default_variant_id)
     .map(p => (p as typeof p & ProductWithVariant).default_variant_id as string)
 
-  const posDefaultVariantMap = new Map<string, { price: number; stock: number }>()
-  if (defaultVariantIds.length > 0) {
-    const { data: dvData } = await supabase
-      .from('product_variants')
-      .select('id, price, stock')
-      .in('id', defaultVariantIds)
-    if (dvData) {
-      for (const v of dvData as { id: string; price: number; stock: number }[]) {
-        posDefaultVariantMap.set(v.id, { price: Number(v.price), stock: Number(v.stock) })
-      }
+  const posDefaultVariantMap = new Map<string, { price: number }>()
+  const posTotalStockMap = new Map<string, number>()
+
+  const [dvResult, totalStockResult] = await Promise.all([
+    defaultVariantIds.length > 0
+      ? supabase.from('product_variants').select('id, price').in('id', defaultVariantIds)
+      : Promise.resolve({ data: [] }),
+    variantProductIds.length > 0
+      ? supabase.from('product_variants').select('product_id, stock').eq('business_id', businessId).eq('is_active', true).in('product_id', variantProductIds)
+      : Promise.resolve({ data: [] }),
+  ])
+
+  if (dvResult.data) {
+    for (const v of dvResult.data as { id: string; price: number }[]) {
+      posDefaultVariantMap.set(v.id, { price: Number(v.price) })
+    }
+  }
+  if (totalStockResult.data) {
+    for (const v of totalStockResult.data as { product_id: string; stock: number }[]) {
+      posTotalStockMap.set(v.product_id, (posTotalStockMap.get(v.product_id) ?? 0) + Number(v.stock))
     }
   }
 
@@ -91,11 +105,14 @@ export default async function POSPage() {
         const defaultVariant = typedProduct.has_variants && typedProduct.default_variant_id
           ? posDefaultVariantMap.get(typedProduct.default_variant_id)
           : undefined
+        const effectiveStock = typedProduct.has_variants
+          ? (posTotalStockMap.get(product.id) ?? 0)
+          : Number(product.stock)
         return {
           ...product,
           price: defaultVariant ? defaultVariant.price : Number(product.price),
           cost: Number(product.cost),
-          stock: defaultVariant ? defaultVariant.stock : Number(product.stock),
+          stock: effectiveStock,
           min_stock: Number(product.min_stock),
           sales_count: Number(product.sales_count),
           has_variants: typedProduct.has_variants ?? false,

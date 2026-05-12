@@ -3,7 +3,6 @@
 import { useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
 import { ArrowLeft, ImageIcon, ShoppingCart } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import type {
@@ -38,7 +37,6 @@ export default function ProductDetailView({
   options,
   variants,
 }: Props) {
-  const router = useRouter()
   const cartKey = `catalog-cart-${businessId}`
 
   // Selected option value per option id
@@ -153,9 +151,7 @@ export default function ProductDetailView({
     )
 
     setAdded(true)
-    setTimeout(() => {
-      router.push(`/catalogo/${slug}`)
-    }, 600)
+    setTimeout(() => setAdded(false), 2000)
   }
 
   return (
@@ -264,12 +260,12 @@ export default function ProductDetailView({
             )}
             <Button
               type="button"
-              className="w-full h-11 gap-2"
-              disabled={!canAdd || added}
+              className={`w-full h-11 gap-2 transition-colors ${added ? 'bg-green-600 hover:bg-green-600 text-white' : ''}`}
+              disabled={!canAdd}
               onClick={handleAddToCart}
             >
               <ShoppingCart className="h-4 w-4" />
-              {added ? 'Agregado al carrito...' : 'Agregar al carrito'}
+              {added ? '✓ Agregado al carrito' : 'Agregar al carrito'}
             </Button>
           </div>
         </div>

@@ -66,7 +66,7 @@ export default function ProductCard({ product, slug, onAddToCart }: ProductCardP
   const [isLoadingVariants, setIsLoadingVariants] = useState(false)
   const fetchedRef = useRef(false)
 
-  const isOutOfStock = product.stock <= 0
+  const isOutOfStock = product.hasVariants ? false : product.stock <= 0
   const detailUrl = `/catalogo/${slug}/${product.id}`
 
   async function fetchVariants() {

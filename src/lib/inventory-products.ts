@@ -46,17 +46,22 @@ function toNumber(value: number | string | null): number {
 export function normalizeInventoryProduct(
   product: InventoryProductRow,
   variantCountMap?: Map<string, number>,
-  defaultVariantMap?: Map<string, { price: number; cost: number; stock: number }>
+  defaultVariantMap?: Map<string, { price: number; cost: number; stock: number }>,
+  variantTotalStockMap?: Map<string, number>
 ): InventoryProduct {
   const defaultVariant = product.has_variants && product.default_variant_id
     ? defaultVariantMap?.get(product.default_variant_id)
     : undefined
 
+  const effectiveStock = product.has_variants
+    ? (variantTotalStockMap?.get(product.id) ?? 0)
+    : toNumber(product.stock)
+
   return {
     ...product,
     price: defaultVariant ? defaultVariant.price : toNumber(product.price),
     cost: defaultVariant ? defaultVariant.cost : toNumber(product.cost),
-    stock: defaultVariant ? defaultVariant.stock : toNumber(product.stock),
+    stock: effectiveStock,
     min_stock: toNumber(product.min_stock),
     brand_id: product.brand_id ?? null,
     brand: unwrapRelation(product.brands),
@@ -97,22 +102,25 @@ export async function fetchInventoryProducts(
     }
   }
 
-  // Fetch variant counts for products that have variants
+  // Fetch variant counts and total stock for products that have variants
   const variantProductIds = rows.filter(p => p.has_variants).map(p => p.id)
   let variantCountMap: Map<string, number> | undefined
+  let variantTotalStockMap: Map<string, number> | undefined
 
   if (variantProductIds.length > 0) {
     const { data: variantRows } = await supabase
       .from('product_variants')
-      .select('product_id')
+      .select('product_id, stock')
       .eq('business_id', businessId)
       .eq('is_active', true)
       .in('product_id', variantProductIds)
 
     if (variantRows) {
       variantCountMap = new Map()
-      for (const row of variantRows as { product_id: string }[]) {
+      variantTotalStockMap = new Map()
+      for (const row of variantRows as { product_id: string; stock: number }[]) {
         variantCountMap.set(row.product_id, (variantCountMap.get(row.product_id) ?? 0) + 1)
+        variantTotalStockMap.set(row.product_id, (variantTotalStockMap.get(row.product_id) ?? 0) + Number(row.stock))
       }
     }
   }
@@ -143,7 +151,7 @@ export async function fetchInventoryProducts(
   }
 
   return {
-    data: rows.map(row => normalizeInventoryProduct(row, variantCountMap, defaultVariantMap)),
+    data: rows.map(row => normalizeInventoryProduct(row, variantCountMap, defaultVariantMap, variantTotalStockMap)),
     error: null,
   }
 }

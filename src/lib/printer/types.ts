@@ -16,6 +16,7 @@ export interface SaleItemInput {
 export interface ReceiptItemInput extends SaleItemInput {
   name: string
   icon: string | null
+  variant_label: string | null
 }
 
 export interface ReceiptData {

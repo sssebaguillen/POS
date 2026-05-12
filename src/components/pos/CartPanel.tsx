@@ -158,6 +158,7 @@ export default function CartPanel({ businessId, businessName, freeLineEnabled, a
           unit_price_override: item.unit_price,
           override_reason: 'free_line',
           free_line_description: item.free_line_description,
+          variant_label: null,
         }
       }
       const itemKey = item.variant_id ?? item.product.id
@@ -174,6 +175,7 @@ export default function CartPanel({ businessId, businessName, freeLineEnabled, a
         unit_price_override: item.priceIsManual ? (adjusted?.unit_price ?? item.unit_price) : null,
         override_reason: null,
         free_line_description: null,
+        variant_label: item.variant_label ?? null,
       }
     })
   }, [adjustedByItemKey, items])

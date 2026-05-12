@@ -33,6 +33,11 @@ function ReceiptContent({ receipt, formatMoney }: { receipt: ReceiptData; format
               </span>
               <span>{formatMoney(item.total)}</span>
             </div>
+            {item.variant_label && (
+              <div style={{ fontSize: '11px', opacity: 0.75, paddingLeft: '12px' }}>
+                {item.variant_label}
+              </div>
+            )}
             <div style={{ fontSize: '11px', opacity: 0.75 }}>
               {formatMoney(item.unit_price)} c/u
             </div>

@@ -368,13 +368,11 @@ const ProductCard = memo(function ProductCard({
 
   const displayName = product.name || 'Sin nombre'
 
-  const stockLabel = !product.has_variants
-    ? product.stock === 0
-      ? 'Sin stock'
-      : product.stock > 0 && product.stock <= product.min_stock
-        ? 'Stock bajo'
-        : null
-    : null
+  const stockLabel = product.stock === 0
+    ? 'Sin stock'
+    : !product.has_variants && product.stock > 0 && product.stock <= product.min_stock
+      ? 'Stock bajo'
+      : null
 
   function handleClick() {
     if (product.has_variants) {
