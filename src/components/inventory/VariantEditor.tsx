@@ -248,12 +248,14 @@ export default function VariantEditor({
   }, [mode, initialOptions, initialVariants, initialDefaultVariantId])
 
   // Regenerate variants whenever options change (both new and edit mode).
-  // In edit mode, React batches the setOptions + setVariants calls from the init
-  // effect into a single render, so when this effect fires after init, `prev`
-  // already holds the initialized draftVariants — all existing keys match and
-  // the result is a no-op. Subsequent user-driven option changes (add/remove
-  // values) correctly rebuild the table while preserving data for surviving rows.
+  // Guard: skip when options is still the empty initial state. In edit mode the
+  // init effect sets options + variants atomically, but the regeneration effect
+  // runs in the same flush with the stale options=[] closure — executing
+  // buildVariantRows([], draftVariants) would return [] and wipe the just-loaded
+  // data. Skipping when options is empty is safe because a variant product always
+  // has at least one option with at least one value after initialization.
   useEffect(() => {
+    if (options.length === 0) return
     setVariants(prev => buildVariantRows(options, prev))
   }, [options])
 
