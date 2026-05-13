@@ -35,9 +35,15 @@ interface CategoryRow {
 }
 
 interface VariantFilterRow {
-  typeId: string
-  typeName: string
-  values: { value: string; productIds: string[] }[]
+  typeId?: string
+  typeName?: string
+  type_id?: string
+  type_name?: string
+  values?: {
+    value: string
+    productIds?: string[]
+    product_ids?: string[]
+  }[]
 }
 
 interface CatalogPageProps {
@@ -90,14 +96,23 @@ export default async function CatalogSlugPage({ params }: CatalogPageProps) {
   if (!variantFiltersResult.error && variantFiltersResult.data) {
     const raw = variantFiltersResult.data as unknown
     if (Array.isArray(raw)) {
-      variantAttributeGroups = (raw as VariantFilterRow[]).map(group => ({
-        typeId: group.typeId,
-        typeName: group.typeName,
-        values: (group.values ?? []).map(v => ({
-          value: v.value,
-          productIds: v.productIds ?? [],
-        })),
-      }))
+      variantAttributeGroups = (raw as VariantFilterRow[]).flatMap(group => {
+        const typeId = group.typeId ?? group.type_id
+        const typeName = group.typeName ?? group.type_name
+
+        if (!typeId || !typeName) {
+          return []
+        }
+
+        return [{
+          typeId,
+          typeName,
+          values: (group.values ?? []).map(valueGroup => ({
+            value: valueGroup.value,
+            productIds: valueGroup.productIds ?? valueGroup.product_ids ?? [],
+          })),
+        }]
+      })
     }
   }
 

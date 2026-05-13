@@ -489,12 +489,14 @@ function SidebarLayout({
             open={openSections['variant-attributes'] ?? true}
             onToggle={() => toggle('variant-attributes')}
           >
-            <div className="space-y-4">
+            <div className="space-y-5">
               {variantAttributeGroups.map(group => {
                 const selectedVals = value.variantAttributes[group.typeId] ?? []
                 return (
-                  <div key={group.typeId}>
-                    <p className="text-xs text-hint mb-2 font-medium">{group.typeName}</p>
+                  <div key={group.typeId} className="space-y-2">
+                    <p className="text-xs uppercase text-muted-foreground">
+                      {group.typeName}
+                    </p>
                     <div className="flex flex-wrap gap-1.5">
                       {group.values.map(({ value: val }) => {
                         const active = selectedVals.includes(val)

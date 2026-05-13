@@ -30,6 +30,38 @@ interface Props {
   variants: CatalogProductVariant[]
 }
 
+interface CatalogProductDetailWithDefaultVariant extends CatalogProductDetail {
+  default_variant_id?: string | null
+}
+
+function getAvailableValues(
+  optionId: string,
+  selectedValues: Record<string, string>,
+  variants: CatalogProductVariant[]
+): Set<string> {
+  const otherSelections = Object.entries(selectedValues).filter(
+    ([selectedOptionId, selectedValue]) =>
+      selectedOptionId !== optionId && Boolean(selectedValue)
+  )
+
+  return new Set(
+    variants
+      .filter(variant => variant.is_in_stock && variant.is_active)
+      .filter(variant =>
+        otherSelections.every(([selectedOptionId, selectedValue]) =>
+          variant.option_values.some(
+            optionValue =>
+              optionValue.option_id === selectedOptionId &&
+              optionValue.value === selectedValue
+          )
+        )
+      )
+      .flatMap(variant => variant.option_values)
+      .filter(optionValue => optionValue.option_id === optionId)
+      .map(optionValue => optionValue.value)
+  )
+}
+
 export default function ProductDetailView({
   slug,
   businessId,
@@ -38,10 +70,22 @@ export default function ProductDetailView({
   variants,
 }: Props) {
   const cartKey = `catalog-cart-${businessId}`
+  const productWithDefaultVariant = product as CatalogProductDetailWithDefaultVariant
 
   // Selected option value per option id
   const [selectedValues, setSelectedValues] = useState<Record<string, string>>({})
   const [added, setAdded] = useState(false)
+
+  const defaultDisplayVariant: CatalogProductVariant | null = product.has_variants
+    ? variants.find(
+        variant =>
+          variant.id === productWithDefaultVariant.default_variant_id &&
+          variant.is_in_stock
+      ) ??
+      variants.find(variant => variant.is_in_stock) ??
+      variants[0] ??
+      null
+    : null
 
   // Find the matching variant based on all selected option values
   const selectedVariant: CatalogProductVariant | null = (() => {
@@ -50,6 +94,7 @@ export default function ProductDetailView({
     if (!allSelected) return null
 
     return variants.find(variant =>
+      variant.is_active &&
       options.every(opt => {
         const chosen = selectedValues[opt.id]
         return variant.option_values.some(
@@ -59,17 +104,17 @@ export default function ProductDetailView({
     ) ?? null
   })()
 
-  const displayPrice = selectedVariant
-    ? selectedVariant.price
-    : product.computed_price
+  const displayVariant = selectedVariant ?? defaultDisplayVariant
 
-  const displayStock = selectedVariant
-    ? selectedVariant.stock
-    : product.stock
+  const displayPrice = displayVariant?.price ?? product.computed_price
 
-  const displayImage = selectedVariant?.image_url ?? product.image_url
+  const displayStock = displayVariant?.stock ?? product.stock
 
-  const isOutOfStock = displayStock <= 0
+  const displayImage = displayVariant?.image_url ?? product.image_url
+
+  const isOutOfStock = displayVariant
+    ? !displayVariant.is_in_stock
+    : displayStock <= 0
 
   const allOptionsSelected = product.has_variants
     ? options.every(opt => Boolean(selectedValues[opt.id]))
@@ -83,6 +128,37 @@ export default function ProductDetailView({
       .map(opt => selectedValues[opt.id])
       .filter(Boolean)
       .join(' / ')
+  }
+
+  function handleSelect(optionId: string, value: string) {
+    setSelectedValues(previousValues => {
+      const cleanedSelection = { ...previousValues }
+
+      if (cleanedSelection[optionId] === value) {
+        delete cleanedSelection[optionId]
+      } else {
+        cleanedSelection[optionId] = value
+      }
+
+      for (const option of options) {
+        if (option.id === optionId) continue
+
+        const selectedValue = cleanedSelection[option.id]
+        if (!selectedValue) continue
+
+        const availableValues = getAvailableValues(
+          option.id,
+          cleanedSelection,
+          variants
+        )
+
+        if (!availableValues.has(selectedValue)) {
+          delete cleanedSelection[option.id]
+        }
+      }
+
+      return cleanedSelection
+    })
   }
 
   function handleAddToCart() {
@@ -209,47 +285,47 @@ export default function ProductDetailView({
           )}
 
           {/* Variant options */}
-          {product.has_variants && options.map(option => (
-            <div key={option.id}>
-              <p className="mb-2 text-sm font-medium text-foreground">{option.name}</p>
-              <div className="flex flex-wrap gap-2">
-                {(option.values ?? []).map(optValue => {
-                  // Find if this value has any active variant
-                  const hasStock = variants.some(v =>
-                    v.is_active &&
-                    v.option_values.some(
-                      ov => ov.option_id === option.id && ov.value === optValue.value
-                    )
-                  )
-                  const isSelected = selectedValues[option.id] === optValue.value
+          {product.has_variants &&
+            options.map(option => {
+              const availableValues = getAvailableValues(
+                option.id,
+                selectedValues,
+                variants
+              )
 
-                  return (
-                    <button
-                      key={optValue.id}
-                      type="button"
-                      disabled={!hasStock}
-                      onClick={() =>
-                        setSelectedValues(prev => ({
-                          ...prev,
-                          [option.id]: isSelected ? '' : optValue.value,
-                        }))
-                      }
-                      className={[
-                        'px-3 py-1.5 rounded-lg border text-sm font-medium transition-colors',
-                        isSelected
-                          ? 'bg-primary text-primary-foreground border-primary'
-                          : hasStock
-                            ? 'border-border bg-background text-foreground hover:border-primary/60'
-                            : 'border-border bg-background text-muted-foreground opacity-50 cursor-not-allowed line-through',
-                      ].join(' ')}
-                    >
-                      {optValue.value}
-                    </button>
-                  )
-                })}
-              </div>
-            </div>
-          ))}
+              return (
+                <div key={option.id}>
+                  <p className="mb-2 text-sm font-medium text-foreground">
+                    {option.name}
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {(option.values ?? []).map(optValue => {
+                      const isAvailable = availableValues.has(optValue.value)
+                      const isSelected = selectedValues[option.id] === optValue.value
+
+                      return (
+                        <button
+                          key={optValue.id}
+                          type="button"
+                          disabled={!isAvailable}
+                          onClick={() => handleSelect(option.id, optValue.value)}
+                          className={[
+                            'px-3 py-1.5 rounded-lg border text-sm font-medium transition-colors',
+                            isSelected
+                              ? 'bg-primary text-primary-foreground border-primary'
+                              : isAvailable
+                                ? 'border-border bg-background text-foreground hover:border-primary/60'
+                                : 'border-border bg-background text-muted-foreground opacity-50 cursor-not-allowed line-through',
+                          ].join(' ')}
+                        >
+                          {optValue.value}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+              )
+            })}
 
           {/* Add to cart */}
           <div className="mt-auto pt-2">

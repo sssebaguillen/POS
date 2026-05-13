@@ -10,6 +10,7 @@ import ProductFilter, {
   type FilterCategory,
   type FilterBrand,
   type ProductFilterValue,
+  type VariantAttributeGroup,
 } from '@/components/shared/ProductFilter'
 import {
   Sheet,
@@ -72,6 +73,18 @@ interface CatalogViewProps {
   variantAttributeGroups: CatalogVariantAttributeGroup[]
 }
 
+interface VariantAttributeGroupSource {
+  typeId?: string
+  typeName?: string
+  type_id?: string
+  type_name?: string
+  values?: Array<{
+    value: string
+    productIds?: string[]
+    product_ids?: string[]
+  }>
+}
+
 export default function CatalogView({
   business,
   slug,
@@ -88,8 +101,11 @@ export default function CatalogView({
   const [cartItems, setCartItems] = useState<CatalogCartItem[]>(() =>
     getStoredCartItems(cartKey, products)
   )
-  const [viewMode, setViewMode] = useState<ViewMode>('grid')
-  const [hasLoadedViewMode, setHasLoadedViewMode] = useState(false)
+  const [viewMode, setViewMode] = useState<ViewMode>(() => {
+    if (typeof window === 'undefined') return 'grid'
+    const stored = localStorage.getItem(VIEW_MODE_KEY)
+    return stored === 'list' || stored === 'grid' ? stored : 'grid'
+  })
 
   // Detect mobile breakpoint after mount (lg = 1024px)
   useEffect(() => {
@@ -105,15 +121,8 @@ export default function CatalogView({
   }, [cartItems, cartKey])
 
   useEffect(() => {
-    const stored = localStorage.getItem(VIEW_MODE_KEY)
-    if (stored === 'list' || stored === 'grid') setViewMode(stored)
-    setHasLoadedViewMode(true)
-  }, [])
-
-  useEffect(() => {
-    if (!hasLoadedViewMode) return
     localStorage.setItem(VIEW_MODE_KEY, viewMode)
-  }, [viewMode, hasLoadedViewMode])
+  }, [viewMode])
 
   const cartCount = useMemo(
     () => cartItems.reduce((acc, item) => acc + item.quantity, 0),
@@ -176,6 +185,69 @@ export default function CatalogView({
     return Array.from(seen.entries()).map(([id, name]) => ({ id, name }))
   }, [products])
 
+  const normalizedVariantAttributeGroups = useMemo<VariantAttributeGroup[]>(() => {
+    return variantAttributeGroups.flatMap(group => {
+      const source = group as CatalogVariantAttributeGroup & VariantAttributeGroupSource
+      const typeId = source.typeId ?? source.type_id
+      const typeName = source.typeName ?? source.type_name
+
+      if (!typeId || !typeName) {
+        return []
+      }
+
+      return [{
+        typeId,
+        typeName,
+        values: (source.values ?? []).map(valueGroup => ({
+          value: valueGroup.value,
+          productIds: valueGroup.productIds ?? valueGroup.product_ids ?? [],
+        })),
+      }]
+    })
+  }, [variantAttributeGroups])
+
+  const filteredProducts = useMemo(() => {
+    const hasVariantFilter = Object.values(filterValue.variantAttributes).some(
+      selectedValues => selectedValues.length > 0
+    )
+
+    if (!hasVariantFilter) {
+      return products
+    }
+
+    return products.filter(product => {
+      if (!product.hasVariants) {
+        return false
+      }
+
+      for (const [typeId, selectedValues] of Object.entries(filterValue.variantAttributes)) {
+        if (!selectedValues || selectedValues.length === 0) {
+          continue
+        }
+
+        const group = normalizedVariantAttributeGroups.find(
+          variantGroup => variantGroup.typeId === typeId
+        )
+
+        if (!group) {
+          continue
+        }
+
+        const matchingProductIds = new Set(
+          group.values
+            .filter(valueGroup => selectedValues.includes(valueGroup.value))
+            .flatMap(valueGroup => valueGroup.productIds)
+        )
+
+        if (!matchingProductIds.has(product.id)) {
+          return false
+        }
+      }
+
+      return true
+    })
+  }, [filterValue.variantAttributes, normalizedVariantAttributeGroups, products])
+
   const filterContent = (
     <ProductFilter
       modules={['category', 'brand', 'variant-attributes', 'price-range', 'sort']}
@@ -184,7 +256,7 @@ export default function CatalogView({
       onChange={setFilterValue}
       categories={filterCategories}
       brands={filterBrands}
-      variantAttributeGroups={variantAttributeGroups}
+      variantAttributeGroups={normalizedVariantAttributeGroups}
       sortOptions={[
         { field: 'name-asc', label: 'Nombre A-Z' },
         { field: 'name-desc', label: 'Nombre Z-A' },
@@ -224,7 +296,7 @@ export default function CatalogView({
 
         <ProductGrid
           slug={slug}
-          products={products}
+          products={filteredProducts}
           filterValue={filterValue}
           onFilterChange={setFilterValue}
           onAddToCart={addToCart}
