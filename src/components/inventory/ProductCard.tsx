@@ -79,7 +79,7 @@ const ProductCard = memo(function ProductCard({
       )}
 
       <h3
-        className="font-semibold text-heading text-sm leading-tight mb-2 truncate pr-16"
+        className="font-semibold text-heading text-sm leading-tight mb-2 truncate"
         title={product.name}
       >
         {product.name}
