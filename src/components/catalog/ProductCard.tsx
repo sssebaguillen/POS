@@ -102,7 +102,8 @@ export default function ProductCard({ product, slug, onAddToCart }: ProductCardP
       const { data, error } = await getAnonClient().rpc('get_catalog_product_with_variants', {
         p_slug: slug,
         p_product_id: product.id,
-      })
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      } as any)
 
       if (error) {
         console.error('Failed to fetch catalog variants', error.message)
