@@ -200,7 +200,7 @@ export default function CatalogView({
         typeName,
         values: (source.values ?? []).map(valueGroup => ({
           value: valueGroup.value,
-          productIds: valueGroup.productIds ?? valueGroup.product_ids ?? [],
+          productIds: valueGroup.productIds ?? [],
         })),
       }]
     })
