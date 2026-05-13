@@ -28,6 +28,7 @@ export interface CatalogCartItem {
   quantity: number
   variantId: string | null
   variantLabel: string | null
+  variantImageUrl: string | null
 }
 
 export interface CatalogVariantOptionValue {

@@ -110,7 +110,10 @@ export default function ProductDetailView({
 
   const displayStock = displayVariant?.stock ?? product.stock
 
-  const displayImage = displayVariant?.image_url ?? product.image_url
+  const displayImage =
+    selectedVariant?.image_url ??
+    defaultDisplayVariant?.image_url ??
+    product.image_url
 
   const isOutOfStock = displayVariant
     ? !displayVariant.is_in_stock
@@ -217,6 +220,7 @@ export default function ProductDetailView({
           quantity: 1,
           variantId,
           variantLabel: label,
+          variantImageUrl: selectedVariant?.image_url ?? null,
         },
       ]
     }

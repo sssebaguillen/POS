@@ -39,6 +39,14 @@ interface InventoryProductRow {
   categories: InventoryCategoryRelation | InventoryCategoryRelation[] | null
 }
 
+interface DefaultVariantDisplayData {
+  price: number
+  cost: number
+  stock: number
+  image_url: string | null
+  image_source: 'upload' | 'url' | null
+}
+
 function toNumber(value: number | string | null): number {
   return Number(value ?? 0)
 }
@@ -46,7 +54,7 @@ function toNumber(value: number | string | null): number {
 export function normalizeInventoryProduct(
   product: InventoryProductRow,
   variantCountMap?: Map<string, number>,
-  defaultVariantMap?: Map<string, { price: number; cost: number; stock: number }>,
+  defaultVariantMap?: Map<string, DefaultVariantDisplayData>,
   variantTotalStockMap?: Map<string, number>
 ): InventoryProduct {
   const defaultVariant = product.has_variants && product.default_variant_id
@@ -65,8 +73,8 @@ export function normalizeInventoryProduct(
     min_stock: toNumber(product.min_stock),
     brand_id: product.brand_id ?? null,
     brand: unwrapRelation(product.brands),
-    image_url: product.image_url ?? null,
-    image_source: product.image_source ?? null,
+    image_url: defaultVariant?.image_url ?? product.image_url ?? null,
+    image_source: defaultVariant?.image_source ?? product.image_source ?? null,
     categories: unwrapRelation(product.categories),
     has_variants: product.has_variants ?? false,
     variant_count: variantCountMap?.get(product.id),
@@ -130,21 +138,30 @@ export async function fetchInventoryProducts(
     .filter(p => p.has_variants && p.default_variant_id)
     .map(p => p.default_variant_id as string)
 
-  let defaultVariantMap: Map<string, { price: number; cost: number; stock: number }> | undefined
+  let defaultVariantMap: Map<string, DefaultVariantDisplayData> | undefined
 
   if (defaultVariantIds.length > 0) {
     const { data: variantData } = await supabase
       .from('product_variants')
-      .select('id, price, cost, stock')
+      .select('id, price, cost, stock, image_url, image_source')
       .in('id', defaultVariantIds)
 
     if (variantData) {
       defaultVariantMap = new Map()
-      for (const v of variantData as { id: string; price: number; cost: number; stock: number }[]) {
+      for (const v of variantData as {
+        id: string
+        price: number
+        cost: number
+        stock: number
+        image_url: string | null
+        image_source: 'upload' | 'url' | null
+      }[]) {
         defaultVariantMap.set(v.id, {
           price: Number(v.price),
           cost: Number(v.cost),
           stock: Number(v.stock),
+          image_url: v.image_url ?? null,
+          image_source: v.image_source ?? null,
         })
       }
     }

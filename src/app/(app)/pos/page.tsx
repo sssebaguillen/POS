@@ -62,12 +62,19 @@ export default async function POSPage() {
     .filter(p => (p as typeof p & ProductWithVariant).has_variants && (p as typeof p & ProductWithVariant).default_variant_id)
     .map(p => (p as typeof p & ProductWithVariant).default_variant_id as string)
 
-  const posDefaultVariantMap = new Map<string, { price: number }>()
+  const posDefaultVariantMap = new Map<string, {
+    price: number
+    image_url: string | null
+    image_source: 'upload' | 'url' | null
+  }>()
   const posTotalStockMap = new Map<string, number>()
 
   const [dvResult, totalStockResult] = await Promise.all([
     defaultVariantIds.length > 0
-      ? supabase.from('product_variants').select('id, price').in('id', defaultVariantIds)
+      ? supabase
+        .from('product_variants')
+        .select('id, price, image_url, image_source')
+        .in('id', defaultVariantIds)
       : Promise.resolve({ data: [] }),
     variantProductIds.length > 0
       ? supabase.from('product_variants').select('product_id, stock').eq('business_id', businessId).eq('is_active', true).in('product_id', variantProductIds)
@@ -75,8 +82,17 @@ export default async function POSPage() {
   ])
 
   if (dvResult.data) {
-    for (const v of dvResult.data as { id: string; price: number }[]) {
-      posDefaultVariantMap.set(v.id, { price: Number(v.price) })
+    for (const v of dvResult.data as {
+      id: string
+      price: number
+      image_url: string | null
+      image_source: 'upload' | 'url' | null
+    }[]) {
+      posDefaultVariantMap.set(v.id, {
+        price: Number(v.price),
+        image_url: v.image_url ?? null,
+        image_source: v.image_source ?? null,
+      })
     }
   }
   if (totalStockResult.data) {
@@ -118,8 +134,8 @@ export default async function POSPage() {
           has_variants: typedProduct.has_variants ?? false,
           brand_id: product.brand_id ?? null,
           brand: unwrapRelation(product.brands),
-          image_url: product.image_url ?? null,
-          image_source: product.image_source ?? null,
+          image_url: defaultVariant?.image_url ?? product.image_url ?? null,
+          image_source: defaultVariant?.image_source ?? product.image_source ?? null,
           categories: unwrapRelation(product.categories),
         }
       })}

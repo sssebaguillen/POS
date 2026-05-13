@@ -58,7 +58,7 @@ function getStoredCartItems(cartKey: string, products: CatalogProduct[]): Catalo
       if (!product) return []
       const quantity = Math.min(item.quantity, product.stock)
       if (quantity <= 0) return []
-      return [{ product, quantity, variantId: item.variantId ?? null, variantLabel: item.variantLabel ?? null }]
+      return [{ product, quantity, variantId: item.variantId ?? null, variantLabel: item.variantLabel ?? null, variantImageUrl: item.variantImageUrl ?? null }]
     })
   } catch {
     return []
@@ -131,13 +131,13 @@ export default function CatalogView({
 
   const activeFilterCount = countActiveFilters(filterValue)
 
-  function addToCart(product: CatalogProduct, variantId: string | null = null, variantLabel: string | null = null) {
+  function addToCart(product: CatalogProduct, variantId: string | null = null, variantLabel: string | null = null, variantImageUrl: string | null = null) {
     if (!product.hasVariants && product.stock <= 0) return
     const key = `${product.id}:${variantId ?? ''}`
     setCartItems(prev => {
       const existing = prev.find(item => cartItemKey(item) === key)
       if (!existing) {
-        return [...prev, { product, quantity: 1, variantId, variantLabel }]
+        return [...prev, { product, quantity: 1, variantId, variantLabel, variantImageUrl }]
       }
       if (existing.quantity >= product.stock) return prev
       return prev.map(item =>

@@ -180,8 +180,8 @@ export default function CartPanel({
                   <div className="flex items-start gap-2.5">
                     {/* Thumbnail */}
                     <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-md bg-muted/40">
-                      {item.product.imageUrl ? (
-                        <CartItemImage imageUrl={item.product.imageUrl} name={item.product.name} />
+                      {(item.variantImageUrl ?? item.product.imageUrl) ? (
+                        <CartItemImage imageUrl={(item.variantImageUrl ?? item.product.imageUrl)!} name={item.product.name} />
                       ) : (
                         <div className="flex h-full w-full items-center justify-center text-muted-foreground">
                           <ImageIcon className="h-4 w-4" />

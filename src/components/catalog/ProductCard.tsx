@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { ImageIcon, Layers, Plus } from 'lucide-react'
@@ -36,6 +36,19 @@ interface RpcResult {
 
 const currencyFormatter = new Intl.NumberFormat('es-AR')
 
+function getVariantDisplayImageUrl(
+  variants: CatalogProductVariant[],
+  fallbackImageUrl: string | null
+): string | null {
+  return (
+    variants.find(variant => variant.is_active && variant.is_in_stock && Boolean(variant.image_url))?.image_url ??
+    variants.find(variant => variant.is_active && Boolean(variant.image_url))?.image_url ??
+    variants.find(variant => variant.is_in_stock && Boolean(variant.image_url))?.image_url ??
+    variants.find(variant => Boolean(variant.image_url))?.image_url ??
+    fallbackImageUrl
+  )
+}
+
 function CardImage({ imageUrl, name, sizes }: { imageUrl: string; name: string; sizes: string }) {
   const [loaded, setLoaded] = useState(false)
   return (
@@ -57,19 +70,23 @@ function CardImage({ imageUrl, name, sizes }: { imageUrl: string; name: string; 
 export interface ProductCardProps {
   product: CatalogProduct
   slug: string
-  onAddToCart: (product: CatalogProduct, variantId: string | null, variantLabel: string | null) => void
+  onAddToCart: (product: CatalogProduct, variantId: string | null, variantLabel: string | null, variantImageUrl?: string | null) => void
 }
 
 export default function ProductCard({ product, slug, onAddToCart }: ProductCardProps) {
   const [variantData, setVariantData] = useState<VariantData | null>(null)
   const [loadedVariantCount, setLoadedVariantCount] = useState<number | null>(null)
   const [isLoadingVariants, setIsLoadingVariants] = useState(false)
+  const [hoveredVariantImage, setHoveredVariantImage] = useState<string | null>(null)
   const fetchedRef = useRef(false)
 
   const isOutOfStock = product.hasVariants ? false : product.stock <= 0
   const detailUrl = `/catalogo/${slug}/${product.id}`
 
-  async function fetchVariants() {
+  const defaultVariantImageUrl = getVariantDisplayImageUrl(variantData?.variants ?? [], product.imageUrl)
+  const displayImageUrl = hoveredVariantImage ?? defaultVariantImageUrl
+
+  const fetchVariants = useCallback(async () => {
     if (fetchedRef.current) return
     fetchedRef.current = true
 
@@ -82,34 +99,49 @@ export default function ProductCard({ product, slug, onAddToCart }: ProductCardP
 
     setIsLoadingVariants(true)
     try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data, error } = await (getAnonClient() as any).rpc('get_catalog_product_with_variants', {
+      const { data, error } = await getAnonClient().rpc('get_catalog_product_with_variants', {
         p_slug: slug,
         p_product_id: product.id,
       })
-      if (!error && data) {
-        const rpc = data as unknown as RpcResult
+
+      if (error) {
+        console.error('Failed to fetch catalog variants', error.message)
+        variantCache.set(product.id, null)
+        return
+      }
+
+      if (data) {
+        const rpc = data as RpcResult
         if (rpc.success) {
           const result: VariantData = { options: rpc.options ?? [], variants: rpc.variants ?? [] }
           variantCache.set(product.id, result)
           setVariantData(result)
           setLoadedVariantCount(result.variants.length)
+          return
         }
       }
-    } catch {
-      // silently fail — user can navigate to detail page
+
+      variantCache.set(product.id, null)
+    } catch (error) {
+      console.error('Failed to fetch catalog variants', error)
+      variantCache.set(product.id, null)
     } finally {
       setIsLoadingVariants(false)
     }
-  }
+  }, [product.id, slug])
+
+  useEffect(() => {
+    if (!product.hasVariants) return
+    void fetchVariants()
+  }, [fetchVariants, product.hasVariants])
 
   function handleAddSimple(e: React.MouseEvent) {
     e.preventDefault()
     onAddToCart(product, null, null)
   }
 
-  function handleAddVariant(variantId: string | null, variantLabel: string | null, price: number, stock: number) {
-    onAddToCart({ ...product, salePrice: price, stock }, variantId, variantLabel)
+  function handleAddVariant(variantId: string | null, variantLabel: string | null, price: number, stock: number, variantImageUrl: string | null) {
+    onAddToCart({ ...product, salePrice: price, stock }, variantId, variantLabel, variantImageUrl)
   }
 
   const variantBadgeText =
@@ -180,9 +212,9 @@ export default function ProductCard({ product, slug, onAddToCart }: ProductCardP
         className="catalog-card-inner block rounded-xl border border-border/70 bg-card p-4 transition-all duration-200"
       >
         <div className="relative h-44 w-full overflow-hidden rounded-lg bg-muted/40">
-          {product.imageUrl ? (
+          {displayImageUrl ? (
             <CardImage
-              imageUrl={product.imageUrl}
+              imageUrl={displayImageUrl}
               name={product.name}
               sizes="(max-width: 640px) 100vw, (max-width: 1280px) 50vw, 33vw"
             />
@@ -225,6 +257,7 @@ export default function ProductCard({ product, slug, onAddToCart }: ProductCardP
             options={variantData.options}
             variants={variantData.variants}
             onAddToCart={handleAddVariant}
+            onVariantImageChange={setHoveredVariantImage}
           />
         )}
       </div>

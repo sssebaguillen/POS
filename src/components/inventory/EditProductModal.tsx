@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { startTransition, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -117,7 +117,9 @@ export default function EditProductModal({
   useEffect(() => {
     if (!product.has_variants || variantLoadedRef.current) return
     variantLoadedRef.current = true
-    setVariantLoading(true)
+    startTransition(() => {
+      setVariantLoading(true)
+    })
     supabase.rpc('get_product_with_variants', { p_product_id: product.id }).then(({ data }) => {
       setVariantLoading(false)
       const result = data as ProductWithVariants | null
@@ -688,6 +690,7 @@ export default function EditProductModal({
                 <div className="py-2 text-xs text-hint">Cargando variantes…</div>
               ) : (
                 <VariantEditor
+                  businessId={businessId}
                   mode="edit"
                   initialOptions={variantOptions}
                   initialVariants={variantVariants}

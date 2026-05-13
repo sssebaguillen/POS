@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { ShoppingCart } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import type { CatalogProduct, CatalogVariantOption, CatalogProductVariant } from '@/components/catalog/types'
@@ -44,7 +44,8 @@ export interface VariantQuickSelectorProps {
   product: CatalogProduct
   options: CatalogVariantOption[]
   variants: CatalogProductVariant[]
-  onAddToCart: (variantId: string | null, variantLabel: string | null, price: number, stock: number) => void
+  onAddToCart: (variantId: string | null, variantLabel: string | null, price: number, stock: number, variantImageUrl: string | null) => void
+  onVariantImageChange?: (imageUrl: string | null) => void
   /** When true, stock is ignored: all variant buttons are always clickable and
    *  "Agregar" only requires that all options are selected. Use in POS context. */
   allowOutOfStock?: boolean
@@ -55,6 +56,7 @@ export default function VariantQuickSelector({
   options,
   variants,
   onAddToCart,
+  onVariantImageChange,
   allowOutOfStock = false,
 }: VariantQuickSelectorProps) {
   const [selectedValues, setSelectedValues] = useState<Record<string, string>>({})
@@ -75,6 +77,16 @@ export default function VariantQuickSelector({
   const nothingSelected = options.every(opt => !selectedValues[opt.id])
   const allSelected = options.length > 0 && options.every(opt => Boolean(selectedValues[opt.id]))
   const partiallySelected = !allSelected && !nothingSelected
+
+  const displayImage =
+    selectedVariant?.image_url ??
+    variants.find(v => v.is_in_stock && v.image_url)?.image_url ??
+    variants.find(v => v.image_url)?.image_url ??
+    null
+
+  useEffect(() => {
+    onVariantImageChange?.(displayImage)
+  }, [displayImage, onVariantImageChange])
 
   const displayPrice = selectedVariant?.price ?? product.salePrice
   const displayStock = selectedVariant?.stock ?? product.stock
@@ -104,13 +116,14 @@ export default function VariantQuickSelector({
 
     if (allSelected && selectedVariant) {
       const label = options.map(opt => selectedValues[opt.id]).filter(Boolean).join(' / ')
-      onAddToCart(selectedVariant.id, label, selectedVariant.price, selectedVariant.stock)
+      const cartImage = selectedVariant.image_url ?? product.imageUrl ?? null
+      onAddToCart(selectedVariant.id, label, selectedVariant.price, selectedVariant.stock, cartImage)
     } else if (nothingSelected) {
       const fallback = variants.find(v => v.is_active && v.stock > 0) ?? variants[0]
       if (fallback) {
-        onAddToCart(fallback.id, null, fallback.price, fallback.stock)
+        onAddToCart(fallback.id, null, fallback.price, fallback.stock, fallback.image_url ?? product.imageUrl ?? null)
       } else {
-        onAddToCart(null, null, product.salePrice, product.stock)
+        onAddToCart(null, null, product.salePrice, product.stock, product.imageUrl ?? null)
       }
     }
   }

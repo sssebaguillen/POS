@@ -1,13 +1,14 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { startTransition, useEffect, useMemo, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Input } from '@/components/ui/input'
 import SelectDropdown from '@/components/ui/SelectDropdown'
-import { Plus, X, AlertTriangle } from 'lucide-react'
+import { Plus, X, AlertTriangle, ImageIcon, Upload } from 'lucide-react'
 import type { AttributeType, ProductOption, ProductVariant } from '@/lib/types'
 import { useCurrency } from '@/lib/context/CurrencyContext'
 import { getCurrencySymbol } from '@/lib/format'
+import { validateImageUrl } from '@/lib/validation'
 
 // ─── Draft types (UI-only) ────────────────────────────────────────────────────
 
@@ -35,6 +36,8 @@ export interface DraftVariantRow {
   cost: string
   stock: string
   barcode: string
+  image_url: string | null
+  image_source: 'upload' | 'url' | null
   is_active: boolean
 }
 
@@ -100,6 +103,8 @@ function buildVariantRows(
       cost: '',
       stock: '',
       barcode: '',
+      image_url: null,
+      image_source: null,
       is_active: true,
     }
   })
@@ -120,6 +125,8 @@ export interface VariantPayloadNew {
     cost: number
     stock: number
     min_stock: number
+    image_url: string | null
+    image_source: 'upload' | 'url' | null
     is_active: boolean
     is_default?: boolean
     option_value_indices: [number, number][]
@@ -141,6 +148,8 @@ export interface VariantPayloadEdit {
     cost: number
     stock: number
     min_stock: number
+    image_url: string | null
+    image_source: 'upload' | 'url' | null
     is_active: boolean
     is_default?: boolean
     option_value_ids?: string[]
@@ -150,6 +159,7 @@ export interface VariantPayloadEdit {
 // ─── Props ────────────────────────────────────────────────────────────────────
 
 interface Props {
+  businessId: string | null
   mode: 'new' | 'edit'
   initialOptions?: ProductOption[]
   initialVariants?: ProductVariant[]
@@ -161,6 +171,7 @@ interface Props {
 }
 
 export default function VariantEditor({
+  businessId,
   mode,
   initialOptions,
   initialVariants,
@@ -180,6 +191,12 @@ export default function VariantEditor({
   const [valueInputs, setValueInputs] = useState<Record<number, string>>({})
   const [filterPillValue, setFilterPillValue] = useState<string | null>(null)
   const [defaultVariantKey, setDefaultVariantKey] = useState<string | null>(null)
+  const [selectedImageVariantKey, setSelectedImageVariantKey] = useState<string | null>(null)
+  const [variantImageTabs, setVariantImageTabs] = useState<Record<string, 'upload' | 'url'>>({})
+  const [variantExternalUrlInputs, setVariantExternalUrlInputs] = useState<Record<string, string>>({})
+  const [variantUrlErrors, setVariantUrlErrors] = useState<Record<string, string>>({})
+  const [variantImageErrors, setVariantImageErrors] = useState<Record<string, string>>({})
+  const [uploadingVariantKey, setUploadingVariantKey] = useState<string | null>(null)
   const initialized = useRef(false)
 
   // Load attribute types
@@ -195,7 +212,7 @@ export default function VariantEditor({
     if (!initialOptions || !initialVariants) return
     initialized.current = true
 
-    const draftOptions: DraftOption[] = initialOptions.map((opt, oIdx) => ({
+    const draftOptions: DraftOption[] = initialOptions.map(opt => ({
       id: opt.id,
       attribute_type_id: opt.attribute_type_id,
       name: opt.name,
@@ -231,20 +248,34 @@ export default function VariantEditor({
         cost: String(v.cost),
         stock: String(v.stock),
         barcode: v.barcode ?? '',
+        image_url: v.image_url ?? null,
+        image_source: v.image_source ?? null,
         is_active: v.is_active,
       }
     })
+
+    const urlInputs = draftVariants.reduce<Record<string, string>>((acc, variant) => {
+      if (variant.image_source === 'url' && variant.image_url) {
+        acc[variant.combinationKey] = variant.image_url
+      }
+      return acc
+    }, {})
 
     // Set default variant key from initialDefaultVariantId
     if (initialDefaultVariantId) {
       const defaultDraft = draftVariants.find(dv => dv.id === initialDefaultVariantId)
       if (defaultDraft) {
-        setDefaultVariantKey(defaultDraft.combinationKey)
+        startTransition(() => {
+          setDefaultVariantKey(defaultDraft.combinationKey)
+        })
       }
     }
 
-    setOptions(draftOptions)
-    setVariants(draftVariants)
+    startTransition(() => {
+      setOptions(draftOptions)
+      setVariants(draftVariants)
+      setVariantExternalUrlInputs(urlInputs)
+    })
   }, [mode, initialOptions, initialVariants, initialDefaultVariantId])
 
   // Regenerate variants whenever options change (both new and edit mode).
@@ -256,7 +287,9 @@ export default function VariantEditor({
   // has at least one option with at least one value after initialization.
   useEffect(() => {
     if (options.length === 0) return
-    setVariants(prev => buildVariantRows(options, prev))
+    startTransition(() => {
+      setVariants(prev => buildVariantRows(options, prev))
+    })
   }, [options])
 
   // Auto-select first variant as default when defaultVariantKey is null or no longer valid
@@ -264,9 +297,20 @@ export default function VariantEditor({
     if (variants.length === 0) return
     const keys = variants.map(v => v.combinationKey)
     if (!defaultVariantKey || !keys.includes(defaultVariantKey)) {
-      setDefaultVariantKey(keys[0] ?? null)
+      startTransition(() => {
+        setDefaultVariantKey(keys[0] ?? null)
+      })
     }
   }, [variants, defaultVariantKey])
+
+  useEffect(() => {
+    if (!selectedImageVariantKey) return
+    if (!variants.some(variant => variant.combinationKey === selectedImageVariantKey)) {
+      startTransition(() => {
+        setSelectedImageVariantKey(null)
+      })
+    }
+  }, [selectedImageVariantKey, variants])
 
   // Emit payload on change
   useEffect(() => {
@@ -295,6 +339,8 @@ export default function VariantEditor({
           cost: Number(v.cost) || 0,
           stock: Math.trunc(Number(v.stock) || 0),
           min_stock: 0,
+          image_url: v.image_url ?? null,
+          image_source: v.image_source ?? null,
           is_active: v.is_active,
           is_default: v.combinationKey === defaultVariantKey,
           option_value_indices: v.optionValueIndices,
@@ -321,6 +367,8 @@ export default function VariantEditor({
           cost: Number(v.cost) || 0,
           stock: Math.trunc(Number(v.stock) || 0),
           min_stock: 0,
+          image_url: v.image_url ?? null,
+          image_source: v.image_source ?? null,
           is_active: v.is_active,
           is_default: v.combinationKey === defaultVariantKey,
           ...(v.id ? {} : { option_value_ids: v.optionValueIds ?? [] }),
@@ -380,10 +428,64 @@ export default function VariantEditor({
     ))
   }
 
-  function updateVariant(varIdx: number, field: keyof DraftVariantRow, value: string | boolean) {
+  function updateVariant<K extends keyof DraftVariantRow>(
+    varIdx: number,
+    field: K,
+    value: DraftVariantRow[K]
+  ) {
     setVariants(prev => prev.map((v, i) =>
       i === varIdx ? { ...v, [field]: value } : v
     ))
+  }
+
+  function updateVariantByKey(
+    combinationKey: string,
+    patch: Partial<Pick<DraftVariantRow, 'image_url' | 'image_source'>>
+  ) {
+    setVariants(prev => prev.map(variant =>
+      variant.combinationKey === combinationKey
+        ? { ...variant, ...patch }
+        : variant
+    ))
+  }
+
+  async function handleVariantFileUpload(combinationKey: string, file: File) {
+    if (!businessId) {
+      setVariantImageErrors(prev => ({
+        ...prev,
+        [combinationKey]: 'No se encontró el negocio activo.',
+      }))
+      return
+    }
+
+    setUploadingVariantKey(combinationKey)
+    setVariantImageErrors(prev => ({ ...prev, [combinationKey]: '' }))
+
+    const ext = file.name.split('.').pop() ?? 'jpg'
+    const filename = `${businessId}/variants/${crypto.randomUUID()}.${ext}`
+    const { error: uploadError } = await supabase.storage
+      .from('product-images')
+      .upload(filename, file, { upsert: true })
+
+    if (uploadError) {
+      setVariantImageErrors(prev => ({
+        ...prev,
+        [combinationKey]: `Error al subir imagen: ${uploadError.message}`,
+      }))
+      setUploadingVariantKey(null)
+      return
+    }
+
+    const { data: urlData } = supabase.storage
+      .from('product-images')
+      .getPublicUrl(filename)
+
+    updateVariantByKey(combinationKey, {
+      image_url: urlData.publicUrl,
+      image_source: 'upload',
+    })
+    setVariantImageErrors(prev => ({ ...prev, [combinationKey]: '' }))
+    setUploadingVariantKey(null)
   }
 
   const showTable = variants.length > 0
@@ -409,6 +511,30 @@ export default function VariantEditor({
         return firstOption.values[valIdx]?.value === activeFilterPill
       })
     : variants
+
+  const selectedImageVariant = selectedImageVariantKey
+    ? variants.find(variant => variant.combinationKey === selectedImageVariantKey) ?? null
+    : null
+
+  const selectedImageTab = selectedImageVariant
+    ? variantImageTabs[selectedImageVariant.combinationKey] ??
+      (selectedImageVariant.image_source === 'url' ? 'url' : 'upload')
+    : 'upload'
+
+  const selectedImageUrlInput = selectedImageVariant
+    ? variantExternalUrlInputs[selectedImageVariant.combinationKey] ??
+      (selectedImageVariant.image_source === 'url'
+        ? selectedImageVariant.image_url ?? ''
+        : '')
+    : ''
+
+  const selectedVariantUrlError = selectedImageVariant
+    ? variantUrlErrors[selectedImageVariant.combinationKey] ?? ''
+    : ''
+
+  const selectedVariantImageError = selectedImageVariant
+    ? variantImageErrors[selectedImageVariant.combinationKey] ?? ''
+    : ''
 
   // ─── SelectDropdown options ───────────────────────────────────────────────
   const attributeTypeOptions = attributeTypes.map(t => ({ value: t.id, label: t.label }))
@@ -565,97 +691,315 @@ export default function VariantEditor({
                 </div>
               )}
 
-              <div className="overflow-x-auto rounded-xl border border-edge">
-                <table className="w-full text-xs">
-                  <thead>
-                    <tr className="border-b border-edge bg-surface-alt">
-                      <th className="text-left px-3 py-2 font-medium text-subtle whitespace-nowrap">Default</th>
-                      <th className="text-left px-3 py-2 font-medium text-subtle whitespace-nowrap">Variante</th>
-                      <th className="text-left px-3 py-2 font-medium text-subtle whitespace-nowrap">Costo ({currencySymbol})</th>
-                      <th className="text-left px-3 py-2 font-medium text-subtle whitespace-nowrap">Precio ({currencySymbol})</th>
-                      <th className="text-left px-3 py-2 font-medium text-subtle whitespace-nowrap">Stock inicial</th>
-                      <th className="text-left px-3 py-2 font-medium text-subtle whitespace-nowrap">Cód. de barras</th>
-                      <th className="text-left px-3 py-2 font-medium text-subtle">Activo</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-edge">
-                    {displayedVariants.map((variant) => {
-                      // Find the real index in variants array for updateVariant
-                      const varIdx = variants.indexOf(variant)
-                      const isDefault = variant.combinationKey === defaultVariantKey
-                      return (
-                        <tr key={variant.combinationKey} className={`bg-surface ${!variant.is_active ? 'opacity-50' : ''}`}>
-                          <td className="px-3 py-2">
-                            <button
-                              type="button"
-                              onClick={() => setDefaultVariantKey(variant.combinationKey)}
-                              aria-label={`Marcar ${variant.label} como variante por defecto`}
-                              className={`w-4 h-4 rounded-full border-2 flex items-center justify-center cursor-pointer transition-colors ${isDefault ? 'border-primary bg-primary' : 'border-edge bg-surface hover:border-primary/60'}`}
-                            >
-                              {isDefault && (
-                                <span className="w-2 h-2 rounded-full bg-primary-foreground" />
+              <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_20rem]">
+                <div className="overflow-x-auto rounded-xl border border-edge">
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="border-b border-edge bg-surface-alt">
+                        <th className="text-left px-3 py-2 font-medium text-subtle whitespace-nowrap">Default</th>
+                        <th className="text-left px-3 py-2 font-medium text-subtle whitespace-nowrap">Variante</th>
+                        <th className="text-left px-3 py-2 font-medium text-subtle whitespace-nowrap">Costo ({currencySymbol})</th>
+                        <th className="text-left px-3 py-2 font-medium text-subtle whitespace-nowrap">Precio ({currencySymbol})</th>
+                        <th className="text-left px-3 py-2 font-medium text-subtle whitespace-nowrap">Stock inicial</th>
+                        <th className="text-left px-3 py-2 font-medium text-subtle whitespace-nowrap">Cód. de barras</th>
+                        <th className="text-left px-3 py-2 font-medium text-subtle whitespace-nowrap">Imagen</th>
+                        <th className="text-left px-3 py-2 font-medium text-subtle">Activo</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-edge">
+                      {displayedVariants.map((variant) => {
+                        const varIdx = variants.indexOf(variant)
+                        const isDefault = variant.combinationKey === defaultVariantKey
+                        const isImageEditorOpen = variant.combinationKey === selectedImageVariantKey
+
+                        return (
+                          <tr
+                            key={variant.combinationKey}
+                            className={[
+                              !variant.is_active ? 'opacity-50' : '',
+                              isImageEditorOpen ? 'bg-primary/5' : 'bg-surface',
+                            ].join(' ')}
+                          >
+                            <td className="px-3 py-2">
+                              <button
+                                type="button"
+                                onClick={() => setDefaultVariantKey(variant.combinationKey)}
+                                aria-label={`Marcar ${variant.label} como variante por defecto`}
+                                className={`w-4 h-4 rounded-full border-2 flex items-center justify-center cursor-pointer transition-colors ${isDefault ? 'border-primary bg-primary' : 'border-edge bg-surface hover:border-primary/60'}`}
+                              >
+                                {isDefault && (
+                                  <span className="w-2 h-2 rounded-full bg-primary-foreground" />
+                                )}
+                              </button>
+                            </td>
+                            <td className="px-3 py-2 text-body font-medium whitespace-nowrap">
+                              {variant.label}
+                            </td>
+                            <td className="px-3 py-2">
+                              <input
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                value={variant.cost}
+                                onChange={e => updateVariant(varIdx, 'cost', e.target.value)}
+                                placeholder="0"
+                                className="w-20 h-7 rounded-lg border border-edge bg-surface px-2 text-xs text-body tabular-nums focus:outline-none focus:border-primary"
+                              />
+                            </td>
+                            <td className="px-3 py-2">
+                              <input
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                value={variant.price}
+                                onChange={e => updateVariant(varIdx, 'price', e.target.value)}
+                                placeholder="0"
+                                className="w-20 h-7 rounded-lg border border-edge bg-surface px-2 text-xs text-body tabular-nums focus:outline-none focus:border-primary"
+                              />
+                            </td>
+                            <td className="px-3 py-2">
+                              <input
+                                type="number"
+                                min="0"
+                                step="1"
+                                value={variant.stock}
+                                onChange={e => updateVariant(varIdx, 'stock', e.target.value)}
+                                placeholder="0"
+                                className="w-20 h-7 rounded-lg border border-edge bg-surface px-2 text-xs text-body tabular-nums focus:outline-none focus:border-primary"
+                              />
+                            </td>
+                            <td className="px-3 py-2">
+                              <input
+                                type="text"
+                                value={variant.barcode}
+                                onChange={e => updateVariant(varIdx, 'barcode', e.target.value)}
+                                placeholder="Ej: 7790001234567"
+                                className="w-28 h-7 rounded-lg border border-edge bg-surface px-2 text-xs text-body tabular-nums focus:outline-none focus:border-primary"
+                              />
+                            </td>
+                            <td className="px-3 py-2">
+                              <button
+                                type="button"
+                                onClick={() => setSelectedImageVariantKey(variant.combinationKey)}
+                                className={[
+                                  'inline-flex items-center gap-2 rounded-lg border px-2 py-1 text-xs font-medium transition-colors',
+                                  isImageEditorOpen
+                                    ? 'border-primary bg-primary/10 text-primary'
+                                    : 'border-edge bg-surface hover:border-primary/50 text-body',
+                                ].join(' ')}
+                              >
+                                <span className="flex h-7 w-7 items-center justify-center overflow-hidden rounded-md border border-edge bg-surface-alt shrink-0">
+                                  {variant.image_url ? (
+                                    <img
+                                      src={variant.image_url}
+                                      alt={`Imagen de ${variant.label}`}
+                                      className="h-full w-full object-cover"
+                                    />
+                                  ) : (
+                                    <ImageIcon className="h-3.5 w-3.5 text-hint" />
+                                  )}
+                                </span>
+                                Imagen
+                              </button>
+                            </td>
+                            <td className="px-3 py-2">
+                              <button
+                                type="button"
+                                onClick={() => updateVariant(varIdx, 'is_active', !variant.is_active)}
+                                className={`relative w-9 h-5 rounded-full transition-colors cursor-pointer shrink-0 ${variant.is_active ? 'bg-primary' : 'bg-muted-foreground'}`}
+                              >
+                                <span className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-card shadow-sm transition-transform ${variant.is_active ? 'translate-x-4' : 'translate-x-0'}`} />
+                              </button>
+                            </td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+
+                <div className="rounded-xl border border-edge bg-surface p-3 space-y-3">
+                  {selectedImageVariant ? (
+                    <>
+                      <div>
+                        <p className="text-[10px] font-semibold text-subtle uppercase tracking-widest">
+                          Imagen de variante
+                        </p>
+                        <p className="mt-1 text-sm font-medium text-body">
+                          {selectedImageVariant.label}
+                        </p>
+                        <p className="mt-1 text-xs text-hint">
+                          Si no cargás imagen, se usa la foto del producto base.
+                        </p>
+                      </div>
+
+                      <div className="overflow-hidden rounded-xl border border-edge bg-surface-alt">
+                        {selectedImageVariant.image_url ? (
+                          <img
+                            src={selectedImageVariant.image_url}
+                            alt={`Vista previa de ${selectedImageVariant.label}`}
+                            className="h-40 w-full object-cover"
+                          />
+                        ) : (
+                          <div className="flex h-40 w-full flex-col items-center justify-center gap-2 text-hint">
+                            <ImageIcon className="h-7 w-7" />
+                            <p className="text-xs">Sin imagen propia</p>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="rounded-xl border border-edge overflow-hidden">
+                        <div className="flex border-b border-edge">
+                          <button
+                            type="button"
+                            onClick={() => setVariantImageTabs(prev => ({
+                              ...prev,
+                              [selectedImageVariant.combinationKey]: 'upload',
+                            }))}
+                            className={`flex-1 px-4 py-2 text-xs font-medium transition-colors ${
+                              selectedImageTab === 'upload'
+                                ? 'bg-surface text-body border-b-2 border-primary'
+                                : 'bg-surface-alt text-hint hover:text-subtle'
+                            }`}
+                          >
+                            Subir archivo
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setVariantImageTabs(prev => ({
+                              ...prev,
+                              [selectedImageVariant.combinationKey]: 'url',
+                            }))}
+                            className={`flex-1 px-4 py-2 text-xs font-medium transition-colors ${
+                              selectedImageTab === 'url'
+                                ? 'bg-surface text-body border-b-2 border-primary'
+                                : 'bg-surface-alt text-hint hover:text-subtle'
+                            }`}
+                          >
+                            URL externa
+                          </button>
+                        </div>
+
+                        <div className="p-3">
+                          {selectedImageTab === 'upload' && (
+                            <label className="flex flex-col items-center gap-2 cursor-pointer rounded-xl border border-dashed border-edge bg-surface px-4 py-5 hover:border-primary/40 transition-colors">
+                              <Upload className="h-5 w-5 text-hint" />
+                              <span className="text-xs text-hint">
+                                {uploadingVariantKey === selectedImageVariant.combinationKey
+                                  ? 'Subiendo...'
+                                  : 'Arrastrá o hacé clic para seleccionar'}
+                              </span>
+                              <span className="text-[10px] text-hint">PNG, JPG, WebP · máx. 2 MB</span>
+                              <input
+                                type="file"
+                                accept="image/*"
+                                className="sr-only"
+                                disabled={uploadingVariantKey === selectedImageVariant.combinationKey}
+                                onChange={e => {
+                                  const file = e.target.files?.[0]
+                                  if (file) {
+                                    void handleVariantFileUpload(
+                                      selectedImageVariant.combinationKey,
+                                      file
+                                    )
+                                  }
+                                }}
+                              />
+                            </label>
+                          )}
+
+                          {selectedImageTab === 'upload' && selectedVariantImageError && (
+                            <p className="mt-1 text-caption text-red-500">
+                              {selectedVariantImageError}
+                            </p>
+                          )}
+
+                          {selectedImageTab === 'url' && (
+                            <div className="flex flex-col gap-2">
+                              <div className="flex gap-2">
+                                <Input
+                                  value={selectedImageUrlInput}
+                                  onChange={e => {
+                                    const nextValue = e.target.value
+                                    setVariantExternalUrlInputs(prev => ({
+                                      ...prev,
+                                      [selectedImageVariant.combinationKey]: nextValue,
+                                    }))
+                                    setVariantUrlErrors(prev => ({
+                                      ...prev,
+                                      [selectedImageVariant.combinationKey]: '',
+                                    }))
+                                  }}
+                                  placeholder="https://..."
+                                  className={`h-9 rounded-xl text-sm bg-surface ${selectedVariantUrlError ? 'border-red-400 focus-visible:ring-red-200' : 'border-edge focus-visible:ring-ring/50 focus-visible:border-ring'}`}
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const error = validateImageUrl(selectedImageUrlInput)
+                                    setVariantUrlErrors(prev => ({
+                                      ...prev,
+                                      [selectedImageVariant.combinationKey]: error,
+                                    }))
+
+                                    if (!error && selectedImageUrlInput) {
+                                      updateVariantByKey(selectedImageVariant.combinationKey, {
+                                        image_url: selectedImageUrlInput,
+                                        image_source: 'url',
+                                      })
+                                    }
+                                  }}
+                                  className="h-9 shrink-0 rounded-lg bg-primary px-4 text-sm text-primary-foreground hover:bg-primary/90"
+                                >
+                                  Confirmar
+                                </button>
+                              </div>
+                              {selectedVariantUrlError && (
+                                <p className="text-caption text-red-500">
+                                  {selectedVariantUrlError}
+                                </p>
                               )}
-                            </button>
-                          </td>
-                          <td className="px-3 py-2 text-body font-medium whitespace-nowrap">
-                            {variant.label}
-                          </td>
-                          <td className="px-3 py-2">
-                            <input
-                              type="number"
-                              min="0"
-                              step="0.01"
-                              value={variant.cost}
-                              onChange={e => updateVariant(varIdx, 'cost', e.target.value)}
-                              placeholder="0"
-                              className="w-20 h-7 rounded-lg border border-edge bg-surface px-2 text-xs text-body tabular-nums focus:outline-none focus:border-primary"
-                            />
-                          </td>
-                          <td className="px-3 py-2">
-                            <input
-                              type="number"
-                              min="0"
-                              step="0.01"
-                              value={variant.price}
-                              onChange={e => updateVariant(varIdx, 'price', e.target.value)}
-                              placeholder="0"
-                              className="w-20 h-7 rounded-lg border border-edge bg-surface px-2 text-xs text-body tabular-nums focus:outline-none focus:border-primary"
-                            />
-                          </td>
-                          <td className="px-3 py-2">
-                            <input
-                              type="number"
-                              min="0"
-                              step="1"
-                              value={variant.stock}
-                              onChange={e => updateVariant(varIdx, 'stock', e.target.value)}
-                              placeholder="0"
-                              className="w-20 h-7 rounded-lg border border-edge bg-surface px-2 text-xs text-body tabular-nums focus:outline-none focus:border-primary"
-                            />
-                          </td>
-                          <td className="px-3 py-2">
-                            <input
-                              type="text"
-                              value={variant.barcode}
-                              onChange={e => updateVariant(varIdx, 'barcode', e.target.value)}
-                              placeholder="Ej: 7790001234567"
-                              className="w-28 h-7 rounded-lg border border-edge bg-surface px-2 text-xs text-body tabular-nums focus:outline-none focus:border-primary"
-                            />
-                          </td>
-                          <td className="px-3 py-2">
-                            <button
-                              type="button"
-                              onClick={() => updateVariant(varIdx, 'is_active', !variant.is_active)}
-                              className={`relative w-9 h-5 rounded-full transition-colors cursor-pointer shrink-0 ${variant.is_active ? 'bg-primary' : 'bg-muted-foreground'}`}
-                            >
-                              <span className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-card shadow-sm transition-transform ${variant.is_active ? 'translate-x-4' : 'translate-x-0'}`} />
-                            </button>
-                          </td>
-                        </tr>
-                      )
-                    })}
-                  </tbody>
-                </table>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {selectedImageVariant.image_url && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            updateVariantByKey(selectedImageVariant.combinationKey, {
+                              image_url: null,
+                              image_source: null,
+                            })
+                            setVariantExternalUrlInputs(prev => ({
+                              ...prev,
+                              [selectedImageVariant.combinationKey]: '',
+                            }))
+                            setVariantUrlErrors(prev => ({
+                              ...prev,
+                              [selectedImageVariant.combinationKey]: '',
+                            }))
+                            setVariantImageErrors(prev => ({
+                              ...prev,
+                              [selectedImageVariant.combinationKey]: '',
+                            }))
+                          }}
+                          className="text-left text-xs text-red-500 hover:text-red-600"
+                        >
+                          Quitar imagen
+                        </button>
+                      )}
+                    </>
+                  ) : (
+                    <div className="flex h-full min-h-52 flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-edge bg-surface-alt px-4 text-center text-hint">
+                      <ImageIcon className="h-6 w-6" />
+                      <p className="text-xs">
+                        Seleccioná la acción “Imagen” de una variante para cargar o editar su foto.
+                      </p>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           )}

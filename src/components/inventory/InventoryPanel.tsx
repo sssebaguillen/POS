@@ -95,6 +95,21 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
 
   const activeFilterCount = countActiveFilters(filterValue)
 
+  const reloadInventoryProducts = useCallback(async () => {
+    if (!businessId) {
+      setCrudError('No se encontró el negocio activo para recargar productos.')
+      return
+    }
+
+    const { data, error } = await fetchInventoryProducts(supabase, businessId)
+    if (error || !data) {
+      setCrudError(error?.message ?? 'No se pudieron recargar los productos.')
+      return
+    }
+
+    setProducts(data)
+  }, [businessId, supabase])
+
   // Map filterValue.stockStatus to the FilterStatus enum used internally
   const derivedStatusFilter: FilterStatus = (() => {
     if (filterValue.stockStatus === 'low-stock') return 'low'
@@ -916,12 +931,19 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
           priceLists={priceLists}
           existingOverrides={productOverrides.filter(o => o.product_id === editingProduct.id)}
           onSaved={(values, nextOverrides) => {
-            void updateProduct(editingProduct.id, values)
-            setProductOverrides(prev => [
-              ...prev.filter(o => o.product_id !== editingProduct.id),
-              ...nextOverrides,
-            ])
-            setEditingProduct(null)
+            void (async () => {
+              await updateProduct(editingProduct.id, values)
+
+              if (values.has_variants) {
+                await reloadInventoryProducts()
+              }
+
+              setProductOverrides(prev => [
+                ...prev.filter(o => o.product_id !== editingProduct.id),
+                ...nextOverrides,
+              ])
+              setEditingProduct(null)
+            })()
           }}
         />
       )}

@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { startTransition, useCallback, useEffect, useMemo, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -64,7 +64,9 @@ export default function NewProductModal({
 
   useEffect(() => {
     if (open && initialName) {
-      setForm(prev => ({ ...prev, name: initialName }))
+      startTransition(() => {
+        setForm(prev => ({ ...prev, name: initialName }))
+      })
     }
   }, [open, initialName])
   const [loading, setLoading] = useState(false)
@@ -289,11 +291,13 @@ export default function NewProductModal({
         let displayPrice = Number(newProduct.price)
         let displayCost = Number(newProduct.cost)
         let displayStock = Number(newProduct.stock)
+        let displayImageUrl = newProduct.image_url ?? null
+        let displayImageSource = (newProduct.image_source as 'upload' | 'url' | null) ?? null
 
         if (newProduct.default_variant_id) {
           const { data: variantData } = await supabase
             .from('product_variants')
-            .select('price, cost, stock')
+            .select('price, cost, stock, image_url, image_source')
             .eq('id', newProduct.default_variant_id)
             .single()
 
@@ -301,6 +305,8 @@ export default function NewProductModal({
             displayPrice = Number(variantData.price)
             displayCost = Number(variantData.cost)
             displayStock = Number(variantData.stock)
+            displayImageUrl = variantData.image_url ?? displayImageUrl
+            displayImageSource = (variantData.image_source as 'upload' | 'url' | null) ?? displayImageSource
           }
         }
 
@@ -313,8 +319,8 @@ export default function NewProductModal({
           brand: Array.isArray(newProduct.brands)
             ? (newProduct.brands[0] ?? null)
             : (newProduct.brands ?? null),
-          image_url: newProduct.image_url ?? null,
-          image_source: (newProduct.image_source as 'upload' | 'url' | null) ?? null,
+          image_url: displayImageUrl,
+          image_source: displayImageSource,
           categories: Array.isArray(newProduct.categories)
             ? (newProduct.categories[0] ?? null)
             : (newProduct.categories ?? null),
@@ -669,6 +675,7 @@ export default function NewProductModal({
 
               {/* Variantes — siempre visible entre Stock y el collapsable */}
               <VariantEditor
+                businessId={businessId}
                 mode="new"
                 hasVariants={hasVariants}
                 onHasVariantsChange={setHasVariants}

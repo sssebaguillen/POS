@@ -1,7 +1,7 @@
 'use client'
 
 import Image from 'next/image'
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { memo, startTransition, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useCartStore } from '@/lib/store/cart.store'
 import { calculateProductPrice } from '@/lib/price-lists'
 import type { Product, ProductWithVariants, ProductVariant } from '@/lib/types'
@@ -40,7 +40,6 @@ export default function ProductPanel({ products, search, activeFilter, activePri
   const addItem = useCartStore(s => s.addItem)
   const addVariantItem = useCartStore(s => s.addVariantItem)
   const formatMoney = useFormatMoney()
-  const supabase = useMemo(() => createClient(), [])
 
   const filtered = useMemo(() => {
     let result = products
@@ -93,7 +92,6 @@ export default function ProductPanel({ products, search, activeFilter, activePri
                 onAdd={handleAdd}
                 onAddVariant={handleAddVariant}
                 formatMoney={formatMoney}
-                supabase={supabase}
               />
             ))}
           </div>
@@ -121,7 +119,6 @@ export default function ProductPanel({ products, search, activeFilter, activePri
             onAdd={handleAdd}
             onAddVariant={handleAddVariant}
             formatMoney={formatMoney}
-            supabase={supabase}
           />
         )}
       </section>
@@ -136,7 +133,6 @@ interface PaginatedProductGridProps {
   onAdd: (product: Product) => void
   onAddVariant: (product: ProductWithCategory, variant: ProductVariant, label: string) => void
   formatMoney: (v: number) => string
-  supabase: ReturnType<typeof createClient>
 }
 
 function PaginatedProductGrid({
@@ -146,7 +142,6 @@ function PaginatedProductGrid({
   onAdd,
   onAddVariant,
   formatMoney,
-  supabase,
 }: PaginatedProductGridProps) {
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
   const sentinelRef = useRef<HTMLDivElement>(null)
@@ -187,7 +182,6 @@ function PaginatedProductGrid({
             onAdd={onAdd}
             onAddVariant={onAddVariant}
             formatMoney={formatMoney}
-            supabase={supabase}
           />
         ))}
       </div>
@@ -223,10 +217,12 @@ function VariantSelectorContent({
   product,
   onAdd,
   onClose,
+  onVariantImageChange,
 }: {
   product: ProductWithCategory
   onAdd: (variant: ProductVariant, label: string) => void
   onClose: () => void
+  onVariantImageChange: (imageUrl: string | null) => void
 }) {
   const supabase = useMemo(() => createClient(), [])
   const [data, setData] = useState<ProductWithVariants | null>(null)
@@ -234,7 +230,9 @@ function VariantSelectorContent({
   const [selectedValues, setSelectedValues] = useState<Record<string, string>>({})
 
   useEffect(() => {
-    setLoading(true)
+    startTransition(() => {
+      setLoading(true)
+    })
     supabase.rpc('get_product_with_variants', { p_product_id: product.id }).then(({ data: rpc }) => {
       setLoading(false)
       if (rpc) setData(rpc as ProductWithVariants)
@@ -252,6 +250,20 @@ function VariantSelectorContent({
       v.option_values.every(ov => selectedValues[ov.option_id] === ov.option_value_id)
     ) ?? null
   }, [data, allSelected, selectedValues])
+
+  const displayImage = useMemo(() => {
+    if (!data) return null
+    return (
+      matchedVariant?.image_url ??
+      data.variants.find(v => v.stock > 0 && v.image_url)?.image_url ??
+      data.variants.find(v => v.image_url)?.image_url ??
+      null
+    )
+  }, [data, matchedVariant])
+
+  useEffect(() => {
+    onVariantImageChange(displayImage)
+  }, [displayImage, onVariantImageChange])
 
   function selectValue(optionId: string, valueId: string) {
     setSelectedValues(prev => ({ ...prev, [optionId]: valueId }))
@@ -336,7 +348,6 @@ const ProductCard = memo(function ProductCard({
   onAdd,
   onAddVariant,
   formatMoney,
-  supabase: _supabase,
 }: {
   product: ProductWithCategory
   index: number
@@ -345,9 +356,9 @@ const ProductCard = memo(function ProductCard({
   onAdd: (p: Product) => void
   onAddVariant: (p: ProductWithCategory, v: ProductVariant, label: string) => void
   formatMoney: (v: number) => string
-  supabase: ReturnType<typeof createClient>
 }) {
   const [popoverOpen, setPopoverOpen] = useState(false)
+  const [hoveredVariantImage, setHoveredVariantImage] = useState<string | null>(null)
 
   const rawPrice = activePriceList
     ? calculateProductPrice(product.cost, product.price, product.id, product.brand_id, activePriceList, priceListOverrides)
@@ -380,10 +391,10 @@ const ProductCard = memo(function ProductCard({
       ].join(' ')}
     >
       {/* Top zone */}
-      {product.image_url ? (
+      {(hoveredVariantImage ?? product.image_url) ? (
         <div className="relative w-full h-20 mb-3 rounded-md overflow-hidden shrink-0">
           <Image
-            src={product.image_url}
+            src={(hoveredVariantImage ?? product.image_url)!}
             alt={displayName}
             fill
             sizes="(max-width: 768px) 50vw, 140px"
@@ -426,7 +437,7 @@ const ProductCard = memo(function ProductCard({
       )}
 
       {product.has_variants && (
-        <span className="absolute top-2 right-2 text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20">
+        <span className="absolute top-2 right-2 text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-primary/80 text-primary-foreground border border-primary/20">
           Variantes
         </span>
       )}
@@ -438,7 +449,13 @@ const ProductCard = memo(function ProductCard({
   }
 
   return (
-    <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
+    <Popover
+      open={popoverOpen}
+      onOpenChange={open => {
+        setPopoverOpen(open)
+        if (!open) setHoveredVariantImage(null)
+      }}
+    >
       <PopoverTrigger asChild>
         {cardContent}
       </PopoverTrigger>
@@ -453,6 +470,7 @@ const ProductCard = memo(function ProductCard({
           product={product}
           onAdd={(variant, label) => onAddVariant(product, variant, label)}
           onClose={() => setPopoverOpen(false)}
+          onVariantImageChange={setHoveredVariantImage}
         />
       </PopoverContent>
     </Popover>
