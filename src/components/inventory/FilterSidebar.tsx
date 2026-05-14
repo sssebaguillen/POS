@@ -5,6 +5,7 @@ import { createPortal } from 'react-dom'
 import { ArrowDown, ArrowUp, ChevronDown, Search, SlidersHorizontal, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import type { InventoryBrand, InventoryCategory, SortOption } from '@/components/inventory/types'
+import CategoryIconPreview from '@/components/inventory/CategoryIconPreview'
 
 const SORT_OPTIONS: { field: SortOption['field']; label: string }[] = [
   { field: 'name',   label: 'Nombre' },
@@ -150,7 +151,7 @@ export default function FilterSidebar({
     <>
       {/* Backdrop */}
       <div
-        className={`fixed inset-0 z-40 bg-foreground/30 transition-opacity duration-200 ${
+        className={`fixed inset-0 z-40 dark:bg-black/60 transition-opacity duration-200 ${
           open ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
         }`}
         onClick={onClose}
@@ -268,7 +269,10 @@ export default function FilterSidebar({
                       }`}
                     >
                       <Checkbox checked={checked} />
-                      <span className="truncate">{cat.icon} {cat.name}</span>
+                      <span className="flex items-center gap-2 truncate">
+                        <CategoryIconPreview icon={cat.icon} color={cat.icon_color ?? '#7a3e10'} size={16} />
+                        {cat.name}
+                      </span>
                     </button>
                   )
                 })}

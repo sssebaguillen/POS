@@ -18,6 +18,7 @@ import VariantEditor from '@/components/inventory/VariantEditor'
 import type { VariantPayloadNew, VariantPayloadEdit } from '@/components/inventory/VariantEditor'
 import { useCurrency } from '@/lib/context/CurrencyContext'
 import { getCurrencySymbol, toTitleCase } from '@/lib/format'
+import CategoryIconPreview from '@/components/inventory/CategoryIconPreview'
 
 interface Props {
   /** When true, renders only the form (no Dialog). Used by onboarding wizard. */
@@ -491,7 +492,10 @@ export default function NewProductModal({
                                 setShowCategoryOptions(false)
                               }}
                             >
-                              {category.icon} {category.name}
+                              <span className="flex items-center gap-2">
+                                <CategoryIconPreview icon={category.icon} color={category.icon_color ?? '#7a3e10'} size={16} />
+                                {category.name}
+                              </span>
                             </button>
                           ))}
                         </div>

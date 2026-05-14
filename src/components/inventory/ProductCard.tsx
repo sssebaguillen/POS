@@ -127,7 +127,7 @@ const ProductCard = memo(function ProductCard({
 
       <div className="flex items-baseline justify-between mb-3">
         {product.has_variants ? (
-          <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-primary/10 text-primary border border-primary/20">
+          <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-primary/10 dark:bg-primary/20 text-primary border border-primary/20 dark:border-primary/40">
             {product.variant_count ?? '?'} variantes
           </span>
         ) : (

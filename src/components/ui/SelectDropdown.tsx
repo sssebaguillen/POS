@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import type React from 'react'
 import type { CSSProperties } from 'react'
 import { createPortal } from 'react-dom'
 import { Check, ChevronDown } from 'lucide-react'
@@ -12,16 +13,19 @@ interface SelectDropdownProps {
   placeholder?: string
   className?: string
   usePortal?: boolean
+  renderOption?: (option: { value: string; label: string }) => React.ReactNode
+  renderSelected?: (option: { value: string; label: string }) => React.ReactNode
 }
 
-export default function SelectDropdown({ value, onChange, options, placeholder, className, usePortal }: SelectDropdownProps) {
+export default function SelectDropdown({ value, onChange, options, placeholder, className, usePortal, renderOption, renderSelected }: SelectDropdownProps) {
   const [open, setOpen] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
   const buttonRef = useRef<HTMLButtonElement>(null)
   const dropdownRef = useRef<HTMLDivElement>(null)
   const [dropdownStyle, setDropdownStyle] = useState<CSSProperties>({})
 
-  const selectedLabel = options.find(o => o.value === value)?.label ?? placeholder ?? ''
+  const selectedOption = options.find(o => o.value === value)
+  const selectedLabel = selectedOption?.label ?? placeholder ?? ''
 
   function computeDropdownStyle() {
     if (!buttonRef.current) return
@@ -85,7 +89,7 @@ export default function SelectDropdown({ value, onChange, options, placeholder, 
               isActive ? 'text-primary font-medium' : 'text-body'
             }`}
           >
-            <span>{option.label}</span>
+            {renderOption ? renderOption(option) : <span>{option.label}</span>}
             {isActive && <Check size={13} className="shrink-0 text-primary" />}
           </button>
         )
@@ -101,7 +105,10 @@ export default function SelectDropdown({ value, onChange, options, placeholder, 
         onClick={() => setOpen(prev => !prev)}
         className="h-9 w-full rounded-lg border border-input bg-card text-sm text-body px-3 flex items-center justify-between gap-2 transition-colors hover:bg-surface-alt dark:bg-input/30"
       >
-        <span className="truncate">{selectedLabel}</span>
+        {renderSelected && selectedOption
+          ? <span className="truncate flex items-center gap-2">{renderSelected(selectedOption)}</span>
+          : <span className="truncate">{selectedLabel}</span>
+        }
         <ChevronDown size={14} className={`shrink-0 text-subtle transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>
 

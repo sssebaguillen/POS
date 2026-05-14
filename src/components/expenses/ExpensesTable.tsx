@@ -142,7 +142,7 @@ export default function ExpensesTable({ expenses, businessId, supabaseClient, on
                   {new Date(expense.date).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' })}
                 </td>
                 <td className="px-4 py-3">
-                  <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-primary/10 text-primary">
+                  <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-primary/10 dark:bg-primary/20 text-primary">
                     {EXPENSE_CATEGORY_LABELS[expense.category]}
                   </span>
                 </td>

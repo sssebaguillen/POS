@@ -35,6 +35,49 @@ function computeActiveText(hex: string): { light: string; dark: string } {
   }
 }
 
+function hexToHsl(hex: string): [number, number, number] {
+  const r = parseInt(hex.slice(1, 3), 16) / 255
+  const g = parseInt(hex.slice(3, 5), 16) / 255
+  const b = parseInt(hex.slice(5, 7), 16) / 255
+  const max = Math.max(r, g, b), min = Math.min(r, g, b), delta = max - min
+  let h = 0, s = 0
+  const l = (max + min) / 2
+  if (delta !== 0) {
+    s = delta / (1 - Math.abs(2 * l - 1))
+    if (max === r) h = ((g - b) / delta) % 6
+    else if (max === g) h = (b - r) / delta + 2
+    else h = (r - g) / delta + 4
+    h *= 60
+    if (h < 0) h += 360
+  }
+  return [h, s, l]
+}
+
+function hslToHex(h: number, s: number, l: number): string {
+  const c = (1 - Math.abs(2 * l - 1)) * s
+  const x = c * (1 - Math.abs((h / 60) % 2 - 1))
+  const m = l - c / 2
+  let r = 0, g = 0, b = 0
+  if (h < 60)       { r = c; g = x; b = 0 }
+  else if (h < 120) { r = x; g = c; b = 0 }
+  else if (h < 180) { r = 0; g = c; b = x }
+  else if (h < 240) { r = 0; g = x; b = c }
+  else if (h < 300) { r = x; g = 0; b = c }
+  else              { r = c; g = 0; b = x }
+  const toHex = (n: number) => Math.round((n + m) * 255).toString(16).padStart(2, '0')
+  return `#${toHex(r)}${toHex(g)}${toHex(b)}`
+}
+
+// Ensures the brand color is readable on dark backgrounds (min luminance 0.18).
+// Colors already above the threshold pass through unchanged.
+// Dark colors (e.g. #7a3e10, L≈0.08) are shifted to 65% HSL lightness while preserving hue/saturation.
+function computeDarkPrimary(hex: string): string {
+  const L = luminance(hex)
+  if (L > 0.18) return hex
+  const [h, s] = hexToHsl(hex)
+  return hslToHex(h, s, 0.65)
+}
+
 interface AppLayoutProps {
   children: React.ReactNode
 }
@@ -115,6 +158,8 @@ export default async function AppLayout({
         }
         .dark {
           --primary-active-text: ${computeActiveText(primaryColor).dark};
+          --primary: ${computeDarkPrimary(primaryColor)};
+          --primary-foreground: #1a0800;
         }
       `}</style>
       <AppShell

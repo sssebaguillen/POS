@@ -694,7 +694,7 @@ function GroupedPriceRowsTable({
                         {row.product.has_variants ? (
                           <div className="flex flex-col items-end gap-0.5">
                             <span>{formatMoney(row.product.price)}</span>
-                            <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-primary/10 text-primary border border-primary/20 whitespace-nowrap">
+                            <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-primary/10 dark:bg-primary/20 text-primary border border-primary/20 dark:border-primary/40 whitespace-nowrap">
                               por variante
                             </span>
                           </div>
@@ -702,7 +702,7 @@ function GroupedPriceRowsTable({
                           <>
                             {formatMoney(row.finalPrice)}
                             {(row.productOverride ?? row.brandOverride) && (
-                              <span className="ml-1.5 inline-flex rounded-full px-2 py-0.5 text-[10px] font-medium bg-primary/10 text-primary border border-primary/20">
+                              <span className="ml-1.5 inline-flex rounded-full px-2 py-0.5 text-[10px] font-medium bg-primary/10 dark:bg-primary/20 text-primary border border-primary/20 dark:border-primary/40">
                                 Ajuste
                               </span>
                             )}

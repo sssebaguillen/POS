@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { ArrowDown, ArrowUp, ChevronDown, Search } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
+import CategoryIconPreview from '@/components/inventory/CategoryIconPreview'
 
 // ─── Filter state ─────────────────────────────────────────────────────────────
 
@@ -61,6 +62,7 @@ export interface FilterCategory {
   id: string
   name: string
   icon?: string
+  icon_color?: string
 }
 
 export interface FilterBrand {
@@ -209,7 +211,10 @@ function TopbarLayout({
               onClick={() => toggleCategory(cat.id)}
               className={chip(value.categoryIds.includes(cat.id))}
             >
-              {cat.icon ? `${cat.icon} ${cat.name}` : cat.name}
+              <span className="flex items-center gap-1.5">
+                {cat.icon && <CategoryIconPreview icon={cat.icon} color={cat.icon_color ?? 'var(--primary)'} size={14} />}
+                {cat.name}
+              </span>
             </button>
           ))}
         </>
@@ -430,7 +435,10 @@ function SidebarLayout({
                     }`}
                   >
                     <Checkbox checked={checked} />
-                    <span className="truncate">{cat.icon ? `${cat.icon} ${cat.name}` : cat.name}</span>
+                    <span className="flex items-center gap-2 truncate">
+                      {cat.icon && <CategoryIconPreview icon={cat.icon} color={cat.icon_color ?? 'var(--primary)'} size={15} />}
+                      {cat.name}
+                    </span>
                   </button>
                 )
               })}
@@ -507,7 +515,7 @@ function SidebarLayout({
                             onClick={() => toggleVariantValue(group.typeId, val)}
                             className={`px-2.5 py-1 rounded-full border text-xs font-medium transition-colors ${
                               active
-                                ? 'bg-primary/10 text-primary border-primary/20'
+                                ? 'bg-primary/10 dark:bg-primary/20 text-primary border-primary/20 dark:border-primary/40'
                                 : 'border-edge text-body hover:bg-hover-bg'
                             }`}
                           >

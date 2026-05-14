@@ -14,6 +14,7 @@ import VariantEditor from '@/components/inventory/VariantEditor'
 import type { VariantPayloadEdit, VariantPayloadNew } from '@/components/inventory/VariantEditor'
 import { useCurrency } from '@/lib/context/CurrencyContext'
 import { getCurrencySymbol, toTitleCase } from '@/lib/format'
+import CategoryIconPreview from '@/components/inventory/CategoryIconPreview'
 
 interface EditProductModalProps {
   open: boolean
@@ -505,7 +506,10 @@ export default function EditProductModal({
                                 setShowCategoryOptions(false)
                               }}
                             >
-                              {category.icon} {category.name}
+                              <span className="flex items-center gap-2">
+                                <CategoryIconPreview icon={category.icon} color={category.icon_color ?? '#7a3e10'} size={16} />
+                                {category.name}
+                              </span>
                             </button>
                           ))}
                         </div>

@@ -130,8 +130,8 @@
   --popover-foreground: #e8e6e1;
 
   /* Brand primary — warm amber, sole carrier of brand warmth */
-  --primary: #c8843a;
-  --primary-foreground: #ffffff;
+  --primary: #fbbf24;
+  --primary-foreground: #1a0800;
 
   /* Surfaces — near-neutral, barely warm undertone */
   --secondary: #1a1a18;

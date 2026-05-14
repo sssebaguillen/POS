@@ -34,6 +34,7 @@ import Toast from '@/components/shared/Toast'
 import { useFormatMoney } from '@/lib/context/CurrencyContext'
 import { trackFeatureUsed } from '@/lib/analytics'
 import { fetchInventoryProducts } from '@/lib/inventory-products'
+import CategoryIconPreview from '@/components/inventory/CategoryIconPreview'
 
 const PAGE_SIZE = 60
 
@@ -729,7 +730,7 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
                 <button
                   type="button"
                   onClick={selectedIds.size === filtered.length ? handleDeselectAll : handleSelectAll}
-                  className="inline-flex items-center gap-1 rounded-md border border-primary/30 bg-primary/5 px-2.5 py-1.5 text-xs font-medium text-primary hover:bg-primary/10 transition-colors touch-manipulation"
+                  className="inline-flex items-center gap-1 rounded-md border border-primary/30 dark:border-primary/50 bg-primary/5 dark:bg-primary/15 px-2.5 py-1.5 text-xs font-medium text-primary hover:bg-primary/10 transition-colors touch-manipulation"
                 >
                   <CheckSquare size={12} />
                   {selectedIds.size === filtered.length ? 'Deseleccionar todo' : 'Seleccionar todo'}
@@ -776,7 +777,8 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
             if (!cat) return null
             return (
               <span key={id} className="flex items-center gap-1.5 text-xs bg-primary/10 text-primary rounded-full px-2.5 py-1 font-medium">
-                {cat.icon} {cat.name}
+                <CategoryIconPreview icon={cat.icon} color={cat.icon_color ?? 'var(--primary)'} size={12} />
+                {cat.name}
                 <button
                   type="button"
                   onClick={() => setFilterValue(prev => ({ ...prev, categoryIds: prev.categoryIds.filter(c => c !== id) }))}
@@ -978,7 +980,7 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
               fetchInventoryProducts(supabase, businessId),
               supabase
                 .from('categories')
-                .select('id, name, icon')
+                .select('id, name, icon, icon_color')
                 .eq('business_id', businessId)
                 .eq('is_active', true)
                 .order('position'),
@@ -1057,7 +1059,7 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
       {typeof document !== 'undefined' && createPortal(
         <>
           <div
-            className={`fixed inset-0 z-40 bg-foreground/30 transition-opacity duration-200 ${filterOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}
+            className={`fixed inset-0 z-40 dark:bg-black/60 transition-opacity duration-200 ${filterOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}
             onClick={() => setFilterOpen(false)}
           />
           <div
@@ -1088,7 +1090,7 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
                 layout="sidebar"
                 value={filterValue}
                 onChange={setFilterValue}
-                categories={categories.map(c => ({ id: c.id, name: c.name, icon: c.icon }))}
+                categories={categories.map(c => ({ id: c.id, name: c.name, icon: c.icon, icon_color: c.icon_color }))}
                 brands={brands.map(b => ({ id: b.id, name: b.name }))}
                 sortOptions={[
                   { field: 'name', label: 'Nombre' },

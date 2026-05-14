@@ -2,6 +2,7 @@ export interface InventoryCategory {
   id: string
   name: string
   icon: string
+  icon_color?: string
 }
 
 export interface InventoryBrand {

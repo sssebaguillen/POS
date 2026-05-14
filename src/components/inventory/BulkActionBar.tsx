@@ -7,6 +7,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import SelectDropdown from '@/components/ui/SelectDropdown'
 import ConfirmModal from '@/components/shared/ConfirmModal'
 import type { InventoryCategory, InventoryBrand } from '@/components/inventory/types'
+import CategoryIconPreview from '@/components/inventory/CategoryIconPreview'
 
 interface BulkActionBarProps {
   selectedCount: number
@@ -46,7 +47,7 @@ export default function BulkActionBar({
 
   const categoryOptions = [
     { value: '__none__', label: 'Sin categoría' },
-    ...categories.map(c => ({ value: c.id, label: c.icon ? `${c.icon} ${c.name}` : c.name })),
+    ...categories.map(c => ({ value: c.id, label: c.name })),
   ]
 
   const brandOptions = [
@@ -123,6 +124,15 @@ export default function BulkActionBar({
                   options={categoryOptions}
                   placeholder="Seleccionar categoría"
                   usePortal
+                  renderOption={opt => {
+                    const cat = categories.find(c => c.id === opt.value)
+                    return (
+                      <span className="flex items-center gap-2">
+                        {cat && <CategoryIconPreview icon={cat.icon} color={cat.icon_color ?? '#7a3e10'} size={15} />}
+                        {opt.label}
+                      </span>
+                    )
+                  }}
                 />
                 <div className="flex justify-end gap-2">
                   <Button
