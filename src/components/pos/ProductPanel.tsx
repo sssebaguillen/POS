@@ -218,11 +218,13 @@ function VariantSelectorContent({
   onAdd,
   onClose,
   onVariantImageChange,
+  formatMoney,
 }: {
   product: ProductWithCategory
   onAdd: (variant: ProductVariant, label: string) => void
   onClose: () => void
   onVariantImageChange: (imageUrl: string | null) => void
+  formatMoney: (v: number) => string
 }) {
   const supabase = useMemo(() => createClient(), [])
   const [data, setData] = useState<ProductWithVariants | null>(null)
@@ -255,6 +257,12 @@ function VariantSelectorContent({
       })
     ) ?? null
   }, [data, allSelected, selectedValues])
+
+  const minVariantPrice = useMemo(() => {
+    if (!data) return null
+    const prices = data.variants.filter(v => v.is_active).map(v => Number(v.price)).filter(p => Number.isFinite(p) && p > 0)
+    return prices.length > 0 ? Math.min(...prices) : null
+  }, [data])
 
   const displayImage = useMemo(() => {
     if (!data) return null
@@ -330,6 +338,14 @@ function VariantSelectorContent({
           </div>
         </div>
       ))}
+
+      <p className="text-sm font-semibold text-heading tabular-nums">
+        {matchedVariant
+          ? formatMoney(Number(matchedVariant.price))
+          : minVariantPrice != null
+            ? `Desde ${formatMoney(minVariantPrice)}`
+            : ''}
+      </p>
 
       <button
         type="button"
@@ -476,6 +492,7 @@ const ProductCard = memo(function ProductCard({
           onAdd={(variant, label) => onAddVariant(product, variant, label)}
           onClose={() => setPopoverOpen(false)}
           onVariantImageChange={setHoveredVariantImage}
+          formatMoney={formatMoney}
         />
       </PopoverContent>
     </Popover>
