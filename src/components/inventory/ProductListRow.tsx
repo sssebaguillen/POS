@@ -19,6 +19,7 @@ const ProductListRow = memo(function ProductListRow({
   onDelete,
   onQuickCategory,
   onQuickBrand,
+  onViewStock,
 }: ProductCardProps) {
   const formatMoney = useFormatMoney()
   const status = getStatus(product)
@@ -110,9 +111,14 @@ const ProductListRow = memo(function ProductListRow({
 
       <TableCell className="text-right">
         {product.has_variants ? (
-          <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-primary/10 dark:bg-primary/20 text-primary border border-primary/20 dark:border-primary/40 whitespace-nowrap">
+          <button
+            type="button"
+            onClick={() => onViewStock(product.id)}
+            className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-primary/10 dark:bg-primary/20 text-primary border border-primary/20 dark:border-primary/40 whitespace-nowrap hover:bg-primary/20 dark:hover:bg-primary/30 transition-colors cursor-pointer touch-manipulation"
+            aria-label={`Ver stock de variantes de ${product.name}`}
+          >
             {product.variant_count ?? '?'} variantes
-          </span>
+          </button>
         ) : (
           <>
             <p className="text-sm font-semibold text-heading tabular-nums">{product.stock} <span className="text-xs font-normal text-hint">uds</span></p>

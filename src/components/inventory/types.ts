@@ -58,6 +58,7 @@ export interface ProductCardProps {
   onDelete: (product: InventoryProduct) => void
   onQuickCategory: (product: InventoryProduct) => void
   onQuickBrand: (product: InventoryProduct) => void
+  onViewStock: (productId: string) => void
 }
 
 export function getStatus(product: InventoryProduct): 'ok' | 'low' | 'out' | 'discontinued' {

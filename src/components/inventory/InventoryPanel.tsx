@@ -25,6 +25,7 @@ import QuickEditCategoryModal from '@/components/inventory/QuickEditCategoryModa
 import QuickEditBrandModal from '@/components/inventory/QuickEditBrandModal'
 import ProductCard from '@/components/inventory/ProductCard'
 import ProductListRow from '@/components/inventory/ProductListRow'
+import ProductStockModal from '@/components/inventory/ProductStockModal'
 import type { PriceList, PriceListOverride } from '@/lib/types'
 import type { InventoryBrand, InventoryCategory, InventoryProduct, SortOption } from '@/components/inventory/types'
 import { getStatus } from '@/components/inventory/types'
@@ -77,6 +78,7 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
   const [editingProduct, setEditingProduct] = useState<InventoryProduct | null>(null)
   const [quickEditCategoryProduct, setQuickEditCategoryProduct] = useState<InventoryProduct | null>(null)
   const [quickEditBrandProduct, setQuickEditBrandProduct] = useState<InventoryProduct | null>(null)
+  const [selectedStockProductId, setSelectedStockProductId] = useState<string | null>(null)
   const [crudError, setCrudError] = useState<string | null>(null)
   const [pendingConfirm, setPendingConfirm] = useState<ConfirmState>(null)
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
@@ -415,6 +417,10 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
     if (readOnly) return
     setQuickEditBrandProduct(product)
   }, [readOnly])
+
+  const handleViewStock = useCallback((productId: string) => {
+    setSelectedStockProductId(productId)
+  }, [])
 
   const handleToggleSelect = useCallback((id: string) => {
     setSelectedIds(prev => {
@@ -850,6 +856,7 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
                 onDelete={handleDeleteProduct}
                 onQuickCategory={handleQuickCategory}
                 onQuickBrand={handleQuickBrand}
+                onViewStock={handleViewStock}
               />
             ))}
           </div>
@@ -885,6 +892,7 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
                     onDelete={handleDeleteProduct}
                     onQuickCategory={handleQuickCategory}
                     onQuickBrand={handleQuickBrand}
+                    onViewStock={handleViewStock}
                   />
                 ))}
               </TableBody>
@@ -1033,6 +1041,14 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
           operatorId={operatorId}
           onSaved={handleQuickCategorySaved}
           onClose={() => setQuickEditCategoryProduct(null)}
+        />
+      )}
+
+      {selectedStockProductId && businessId && (
+        <ProductStockModal
+          productId={selectedStockProductId}
+          businessId={businessId}
+          onClose={() => setSelectedStockProductId(null)}
         />
       )}
 
