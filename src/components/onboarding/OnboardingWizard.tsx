@@ -16,8 +16,12 @@ import {
   parseOnboardingState,
   type OnboardingState,
 } from '@/components/onboarding/onboarding-types'
+import { CATEGORY_ICONS, ICON_COLOR_PRESETS } from '@/components/inventory/IconPickerPanel'
+import { DynamicIcon } from '@/components/inventory/CategoryIconPreview'
+import { cn } from '@/lib/utils'
 
-const CATEGORY_COLOR_ICONS = ['🔴', '🟠', '🟡', '🟢', '🔵', '🟣'] as const
+const DEFAULT_ICON = 'Package'
+const DEFAULT_COLOR = '#7a3e10'
 const FINAL_WIZARD_STEP = 5
 
 export interface OnboardingWizardProfile {
@@ -87,7 +91,9 @@ export default function OnboardingWizard({
   const [step0Error, setStep0Error] = useState('')
 
   const [categoryName, setCategoryName] = useState('')
-  const [categoryIcon, setCategoryIcon] = useState<string>(CATEGORY_COLOR_ICONS[0])
+  const [categoryIcon, setCategoryIcon] = useState<string>(DEFAULT_ICON)
+  const [categoryColor, setCategoryColor] = useState<string>(DEFAULT_COLOR)
+  const [iconSearch, setIconSearch] = useState('')
   const [categoryError, setCategoryError] = useState<string | null>(null)
   const [categorySaving, setCategorySaving] = useState(false)
   const [categories, setCategories] = useState<CategoryRow[]>(initialCategories)
@@ -183,7 +189,7 @@ export default function OnboardingWizard({
     }
     setCategorySaving(true)
     setCategoryError(null)
-    const iconValue = categoryIcon.trim() || CATEGORY_COLOR_ICONS[0]
+    const iconValue = categoryIcon.trim() || DEFAULT_ICON
     const { data: rpcResult, error: rpcError } = await supabase.rpc('create_category_guarded', {
       p_operator_id: operatorId,
       p_business_id: businessId,
@@ -197,20 +203,18 @@ export default function OnboardingWizard({
       return
     }
     const createdId = typeof result.id === 'string' ? result.id : null
-    let nextRow: CategoryRow | null = null
     if (createdId) {
-      const { data: row } = await supabase
+      await supabase
         .from('categories')
-        .select('id, name, icon')
+        .update({ icon_color: categoryColor })
         .eq('id', createdId)
-        .single()
-      if (row) nextRow = { id: row.id, name: row.name, icon: row.icon ?? iconValue }
-      else nextRow = { id: createdId, name: trimmed, icon: iconValue }
     }
     withStepDone('category')
     setCategoryName('')
-    setCategoryIcon(CATEGORY_COLOR_ICONS[0])
-    if (nextRow) setCategories(prev => [...prev, nextRow!])
+    setCategoryIcon(DEFAULT_ICON)
+    setCategoryColor(DEFAULT_COLOR)
+    setIconSearch('')
+    if (createdId) setCategories(prev => [...prev, { id: createdId, name: trimmed, icon: iconValue }])
     setCategorySaving(false)
     setStep(2)
   }
@@ -431,20 +435,68 @@ export default function OnboardingWizard({
                 />
               </div>
               <div className="space-y-2">
-                <p className="text-label text-subtle">Color / icono</p>
-                <div className="flex flex-wrap gap-2">
-                  {CATEGORY_COLOR_ICONS.map(ic => (
+                <p className="text-label text-subtle">Icono</p>
+                <Input
+                  value={iconSearch}
+                  onChange={e => setIconSearch(e.target.value)}
+                  placeholder="Buscar icono…"
+                  className="h-8 text-sm bg-surface border-edge"
+                />
+                <div className="max-h-44 overflow-y-auto rounded-xl border border-edge/60 bg-surface p-2">
+                  <div className="grid grid-cols-6 gap-1.5">
+                    {CATEGORY_ICONS.filter(i =>
+                      !iconSearch.trim() || i.label.toLowerCase().includes(iconSearch.toLowerCase())
+                    ).map(({ name, label }) => (
+                      <button
+                        key={name}
+                        type="button"
+                        onClick={() => setCategoryIcon(name)}
+                        className={cn(
+                          'flex flex-col items-center justify-center gap-1 rounded-lg p-1.5 h-14',
+                          'border transition-colors hover:bg-accent',
+                          categoryIcon === name ? 'border-2 bg-accent/60' : 'border-transparent',
+                        )}
+                        style={categoryIcon === name ? { borderColor: categoryColor } : undefined}
+                        aria-label={label}
+                      >
+                        <DynamicIcon name={name} size={20} color={categoryColor} />
+                        <span className="text-[9px] text-subtle leading-tight truncate w-full text-center">
+                          {label}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <p className="text-label text-subtle">Color del icono</p>
+                <div className="flex items-center gap-2 flex-wrap">
+                  {ICON_COLOR_PRESETS.map(hex => (
                     <button
-                      key={ic}
+                      key={hex}
                       type="button"
-                      onClick={() => setCategoryIcon(ic)}
-                      className={`h-10 w-10 rounded-lg border text-lg flex items-center justify-center transition-colors ${
-                        categoryIcon === ic ? 'border-primary ring-2 ring-ring/50' : 'border-edge bg-surface'
-                      }`}
-                    >
-                      {ic}
-                    </button>
+                      onClick={() => setCategoryColor(hex)}
+                      className={cn(
+                        'w-6 h-6 rounded-full border-2 transition-all hover:scale-110',
+                        categoryColor === hex ? 'scale-110 border-heading' : 'border-transparent',
+                      )}
+                      style={{ backgroundColor: hex }}
+                      aria-label={hex}
+                    />
                   ))}
+                  <input
+                    type="color"
+                    value={categoryColor}
+                    onChange={e => setCategoryColor(e.target.value)}
+                    className="w-6 h-6 rounded-full cursor-pointer border-0 p-0 bg-transparent"
+                    title="Color personalizado"
+                  />
+                  <div className="ml-auto flex items-center gap-2 px-3 py-1 rounded-full bg-muted/50">
+                    <DynamicIcon name={categoryIcon} size={16} color={categoryColor} />
+                    <span className="text-xs font-medium" style={{ color: categoryColor }}>
+                      {CATEGORY_ICONS.find(i => i.name === categoryIcon)?.label ?? categoryIcon}
+                    </span>
+                  </div>
                 </div>
               </div>
               {categoryError && (
