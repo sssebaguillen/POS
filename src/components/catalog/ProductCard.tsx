@@ -9,17 +9,11 @@ import { Button } from '@/components/ui/button'
 import VariantQuickSelector from '@/components/catalog/VariantQuickSelector'
 import type { CatalogProduct, CatalogVariantOption, CatalogProductVariant } from '@/components/catalog/types'
 
-let _anonClient: ReturnType<typeof createClient> | null = null
-function getAnonClient() {
-  if (!_anonClient) {
-    _anonClient = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      { auth: { persistSession: false, autoRefreshToken: false } }
-    )
-  }
-  return _anonClient
-}
+const anonClient = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+  { auth: { persistSession: false, autoRefreshToken: false } }
+)
 
 interface VariantData {
   options: CatalogVariantOption[]
@@ -99,7 +93,7 @@ export default function ProductCard({ product, slug, onAddToCart }: ProductCardP
 
     setIsLoadingVariants(true)
     try {
-      const { data, error } = await getAnonClient().rpc('get_catalog_product_with_variants', {
+      const { data, error } = await anonClient.rpc('get_catalog_product_with_variants', {
         p_slug: slug,
         p_product_id: product.id,
         // eslint-disable-next-line @typescript-eslint/no-explicit-any

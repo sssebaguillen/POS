@@ -101,11 +101,7 @@ export default function CatalogView({
   const [cartItems, setCartItems] = useState<CatalogCartItem[]>(() =>
     getStoredCartItems(cartKey, products)
   )
-  const [viewMode, setViewMode] = useState<ViewMode>(() => {
-    if (typeof window === 'undefined') return 'grid'
-    const stored = localStorage.getItem(VIEW_MODE_KEY)
-    return stored === 'list' || stored === 'grid' ? stored : 'grid'
-  })
+  const [viewMode, setViewMode] = useState<ViewMode>('grid')
 
   // Detect mobile breakpoint after mount (lg = 1024px)
   useEffect(() => {
@@ -119,6 +115,11 @@ export default function CatalogView({
     const payload: StoredCart = { items: cartItems, savedAt: Date.now() }
     localStorage.setItem(cartKey, JSON.stringify(payload))
   }, [cartItems, cartKey])
+
+  useEffect(() => {
+    const stored = localStorage.getItem(VIEW_MODE_KEY)
+    if (stored === 'list' || stored === 'grid') setViewMode(stored)
+  }, [])
 
   useEffect(() => {
     localStorage.setItem(VIEW_MODE_KEY, viewMode)
