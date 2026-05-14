@@ -24,9 +24,7 @@ function computeForeground(hex: string): string {
   return luminance(hex) > 0.45 ? '#0F172A' : '#ffffff'
 }
 
-// Returns the best text color for active nav states (primary-colored text on a tinted surface).
-// Light mode: primary is displayed on a near-white surface — if primary is too light, fall back to dark.
-// Dark mode:  primary is displayed on a near-black surface — if primary is too dark, fall back to light.
+// Light/dark active-nav text: falls back to near-black or near-white when the brand color lacks contrast.
 function computeActiveText(hex: string): { light: string; dark: string } {
   const L = luminance(hex)
   return {
@@ -68,9 +66,7 @@ function hslToHex(h: number, s: number, l: number): string {
   return `#${toHex(r)}${toHex(g)}${toHex(b)}`
 }
 
-// Ensures the brand color is readable on dark backgrounds (min luminance 0.18).
-// Colors already above the threshold pass through unchanged.
-// Dark colors (e.g. #7a3e10, L≈0.08) are shifted to 65% HSL lightness while preserving hue/saturation.
+// Dark-mode brand color: shifts low-luminance colors (< 0.18) to 65% HSL lightness to stay legible.
 function computeDarkPrimary(hex: string): string {
   const L = luminance(hex)
   if (L > 0.18) return hex

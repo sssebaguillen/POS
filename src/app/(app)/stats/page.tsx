@@ -23,7 +23,7 @@ export default async function StatsPage({
   const supabase = await createClient()
   const businessId = await requireAuthenticatedBusinessId(supabase)
 
-  const period = params.period ?? 'hoy'
+  const period = params.period ?? 'mes'
   const { from, to } = resolveDateRange(period, params.from, params.to)
 
   const [{ data: kpisRaw }, { data: evolutionRaw }, { data: breakdownRaw }, { data: topProductsRaw }, { data: operatorsRaw }] =
