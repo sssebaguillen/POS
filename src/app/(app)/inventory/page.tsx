@@ -79,7 +79,7 @@ export default async function InventoryPage() {
       key={`${categoryIds}|${brandIds}`}
       businessId={businessId}
       operatorId={activeOperator?.profile_id ?? null}
-      readOnly={activeOperator?.permissions.stock_write !== true}
+      readOnly={activeOperator !== null && activeOperator.permissions.stock_write !== true}
       initialProducts={products ?? []}
       categories={categories ?? []}
       brands={brands ?? []}

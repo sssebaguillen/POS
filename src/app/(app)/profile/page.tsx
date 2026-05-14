@@ -6,10 +6,10 @@ import { requireAuthenticatedBusinessId } from '@/lib/business'
 
 export default async function ProfilePage() {
   const supabase = await createClient()
-  const businessId = await requireAuthenticatedBusinessId(supabase)
-
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
+
+  const businessId = await requireAuthenticatedBusinessId(supabase)
 
   const [{ data: profile, error: profileError }, { data: business, error: businessError }] =
     await Promise.all([

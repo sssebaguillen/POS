@@ -1,12 +1,11 @@
 export const runtime = 'edge'
 
-import { redirect } from 'next/navigation'
 import { cookies } from 'next/headers'
 import { createClient } from '@/lib/supabase/server'
 import DashboardView from '@/components/dashboard/DashboardView'
 import type { BusinessBalance } from '@/components/expenses/types'
 import type { PaymentMethod } from '@/lib/constants/domain'
-import { requireAuthenticatedBusinessId } from '@/lib/business'
+import { requireAuthenticatedBusinessContext } from '@/lib/business'
 import { getActiveOperator } from '@/lib/operator'
 import { normalizePriceList } from '@/lib/mappers'
 import type { PriceList } from '@/lib/types'
@@ -19,14 +18,7 @@ export default async function DashboardPage() {
   const cookieStore = await cookies()
   const activeOperator = getActiveOperator(cookieStore)
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) {
-    redirect('/login')
-  }
-
-  const businessId = await requireAuthenticatedBusinessId(supabase)
+  const { userId, businessId } = await requireAuthenticatedBusinessContext(supabase)
 
   const [{ data: sales }, { data: products }, { data: business }, balanceResult, { data: profile }] = await Promise.all([
     supabase
@@ -50,7 +42,7 @@ export default async function DashboardPage() {
       p_from: null,
       p_to: null,
     }),
-    supabase.from('profiles').select('id, role, onboarding_state').eq('id', user.id).single(),
+    supabase.from('profiles').select('id, role, onboarding_state').eq('id', userId).single(),
   ])
 
   const balance = (balanceResult.data as unknown as BusinessBalance | null) ?? {

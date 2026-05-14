@@ -1,4 +1,3 @@
-import { redirect } from 'next/navigation'
 import { cookies } from 'next/headers'
 import { createClient } from '@/lib/supabase/server'
 import PageHeader from '@/components/shared/PageHeader'
@@ -11,14 +10,6 @@ export default async function SettingsPage() {
   const supabase = await createClient()
   const cookieStore = await cookies()
   const activeOperator = getActiveOperator(cookieStore)
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
-  if (!user) {
-    redirect('/login')
-  }
 
   const businessId = await requireAuthenticatedBusinessId(supabase)
 

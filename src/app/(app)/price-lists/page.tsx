@@ -37,7 +37,7 @@ export default async function PriceListsPage() {
   return (
     <PriceListsPanel
       businessId={businessId}
-      readOnly={activeOperator?.permissions.price_lists_write !== true}
+      readOnly={activeOperator !== null && activeOperator.permissions.price_lists_write !== true}
       initialLists={(lists ?? []).map(normalizePriceList)}
       products={(products ?? []).map(product => {
         const variantArr = product.default_variant as { price: number; cost: number }[] | null
