@@ -30,6 +30,7 @@ export interface SaleRow {
 export interface SaleItem {
   id: string
   product_id: string | null
+  variant_id: string | null
   product_name: string
   product_icon: string | null
   quantity: number

@@ -10,7 +10,7 @@ import { useFormatMoney } from '@/lib/context/CurrencyContext'
 
 interface EditSalePanelProps {
   sale: SaleDetail
-  onSave: (items: { product_id: string | null; quantity: number; unit_price: number }[], paymentMethod: PaymentMethod) => void
+  onSave: (items: { product_id: string | null; variant_id: string | null; quantity: number; unit_price: number }[], paymentMethod: PaymentMethod) => void
   onCancel: () => void
 }
 
@@ -112,7 +112,7 @@ export default function EditSalePanel({
             className="h-10 rounded-lg text-sm font-semibold bg-primary hover:bg-primary/90 text-primary-foreground"
             disabled={items.length === 0}
             onClick={() => onSave(
-              items.map(i => ({ product_id: i.product_id, quantity: i.quantity, unit_price: i.unit_price })),
+              items.map(i => ({ product_id: i.product_id, variant_id: i.variant_id, quantity: i.quantity, unit_price: i.unit_price })),
               paymentMethod
             )}
           >

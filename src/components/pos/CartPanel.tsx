@@ -41,6 +41,7 @@ type RightTab = 'current' | 'history'
 interface SaleItemQueryRow {
   id: string
   product_id: string | null
+  variant_id: string | null
   product_name: string
   product_icon: string | null
   quantity: number
@@ -276,6 +277,7 @@ export default function CartPanel({ businessId, businessName, freeLineEnabled, a
       items: (data.items ?? []).map((row: SaleItemQueryRow) => ({
         id: row.id,
         product_id: row.product_id,
+        variant_id: row.variant_id ?? null,
         product_name: row.product_name,
         product_icon: row.product_icon ?? null,
         quantity: row.quantity,
@@ -363,7 +365,7 @@ export default function CartPanel({ businessId, businessName, freeLineEnabled, a
 
   async function handleUpdateSale(
     saleId: string,
-    items: { product_id: string | null; quantity: number; unit_price: number }[],
+    items: { product_id: string | null; variant_id: string | null; quantity: number; unit_price: number }[],
     paymentMethod: PaymentMethod
   ) {
     if (!businessId) return
@@ -393,10 +395,13 @@ export default function CartPanel({ businessId, businessName, freeLineEnabled, a
             total: newTotal,
             payment_method: paymentMethod,
             items: items.map(i => {
-              const found = existing.items.find(ei => ei.product_id === i.product_id)
+              const found = existing.items.find(ei =>
+                i.variant_id ? ei.variant_id === i.variant_id : ei.product_id === i.product_id
+              )
               return {
                 id: found?.id ?? '',
                 product_id: i.product_id,
+                variant_id: i.variant_id,
                 product_name: found?.product_name ?? '',
                 product_icon: found?.product_icon ?? null,
                 quantity: i.quantity,
