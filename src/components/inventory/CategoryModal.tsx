@@ -116,7 +116,7 @@ export default function CategoryModal({
       p_icon: icon.trim() || DEFAULT_ICON,
     })
 
-    const result = rpcResult as { success: boolean; error?: string } | null
+    const result = rpcResult as { success: boolean; id?: string; error?: string } | null
 
     if (rpcError || !result?.success) {
       setError(result?.error ?? rpcError?.message ?? 'Error al crear la categoría')
@@ -124,21 +124,17 @@ export default function CategoryModal({
       return
     }
 
-    const { data: newCat } = await supabase
+    const { error: colorError } = await supabase
       .from('categories')
-      .select('id')
+      .update({ icon_color: iconColor })
+      .eq('id', result.id!)
       .eq('business_id', businessId)
-      .eq('name', name.trim())
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .single()
 
-    if (newCat) {
-      await supabase
-        .from('categories')
-        .update({ icon_color: iconColor })
-        .eq('id', newCat.id)
-        .eq('business_id', businessId)
+    if (colorError) {
+      setError('Categoría creada, pero no se pudo guardar el color del icono. Editá la categoría para corregirlo.')
+      await refreshCategories()
+      setCreating(false)
+      return
     }
 
     setName('')
@@ -191,11 +187,17 @@ export default function CategoryModal({
       return
     }
 
-    await supabase
+    const { error: colorError } = await supabase
       .from('categories')
       .update({ icon_color: editIconColor })
       .eq('id', categoryId)
       .eq('business_id', businessId)
+
+    if (colorError) {
+      setError('No se pudo guardar el color del icono. Intentá de nuevo.')
+      setSaving(false)
+      return
+    }
 
     const updated = categories.map(c =>
       c.id === categoryId
