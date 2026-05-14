@@ -49,7 +49,7 @@ export default function LoginPage() {
 
     try {
       await supabase.auth.resetPasswordForEmail(normalizedEmail, {
-        redirectTo: 'https://pulsarpos.vercel.app/auth/update-password',
+        redirectTo: `${window.location.origin}/auth/callback?type=recovery`,
       })
       setForgotSent(true)
       posthog.capture('password_reset_requested', { email: normalizedEmail })
@@ -72,6 +72,7 @@ export default function LoginPage() {
             placeholder="Email"
             value={email}
             onChange={e => setEmail(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && handleLogin()}
           />
           <Input
             type="password"

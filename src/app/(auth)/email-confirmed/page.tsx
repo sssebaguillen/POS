@@ -2,6 +2,8 @@ import { CheckCircle2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import Link from 'next/link'
 
+export const dynamic = 'force-dynamic'
+
 export default function EmailConfirmedPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-background">

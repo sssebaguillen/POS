@@ -13,9 +13,8 @@ export async function confirmEmail(
     console.log('[auth/confirm] verifyOtp error:', { message: error.message, status: error.status })
     return { error: 'El link de confirmación no es válido o ya expiró.' }
   }
-  const { error: signOutError } = await supabase.auth.signOut()
-  if (signOutError) {
-    console.log('[auth/confirm] signOut error:', { message: signOutError.message, status: signOutError.status })
+  if (type !== 'recovery') {
+    await supabase.auth.signOut()
   }
   redirect('/email-confirmed')
 }

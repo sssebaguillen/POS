@@ -6,9 +6,10 @@ import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import Link from 'next/link'
 import posthog from 'posthog-js'
 
-// 🔥 ESTA LÍNEA ES OBLIGATORIA para que funcione el nonce + CSP
+// force-dynamic is required for nonce + CSP
 export const dynamic = 'force-dynamic'
 
 export default function RegisterPage() {
@@ -26,6 +27,10 @@ export default function RegisterPage() {
       setError('Completá todos los campos')
       return
     }
+    if (password.length < 6) {
+      setError('La contraseña debe tener al menos 6 caracteres')
+      return
+    }
     setLoading(true)
     setError('')
 
@@ -36,7 +41,7 @@ export default function RegisterPage() {
     })
 
     if (authError || !authData.user) {
-      setError(authError?.message || 'Error al crear la cuenta')
+      setError('Error al crear la cuenta. Intentá con otro email.')
       setLoading(false)
       return
     }
@@ -50,7 +55,7 @@ export default function RegisterPage() {
     })
 
     if (rpcError || !result?.success) {
-      setError(result?.error || rpcError?.message || 'Error al configurar el negocio')
+      setError(result?.error || 'Error al configurar el negocio')
       setLoading(false)
       return
     }
@@ -114,9 +119,9 @@ export default function RegisterPage() {
 
         <p className="text-center text-sm text-muted-foreground mt-4">
           ¿Ya tenés cuenta?{' '}
-          <a href="/login" className="text-primary hover:underline">
+          <Link href="/login" className="text-primary hover:underline">
             Ingresá
-          </a>
+          </Link>
         </p>
       </div>
     </div>

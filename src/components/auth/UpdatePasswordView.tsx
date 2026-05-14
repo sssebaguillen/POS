@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -11,8 +11,24 @@ export default function UpdatePasswordView() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [successMessage, setSuccessMessage] = useState('')
+  const [sessionReady, setSessionReady] = useState(false)
 
   const supabase = useMemo(() => createClient(), [])
+
+  useEffect(() => {
+    const code = new URLSearchParams(window.location.search).get('code')
+    if (!code) {
+      setSessionReady(true)
+      return
+    }
+    supabase.auth.exchangeCodeForSession(code).then(({ error }) => {
+      if (error) {
+        setError('El enlace expiró o ya fue usado. Solicitá uno nuevo desde la pantalla de login.')
+      } else {
+        setSessionReady(true)
+      }
+    })
+  }, [supabase])
 
   async function handleUpdatePassword() {
     if (newPassword.length < 8) {
@@ -91,7 +107,7 @@ export default function UpdatePasswordView() {
           <Button
             className="w-full"
             onClick={handleUpdatePassword}
-            disabled={loading || Boolean(successMessage)}
+            disabled={loading || Boolean(successMessage) || !sessionReady}
           >
             {loading ? 'Actualizando...' : 'Actualizar contraseña'}
           </Button>

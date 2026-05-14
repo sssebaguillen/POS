@@ -1,12 +1,9 @@
-CREATE OR REPLACE FUNCTION public.get_owner_stats(
-  p_date_from timestamp with time zone DEFAULT NULL,
-  p_date_to   timestamp with time zone DEFAULT NULL
-)
-RETURNS json
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = 'public'
-AS $$
+CREATE OR REPLACE FUNCTION public.get_owner_stats(p_date_from timestamp with time zone DEFAULT NULL::timestamp with time zone, p_date_to timestamp with time zone DEFAULT NULL::timestamp with time zone)
+ RETURNS json
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
 DECLARE
   v_business_id   uuid;
   v_total_sales   int;
@@ -84,4 +81,4 @@ EXCEPTION
   WHEN others THEN
     RETURN json_build_object('success', false, 'error', sqlerrm);
 END;
-$$;
+$function$
