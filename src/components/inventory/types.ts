@@ -43,6 +43,7 @@ export interface InventoryProduct {
   has_variants?: boolean
   variant_count?: number
   default_variant_id?: string | null
+  sales_count?: number
 }
 
 export interface ProductCardProps {
