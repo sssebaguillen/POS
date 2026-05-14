@@ -780,6 +780,7 @@ All SECURITY DEFINER, all with `set search_path = public, extensions`.
 | `get_stats_breakdown(p_business_id, p_from?, p_to?)` | Breakdown by category and brand |
 | `get_top_products_detail(p_business_id, p_from?, p_to?, p_limit?, p_offset?)` | `{data: ProductSalesDetail[], total}` |
 | `get_sales_by_category_detail(p_business_id, p_from?, p_to?, p_limit?, p_offset?)` | `{data: CategorySalesDetail[], total}` |
+| `get_sales_by_brand_detail(p_business_id, p_from?, p_to?, p_limit?, p_offset?)` | `{data: BrandRow[], total}` — `BrandRow`: `brand_id, brand_name, transaction_count, units_sold, revenue, product_count` |
 | `get_sales_by_payment_detail(p_business_id, p_from?, p_to?)` | `{data: PaymentMethodDetail[]}` |
 | `get_sales_by_operator_detail(p_business_id, p_from?, p_to?)` | `{data: OperatorSalesDetail[]}` |
 | `bulk_delete_products(p_business_id, p_ids uuid[])` | Bulk delete with business_id guard |
