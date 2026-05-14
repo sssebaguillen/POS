@@ -44,7 +44,11 @@ function parseSwitchPayload(value: unknown): SwitchPayload | null {
     }
   }
 
-  if (typeof payload.profile_id !== 'string' || typeof payload.pin !== 'string') {
+  if (
+    payload.isOwner !== false ||
+    typeof payload.profile_id !== 'string' ||
+    typeof payload.pin !== 'string'
+  ) {
     return null
   }
 
@@ -88,7 +92,8 @@ function parseVerifyResult(value: unknown): ActiveOperator | null {
     typeof permissionRecord.stats !== 'boolean' ||
     typeof permissionRecord.price_lists !== 'boolean' ||
     typeof permissionRecord.price_lists_write !== 'boolean' ||
-    typeof permissionRecord.settings !== 'boolean'
+    typeof permissionRecord.settings !== 'boolean' ||
+    typeof permissionRecord.expenses !== 'boolean'
   ) {
     return null
   }
@@ -105,7 +110,7 @@ function parseVerifyResult(value: unknown): ActiveOperator | null {
       price_lists: permissionRecord.price_lists,
       price_lists_write: permissionRecord.price_lists_write,
       settings: permissionRecord.settings,
-      expenses: permissionRecord.expenses === true,
+      expenses: permissionRecord.expenses,
       operators_write: permissionRecord.operators_write === true,
       price_override: permissionRecord.price_override === true,
       free_line: permissionRecord.free_line === true,
@@ -192,7 +197,7 @@ export async function POST(request: Request) {
 
   const normalizedPin = body.pin.replace(/\D/g, '').slice(0, 4)
   if (normalizedPin.length !== 4) {
-    return NextResponse.json({ success: false, error: 'PIN must contain exactly 4 digits.' }, { status: 400 })
+    return NextResponse.json({ success: false, error: 'El PIN debe contener exactamente 4 dígitos.' }, { status: 400 })
   }
 
   let businessId: string | null = null
