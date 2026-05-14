@@ -68,7 +68,7 @@ Skills location: `.agents/skills/`
 - PIN is normalized to digits-only, max 4 digits, in `/api/operator/switch/route.ts`.
 - Active session stored in cookie `operator_session` (httpOnly, sameSite: lax, secure in prod):
   ```json
-  { "profile_id": "uuid", "name": "string", "role": "UserRole", "permissions": { ...10 fields... } }
+  { "profile_id": "uuid", "name": "string", "role": "UserRole", "permissions": { ...11 fields... } }
   ```
 - Cookie `op_perms` (non-httpOnly) — copy of permissions for client-side sidebar reads.
 - Owner identified by `operator?.role === 'owner'` or absence of cookie — **never by DB lookup in proxy**.
@@ -174,7 +174,7 @@ src/
 │   └── query-provider.tsx                # React Query provider
 ├── lib/
 │   ├── business.ts                       # getBusinessIdByUserId, requireAuthenticatedBusinessId
-│   ├── operator.ts                       # UserRole, Permissions (10 fields), OWNER_PERMISSIONS,
+│   ├── operator.ts                       # UserRole, Permissions (11 fields), OWNER_PERMISSIONS,
 │   │                                     # getActiveOperator, parsePermissions, normalizePermissions
 │   ├── payments.ts                       # normalizePayment, PAYMENT_LABELS, PAYMENT_COLORS, PAYMENT_OPTIONS
 │   ├── price-lists.ts                    # calculateProductPrice — sole price calculation source
@@ -221,7 +221,7 @@ src/
 │   │   ├── operator/me/page.tsx          # Active operator personal profile
 │   │   └── pos/page.tsx                  # edge
 │   ├── api/operator/
-│   │   ├── switch/route.ts               # Writes operator_session + op_perms (10 permissions)
+│   │   ├── switch/route.ts               # Writes operator_session + op_perms (11 permissions)
 │   │   └── logout/route.ts               # Only deletes cookies — NEVER restores owner session
 │   └── catalogo/
 │       ├── layout.tsx                    # CatalogThemeProvider wrapper
@@ -297,7 +297,7 @@ src/
     ├── settings/
     │   ├── SettingsForm.tsx              # Slug input with puls.ar/{slug} preview + client-side validation
     │   ├── OperatorList.tsx
-    │   ├── NewOperatorModal.tsx          # 10 permission toggles
+    │   ├── NewOperatorModal.tsx          # 11 permission toggles
     │   ├── EditOperatorModal.tsx
     │   └── types.ts
     ├── profile/
@@ -372,7 +372,7 @@ RLS policies: `own_profile` (ALL where id = auth.uid()), `tenant_select_profiles
 | name | text | |
 | role | text | CHECK: `('cashier','manager','custom')` — no `'owner'` |
 | pin | text | bcrypt via `extensions.crypt()` |
-| permissions | jsonb | default has 9 keys (no `price_override` — soft-defaults to false in code) |
+| permissions | jsonb | default has 9 keys (no `price_override`, `free_line` — soft-default to false in code) |
 | is_active | bool | default true |
 | created_at | timestamptz | now() |
 
@@ -649,9 +649,9 @@ All tables enforce tenant isolation via `get_business_id()`. Key exceptions:
 
 ## 5. Permissions Model
 
-### `Permissions` interface — 10 fields
+### `Permissions` interface — 11 fields
 
-Defined in `lib/operator.ts`. All 10 must be present when constructing the object manually.
+Defined in `lib/operator.ts`. All 11 must be present when constructing the object manually.
 
 | field | description | owner | manager | cashier |
 |-------|-------------|-------|---------|---------|
@@ -665,14 +665,15 @@ Defined in `lib/operator.ts`. All 10 must be present when constructing the objec
 | `settings` | Business settings | ✓ | ✗ | ✗ |
 | `operators_write` | Create/edit operators (sub-toggle of settings) | ✓ | ✗ | ✗ |
 | `price_override` | Edit per-item price in POS | ✓ | ✓ | ✗ |
+| `free_line` | Add a free-text/unlinked line item in POS | ✓ | ✓ | ✗ |
 
 > `operators_write` requires `settings: true` as prerequisite — it's a sub-toggle in `NewOperatorModal`.
 >
-> **Note on CONTEXT.md:** it says "9 campos" but there are 10. `price_override` is the 10th.
+> **Note on CONTEXT.md:** it says "9 campos" but there are 11. `price_override` is the 10th; `free_line` is the 11th.
 
 ### `OWNER_PERMISSIONS`
 
-Defined in `lib/operator.ts`. All 10 fields set to `true`. Imported everywhere — never duplicate.
+Defined in `lib/operator.ts`. All 11 fields set to `true`. Imported everywhere — never duplicate.
 
 ### `operator_session` cookie
 
@@ -681,7 +682,7 @@ Defined in `lib/operator.ts`. All 10 fields set to `true`. Imported everywhere �
   "profile_id": "uuid",
   "name": "string",
   "role": "owner|manager|cashier|custom",
-  "permissions": { ...all 10 fields... }
+  "permissions": { ...all 11 fields... }
 }
 ```
 
@@ -693,7 +694,7 @@ Non-httpOnly copy of `permissions` object. Read by sidebar client-side. Written 
 
 ### `parsePermissions` soft defaults
 
-`price_override` and `operators_write` soft-default to `false` if absent from the cookie (backward compat with old cookies that predated these fields).
+`price_override`, `operators_write`, and `free_line` soft-default to `false` if absent from the cookie (backward compat with old cookies that predated these fields).
 
 ### When adding a new permission field
 
@@ -862,7 +863,7 @@ The CONTEXT.md mentions a dead `/stock` guard in `proxy.ts`. This does NOT appea
 | `update_expense` RPC | Not documented | Exists — for editing non-mercadería expenses |
 | `create_mercaderia_expense` RPC | Not documented | Exists |
 | `update_mercaderia_expense` RPC | Not documented | Exists |
-| Permissions count | "9 campos" | 10 fields — `price_override` is the 10th |
+| Permissions count | "9 campos" | 11 fields — `price_override` is the 10th, `free_line` is the 11th |
 
 ### Technical Debt — Pending Post-Beta
 
