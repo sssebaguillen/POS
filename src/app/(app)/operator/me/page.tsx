@@ -3,9 +3,10 @@ import { redirect } from 'next/navigation'
 import PageHeader from '@/components/shared/PageHeader'
 import OperatorMeView from '@/components/operator/OperatorMeView'
 import { createClient } from '@/lib/supabase/server'
-import { resolveDateRange, type DateRangePeriod } from '@/lib/date-utils'
+import { resolveDateRange, VALID_PERIODS, type DateRangePeriod } from '@/lib/date-utils'
 import { getActiveOperator, type UserRole } from '@/lib/operator'
-import type { OperatorRole } from '@/lib/constants/domain'
+import { BUSINESS_TIMEZONE_OFFSET, type OperatorRole } from '@/lib/constants/domain'
+import { formatMemberSince } from '@/lib/format'
 import { requireAuthenticatedBusinessId } from '@/lib/business'
 
 interface SearchParams {
@@ -49,23 +50,12 @@ interface OperatorStatsResult {
   sale_history: OperatorStatsSaleHistoryRow[] | null
 }
 
-const VALID_PERIODS: DateRangePeriod[] = ['hoy', 'semana', 'mes', 'trimestre', 'año', 'personalizado']
-const BUSINESS_TIMEZONE_OFFSET = '-03:00'
-
 function getPeriod(value: string | undefined): DateRangePeriod {
   if (value && VALID_PERIODS.includes(value as DateRangePeriod)) {
     return value as DateRangePeriod
   }
 
   return 'mes'
-}
-
-function formatMemberSince(value: string): string {
-  return new Date(value).toLocaleDateString('es-AR', {
-    day: '2-digit',
-    month: 'long',
-    year: 'numeric',
-  })
 }
 
 function toRangeTimestamps(from: string | null, to: string | null): { from: string | null; to: string | null } {

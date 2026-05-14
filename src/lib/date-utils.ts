@@ -1,5 +1,7 @@
 export type DateRangePeriod = 'hoy' | 'semana' | 'mes' | 'trimestre' | 'año' | 'personalizado'
 
+export const VALID_PERIODS: DateRangePeriod[] = ['hoy', 'semana', 'mes', 'trimestre', 'año', 'personalizado']
+
 export interface DateRange {
   from: Date
   to: Date

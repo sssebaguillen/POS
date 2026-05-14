@@ -3,7 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import ExpensesView from '@/components/expenses/ExpensesView'
 import type { Expense, BusinessBalance } from '@/components/expenses/types'
 import { requireAuthenticatedBusinessId } from '@/lib/business'
-import { resolveDateRange, type DateRangePeriod } from '@/lib/date-utils'
+import { resolveDateRange, VALID_PERIODS, type DateRangePeriod } from '@/lib/date-utils'
 import { getActiveOperator } from '@/lib/operator'
 
 interface SearchParams {
@@ -24,9 +24,8 @@ export default async function ExpensesPage({
   const businessId = await requireAuthenticatedBusinessId(supabase)
 
   const period: DateRangePeriod =
-    params.period === 'hoy' || params.period === 'semana' || params.period === 'personalizado' ||
-    params.period === 'trimestre' || params.period === 'año'
-      ? params.period
+    params.period && VALID_PERIODS.includes(params.period as DateRangePeriod)
+      ? (params.period as DateRangePeriod)
       : 'mes'
   const from = params.from ?? undefined
   const to = params.to ?? undefined

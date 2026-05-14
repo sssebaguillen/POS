@@ -23,3 +23,6 @@ export const OPERATOR_ROLE_LABELS: Record<OperatorRole, string> = {
 export const PROFILE_ROLE_LABELS: Record<string, string> = {
   owner: 'Dueño',
 }
+
+// Argentina standard timezone offset (UTC-3, no DST)
+export const BUSINESS_TIMEZONE_OFFSET = '-03:00'
