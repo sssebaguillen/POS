@@ -348,6 +348,7 @@ export default function CartPanel({ businessId, businessName, freeLineEnabled, a
     const { data, error } = await supabase.rpc('delete_sale', {
       p_sale_id: saleId,
       p_business_id: businessId,
+      p_operator_id: operatorId,
     })
     if (!error && data?.success) {
       queryClient.setQueryData<SaleRow[]>(['pos-daily-history', businessId], (prev) =>

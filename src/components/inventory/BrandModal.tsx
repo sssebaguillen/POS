@@ -150,14 +150,16 @@ export default function BrandModal({
         setDeletingId(brand.id)
         setError(null)
 
-        const { error: deleteError } = await supabase
-          .from('brands')
-          .delete()
-          .eq('id', brand.id)
-          .eq('business_id', businessId)
+        const { data: rpcResult, error: rpcError } = await supabase.rpc('delete_brand', {
+          p_operator_id: operatorId,
+          p_business_id: businessId,
+          p_brand_id: brand.id,
+        })
 
-        if (deleteError) {
-          setError(translateDbError(deleteError.message, 'No se pudo eliminar la marca.'))
+        const result = rpcResult as { success: boolean; error?: string } | null
+
+        if (rpcError || !result?.success) {
+          setError(result?.error ?? translateDbError(rpcError?.message ?? '', 'No se pudo eliminar la marca.'))
           setDeletingId(null)
           return
         }

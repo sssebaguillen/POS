@@ -177,24 +177,13 @@ export default function CategoryModal({
       p_category_id: categoryId,
       p_name: editName.trim(),
       p_icon: editIcon.trim() || DEFAULT_ICON,
+      p_icon_color: editIconColor,
     })
 
     const result = rpcResult as { success: boolean; error?: string } | null
 
     if (rpcError || !result?.success) {
       setError(result?.error ?? rpcError?.message ?? 'Error al actualizar la categoría')
-      setSaving(false)
-      return
-    }
-
-    const { error: colorError } = await supabase
-      .from('categories')
-      .update({ icon_color: editIconColor })
-      .eq('id', categoryId)
-      .eq('business_id', businessId)
-
-    if (colorError) {
-      setError('No se pudo guardar el color del icono. Intentá de nuevo.')
       setSaving(false)
       return
     }
@@ -217,14 +206,16 @@ export default function CategoryModal({
     setDeletingId(categoryId)
     setError(null)
 
-    const { error: deleteError } = await supabase
-      .from('categories')
-      .delete()
-      .eq('id', categoryId)
-      .eq('business_id', businessId)
+    const { data: rpcResult, error: rpcError } = await supabase.rpc('delete_category', {
+      p_operator_id: operatorId,
+      p_business_id: businessId,
+      p_category_id: categoryId,
+    })
 
-    if (deleteError) {
-      setError(translateDbError(deleteError.message, 'No se pudo eliminar la categoría.'))
+    const result = rpcResult as { success: boolean; error?: string } | null
+
+    if (rpcError || !result?.success) {
+      setError(result?.error ?? translateDbError(rpcError?.message ?? '', 'No se pudo eliminar la categoría.'))
       setDeletingId(null)
       return
     }

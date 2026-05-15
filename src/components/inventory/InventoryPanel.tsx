@@ -230,11 +230,15 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
     setCrudError(null)
     setLoadingId(productId)
 
-    const { error } = await supabase
-      .from('products')
-      .update(values)
-      .eq('id', productId)
-      .eq('business_id', businessId)
+    const { data: rpcResult, error: rpcError } = await supabase.rpc('update_product', {
+      p_operator_id: operatorId,
+      p_business_id: businessId,
+      p_product_id: productId,
+      p_changes: values as Record<string, unknown>,
+    })
+
+    const result = rpcResult as { success: boolean; error?: string } | null
+    const error = rpcError || (!result?.success ? { message: result?.error ?? 'Error al actualizar el producto' } : null)
 
     if (!error) {
       setProducts(prev => prev.map(product => {
@@ -261,7 +265,26 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
     }
 
     setLoadingId(null)
-  }, [brands, businessId, readOnly, supabase])
+  }, [brands, businessId, operatorId, readOnly, supabase])
+
+  function handleCategoriesChanged(updatedCategories: InventoryCategory[]) {
+    setCategories(updatedCategories)
+    setProducts(prev => prev.map(product => {
+      if (!product.category_id) {
+        return { ...product, categories: null }
+      }
+
+      const nextCategory = updatedCategories.find(category => category.id === product.category_id)
+      if (!nextCategory) {
+        return { ...product, category_id: null, categories: null }
+      }
+
+      return {
+        ...product,
+        categories: { name: nextCategory.name, icon: nextCategory.icon },
+      }
+    }))
+  }
 
   function handleBrandsChanged(updatedBrands: InventoryBrand[]) {
     setBrands(updatedBrands)
@@ -347,22 +370,27 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
         // Schedule actual DB delete after toast expires
         const timer = setTimeout(async () => {
           deleteTimersRef.current.delete(product.id)
-          const { error } = await supabase
-            .from('products')
-            .delete()
-            .eq('id', product.id)
-            .eq('business_id', bid)
-          if (error) {
+          const { data: rpcResult, error: rpcError } = await supabase.rpc('delete_product', {
+            p_operator_id: operatorId,
+            p_business_id: bid,
+            p_product_id: product.id,
+          })
+          const result = rpcResult as { success: boolean; soft_deleted?: boolean; error?: string } | null
+          if (rpcError || !result?.success) {
             // DB delete failed — restore the product and surface the error
             setProducts(prev => [product, ...prev])
-            setCrudError(error.message)
+            setCrudError(result?.error ?? rpcError?.message ?? 'Error al eliminar el producto')
+          } else if (result.soft_deleted) {
+            // Product was soft-deleted (had completed sales) — bring it back to the list
+            // as inactive so the user can still see it.
+            setProducts(prev => [{ ...product, is_active: false }, ...prev])
           }
         }, TOAST_DURATION + 500)
 
         deleteTimersRef.current.set(product.id, timer)
       },
     })
-  }, [businessId, readOnly, showToast, supabase])
+  }, [businessId, operatorId, readOnly, showToast, supabase])
 
   function exportCsv() {
     const headers = ['id', 'nombre', 'categoria', 'precio', 'costo', 'stock', 'stock_minimo', 'activo']
@@ -926,7 +954,7 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
           operatorId={operatorId}
           stockWriteAllowed={!readOnly}
           initialCategories={categories}
-          onCategoriesChanged={updated => setCategories(updated)}
+          onCategoriesChanged={handleCategoriesChanged}
         />
       )}
 

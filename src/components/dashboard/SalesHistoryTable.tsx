@@ -64,10 +64,11 @@ interface Props {
   rows: SaleRow[]
   businessId: string | null
   businessName: string
+  operatorId: string | null
   onSaleDeleted?: (id: string) => void
 }
 
-function SalesHistoryTable({ rows, businessId, businessName, onSaleDeleted }: Props) {
+function SalesHistoryTable({ rows, businessId, businessName, operatorId, onSaleDeleted }: Props) {
   const router = useRouter()
   const currency = useCurrency()
   const fmt = useFormatMoney()
@@ -243,6 +244,7 @@ function SalesHistoryTable({ rows, businessId, businessName, onSaleDeleted }: Pr
         p_business_id: businessId,
         p_items: vars.items,
         p_payment_method: vars.paymentMethod,
+        p_operator_id: operatorId,
         p_status: vars.status,
       })
       if (error || !data?.success) {
@@ -329,6 +331,7 @@ function SalesHistoryTable({ rows, businessId, businessName, onSaleDeleted }: Pr
       const { data, error } = await supabase.rpc('delete_sale', {
         p_sale_id: saleId,
         p_business_id: businessId,
+        p_operator_id: operatorId,
       })
       if (error || !data?.success) {
         setDeletedIds(prev => {

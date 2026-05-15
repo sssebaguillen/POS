@@ -416,6 +416,7 @@ export default function DashboardView({
               rows={historyRows}
               businessId={businessId}
               businessName={businessName}
+              operatorId={operatorId}
               onSaleDeleted={(id) => setDeletedSaleIds(prev => new Set([...prev, id]))}
             />
           ) : (
