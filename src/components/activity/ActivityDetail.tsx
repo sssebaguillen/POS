@@ -71,6 +71,73 @@ interface BulkData {
   brand_id?: string | null
 }
 
+interface ExpenseLineItem {
+  product_id?: string | null
+  product_name?: string | null
+  quantity?: number | string
+  unit_cost?: number | string
+  update_cost?: boolean
+}
+
+interface ExpenseData {
+  category?: string | null
+  amount?: number | string
+  description?: string | null
+  date?: string | null
+  supplier_id?: string | null
+  notes?: string | null
+  items?: ExpenseLineItem[]
+  item_count?: number
+}
+
+interface SupplierData {
+  name?: string | null
+  contact_name?: string | null
+  phone?: string | null
+  email?: string | null
+  address?: string | null
+  notes?: string | null
+  is_active?: boolean
+}
+
+interface PriceListData {
+  id?: string
+  name?: string | null
+  description?: string | null
+  multiplier?: number | string
+  is_default?: boolean
+}
+
+interface PriceListCreateData {
+  list?: PriceListData | null
+  overrides_count?: number
+}
+
+interface PriceListUpdateData {
+  list?: PriceListData | null
+  overrides_upserted?: unknown[]
+  overrides_deleted?: unknown[]
+}
+
+interface SettingsData {
+  name?: string | null
+  description?: string | null
+  whatsapp?: string | null
+  logo_url?: string | null
+  settings?: Record<string, unknown> | null
+}
+
+interface OperatorData {
+  name?: string | null
+  role?: string | null
+  permissions?: Record<string, boolean> | null
+  is_active?: boolean
+}
+
+interface OperatorUpdateData extends OperatorData {
+  pin_changed?: boolean
+}
+
 const PRODUCT_FIELD_LABELS: Record<string, string> = {
   name:        'Nombre',
   price:       'Precio',
@@ -159,6 +226,41 @@ function ActivityBody({ row, lookups }: Props) {
       return <BrandSummary data={row.old_data as BrandData | null} deleted />
     case 'brand_updated':
       return <BrandDiff oldData={row.old_data as BrandData | null} newData={row.new_data as BrandData | null} />
+
+    case 'expense_created':
+      return <ExpenseSummary data={row.new_data as ExpenseData | null} />
+    case 'expense_deleted':
+      return <ExpenseSummary data={row.old_data as ExpenseData | null} deleted />
+    case 'expense_updated':
+      return <ExpenseDiff oldData={row.old_data as ExpenseData | null} newData={row.new_data as ExpenseData | null} />
+
+    case 'supplier_created':
+      return <SupplierSummary data={row.new_data as SupplierData | null} />
+    case 'supplier_deactivated':
+      return <SupplierSummary data={row.old_data as SupplierData | null} deactivated />
+    case 'supplier_updated':
+      return <SupplierDiff oldData={row.old_data as SupplierData | null} newData={row.new_data as SupplierData | null} />
+
+    case 'price_list_created':
+      return <PriceListSummary data={(row.new_data as PriceListCreateData | null)?.list ?? null} />
+    case 'price_list_deleted':
+      return <PriceListSummary data={row.old_data as PriceListData | null} deleted />
+    case 'price_list_updated':
+      return <PriceListDiff oldData={row.old_data as PriceListData | null} newData={(row.new_data as PriceListUpdateData | null)?.list ?? null} />
+    case 'price_list_default_changed':
+      return <PriceListDefaultChanged label={row.entity_label} />
+
+    case 'settings_updated':
+      return <SettingsDiff oldData={row.old_data as SettingsData | null} newData={row.new_data as SettingsData | null} />
+    case 'settings_slug_updated':
+      return <SettingsSlugDiff oldData={row.old_data as { slug?: string } | null} newData={row.new_data as { slug?: string } | null} />
+
+    case 'operator_created':
+      return <OperatorSummary data={row.new_data as OperatorData | null} />
+    case 'operator_deleted':
+      return <OperatorSummary data={row.old_data as OperatorData | null} deleted />
+    case 'operator_updated':
+      return <OperatorDiff oldData={row.old_data as OperatorData | null} newData={row.new_data as OperatorUpdateData | null} />
 
     default:
       return <p className="text-sm text-hint">Sin datos adicionales.</p>
@@ -635,6 +737,397 @@ function BrandDiff({ oldData, newData }: { oldData: BrandData | null; newData: B
   if (oldData.name === newData.name) return <p className="text-sm text-hint">Sin cambios visibles.</p>
   return (
     <DiffRow label="Nombre" before={oldData.name ?? '—'} after={newData.name ?? '—'} />
+  )
+}
+
+// =============================================================================
+// Expense panels
+// =============================================================================
+
+const EXPENSE_CATEGORY_LABELS: Record<string, string> = {
+  mercaderia:  'Mercadería',
+  alquiler:    'Alquiler',
+  servicios:   'Servicios',
+  seguros:     'Seguros',
+  proveedores: 'Proveedores',
+  sueldos:     'Sueldos',
+  otro:        'Otro',
+}
+
+function ExpenseSummary({ data, deleted = false }: { data: ExpenseData | null; deleted?: boolean }) {
+  const formatMoney = useFormatMoney()
+  if (!data) return <p className="text-sm text-hint">Sin datos.</p>
+
+  const category = typeof data.category === 'string' ? EXPENSE_CATEGORY_LABELS[data.category] ?? data.category : '—'
+  const items = Array.isArray(data.items) ? data.items : []
+
+  return (
+    <div className={cn('space-y-3', deleted && 'opacity-90')}>
+      {deleted && (
+        <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-xs font-medium bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-300">
+          <Trash2 size={12} />
+          Eliminado
+        </div>
+      )}
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+        <Stat label="Categoría" value={category} />
+        <Stat label="Monto" value={formatMoney(toNumber(data.amount))} emphasis />
+        {data.date && <Stat label="Fecha" value={String(data.date)} />}
+        {data.description && <Stat label="Descripción" value={String(data.description)} />}
+      </div>
+
+      {items.length > 0 && (
+        <div>
+          <p className="text-label text-hint mb-1.5">Items ({items.length})</p>
+          <div className="rounded-lg border border-edge/60 overflow-hidden">
+            <table className="w-full text-sm">
+              <tbody>
+                {items.map((it, i) => (
+                  <tr key={i} className="border-b border-edge/40 last:border-0">
+                    <td className="px-3 py-2 align-middle text-body">
+                      {it.product_name ?? <span className="text-hint italic">Sin nombre</span>}
+                    </td>
+                    <td className="px-3 py-2 align-middle text-right text-hint tabular-nums">
+                      {toNumber(it.quantity)} × {formatMoney(toNumber(it.unit_cost))}
+                    </td>
+                    <td className="px-3 py-2 align-middle text-right text-body font-medium tabular-nums w-28">
+                      {formatMoney(toNumber(it.quantity) * toNumber(it.unit_cost))}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function ExpenseDiff({ oldData, newData }: { oldData: ExpenseData | null; newData: ExpenseData | null }) {
+  const formatMoney = useFormatMoney()
+  if (!oldData || !newData) return <p className="text-sm text-hint">Sin datos.</p>
+
+  const rows: { label: string; before: string; after: string }[] = []
+
+  if (oldData.description !== newData.description) {
+    rows.push({ label: 'Descripción', before: String(oldData.description ?? '—'), after: String(newData.description ?? '—') })
+  }
+  if (oldData.date !== newData.date) {
+    rows.push({ label: 'Fecha', before: String(oldData.date ?? '—'), after: String(newData.date ?? '—') })
+  }
+  const oldAmount = toNumber(oldData.amount)
+  const newAmount = toNumber(newData.amount)
+  if (oldAmount !== newAmount) {
+    rows.push({ label: 'Monto', before: formatMoney(oldAmount), after: formatMoney(newAmount) })
+  }
+  if (oldData.supplier_id !== newData.supplier_id) {
+    rows.push({ label: 'Proveedor', before: oldData.supplier_id ? `#${oldData.supplier_id.slice(0, 8)}` : '—', after: newData.supplier_id ? `#${newData.supplier_id.slice(0, 8)}` : '—' })
+  }
+
+  const oldItems = Array.isArray(oldData.items) ? oldData.items.length : 0
+  const newItems = Array.isArray(newData.items) ? newData.items.length : 0
+  if (oldItems !== newItems) {
+    rows.push({ label: 'Items', before: String(oldItems), after: String(newItems) })
+  }
+
+  if (rows.length === 0) return <p className="text-sm text-hint">Sin cambios visibles.</p>
+  return (
+    <div className="space-y-1.5">
+      {rows.map((r, i) => <DiffRow key={i} label={r.label} before={r.before} after={r.after} />)}
+    </div>
+  )
+}
+
+// =============================================================================
+// Supplier panels
+// =============================================================================
+
+const SUPPLIER_FIELD_LABELS: Record<keyof SupplierData, string> = {
+  name:         'Nombre',
+  contact_name: 'Contacto',
+  phone:        'Teléfono',
+  email:        'Email',
+  address:      'Dirección',
+  notes:        'Notas',
+  is_active:    'Activo',
+}
+
+function SupplierSummary({ data, deactivated = false }: { data: SupplierData | null; deactivated?: boolean }) {
+  if (!data) return <p className="text-sm text-hint">Sin datos.</p>
+  return (
+    <div className={cn('space-y-3', deactivated && 'opacity-90')}>
+      {deactivated && (
+        <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-xs font-medium bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-300">
+          <Trash2 size={12} />
+          Desactivado
+        </div>
+      )}
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+        {data.name && <Stat label="Nombre" value={String(data.name)} />}
+        {data.contact_name && <Stat label="Contacto" value={String(data.contact_name)} />}
+        {data.phone && <Stat label="Teléfono" value={String(data.phone)} />}
+        {data.email && <Stat label="Email" value={String(data.email)} />}
+        {data.address && <Stat label="Dirección" value={String(data.address)} />}
+      </div>
+    </div>
+  )
+}
+
+function SupplierDiff({ oldData, newData }: { oldData: SupplierData | null; newData: SupplierData | null }) {
+  if (!oldData || !newData) return <p className="text-sm text-hint">Sin datos.</p>
+
+  const rows: { label: string; before: string; after: string }[] = []
+  for (const key of Object.keys(SUPPLIER_FIELD_LABELS) as (keyof SupplierData)[]) {
+    const before = oldData[key]
+    const after = newData[key]
+    if (before === after) continue
+    if (before == null && after == null) continue
+    rows.push({
+      label: SUPPLIER_FIELD_LABELS[key],
+      before: before == null || before === '' ? '—' : String(before),
+      after:  after  == null || after  === '' ? '—' : String(after),
+    })
+  }
+  if (rows.length === 0) return <p className="text-sm text-hint">Sin cambios visibles.</p>
+  return (
+    <div className="space-y-1.5">
+      {rows.map((r, i) => <DiffRow key={i} label={r.label} before={r.before} after={r.after} />)}
+    </div>
+  )
+}
+
+// =============================================================================
+// Price list panels
+// =============================================================================
+
+function multiplierToMarginText(value: unknown): string {
+  const num = toNumber(value)
+  if (!Number.isFinite(num) || num <= 0) return '—'
+  const pct = (num - 1) * 100
+  return `${pct.toFixed(0)}% (×${num})`
+}
+
+function PriceListSummary({ data, deleted = false }: { data: PriceListData | null; deleted?: boolean }) {
+  if (!data) return <p className="text-sm text-hint">Sin datos.</p>
+  return (
+    <div className={cn('space-y-3', deleted && 'opacity-90')}>
+      {deleted && (
+        <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-xs font-medium bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-300">
+          <Trash2 size={12} />
+          Eliminada
+        </div>
+      )}
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+        {data.name && <Stat label="Nombre" value={String(data.name)} />}
+        {data.multiplier !== undefined && <Stat label="Margen" value={multiplierToMarginText(data.multiplier)} />}
+        {data.is_default !== undefined && <Stat label="Predeterminada" value={data.is_default ? 'Sí' : 'No'} />}
+        {data.description && <Stat label="Descripción" value={String(data.description)} />}
+      </div>
+    </div>
+  )
+}
+
+function PriceListDiff({ oldData, newData }: { oldData: PriceListData | null; newData: PriceListData | null }) {
+  if (!oldData || !newData) return <p className="text-sm text-hint">Sin datos.</p>
+
+  const rows: { label: string; before: string; after: string }[] = []
+
+  if (oldData.name !== newData.name) {
+    rows.push({ label: 'Nombre', before: String(oldData.name ?? '—'), after: String(newData.name ?? '—') })
+  }
+  if (oldData.description !== newData.description) {
+    rows.push({ label: 'Descripción', before: String(oldData.description ?? '—'), after: String(newData.description ?? '—') })
+  }
+  if (toNumber(oldData.multiplier) !== toNumber(newData.multiplier)) {
+    rows.push({ label: 'Margen', before: multiplierToMarginText(oldData.multiplier), after: multiplierToMarginText(newData.multiplier) })
+  }
+
+  if (rows.length === 0) return <p className="text-sm text-hint">Sin cambios visibles en la lista. (Pueden haberse modificado overrides por producto.)</p>
+  return (
+    <div className="space-y-1.5">
+      {rows.map((r, i) => <DiffRow key={i} label={r.label} before={r.before} after={r.after} />)}
+    </div>
+  )
+}
+
+function PriceListDefaultChanged({ label }: { label: string | null }) {
+  return (
+    <p className="text-body">
+      Lista predeterminada cambiada a{' '}
+      <span className="font-semibold text-heading">{label ?? 'una lista nueva'}</span>.
+    </p>
+  )
+}
+
+// =============================================================================
+// Settings panels
+// =============================================================================
+
+function SettingsDiff({ oldData, newData }: { oldData: SettingsData | null; newData: SettingsData | null }) {
+  if (!oldData || !newData) return <p className="text-sm text-hint">Sin datos.</p>
+
+  const rows: { label: string; before: string; after: string }[] = []
+
+  if (oldData.name !== newData.name) {
+    rows.push({ label: 'Nombre', before: String(oldData.name ?? '—'), after: String(newData.name ?? '—') })
+  }
+  if (oldData.description !== newData.description) {
+    rows.push({ label: 'Descripción', before: String(oldData.description ?? '—'), after: String(newData.description ?? '—') })
+  }
+  if (oldData.whatsapp !== newData.whatsapp) {
+    rows.push({ label: 'WhatsApp', before: String(oldData.whatsapp ?? '—'), after: String(newData.whatsapp ?? '—') })
+  }
+  if (oldData.logo_url !== newData.logo_url) {
+    rows.push({ label: 'Logo', before: oldData.logo_url ? 'Configurado' : '—', after: newData.logo_url ? 'Configurado' : '—' })
+  }
+
+  const oldSettings = oldData.settings ?? {}
+  const newSettings = newData.settings ?? {}
+  const settingsKeys = new Set([...Object.keys(oldSettings), ...Object.keys(newSettings)])
+  for (const key of settingsKeys) {
+    const before = (oldSettings as Record<string, unknown>)[key]
+    const after = (newSettings as Record<string, unknown>)[key]
+    if (before === after) continue
+    rows.push({ label: key, before: String(before ?? '—'), after: String(after ?? '—') })
+  }
+
+  if (rows.length === 0) return <p className="text-sm text-hint">Sin cambios visibles.</p>
+  return (
+    <div className="space-y-1.5">
+      {rows.map((r, i) => <DiffRow key={i} label={r.label} before={r.before} after={r.after} />)}
+    </div>
+  )
+}
+
+function SettingsSlugDiff({ oldData, newData }: { oldData: { slug?: string } | null; newData: { slug?: string } | null }) {
+  return (
+    <DiffRow
+      label="URL del catálogo"
+      before={oldData?.slug ?? '—'}
+      after={newData?.slug ?? '—'}
+    />
+  )
+}
+
+// =============================================================================
+// Operator panels
+// =============================================================================
+
+const OPERATOR_ROLE_LABELS_LOCAL: Record<string, string> = {
+  owner:   'Dueño',
+  manager: 'Encargado',
+  cashier: 'Cajero',
+  custom:  'Personalizado',
+}
+
+const PERMISSION_LABELS: Record<string, string> = {
+  sales:             'Ventas',
+  stock:             'Inventario (lectura)',
+  stock_write:       'Inventario (edición)',
+  analysis:          'Análisis',
+  price_lists:       'Listas (lectura)',
+  price_lists_write: 'Listas (edición)',
+  expenses:          'Gastos',
+  settings:          'Configuración',
+  operators_write:   'Operarios',
+  price_override:    'Override de precio',
+  free_line:         'Línea libre',
+}
+
+function OperatorSummary({ data, deleted = false }: { data: OperatorData | null; deleted?: boolean }) {
+  if (!data) return <p className="text-sm text-hint">Sin datos.</p>
+
+  const permissions = data.permissions ?? {}
+  const enabled = Object.entries(permissions).filter(([, v]) => v === true).map(([k]) => k)
+
+  return (
+    <div className={cn('space-y-3', deleted && 'opacity-90')}>
+      {deleted && (
+        <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-xs font-medium bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-300">
+          <Trash2 size={12} />
+          Eliminado
+        </div>
+      )}
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+        {data.name && <Stat label="Nombre" value={String(data.name)} />}
+        {data.role && <Stat label="Rol" value={OPERATOR_ROLE_LABELS_LOCAL[data.role] ?? data.role} />}
+      </div>
+      {enabled.length > 0 && (
+        <div>
+          <p className="text-label text-hint mb-1.5">Permisos habilitados</p>
+          <div className="flex flex-wrap gap-1.5">
+            {enabled.map(k => (
+              <span key={k} className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300">
+                {PERMISSION_LABELS[k] ?? k}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function OperatorDiff({ oldData, newData }: { oldData: OperatorData | null; newData: OperatorUpdateData | null }) {
+  if (!oldData || !newData) return <p className="text-sm text-hint">Sin datos.</p>
+
+  const rows: { label: string; before: string; after: string }[] = []
+
+  if (oldData.name !== newData.name && newData.name != null) {
+    rows.push({ label: 'Nombre', before: String(oldData.name ?? '—'), after: String(newData.name) })
+  }
+  if (oldData.role !== newData.role && newData.role != null) {
+    rows.push({
+      label: 'Rol',
+      before: OPERATOR_ROLE_LABELS_LOCAL[oldData.role ?? ''] ?? oldData.role ?? '—',
+      after:  OPERATOR_ROLE_LABELS_LOCAL[newData.role] ?? newData.role,
+    })
+  }
+
+  const oldPerms = oldData.permissions ?? {}
+  const newPerms = newData.permissions ?? {}
+  const permChanges: { key: string; before: boolean; after: boolean }[] = []
+  const allKeys = new Set([...Object.keys(oldPerms), ...Object.keys(newPerms)])
+  for (const key of allKeys) {
+    const before = oldPerms[key] === true
+    const after = newPerms[key] === true
+    if (before !== after) permChanges.push({ key, before, after })
+  }
+
+  return (
+    <div className="space-y-3">
+      {rows.length > 0 && (
+        <div className="space-y-1.5">
+          {rows.map((r, i) => <DiffRow key={i} label={r.label} before={r.before} after={r.after} />)}
+        </div>
+      )}
+      {newData.pin_changed && (
+        <p className="text-sm text-body">
+          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-xs font-medium bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300">
+            PIN actualizado
+          </span>
+        </p>
+      )}
+      {permChanges.length > 0 && (
+        <div>
+          <p className="text-label text-hint mb-1.5">Permisos modificados</p>
+          <div className="space-y-1">
+            {permChanges.map(c => (
+              <DiffRow
+                key={c.key}
+                label={PERMISSION_LABELS[c.key] ?? c.key}
+                before={c.before ? 'Sí' : 'No'}
+                after={c.after ? 'Sí' : 'No'}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+      {rows.length === 0 && permChanges.length === 0 && !newData.pin_changed && (
+        <p className="text-sm text-hint">Sin cambios visibles.</p>
+      )}
+    </div>
   )
 }
 

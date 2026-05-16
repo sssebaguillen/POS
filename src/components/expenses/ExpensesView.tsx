@@ -244,6 +244,7 @@ export default function ExpensesView({
             <ExpensesTable
               expenses={filteredExpenses}
               businessId={businessId}
+              operatorId={operatorId}
               supabaseClient={supabase}
               onDeleted={handleExpenseDeleted}
               onEdit={setEditingExpense}

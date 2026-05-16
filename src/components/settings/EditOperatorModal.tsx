@@ -19,6 +19,7 @@ import { translateDbError } from '@/lib/errors'
 interface EditOperatorModalProps {
   operator: SettingsOperator
   businessId: string
+  actorOperatorId: string | null
   isOwner: boolean
   canManageOperators: boolean
   onClose: () => void
@@ -101,6 +102,7 @@ function permissionsChanged(
 export default function EditOperatorModal({
   operator,
   businessId,
+  actorOperatorId,
   isOwner,
   canManageOperators,
   onClose,
@@ -218,7 +220,9 @@ export default function EditOperatorModal({
     const nextName = shouldSendName ? trimmedName : operator.name
 
     const { error: updateError } = await supabase.rpc('update_operator', {
-      p_operator_id: operator.id,
+      p_actor_operator_id: actorOperatorId,
+      p_business_id: businessId,
+      p_target_operator_id: operator.id,
       p_name: shouldSendName ? trimmedName : null,
       p_new_pin: shouldSendPin ? newPin : null,
       p_permissions: permissionsToSend,

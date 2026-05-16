@@ -198,3 +198,13 @@ export function getActiveOperator(cookieStore: CookieStoreLike): ActiveOperator 
 export function hasPermission(operator: ActiveOperator, permission: keyof Permissions): boolean {
   return operator.permissions[permission] === true
 }
+
+/**
+ * Returns the operator id to pass as `p_operator_id` to audit-logged RPCs.
+ * Owner actions resolve to `null` so audit_log rows correctly record
+ * `operator_id IS NULL` (the "Dueño" sentinel used by get_audit_log).
+ */
+export function getActorOperatorId(operator: ActiveOperator | null): string | null {
+  if (!operator) return null
+  return operator.role === 'owner' ? null : operator.profile_id
+}

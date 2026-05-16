@@ -10,10 +10,11 @@ import type { Supplier } from './types'
 
 interface Props {
   businessId: string
+  operatorId: string | null
   initialSuppliers: Supplier[]
 }
 
-export default function ProvidersView({ businessId, initialSuppliers }: Props) {
+export default function ProvidersView({ businessId, operatorId, initialSuppliers }: Props) {
   const supabase = useMemo(() => createClient(), [])
   const [suppliers, setSuppliers] = useState<Supplier[]>(initialSuppliers)
   const [showForm, setShowForm] = useState(false)
@@ -37,6 +38,7 @@ export default function ProvidersView({ businessId, initialSuppliers }: Props) {
           <SuppliersPanel
             suppliers={suppliers}
             businessId={businessId}
+            operatorId={operatorId}
             supabaseClient={supabase}
             onSuppliersChange={setSuppliers}
             showForm={showForm}

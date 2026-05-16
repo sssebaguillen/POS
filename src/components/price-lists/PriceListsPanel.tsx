@@ -28,6 +28,7 @@ import { usePillIndicator } from '@/hooks/usePillIndicator'
 
 interface PriceListsPanelProps {
   businessId: string
+  operatorId: string | null
   readOnly: boolean
   initialLists: PriceList[]
   products: PriceListProduct[]
@@ -58,6 +59,7 @@ function getMarginPercent(multiplier: number): number {
 
 export default function PriceListsPanel({
   businessId,
+  operatorId,
   readOnly,
   initialLists,
   products,
@@ -315,8 +317,9 @@ export default function PriceListsPanel({
     setCrudError(null)
 
     const { error } = await supabase.rpc('swap_default_price_list', {
-      p_price_list_id: listId,
+      p_operator_id: operatorId,
       p_business_id: businessId,
+      p_price_list_id: listId,
     })
 
     if (error) {
@@ -492,6 +495,7 @@ export default function PriceListsPanel({
           open={showNewListModal}
           onClose={() => setShowNewListModal(false)}
           businessId={businessId}
+          operatorId={operatorId}
           hasDefault={lists.some(l => l.is_default)}
           products={products}
           onCreated={handleCreated}
@@ -504,6 +508,8 @@ export default function PriceListsPanel({
           open={Boolean(editingList)}
           onClose={() => setEditingListId(null)}
           list={editingList}
+          businessId={businessId}
+          operatorId={operatorId}
           products={products}
           existingOverrides={editingListOverrides}
           onSaved={handleSaved}

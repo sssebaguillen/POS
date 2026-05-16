@@ -550,6 +550,7 @@ export default function OnboardingWizard({
                 open
                 onClose={() => {}}
                 businessId={businessId}
+                operatorId={operatorId}
                 onCreated={() => {}}
                 onSuccess={() => {
                   withStepDone('operator')

@@ -7,6 +7,8 @@ import PageHeader from '@/components/shared/PageHeader'
 import SelectDropdown from '@/components/ui/SelectDropdown'
 import DateRangeFilter from '@/components/shared/DateRangeFilter'
 import { periodNeedsCustomDates, type DateRangePeriod } from '@/lib/date-utils'
+import { useFormatMoney } from '@/lib/context/CurrencyContext'
+import { PAYMENT_LABELS, isPaymentMethod } from '@/lib/payments'
 import { cn } from '@/lib/utils'
 import type {
   ActivityActionTone,
@@ -32,37 +34,67 @@ interface Props {
   productMap: ActivityLookups['productMap']
 }
 
-const ENTITY_CHIPS: { value: ActivityEntityFilter; label: string }[] = [
-  { value: 'sale',     label: 'Ventas' },
-  { value: 'product',  label: 'Productos' },
-  { value: 'category', label: 'Categorías' },
-  { value: 'brand',    label: 'Marcas' },
+// Entity options have grown to 9 (8 entity types + "Todas") with Phase 2.
+// At that count chips wrap awkwardly and the longest label ("Listas de
+// precios") dominates the row, so we render entity as a dropdown instead —
+// it sits next to the operator dropdown for a clean two-control filter bar.
+const ENTITY_OPTIONS: { value: ActivityEntityFilter; label: string }[] = [
+  { value: 'all',        label: 'Todas las entidades' },
+  { value: 'sale',       label: 'Ventas' },
+  { value: 'product',    label: 'Productos' },
+  { value: 'category',   label: 'Categorías' },
+  { value: 'brand',      label: 'Marcas' },
+  { value: 'expense',    label: 'Gastos' },
+  { value: 'supplier',   label: 'Proveedores' },
+  { value: 'price_list', label: 'Listas de precios' },
+  { value: 'setting',    label: 'Configuración' },
+  { value: 'operator',   label: 'Operarios' },
 ]
 
 const ENTITY_TYPE_LABELS: Record<ActivityLogRow['entity_type'], string> = {
-  sale:     'Venta',
-  product:  'Producto',
-  category: 'Categoría',
-  brand:    'Marca',
+  sale:       'Venta',
+  product:    'Producto',
+  category:   'Categoría',
+  brand:      'Marca',
+  expense:    'Gasto',
+  supplier:   'Proveedor',
+  price_list: 'Lista de precios',
+  setting:    'Configuración',
+  operator:   'Operario',
 }
 
 const ACTION_LABELS: Record<string, string> = {
-  sale_created:           'Venta creada',
-  sale_updated:           'Venta editada',
-  sale_deleted:           'Venta eliminada',
-  product_created:        'Producto creado',
-  product_updated:        'Producto editado',
-  product_deleted:        'Producto eliminado',
-  product_bulk_deleted:   'Productos eliminados (masivo)',
-  product_bulk_status:    'Estado de productos (masivo)',
-  product_bulk_category:  'Categoría de productos (masivo)',
-  product_bulk_brand:     'Marca de productos (masivo)',
-  category_created:       'Categoría creada',
-  category_updated:       'Categoría editada',
-  category_deleted:       'Categoría eliminada',
-  brand_created:          'Marca creada',
-  brand_updated:          'Marca editada',
-  brand_deleted:          'Marca eliminada',
+  sale_created:               'Venta creada',
+  sale_updated:               'Venta editada',
+  sale_deleted:               'Venta eliminada',
+  product_created:            'Producto creado',
+  product_updated:            'Producto editado',
+  product_deleted:            'Producto eliminado',
+  product_bulk_deleted:       'Productos eliminados (masivo)',
+  product_bulk_status:        'Estado de productos (masivo)',
+  product_bulk_category:      'Categoría de productos (masivo)',
+  product_bulk_brand:         'Marca de productos (masivo)',
+  category_created:           'Categoría creada',
+  category_updated:           'Categoría editada',
+  category_deleted:           'Categoría eliminada',
+  brand_created:              'Marca creada',
+  brand_updated:              'Marca editada',
+  brand_deleted:              'Marca eliminada',
+  expense_created:            'Gasto creado',
+  expense_updated:            'Gasto editado',
+  expense_deleted:            'Gasto eliminado',
+  supplier_created:           'Proveedor creado',
+  supplier_updated:           'Proveedor editado',
+  supplier_deactivated:       'Proveedor desactivado',
+  price_list_created:         'Lista creada',
+  price_list_updated:         'Lista editada',
+  price_list_deleted:         'Lista eliminada',
+  price_list_default_changed: 'Lista predeterminada cambiada',
+  settings_updated:           'Configuración editada',
+  settings_slug_updated:      'URL del catálogo cambiada',
+  operator_created:           'Operario creado',
+  operator_updated:           'Operario editado',
+  operator_deleted:           'Operario eliminado',
 }
 
 const TONE_CLASSES: Record<ActivityActionTone, string> = {
@@ -210,10 +242,6 @@ export default function ActivityView({
     })
   }
 
-  function toggleEntityChip(value: ActivityEntityFilter) {
-    navigate({ entity: entityLocal === value ? 'all' : value, page: 1 })
-  }
-
   function toggleExpand(id: string) {
     setExpanded(prev => {
       const next = new Set(prev)
@@ -239,24 +267,15 @@ export default function ActivityView({
             onChange={handleDateChange}
           />
 
-          {/* Row 2: Entity chips + actor dropdown */}
+          {/* Row 2: Entity dropdown + actor dropdown */}
           <div className="flex flex-wrap items-center gap-2">
-            <div className="flex flex-wrap gap-1.5">
-              {ENTITY_CHIPS.map(chip => {
-                const active = entityLocal === chip.value
-                return (
-                  <button
-                    key={chip.value}
-                    onClick={() => toggleEntityChip(chip.value)}
-                    className={cn(
-                      'pill-tab',
-                      active && 'bg-primary/10 text-primary border border-primary/20 dark:bg-primary/15 dark:border-primary/30',
-                    )}
-                  >
-                    {chip.label}
-                  </button>
-                )
-              })}
+            <div className="min-w-[220px]">
+              <SelectDropdown
+                value={entityLocal}
+                onChange={(v) => navigate({ entity: v as ActivityEntityFilter, page: 1 })}
+                options={ENTITY_OPTIONS}
+                usePortal
+              />
             </div>
 
             <div className="min-w-[200px] ml-auto">
@@ -281,7 +300,7 @@ export default function ActivityView({
                 <Inbox size={36} className="text-hint" />
                 <p className="text-heading font-semibold">Sin actividad registrada</p>
                 <p className="text-sm text-body max-w-sm">
-                  Cuando se creen, editen o eliminen ventas, productos, categorías o marcas, vas a verlas acá.
+                  Cuando se modifiquen ventas, productos, gastos, proveedores, listas de precios, configuración u operarios, vas a verlas acá.
                 </p>
               </div>
             ) : (
@@ -392,6 +411,7 @@ function ActivityRow({ row, isOpen, tone, lookups, onToggle }: RowProps) {
               <span className="text-heading font-medium">{row.entity_label}</span>
             </>
           )}
+          {row.entity_type === 'sale' && <SaleSummaryInline row={row} />}
         </td>
         <td className="px-4 py-3 align-middle text-body">{row.actor_name}</td>
       </tr>
@@ -402,6 +422,83 @@ function ActivityRow({ row, isOpen, tone, lookups, onToggle }: RowProps) {
           </td>
         </tr>
       )}
+    </>
+  )
+}
+
+interface SaleSummaryData {
+  total?: number | string
+  customer_id?: string | null
+  items?: unknown[]
+  item_count?: number
+  payments?: { method?: string }[]
+}
+
+function toNumber(v: unknown): number | null {
+  if (v == null) return null
+  const n = typeof v === 'number' ? v : Number(v)
+  return Number.isFinite(n) ? n : null
+}
+
+function getItemCount(d: SaleSummaryData | null | undefined): number | null {
+  if (!d) return null
+  if (Array.isArray(d.items)) return d.items.length
+  if (typeof d.item_count === 'number') return d.item_count
+  return null
+}
+
+function getFirstPaymentLabel(d: SaleSummaryData | null | undefined): string | null {
+  const method = d?.payments?.[0]?.method
+  if (!method) return null
+  return isPaymentMethod(method) ? PAYMENT_LABELS[method] : method
+}
+
+function SaleSummaryInline({ row }: { row: ActivityLogRow }) {
+  const formatMoney = useFormatMoney()
+  const oldData = row.old_data as SaleSummaryData | null
+  const newData = row.new_data as SaleSummaryData | null
+  const pieces: string[] = []
+
+  if (row.action === 'sale_updated') {
+    const oldTotal = toNumber(oldData?.total)
+    const newTotal = toNumber(newData?.total)
+    if (oldTotal !== null && newTotal !== null && oldTotal !== newTotal) {
+      pieces.push(`${formatMoney(oldTotal)} → ${formatMoney(newTotal)}`)
+    } else if (newTotal !== null) {
+      pieces.push(formatMoney(newTotal))
+    } else if (oldTotal !== null) {
+      pieces.push(formatMoney(oldTotal))
+    }
+
+    const oldPay = getFirstPaymentLabel(oldData)
+    const newPay = getFirstPaymentLabel(newData)
+    if (newPay && newPay !== oldPay) pieces.push(newPay)
+
+    const oldCount = getItemCount(oldData)
+    const newCount = getItemCount(newData)
+    if (newCount !== null && newCount !== oldCount) {
+      pieces.push(`${newCount} ${newCount === 1 ? 'item' : 'items'}`)
+    }
+  } else {
+    const data = row.action === 'sale_deleted' ? oldData : newData
+    const total = toNumber(data?.total)
+    if (total !== null) pieces.push(formatMoney(total))
+
+    const pay = getFirstPaymentLabel(data)
+    if (pay) pieces.push(pay)
+
+    const count = getItemCount(data)
+    if (count !== null) pieces.push(`${count} ${count === 1 ? 'item' : 'items'}`)
+
+    if (data?.customer_id) pieces.push('Cliente asignado')
+  }
+
+  if (pieces.length === 0) return null
+
+  return (
+    <>
+      <span className="text-hint mx-1.5">·</span>
+      <span className="text-heading font-medium">{pieces.join(' · ')}</span>
     </>
   )
 }

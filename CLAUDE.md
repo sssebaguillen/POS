@@ -643,7 +643,7 @@ Append-only audit trail of business mutations. Indefinite retention. RLS enabled
 | operator_id | uuid nullable | FK → operators(id). **NULL = owner ("Dueño")** — owner has no row in `operators` |
 | actor_role | text | snapshot of role at action time (`'owner'`, `'manager'`, `'cashier'`, `'custom'`) |
 | action | text | e.g. `sale_created`, `sale_updated`, `sale_deleted`, `product_created`, `product_updated`, `product_deleted`, `product_bulk_deleted`, `product_bulk_status`, `product_bulk_category`, `product_bulk_brand`, `category_*`, `brand_*` |
-| entity_type | text | `'sale' \| 'product' \| 'category' \| 'brand'` |
+| entity_type | text | `'sale' \| 'product' \| 'category' \| 'brand' \| 'expense' \| 'supplier' \| 'price_list' \| 'setting' \| 'operator'` |
 | entity_id | uuid nullable | id of affected entity (null for bulk) |
 | entity_label | text nullable | snapshot label for display (sales have no label — show total from `new_data`/`old_data`) |
 | old_data | jsonb nullable | full pre-state snapshot for `*_updated` / `*_deleted` |
@@ -901,8 +901,21 @@ All SECURITY DEFINER, all with `set search_path = public, extensions`.
 | Phase | Scope | Status |
 |-------|-------|--------|
 | Fase 1 | Sales + inventory (products, categories, brands, bulk) audit logging; `/activity` UI; `RecentActivityWidget` on dashboard | ✅ shipped 2026-05-15 |
-| Fase 2 | Audit logging for expenses, providers/suppliers, price lists, settings mutations | ⏳ |
+| Fase 2 | Audit logging for expenses, suppliers, price lists, settings, operators; `audit_log.entity_type` expanded to `expense \| supplier \| price_list \| setting \| operator`; `/activity` entity filter switched from chips to dropdown (9 options) | ✅ shipped 2026-05-16 |
 | Fase 3 | Revert mutation from audit log entry (undo from any entry) | ⏳ |
+
+**Fase 2 RPC signature changes (callers updated in same PR):**
+- `swap_default_price_list(p_operator_id, p_business_id, p_price_list_id)` — was `(p_price_list_id, p_business_id)`
+- `update_business_slug(p_operator_id, p_business_id, p_slug)` — was `(p_slug)`
+- `create_operator(p_actor_operator_id, p_business_id, ...)` — actor param added at the front
+- `update_operator(p_actor_operator_id, p_business_id, p_target_operator_id, ...)` — actor + business added; target renamed
+- `update_expense(..., p_operator_id)` — appended trailing actor param (DEFAULT NULL)
+- `delete_expense(p_business_id, p_expense_id, p_operator_id)` — appended trailing actor param (DEFAULT NULL)
+- `update_mercaderia_expense(..., p_operator_id)` — appended trailing actor param (DEFAULT NULL)
+
+`create_expense` and `create_mercaderia_expense` already accepted `p_operator_id` (used to stamp `expenses.operator_id`); the same value is now reused as the audit actor.
+
+Helper `getActorOperatorId(operator)` in `lib/operator.ts` returns `null` for owner, `profile_id` otherwise — use it whenever you need to pass `p_operator_id` to an audit-logged RPC.
 
 **Scope cut in Fase 1:** `ImportProductsModal.handleCreate` still performs a direct `.update({ icon_color })` on `categories` instead of going through `create_category_guarded` / `update_category`. Move to RPC path in Fase 2.
 

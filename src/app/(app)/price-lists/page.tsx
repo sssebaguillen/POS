@@ -37,6 +37,7 @@ export default async function PriceListsPage() {
   return (
     <PriceListsPanel
       businessId={businessId}
+      operatorId={activeOperator?.profile_id ?? null}
       readOnly={activeOperator !== null && activeOperator.permissions.price_lists_write !== true}
       initialLists={(lists ?? []).map(normalizePriceList)}
       products={(products ?? []).map(product => {

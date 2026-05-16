@@ -1,4 +1,14 @@
-export type ActivityEntityFilter = 'all' | 'sale' | 'product' | 'category' | 'brand'
+export type ActivityEntityFilter =
+  | 'all'
+  | 'sale'
+  | 'product'
+  | 'category'
+  | 'brand'
+  | 'expense'
+  | 'supplier'
+  | 'price_list'
+  | 'setting'
+  | 'operator'
 
 export interface ActivityFilterOperator {
   id: string
@@ -11,7 +21,16 @@ export interface ActivityLogRow {
   operator_id: string | null
   actor_role: 'owner' | 'manager' | 'cashier' | 'custom'
   action: string
-  entity_type: 'sale' | 'product' | 'category' | 'brand'
+  entity_type:
+    | 'sale'
+    | 'product'
+    | 'category'
+    | 'brand'
+    | 'expense'
+    | 'supplier'
+    | 'price_list'
+    | 'setting'
+    | 'operator'
   entity_id: string
   entity_label: string | null
   actor_name: string

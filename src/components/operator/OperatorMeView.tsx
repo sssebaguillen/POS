@@ -272,7 +272,9 @@ export default function OperatorMeView({
     }
 
     const { error: updateError } = await supabase.rpc('update_operator', {
-      p_operator_id: operatorId,
+      p_actor_operator_id: operatorId,
+      p_business_id: _businessId,
+      p_target_operator_id: operatorId,
       p_name: null,
       p_new_pin: newPin,
       p_permissions: null,

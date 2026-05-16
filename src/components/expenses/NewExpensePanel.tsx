@@ -92,7 +92,7 @@ export default function NewExpensePanel({
         p_description: description.trim(),
         p_date: date || null,
         p_supplier_id: supplierId,
-        p_operator_id: null,
+        p_operator_id: operatorId,
         p_notes: notes.trim() || null,
         p_items: mercaderiaItems.map(i => ({
           product_id: i.product_id,
@@ -134,7 +134,7 @@ export default function NewExpensePanel({
       p_description: description.trim(),
       p_date: date || null,
       p_supplier_id: supplierId,
-      p_operator_id: null,
+      p_operator_id: operatorId,
       p_attachment_url: attachment?.url ?? null,
       p_attachment_type: attachment?.type ?? null,
       p_attachment_name: attachment?.name ?? null,

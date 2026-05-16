@@ -16,6 +16,7 @@ type ConfirmState = { title: string; message: string; onConfirm: () => void } | 
 
 interface Props {
   businessId: string
+  operatorId: string | null
   initialOperators: SettingsOperator[]
   isOwner: boolean
   canManageOperators: boolean
@@ -23,6 +24,7 @@ interface Props {
 
 export default function OperatorList({
   businessId,
+  operatorId,
   initialOperators,
   isOwner,
   canManageOperators,
@@ -67,15 +69,17 @@ export default function OperatorList({
 
         const timer = setTimeout(async () => {
           deleteTimersRef.current.delete(operator.id)
-          const { error: deleteError } = await supabase
-            .from('operators')
-            .delete()
-            .eq('id', operator.id)
-            .eq('business_id', businessId)
+          const { data: rpcResult, error: rpcError } = await supabase.rpc('delete_operator', {
+            p_operator_id: operatorId,
+            p_business_id: businessId,
+            p_target_operator_id: operator.id,
+          })
 
-          if (deleteError) {
+          const result = rpcResult as { success: boolean; error?: string } | null
+
+          if (rpcError || !result?.success) {
             restoreOperator()
-            showToast({ message: deleteError.message })
+            showToast({ message: result?.error ?? rpcError?.message ?? 'No se pudo eliminar el operario.' })
           }
         }, TOAST_DURATION + 500)
 
@@ -142,6 +146,7 @@ export default function OperatorList({
         open={showNewOperatorModal}
         onClose={() => setShowNewOperatorModal(false)}
         businessId={businessId}
+        operatorId={operatorId}
         onCreated={operator => {
           setOperatorList(prev =>
             [...prev, operator].sort((a, b) => a.name.localeCompare(b.name))
@@ -153,6 +158,7 @@ export default function OperatorList({
         <EditOperatorModal
           operator={editingOperator}
           businessId={businessId}
+          actorOperatorId={operatorId}
           isOwner={isOwner}
           canManageOperators={canManageOperators}
           onClose={() => setEditingOperator(null)}

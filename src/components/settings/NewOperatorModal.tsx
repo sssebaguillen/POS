@@ -41,6 +41,7 @@ interface NewOperatorModalProps {
   open?: boolean
   onClose: () => void
   businessId: string
+  operatorId: string | null
   onCreated: (operator: SettingsOperator) => void
   onSuccess?: (operator: SettingsOperator) => void
 }
@@ -50,6 +51,7 @@ export default function NewOperatorModal({
   open = false,
   onClose,
   businessId,
+  operatorId,
   onCreated,
   onSuccess,
 }: NewOperatorModalProps) {
@@ -150,6 +152,7 @@ export default function NewOperatorModal({
     setError(null)
 
     const { data: createData, error: createError } = await supabase.rpc('create_operator', {
+      p_actor_operator_id: operatorId,
       p_business_id: businessId,
       p_name: trimmedName,
       p_role: roleToSend,

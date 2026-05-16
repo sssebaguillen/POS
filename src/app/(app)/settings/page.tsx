@@ -47,6 +47,7 @@ export default async function SettingsPage() {
       <SettingsForm
         business={business}
         operators={parsedOperators}
+        operatorId={activeOperator?.profile_id ?? null}
         isOwner={isOwner}
         canManageOperators={canManageOperators}
       />

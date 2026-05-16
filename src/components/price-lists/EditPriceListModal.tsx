@@ -18,6 +18,8 @@ interface EditPriceListModalProps {
   open: boolean
   onClose: () => void
   list: PriceList
+  businessId: string
+  operatorId: string | null
   products: { id: string; name: string; price: number; cost: number }[]
   existingOverrides: { id: string; product_id: string | null; multiplier: number }[]
   onSaved: (list: PriceList, upsertedOverrides: PriceListOverride[], deletedOverrideIds: string[]) => void
@@ -28,6 +30,8 @@ export default function EditPriceListModal({
   open,
   onClose,
   list,
+  businessId,
+  operatorId,
   products,
   existingOverrides,
   onSaved,
@@ -93,70 +97,79 @@ export default function EditPriceListModal({
     setError(null)
 
     const newMultiplier = 1 + parsedPercentage / 100
-
-    const { data, error: updateError } = await supabase
-      .from('price_lists')
-      .update({
-        name: name.trim(),
-        description: description.trim() || null,
-        multiplier: newMultiplier,
-      })
-      .eq('id', list.id)
-      .select('id, business_id, name, description, multiplier, is_default, created_at')
-      .single()
-
-    if (updateError || !data) {
-      setSaving(false)
-      setError(updateError?.message ?? 'Error al guardar la lista')
-      return
-    }
-
     const oldMultiplier = list.multiplier
     const multiplierChanged = Math.abs(newMultiplier - oldMultiplier) > 0.0001
-    const upsertedOverrides: PriceListOverride[] = []
-    const deletedOverrideIds: string[] = []
+
+    let upsertPayload: { product_id: string; multiplier: number }[] | null = null
+    let deletePayload: string[] | null = null
 
     if (multiplierChanged && affectedProducts.length > 0) {
       if (overwriteManual === false) {
-        // Respetar precios manuales: crear/actualizar overrides para que el precio no cambie
-        const toUpsert = affectedProducts.map(p => ({
-          price_list_id: list.id,
+        upsertPayload = affectedProducts.map(p => ({
           product_id: p.id,
-          brand_id: null as null,
           multiplier: p.price / p.cost,
         }))
-
-        const { data: upserted } = await supabase
-          .from('price_list_overrides')
-          .upsert(toUpsert, { onConflict: 'price_list_id,product_id' })
-          .select('id, price_list_id, product_id, brand_id, multiplier')
-
-        for (const o of upserted ?? []) {
-          upsertedOverrides.push({
-            id: o.id,
-            price_list_id: o.price_list_id,
-            product_id: o.product_id,
-            brand_id: o.brand_id,
-            multiplier: Number(o.multiplier),
-          })
-        }
       } else {
-        // Sobreescribir: eliminar overrides automáticos (los que coincidían con el multiplier anterior)
         const autoOverrides = existingOverrides.filter(o =>
           o.product_id !== null &&
           Math.abs(o.multiplier - oldMultiplier) <= 0.0001
         )
         if (autoOverrides.length > 0) {
-          const ids = autoOverrides.map(o => o.id)
-          await supabase.from('price_list_overrides').delete().in('id', ids)
-          deletedOverrideIds.push(...ids)
+          deletePayload = autoOverrides.map(o => o.id)
         }
       }
     }
 
+    const { data: rpcResult, error: rpcError } = await supabase.rpc('update_price_list', {
+      p_operator_id: operatorId,
+      p_business_id: businessId,
+      p_price_list_id: list.id,
+      p_name: name.trim(),
+      p_description: description.trim() || null,
+      p_multiplier: newMultiplier,
+      p_overrides_upsert: upsertPayload,
+      p_overrides_delete_ids: deletePayload,
+    })
+
+    type UpdateResult = {
+      success: boolean
+      error?: string
+      upserted_overrides?: { id: string; price_list_id: string; product_id: string; brand_id: string | null; multiplier: number | string }[]
+      deleted_ids?: string[]
+    }
+
+    const result = rpcResult as UpdateResult | null
+
+    if (rpcError || !result?.success) {
+      setSaving(false)
+      setError(result?.error ?? rpcError?.message ?? 'Error al guardar la lista')
+      return
+    }
+
+    const upsertedOverrides: PriceListOverride[] = (result.upserted_overrides ?? []).map(o => ({
+      id: o.id,
+      price_list_id: o.price_list_id,
+      product_id: o.product_id,
+      brand_id: o.brand_id,
+      multiplier: Number(o.multiplier),
+    }))
+    const deletedOverrideIds: string[] = result.deleted_ids ?? []
+
     setSaving(false)
     setOverwriteManual(null)
-    onSaved({ ...normalizePriceList(data) }, upsertedOverrides, deletedOverrideIds)
+    onSaved(
+      normalizePriceList({
+        id: list.id,
+        business_id: list.business_id,
+        name: name.trim(),
+        description: description.trim() || null,
+        multiplier: newMultiplier,
+        is_default: list.is_default,
+        created_at: list.created_at,
+      }),
+      upsertedOverrides,
+      deletedOverrideIds
+    )
     onClose()
   }
 
@@ -168,15 +181,18 @@ export default function EditPriceListModal({
         setDeleting(true)
         setError(null)
 
-        const { error: deleteError } = await supabase
-          .from('price_lists')
-          .delete()
-          .eq('id', list.id)
+        const { data: rpcResult, error: rpcError } = await supabase.rpc('delete_price_list', {
+          p_operator_id: operatorId,
+          p_business_id: businessId,
+          p_price_list_id: list.id,
+        })
 
         setDeleting(false)
 
-        if (deleteError) {
-          setError(translateDbError(deleteError.message, 'No se pudo eliminar la lista de precios.'))
+        const result = rpcResult as { success: boolean; error?: string } | null
+
+        if (rpcError || !result?.success) {
+          setError(result?.error ?? translateDbError(rpcError?.message ?? '', 'No se pudo eliminar la lista de precios.'))
           return
         }
 

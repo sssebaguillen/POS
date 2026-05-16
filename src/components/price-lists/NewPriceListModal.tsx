@@ -13,6 +13,7 @@ interface NewPriceListModalProps {
   open: boolean
   onClose: () => void
   businessId: string
+  operatorId: string | null
   hasDefault: boolean
   products: { id: string; name: string; price: number; cost: number }[]
   onCreated: (list: PriceList, newOverrides: { price_list_id: string; product_id: string; brand_id: null; multiplier: number }[]) => void
@@ -22,6 +23,7 @@ export default function NewPriceListModal({
   open,
   onClose,
   businessId,
+  operatorId,
   hasDefault,
   products,
   onCreated,
@@ -83,58 +85,65 @@ export default function NewPriceListModal({
 
     const newMultiplier = 1 + parsedPercentage / 100
 
-    const { data, error: insertError } = await supabase
-      .from('price_lists')
-      .insert({
-        business_id: businessId,
-        name: name.trim(),
-        description: description.trim() || null,
-        multiplier: newMultiplier,
-        is_default: !hasDefault,
-      })
-      .select('id, business_id, name, description, multiplier, is_default, created_at')
-      .single()
+    const overridesPayload =
+      overwriteManual === false && affectedProducts.length > 0
+        ? affectedProducts.map(p => ({
+            product_id: p.id,
+            multiplier: p.price / p.cost,
+          }))
+        : null
+
+    const { data: rpcResult, error: rpcError } = await supabase.rpc('create_price_list', {
+      p_operator_id: operatorId,
+      p_business_id: businessId,
+      p_name: name.trim(),
+      p_description: description.trim() || null,
+      p_multiplier: newMultiplier,
+      p_is_default: !hasDefault,
+      p_overrides: overridesPayload,
+    })
 
     setSaving(false)
 
-    if (insertError || !data) {
-      setError(insertError?.message ?? 'Error al crear la lista de precios')
+    type CreateResult = {
+      success: boolean
+      error?: string
+      list?: {
+        id: string
+        business_id: string
+        name: string
+        description: string | null
+        multiplier: number | string
+        is_default: boolean
+        created_at: string
+      }
+      overrides?: { id: string; price_list_id: string; product_id: string; brand_id: string | null; multiplier: number | string }[]
+    }
+
+    const result = rpcResult as CreateResult | null
+
+    if (rpcError || !result?.success || !result.list) {
+      setError(result?.error ?? rpcError?.message ?? 'Error al crear la lista de precios')
       return
     }
 
-    let createdOverrides: { price_list_id: string; product_id: string; brand_id: null; multiplier: number }[] = []
-
-    // Respetar precios manuales: crear overrides para los productos que difieren
-    if (overwriteManual === false && affectedProducts.length > 0) {
-      const overridesToCreate = affectedProducts.map(p => ({
-        price_list_id: data.id,
-        product_id: p.id,
-        brand_id: null as null,
-        multiplier: p.price / p.cost,
-      }))
-
-      const { data: insertedOverrides } = await supabase
-        .from('price_list_overrides')
-        .insert(overridesToCreate)
-        .select('id, price_list_id, product_id, brand_id, multiplier')
-
-      createdOverrides = (insertedOverrides ?? []).map(o => ({
-        price_list_id: o.price_list_id,
-        product_id: o.product_id,
-        brand_id: null,
-        multiplier: Number(o.multiplier),
-      }))
-    }
+    const createdList = result.list
+    const createdOverrides = (result.overrides ?? []).map(o => ({
+      price_list_id: o.price_list_id,
+      product_id: o.product_id,
+      brand_id: null as null,
+      multiplier: Number(o.multiplier),
+    }))
 
     onCreated(
       {
-        id: data.id,
-        business_id: data.business_id,
-        name: data.name,
-        description: data.description,
-        multiplier: Number(data.multiplier),
-        is_default: data.is_default,
-        created_at: data.created_at,
+        id: createdList.id,
+        business_id: createdList.business_id,
+        name: createdList.name,
+        description: createdList.description,
+        multiplier: Number(createdList.multiplier),
+        is_default: createdList.is_default,
+        created_at: createdList.created_at,
       },
       createdOverrides
     )

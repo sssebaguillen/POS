@@ -11,6 +11,7 @@ import posthog from 'posthog-js'
 interface Props {
   suppliers: Supplier[]
   businessId: string
+  operatorId: string | null
   supabaseClient: SupabaseClient
   onSuppliersChange: (suppliers: Supplier[]) => void
   showForm?: boolean
@@ -28,7 +29,7 @@ interface SupplierForm {
 
 const emptyForm: SupplierForm = { name: '', contact_name: '', phone: '', email: '', address: '', notes: '' }
 
-export default function SuppliersPanel({ suppliers, businessId, supabaseClient, onSuppliersChange, showForm = false, onShowFormChange }: Props) {
+export default function SuppliersPanel({ suppliers, businessId, operatorId, supabaseClient, onSuppliersChange, showForm = false, onShowFormChange }: Props) {
   const supabase = useMemo(() => supabaseClient, [supabaseClient])
   const setShowForm = (v: boolean) => onShowFormChange?.(v)
   const [form, setForm] = useState<SupplierForm>(emptyForm)
@@ -54,23 +55,23 @@ export default function SuppliersPanel({ suppliers, businessId, supabaseClient, 
   async function handleCreate() {
     if (!form.name.trim()) { setFormError('El nombre es obligatorio'); return }
     setSaving(true)
-    const { data, error } = await supabase
-      .from('suppliers')
-      .insert({
-        business_id: businessId,
-        name: form.name.trim(),
-        contact_name: form.contact_name.trim() || null,
-        phone: form.phone.trim() || null,
-        email: form.email.trim() || null,
-        address: form.address.trim() || null,
-        notes: form.notes.trim() || null,
-        is_active: true,
-      })
-      .select('id, business_id, name, contact_name, phone, email, address, notes, is_active, created_at')
-      .single()
+    const { data: rpcResult, error } = await supabase.rpc('create_supplier', {
+      p_operator_id: operatorId,
+      p_business_id: businessId,
+      p_name: form.name.trim(),
+      p_contact_name: form.contact_name.trim() || null,
+      p_phone: form.phone.trim() || null,
+      p_email: form.email.trim() || null,
+      p_address: form.address.trim() || null,
+      p_notes: form.notes.trim() || null,
+    })
     setSaving(false)
-    if (error || !data) { setFormError(error?.message ?? 'No se pudo crear el proveedor'); return }
-    const newSupplier = data as Supplier
+    const result = rpcResult as { success: boolean; error?: string; supplier?: Supplier } | null
+    if (error || !result?.success || !result.supplier) {
+      setFormError(result?.error ?? error?.message ?? 'No se pudo crear el proveedor')
+      return
+    }
+    const newSupplier = result.supplier
     posthog.capture('supplier_created', { supplier_id: newSupplier.id, supplier_name: form.name.trim() })
     onSuppliersChange([...suppliers, newSupplier].sort((a, b) => a.name.localeCompare(b.name)))
     setForm(emptyForm)
@@ -82,20 +83,23 @@ export default function SuppliersPanel({ suppliers, businessId, supabaseClient, 
     if (!editForm.name.trim()) return
     setSaving(true)
     setEditError(null)
-    const { error } = await supabase
-      .from('suppliers')
-      .update({
-        name: editForm.name.trim(),
-        contact_name: editForm.contact_name.trim() || null,
-        phone: editForm.phone.trim() || null,
-        email: editForm.email.trim() || null,
-        address: editForm.address.trim() || null,
-        notes: editForm.notes.trim() || null,
-      })
-      .eq('id', id)
-      .eq('business_id', businessId)
+    const { data: rpcResult, error } = await supabase.rpc('update_supplier', {
+      p_operator_id: operatorId,
+      p_business_id: businessId,
+      p_supplier_id: id,
+      p_name: editForm.name.trim(),
+      p_contact_name: editForm.contact_name.trim() || null,
+      p_phone: editForm.phone.trim() || null,
+      p_email: editForm.email.trim() || null,
+      p_address: editForm.address.trim() || null,
+      p_notes: editForm.notes.trim() || null,
+    })
     setSaving(false)
-    if (error) { setEditError(error.message ?? 'No se pudo guardar'); return }
+    const result = rpcResult as { success: boolean; error?: string } | null
+    if (error || !result?.success) {
+      setEditError(result?.error ?? error?.message ?? 'No se pudo guardar')
+      return
+    }
     onSuppliersChange(
       suppliers
         .map(s => s.id === id ? { ...s, ...editForm } : s)
@@ -109,13 +113,14 @@ export default function SuppliersPanel({ suppliers, businessId, supabaseClient, 
     if (deletingId) return
     setDeletingId(id)
     setConfirmingDeleteId(null)
-    const { error } = await supabase
-      .from('suppliers')
-      .update({ is_active: false })
-      .eq('id', id)
-      .eq('business_id', businessId)
+    const { data: rpcResult, error } = await supabase.rpc('deactivate_supplier', {
+      p_operator_id: operatorId,
+      p_business_id: businessId,
+      p_supplier_id: id,
+    })
     setDeletingId(null)
-    if (error) return
+    const result = rpcResult as { success: boolean; error?: string } | null
+    if (error || !result?.success) return
     onSuppliersChange(suppliers.filter(s => s.id !== id))
   }
 

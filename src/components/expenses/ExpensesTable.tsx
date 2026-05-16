@@ -30,12 +30,13 @@ interface ExpenseItem {
 interface Props {
   expenses: Expense[]
   businessId: string
+  operatorId: string | null
   supabaseClient: SupabaseClient
   onDeleted: (id: string) => void
   onEdit: (expense: Expense) => void
 }
 
-export default function ExpensesTable({ expenses, businessId, supabaseClient, onDeleted, onEdit }: Props) {
+export default function ExpensesTable({ expenses, businessId, operatorId, supabaseClient, onDeleted, onEdit }: Props) {
   const supabase = useMemo(() => supabaseClient, [supabaseClient])
   const formatMoney = useFormatMoney()
   const { toast, showToast, dismissToast } = useToast()
@@ -75,6 +76,7 @@ export default function ExpensesTable({ expenses, businessId, supabaseClient, on
     const { data, error } = await supabase.rpc('delete_expense', {
       p_business_id: businessId,
       p_expense_id: id,
+      p_operator_id: operatorId,
     })
     setDeletingId(null)
     if (error || !data?.success) {

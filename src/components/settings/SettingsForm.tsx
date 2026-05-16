@@ -17,6 +17,7 @@ import { BUSINESS_SLUG_REGEX } from '@/lib/validation'
 interface SettingsFormProps {
   business: SettingsBusiness
   operators: SettingsOperator[]
+  operatorId: string | null
   isOwner: boolean
   canManageOperators: boolean
 }
@@ -64,6 +65,7 @@ const SUCCESS_CLASS =
 export default function SettingsForm({
   business,
   operators,
+  operatorId,
   isOwner,
   canManageOperators,
 }: SettingsFormProps) {
@@ -221,26 +223,26 @@ export default function SettingsForm({
     setError('')
     setSuccess('')
 
-    const { error: updateError } = await supabase
-      .from('businesses')
-      .update({
-        name,
-        description: form.description.trim() || null,
-        whatsapp: form.whatsapp.trim() || null,
-        logo_url: normalizedLogoUrl || null,
-        settings: {
-          ...(business.settings as Record<string, unknown> | null | undefined),
-          primary_color: form.primaryColor,
-          currency: form.currencyCode,
-          free_line_enabled: form.freeLineEnabled,
-        },
-      })
-      .eq('id', business.id)
+    const { data: rpcResult, error: updateError } = await supabase.rpc('update_business_settings', {
+      p_operator_id: operatorId,
+      p_business_id: business.id,
+      p_name: name,
+      p_description: form.description.trim() || null,
+      p_whatsapp: form.whatsapp.trim() || null,
+      p_logo_url: normalizedLogoUrl || null,
+      p_settings_patch: {
+        primary_color: form.primaryColor,
+        currency: form.currencyCode,
+        free_line_enabled: form.freeLineEnabled,
+      },
+    })
 
     setLoading(false)
 
-    if (updateError) {
-      setError(updateError.message)
+    const result = rpcResult as { success: boolean; error?: string } | null
+
+    if (updateError || !result?.success) {
+      setError(result?.error ?? updateError?.message ?? 'No se pudo guardar la configuración.')
       return
     }
 
@@ -261,7 +263,11 @@ export default function SettingsForm({
     setSlugError('')
     setSlugSuccess('')
 
-    const { error: slugUpdateError } = await supabase.rpc('update_business_slug', { p_slug: slug })
+    const { error: slugUpdateError } = await supabase.rpc('update_business_slug', {
+      p_operator_id: operatorId,
+      p_business_id: business.id,
+      p_slug: slug,
+    })
 
     setSlugLoading(false)
 
@@ -587,6 +593,7 @@ export default function SettingsForm({
         {activeTab === 'operarios' && (
           <OperatorList
             businessId={business.id}
+            operatorId={operatorId}
             initialOperators={operators}
             isOwner={isOwner}
             canManageOperators={canManageOperators}

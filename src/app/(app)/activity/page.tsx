@@ -22,7 +22,18 @@ interface SearchParams {
   page?: string
 }
 
-const ENTITY_VALUES: ActivityEntityFilter[] = ['all', 'sale', 'product', 'category', 'brand']
+const ENTITY_VALUES: ActivityEntityFilter[] = [
+  'all',
+  'sale',
+  'product',
+  'category',
+  'brand',
+  'expense',
+  'supplier',
+  'price_list',
+  'setting',
+  'operator',
+]
 const PAGE_SIZE = 50
 const OWNER_SENTINEL = '00000000-0000-0000-0000-000000000000'
 

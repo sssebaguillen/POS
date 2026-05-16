@@ -114,6 +114,7 @@ export default function EditExpensePanel({
           unit_cost: i.unit_cost,
           update_cost: i.update_cost,
         })),
+        p_operator_id: operatorId,
       })
       setSaving(false)
       if (rpcError || !data?.success) {
@@ -150,6 +151,7 @@ export default function EditExpensePanel({
       p_attachment_url: attachment?.url ?? null,
       p_attachment_type: attachment?.type ?? null,
       p_attachment_name: attachment?.name ?? null,
+      p_operator_id: operatorId,
     })
     setSaving(false)
     if (rpcError || !data?.success) {
