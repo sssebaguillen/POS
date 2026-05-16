@@ -3,50 +3,11 @@
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
 import { useFormatMoney } from '@/lib/context/CurrencyContext'
+import { AUDIT_TONE_CLASSES, getAuditActionLabel, getAuditActionTone } from '@/lib/audit'
 import type { RecentActivityRow } from '@/components/dashboard/DashboardView'
 
 interface Props {
   entries: RecentActivityRow[]
-}
-
-type ActionTone = 'created' | 'updated' | 'deleted' | 'bulk'
-
-const ACTION_LABELS: Record<string, string> = {
-  sale_created:           'Venta creada',
-  sale_updated:           'Venta editada',
-  sale_deleted:           'Venta eliminada',
-  product_created:        'Producto creado',
-  product_updated:        'Producto editado',
-  product_deleted:        'Producto eliminado',
-  product_bulk_deleted:   'Productos eliminados',
-  product_bulk_status:    'Estado de productos',
-  product_bulk_category:  'Categoría de productos',
-  product_bulk_brand:     'Marca de productos',
-  category_created:       'Categoría creada',
-  category_updated:       'Categoría editada',
-  category_deleted:       'Categoría eliminada',
-  brand_created:          'Marca creada',
-  brand_updated:          'Marca editada',
-  brand_deleted:          'Marca eliminada',
-}
-
-const TONE_CLASSES: Record<ActionTone, string> = {
-  created: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300',
-  updated: 'bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300',
-  deleted: 'bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-300',
-  bulk:    'bg-sky-100 text-sky-700 dark:bg-sky-500/15 dark:text-sky-300',
-}
-
-function getActionTone(action: string): ActionTone {
-  if (action.includes('bulk')) return 'bulk'
-  if (action.endsWith('_created')) return 'created'
-  if (action.endsWith('_updated')) return 'updated'
-  if (action.endsWith('_deleted')) return 'deleted'
-  return 'updated'
-}
-
-function getActionLabel(action: string): string {
-  return ACTION_LABELS[action] ?? action
 }
 
 function formatRelativeTime(iso: string): string {
@@ -97,13 +58,13 @@ export default function RecentActivityWidget({ entries }: Props) {
       ) : (
         <ul className="flex-1 space-y-2.5 overflow-hidden">
           {entries.map(entry => {
-            const tone = getActionTone(entry.action)
+            const tone = getAuditActionTone(entry.action)
             const saleTotal = extractSaleTotal(entry)
             const primary = entry.entity_label ?? (saleTotal !== null ? fmt(saleTotal) : null)
             return (
               <li key={entry.id} className="flex items-start gap-2.5">
-                <span className={cn('shrink-0 mt-0.5 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium', TONE_CLASSES[tone])}>
-                  {getActionLabel(entry.action)}
+                <span className={cn('shrink-0 mt-0.5 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium', AUDIT_TONE_CLASSES[tone])}>
+                  {getAuditActionLabel(entry.action)}
                 </span>
                 <div className="min-w-0 flex-1">
                   {primary && (

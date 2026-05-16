@@ -3,20 +3,10 @@
 > **Source of truth for all AI sessions.** When this file and the code conflict, trust the code and update this file.
 > Last verified against live Supabase: 2026-05-16.
 
----
-
-## Skills
-
-Skills location: `.agents/skills/`
-
-| Skill | Trigger | Path |
-|-------|---------|------|
-| `impeccable` | Design, UI/UX critique, polish, layout, typography | `.agents/skills/impeccable/SKILL.md` |
-| `design-taste-frontend` | High-end frontend visual design | `.agents/skills/design-taste-frontend/SKILL.md` |
-| `high-end-visual-design` | Agency-grade visual standards | `.agents/skills/high-end-visual-design/SKILL.md` |
-| `minimalist-ui` | Minimalist UI patterns | `.agents/skills/minimalist-ui/SKILL.md` |
-| `gpt-taste` | Aesthetic judgment reference | `.agents/skills/gpt-taste/SKILL.md` |
-| `redesign-existing-projects` | Redesign without breaking functionality | `.agents/skills/redesign-existing-projects/SKILL.md` |
+**Companion docs (read on demand):**
+- [`docs/db.md`](docs/db.md) — full DB schema, RPC signatures, RLS rules, migration naming.
+- [`docs/conventions.md`](docs/conventions.md) — UI patterns (pill tabs vs chips), design system, permissions model, route map, payment methods, flash toast system, skills.
+- [`docs/backlog.md`](docs/backlog.md) — P7h/P8/P9/P10 status, known bugs, CONTEXT.md errors, post-beta tech debt.
 
 ---
 
@@ -37,8 +27,19 @@ Skills location: `.agents/skills/`
 | Backend | Supabase (PostgreSQL + Auth + Storage + RLS) |
 | Deploy | Vercel, project `pulsarpos`, repo `github.com/sssebaguillen/POS` (master), region `gru1 (São Paulo)` |
 | Analytics | PostHog (EU endpoint via `/ingest/*` rewrites) |
-| Supabase project ID | `zrnthcznbrplzpmxmkwk` (sa-east-1) — ⚠️ CONTEXT.md has a typo: `zrnthycznbrplzpmxmkwk` |
+| Supabase project ID | `zrnthcznbrplzpmxmkwk` (sa-east-1) |
 | Supabase plan | FREE — do not suggest paid-plan features (e.g. Leaked Password Protection) |
+
+### Commands
+
+| | |
+|--|--|
+| `npm run dev` | Start dev server (Next + webpack) |
+| `npm run build` | Production build |
+| `npm run start` | Run production build |
+| `npm run lint` | ESLint |
+
+No `typecheck` script — `tsc --noEmit` runs implicitly during `next build`.
 
 ---
 
@@ -66,10 +67,7 @@ Skills location: `.agents/skills/`
 
 - Sub-operators authenticate with a 4-digit PIN, bcrypt-hashed via `pgcrypto`.
 - PIN is normalized to digits-only, max 4 digits, in `/api/operator/switch/route.ts`.
-- Active session stored in cookie `operator_session` (httpOnly, sameSite: lax, secure in prod):
-  ```json
-  { "profile_id": "uuid", "name": "string", "role": "UserRole", "permissions": { ...11 fields... } }
-  ```
+- Active session stored in cookie `operator_session` (httpOnly, sameSite: lax, secure in prod): `{ profile_id, name, role, permissions }`. See `docs/conventions.md` for the full permission shape.
 - Cookie `op_perms` (non-httpOnly) — copy of permissions for client-side sidebar reads.
 - Owner identified by `operator?.role === 'owner'` or absence of cookie — **never by DB lookup in proxy**.
 - Sub-operators live in `operators` table. Owner lives only in `profiles`. **Owner NEVER has a row in `operators`.**
@@ -152,20 +150,14 @@ The `expense_items` table and its RPCs (`create_mercaderia_expense`, `update_mer
 
 The `update_mercaderia_expense` RPC performs delta-based stock reconciliation — it reverts removed items, applies quantity deltas, and warns on cost conflicts.
 
-### Audit Log (P7h Phase 1)
+### Audit Log (P7h)
 
-- `audit_log` table records every business mutation. Inventory mutations (create/update/delete product, category, brand, bulk product ops) and sale mutations (create/update/delete) all go through SECURITY DEFINER RPCs that call `log_audit_event(...)`.
+- `audit_log` table records every business mutation. Inventory mutations (create/update/delete product, category, brand, bulk product ops) and sale mutations (create/update/delete) all go through SECURITY DEFINER RPCs that call `log_audit_event(...)`. Phase 2 (shipped 2026-05-16) extended this to expenses, suppliers, price lists, settings, operators.
 - **`operator_id` is NULL when the owner performed the action.** Owners are not in the `operators` table — never look them up. The read RPC `get_audit_log` LEFT JOINs operators and projects `actor_name = COALESCE(o.name, 'Dueño')`; the UI mirrors this with sentinel UUID `'00000000-0000-0000-0000-000000000000'` for the "Owner only" filter (maps to `operator_id IS NULL` in the RPC).
-- All inventory/sale mutation RPCs accept `p_operator_id uuid` (nullable) and pass it through to `log_audit_event`. Server-side callers (Server Components / Route Handlers) pass the active operator id (or null for owner) from `getActiveOperator(cookieStore)?.profile_id`.
+- All audit-logged RPCs accept `p_operator_id uuid` (nullable). Server-side callers pass `getActorOperatorId(operator)` from `lib/operator.ts` (returns `null` for owner, `profile_id` otherwise).
 - Audit retention is indefinite. **Do not** add cleanup jobs or TTL.
 
-### Pill Tabs vs Chips
-
-Two distinct filter patterns — never mix:
-- **Pill tabs** (`pill-tabs` / `pill-tab` / `pill-tab-active`, with the `usePillIndicator` sliding indicator): reserved for `DateRangeFilter` and section/view navigation (Settings tabs, Dashboard tabs, /expenses/providers tab switch). Imply a single selection from a small ordered set.
-- **Chips** (flat `pill-tab` buttons with the active class `bg-primary/10 text-primary border border-primary/20 dark:bg-primary/15 dark:border-primary/30`): used for data filters (entity type in `/activity`, category in `/expenses`, status filters in `SalesHistoryTable`). No sliding indicator. Imply data-shape filtering, often with a "Limpiar" button when a non-default value is selected.
-
-The reference implementation for the chip pattern is `SalesHistoryTable.tsx`.
+See `docs/backlog.md` for Fase 2 RPC signature changes and remaining Fase 3 scope.
 
 ### General SQL Rules
 
@@ -190,7 +182,7 @@ src/
 ├── lib/
 │   ├── business.ts                       # getBusinessIdByUserId, requireAuthenticatedBusinessId
 │   ├── operator.ts                       # UserRole, Permissions (11 fields), OWNER_PERMISSIONS,
-│   │                                     # getActiveOperator, parsePermissions, normalizePermissions
+│   │                                     # getActiveOperator, getActorOperatorId, parsePermissions, normalizePermissions
 │   ├── payments.ts                       # normalizePayment, PAYMENT_LABELS, PAYMENT_COLORS, PAYMENT_OPTIONS
 │   ├── price-lists.ts                    # calculateProductPrice — sole price calculation source
 │   ├── date-utils.ts                     # DateRangePeriod, getDateRange, resolveDateRange, buildDateParams
@@ -271,7 +263,7 @@ src/
     │   ├── OperatorSelectView.tsx        # Forgot password button (when isOwnerSelected && error)
     │   └── OperatorSwitcher.tsx
     ├── activity/
-    │   ├── ActivityView.tsx              # Chip entity filter + DateRangeFilter + operator dropdown; useTransition for optimistic filter state
+    │   ├── ActivityView.tsx              # Entity dropdown + DateRangeFilter + operator dropdown; useTransition for optimistic filter state
     │   ├── ActivityDetail.tsx            # Per-action human-readable detail panel (SaleDiff, ProductDiff, BulkProduct*, CategoryDiff, BrandDiff)
     │   └── types.ts                      # ActivityEntityFilter, ActivityFilterOperator, ActivityLogRow, ActivityActionTone
     ├── dashboard/
@@ -335,641 +327,11 @@ src/
 
 **Edge Runtime** (`export const runtime = 'edge'`): `/pos`, `/dashboard`, `/stats`, `/operator-select`, `/activity`
 
----
-
-## 4. Database Schema
-
-### Connection
-
-- Project ID: `zrnthcznbrplzpmxmkwk`
-- URL: `https://zrnthcznbrplzpmxmkwk.supabase.co`
-- Region: sa-east-1
-
-> All tables have RLS enabled. All policies use `get_business_id()` as the tenant boundary.
+Full route map with permission gates: `docs/conventions.md`.
 
 ---
 
-### `businesses`
-| column | type | notes |
-|--------|------|-------|
-| id | uuid PK | gen_random_uuid() |
-| name | text | |
-| slug | text UNIQUE | CHECK: `^[a-z0-9][a-z0-9-]{1,48}[a-z0-9]$` (3–50 chars) |
-| plan | text | default `'free'` |
-| settings | jsonb | default `'{"currency":"ARS"}'`. Supported keys: `currency` (ISO 4217: ARS\|USD\|EUR\|BRL\|CLP\|UYU\|PEN\|COP\|MXN\|PYG\|BOB), `logo_upload_path` (storage path for uploaded logo), `primary_color` (hex). **Always merge with spread — never replace the whole object.** |
-| created_at | timestamptz | now() |
-| whatsapp | text nullable | digits + country code only |
-| logo_url | text nullable | |
-| description | text nullable | visible in public catalog |
-
-> **Correction vs CONTEXT.md:** `accounting_enabled` column does NOT exist in the live DB. The `settings` JSONB also supports `currency` and `logo_upload_path` keys (not just `primary_color`).
-
----
-
-### `profiles`
-| column | type | notes |
-|--------|------|-------|
-| id | uuid PK | FK → auth.users(id) |
-| business_id | uuid nullable | FK → businesses(id) |
-| role | text | default `'cashier'` (but in practice always `'owner'` for rows that exist here) |
-| name | text | |
-| pin | text nullable | not used for owner |
-| created_at | timestamptz | now() |
-| avatar_url | text nullable | |
-| onboarding_state | jsonb | default `'{"completed":false,"tour_done":false,"steps_done":[],"wizard_step":0}'`. Keys: `completed` (bool), `wizard_step` (int 0-4), `steps_done` (array: `business_info\|category\|product\|operator`), `tour_done` (bool). |
-
-> **Correction vs CONTEXT.md:** `onboarding_state` column exists and is documented here for the first time. `permissions` JSONB column was removed (confirmed absent from live schema).
-
-RLS policies: `own_profile` (ALL where id = auth.uid()), `tenant_select_profiles` (SELECT where business_id = get_business_id()), `insert_own_profile` (INSERT).
-
----
-
-### `operators`
-| column | type | notes |
-|--------|------|-------|
-| id | uuid PK | gen_random_uuid() |
-| business_id | uuid | FK → businesses(id) |
-| name | text | |
-| role | text | CHECK: `('cashier','manager','custom')` — no `'owner'` |
-| pin | text | bcrypt via `extensions.crypt()` |
-| permissions | jsonb | default has 9 keys (no `price_override`, `free_line` — soft-default to false in code) |
-| is_active | bool | default true |
-| created_at | timestamptz | now() |
-
----
-
-### `categories`
-| column | type | notes |
-|--------|------|-------|
-| id | uuid PK | gen_random_uuid() |
-| business_id | uuid nullable | FK → businesses(id) |
-| name | text | |
-| icon | text nullable | default `'📦'` |
-| position | int nullable | default 0 |
-| is_active | bool nullable | default true |
-| created_at | timestamptz | now() |
-
----
-
-### `brands`
-| column | type | notes |
-|--------|------|-------|
-| id | uuid PK | gen_random_uuid() |
-| business_id | uuid | FK → businesses(id) |
-| name | text | UNIQUE (business_id, name) |
-| created_at | timestamptz | now() |
-
----
-
-### `products`
-| column | type | notes |
-|--------|------|-------|
-| id | uuid PK | gen_random_uuid() |
-| business_id | uuid nullable | FK → businesses(id) |
-| category_id | uuid nullable | FK → categories(id) |
-| brand_id | uuid nullable | FK → brands(id) |
-| name | text | |
-| sku | text nullable | |
-| barcode | text nullable | |
-| price | numeric | default 0 |
-| cost | numeric nullable | default 0 |
-| stock | int | default 0 |
-| min_stock | int nullable | default 0 |
-| image_url | text nullable | HTTPS URL — `product-images` bucket or external URL |
-| image_source | text nullable | CHECK: `('upload','url')`. Both null or both non-null. |
-| is_active | bool nullable | default true |
-| show_in_catalog | bool nullable | default true |
-| sales_count | int nullable | default 0 |
-| created_at | timestamptz | now() |
-
-**Images:** `image_source = 'upload'` → path in bucket `product-images` (public). Storage path: `{businessId}/{uuid}.{ext}` — first segment is `businessId`, not `product.id`. Use `next/image` with `unoptimized={image_source === 'url'}` for external URLs.
-
----
-
-### `price_lists`
-| column | type | notes |
-|--------|------|-------|
-| id | uuid PK | gen_random_uuid() |
-| business_id | uuid | FK → businesses(id) |
-| name | text | |
-| description | text nullable | |
-| multiplier | numeric | default 1.0 — represents margin: 1.40 = 40% over cost |
-| is_default | boolean | default false — unique partial index WHERE is_default = true |
-| created_at | timestamptz | now() |
-
-UI: user enters percentage (e.g. 40%) → stored as multiplier (1.40). Conversion only in UI, never in DB.
-
----
-
-### `price_list_overrides`
-| column | type | notes |
-|--------|------|-------|
-| id | uuid PK | gen_random_uuid() |
-| price_list_id | uuid | FK → price_lists(id) ON DELETE CASCADE |
-| product_id | uuid nullable | FK → products(id) ON DELETE CASCADE |
-| brand_id | uuid nullable | FK → brands(id) ON DELETE CASCADE |
-| multiplier | numeric | |
-| created_at | timestamptz | now() |
-
-Constraints: override by product OR by brand, never both or neither. UNIQUE (price_list_id, product_id), UNIQUE (price_list_id, brand_id).
-
----
-
-### `sales`
-| column | type | notes |
-|--------|------|-------|
-| id | uuid PK | gen_random_uuid() |
-| business_id | uuid nullable | FK → businesses(id) |
-| session_id | uuid nullable | FK → cash_sessions(id) |
-| customer_id | uuid nullable | FK → customers(id) |
-| operator_id | uuid nullable | FK → operators(id) |
-| price_list_id | uuid nullable | FK → price_lists(id) ON DELETE SET NULL |
-| subtotal | numeric | default 0 |
-| discount | numeric nullable | default 0 |
-| total | numeric | default 0 |
-| status | text nullable | CHECK: `('completed','cancelled','refunded')` — default `'completed'` |
-| notes | text nullable | |
-| created_at | timestamptz | now() |
-
-> **Correction vs CONTEXT.md:** Status CHECK is `('completed','cancelled','refunded')`, NOT `('pending','completed','cancelled')`. `pending` doesn't exist; `refunded` does.
-
----
-
-### `sale_items`
-| column | type | notes |
-|--------|------|-------|
-| id | uuid PK | gen_random_uuid() |
-| sale_id | uuid nullable | FK → sales(id) |
-| product_id | uuid nullable | FK → products(id) |
-| quantity | int | default 1 |
-| unit_price | numeric | price at time of sale |
-| unit_price_override | numeric nullable | manually edited price in POS |
-| override_reason | text nullable | free-text reason |
-| total | numeric | |
-
----
-
-### `payments`
-| column | type | notes |
-|--------|------|-------|
-| id | uuid PK | gen_random_uuid() |
-| sale_id | uuid nullable | FK → sales(id) |
-| method | text | CHECK: `('cash','card','transfer','mercadopago')` |
-| amount | numeric | |
-| reference | text nullable | |
-| status | text nullable | CHECK: `('completed','pending','refunded','cancelled')` — default `'completed'` |
-| created_at | timestamptz | now() |
-
-> **Correction vs CONTEXT.md:** method CHECK has only 4 values — `credit` and `otro` are NOT in the live schema. Status CHECK has `'refunded','cancelled'`, NOT `'failed'`.
-
----
-
-### `inventory_movements`
-| column | type | notes |
-|--------|------|-------|
-| id | uuid PK | gen_random_uuid() |
-| business_id | uuid nullable | FK → businesses(id) |
-| product_id | uuid nullable | FK → products(id) |
-| type | text | CHECK: `('sale','purchase','adjustment','return')` |
-| quantity | int | |
-| reason | text nullable | human-readable reason |
-| reference_id | uuid nullable | FK to source record (e.g. expense_id for purchases) |
-| created_by | uuid nullable | legacy — no active FK (M-3, deferred) |
-| created_by_operator | uuid nullable | FK → operators(id) — active field |
-| created_at | timestamptz | now() |
-
-> **Correction vs CONTEXT.md:** `reason` and `reference_id` columns exist in live DB but were not documented.
-
----
-
-### `cash_sessions`
-| column | type | notes |
-|--------|------|-------|
-| id | uuid PK | gen_random_uuid() |
-| business_id | uuid nullable | FK → businesses(id) |
-| opened_by | uuid nullable | FK → profiles(id) — G-3: should FK to operators |
-| closed_by | uuid nullable | FK → profiles(id) |
-| opening_amount | numeric nullable | default 0 |
-| closing_amount | numeric nullable | |
-| expected_amount | numeric nullable | |
-| opened_at | timestamptz | now() |
-| closed_at | timestamptz nullable | |
-| notes | text nullable | |
-
-> **Correction vs CONTEXT.md:** `status` and `difference` columns do NOT exist in live DB. `notes` exists instead.
-
----
-
-### `customers`
-| column | type | notes |
-|--------|------|-------|
-| id | uuid PK | gen_random_uuid() |
-| business_id | uuid nullable | FK → businesses(id) |
-| name | text | |
-| phone | text nullable | |
-| email | text nullable | |
-| dni | text nullable | |
-| credit_balance | numeric nullable | default 0 |
-| notes | text nullable | |
-| created_at | timestamptz | now() |
-
----
-
-### `suppliers`
-| column | type | notes |
-|--------|------|-------|
-| id | uuid PK | gen_random_uuid() |
-| business_id | uuid | FK → businesses(id) |
-| name | text | |
-| contact_name | text nullable | |
-| phone | text nullable | |
-| email | text nullable | |
-| address | text nullable | |
-| notes | text nullable | |
-| is_active | bool | default true |
-| created_at | timestamptz | now() |
-
----
-
-### `expenses`
-| column | type | notes |
-|--------|------|-------|
-| id | uuid PK | gen_random_uuid() |
-| business_id | uuid | FK → businesses(id) |
-| operator_id | uuid nullable | FK → operators(id) ON DELETE SET NULL |
-| supplier_id | uuid nullable | FK → suppliers(id) ON DELETE SET NULL |
-| category | expense_category ENUM | `'mercaderia','alquiler','servicios','seguros','proveedores','sueldos','otro'` — default `'otro'` |
-| amount | numeric | CHECK > 0 |
-| description | text | |
-| date | date | default CURRENT_DATE |
-| attachment_url | text nullable | path in bucket `expense-receipts` |
-| attachment_type | expense_attachment_type ENUM nullable | `'image','pdf','spreadsheet','other'` |
-| attachment_name | text nullable | |
-| notes | text nullable | |
-| created_at | timestamptz | now() |
-| updated_at | timestamptz | auto-updated by `set_updated_at` trigger |
-
-Storage: `expense-receipts` bucket — private, 10MB max. Path: `{business_id}/{uuid}.{ext}`.
-
----
-
-### `expense_items` ⭐ new — not in CONTEXT.md
-
-Line items for `category = 'mercaderia'` expenses. Enables stock ingestion from the expenses module.
-
-| column | type | notes |
-|--------|------|-------|
-| id | uuid PK | gen_random_uuid() |
-| business_id | uuid | FK → businesses(id) |
-| expense_id | uuid | FK → expenses(id) |
-| product_id | uuid nullable | FK → products(id) — null allowed for unnamed items |
-| product_name | text | captured at time of expense |
-| quantity | int | CHECK > 0 |
-| unit_cost | numeric | CHECK >= 0 |
-| subtotal | numeric (generated) | `quantity * unit_cost` |
-| update_cost | bool | default false — if true, updates `products.cost` on save |
-| created_at | timestamptz | now() |
-
----
-
-### `audit_log` ⭐ new (P7h Phase 1, 2026-05-15)
-
-Append-only audit trail of business mutations. Indefinite retention. RLS enabled (tenant isolation via `business_id = get_business_id()`).
-
-| column | type | notes |
-|--------|------|-------|
-| id | uuid PK | gen_random_uuid() |
-| business_id | uuid | FK → businesses(id) |
-| operator_id | uuid nullable | FK → operators(id). **NULL = owner ("Dueño")** — owner has no row in `operators` |
-| actor_role | text | snapshot of role at action time (`'owner'`, `'manager'`, `'cashier'`, `'custom'`) |
-| action | text | e.g. `sale_created`, `sale_updated`, `sale_deleted`, `product_created`, `product_updated`, `product_deleted`, `product_bulk_deleted`, `product_bulk_status`, `product_bulk_category`, `product_bulk_brand`, `category_*`, `brand_*` |
-| entity_type | text | `'sale' \| 'product' \| 'category' \| 'brand' \| 'expense' \| 'supplier' \| 'price_list' \| 'setting' \| 'operator'` |
-| entity_id | uuid nullable | id of affected entity (null for bulk) |
-| entity_label | text nullable | snapshot label for display (sales have no label — show total from `new_data`/`old_data`) |
-| old_data | jsonb nullable | full pre-state snapshot for `*_updated` / `*_deleted` |
-| new_data | jsonb nullable | full post-state snapshot for `*_created` / `*_updated` |
-| created_at | timestamptz | now() |
-
-Helper: `log_audit_event(p_business_id, p_operator_id, p_actor_role, p_action, p_entity_type, p_entity_id, p_entity_label, p_old_data, p_new_data)` — called by all mutation RPCs. Convention: **`operator_id` is NULL when the owner performed the action**; the read RPC `get_audit_log` and UI both render that as "Dueño". Migrations: `20260515_06_audit_log_table.sql`, `20260515_07_audit_log_instrumentation.sql`, `20260515_08_audit_log_operator_id_nullable.sql`, `20260515_12_audit_sale_data.sql` (sale snapshots).
-
----
-
-### `invoices`
-| column | type | notes |
-|--------|------|-------|
-| id | uuid PK | |
-| business_id | uuid | |
-| sale_id | uuid | FK → sales(id) |
-| provider | text | e.g. `'facturama'`, `'alegra'` |
-| external_id | text | ID at the external provider |
-| status | text | |
-| pdf_url | text nullable | |
-| created_at | timestamptz | |
-
-Currently unused (P10, paid plans).
-
----
-
-### RLS Policies Summary
-
-All tables enforce tenant isolation via `get_business_id()`. Key exceptions:
-
-| table | policy | effect |
-|-------|--------|--------|
-| businesses | `public_read_businesses` | anon can SELECT (for catalog slug lookup) |
-| categories | `public_read_categories` | anon can SELECT (for catalog) |
-| products | `public_read_products` | anon can SELECT (for catalog) |
-| profiles | `own_profile` | user can only access their own row via `auth.uid()` |
-| profiles | `tenant_select_profiles` | SELECT also by business_id (for operator lookups) |
-| profiles | `insert_own_profile` | anyone can INSERT (registration flow) |
-| payments | `tenant_isolation` | via sub-select on sales.business_id |
-| sale_items | `tenant_isolation` | via sub-select on sales.business_id |
-| price_list_overrides | `tenant_isolation` | via sub-select on price_lists.business_id |
-| expense_items | `owner_manage_expense_items` | business_id = get_business_id() |
-
----
-
-## 5. Permissions Model
-
-### `Permissions` interface — 11 fields
-
-Defined in `lib/operator.ts`. All 11 must be present when constructing the object manually.
-
-| field | description | owner | manager | cashier |
-|-------|-------------|-------|---------|---------|
-| `sales` | POS terminal | ✓ | ✓ | ✓ |
-| `stock` | View inventory | ✓ | ✓ | ✓ |
-| `stock_write` | Modify inventory | ✓ | ✓ | ✗ |
-| `analysis` | Dashboard, statistics & activity log | ✓ | ✓ | ✗ |
-| `price_lists` | View price lists | ✓ | ✓ | ✗ |
-| `price_lists_write` | Modify price lists | ✓ | ✓ | ✗ |
-| `expenses` | View and create expenses | ✓ | ✓ | ✗ |
-| `settings` | Business settings | ✓ | ✗ | ✗ |
-| `operators_write` | Create/edit operators (sub-toggle of settings) | ✓ | ✗ | ✗ |
-| `price_override` | Edit per-item price in POS | ✓ | ✓ | ✗ |
-| `free_line` | Add a free-text/unlinked line item in POS | ✓ | ✓ | ✗ |
-
-> `operators_write` requires `settings: true` as prerequisite — it's a sub-toggle in `NewOperatorModal`.
->
-> **Note on CONTEXT.md:** it says "9 campos" but there are 11. `price_override` is the 10th; `free_line` is the 11th.
-
-### `OWNER_PERMISSIONS`
-
-Defined in `lib/operator.ts`. All 11 fields set to `true`. Imported everywhere — never duplicate.
-
-### `operator_session` cookie
-
-```json
-{
-  "profile_id": "uuid",
-  "name": "string",
-  "role": "owner|manager|cashier|custom",
-  "permissions": { ...all 11 fields... }
-}
-```
-
-httpOnly, sameSite: lax, secure in production.
-
-### `op_perms` cookie
-
-Non-httpOnly copy of `permissions` object. Read by sidebar client-side. Written by `proxy.ts` on every request and by `/api/operator/switch`.
-
-### `parsePermissions` soft defaults
-
-`price_override`, `operators_write`, and `free_line` soft-default to `false` if absent from the cookie (backward compat with old cookies that predated these fields).
-
-### When adding a new permission field
-
-Update ALL of these in the same commit:
-1. `lib/operator.ts` — `Permissions` interface + `OWNER_PERMISSIONS` + `DEFAULT_PERMISSIONS` + `OPERATOR_MANAGEMENT_PERMISSION_KEYS`
-2. `lib/operator.ts` — `parsePermissions` + `normalizePermissions` + `toOperatorManagementPermissions`
-3. `src/app/api/operator/switch/route.ts` — `parseVerifyResult`
-4. `src/components/sidebar.tsx`
-5. `src/components/settings/NewOperatorModal.tsx` + `EditOperatorModal.tsx`
-6. DB: `operators.permissions` default JSONB + `create_operator` RPC role-default JSONBs
-
-### Permission rename — `stats` → `analysis` (2026-05-16)
-
-The `stats` permission was renamed to `analysis` to cover dashboard, estadísticas, and the new `/activity` route. The change touched: TypeScript `Permissions` interface and all derived constants/normalizers; `proxy.ts` route guard; `sidebar.tsx` link gates; operator modal toggle label ("Estadísticas" → "Análisis"); `create_operator` RPC role-default JSONBs; existing `operators.permissions` rows migrated via `permissions - 'stats' || jsonb_build_object('analysis', permissions->'stats')`; column default updated. Migration: `20260516_01_rename_stats_to_analysis.sql`.
-
----
-
-## 6. Naming and Language Conventions
-
-- **Codebase language:** English — all files, variables, functions, types, comments, DB columns.
-- **UI language:** Spanish only — all labels, button text, error messages, placeholders visible to users.
-- DB values that appear in the UI (e.g. category names, expense categories) are stored in English/neutral form and translated in the frontend.
-- No emojis in code. No hardcoded values. No `any` types.
-- Named interfaces for all props.
-- File and directory naming: kebab-case for files, PascalCase for React components.
-
-### Routes
-
-All routes are in English: `/stats/payment-methods`, `/stats/operators`, `/stats/breakdown`, `/stats/top-products`.
-
-### Design System
-
-- **Background:** CSS var `--background` | **Surface:** `--surface` | **Primary:** `#7a3e10` (warm brown, overridable via `businesses.settings.primary_color`)
-- **Typography:** DM Sans — 7 semantic classes in `globals.css`: `.text-display`, `.text-heading`, `.text-subheading`, `.text-body`, `.text-caption`, `.text-label`, `.text-metric`
-- Custom properties: `--body-secondary`, `--support`
-- Cards: `rounded-xl` / `rounded-2xl`, subtle border, class `surface-card`
-- Dropdowns/popovers: class `surface-elevated`
-- Sidebar: class `surface-sidebar`
-- Filter chips: `pill-tabs` (container) / `pill-tab` (inactive) / `pill-tab-active` (active) — use everywhere **except** POS ProductPanel (intentional own style with `rounded-full`, `bg-primary` active)
-- Icons: lucide-react | Charts: recharts
-- No `backdrop-filter` or `backdrop-blur` anywhere
-- No `<form>` HTML — use onClick/onChange handlers
-
-### Breadcrumbs
-
-`PageHeader` accepts `breadcrumbs?: { label: string; href: string }[]`. Required on sub-routes, not on top-level routes.
-
-| Route | breadcrumbs |
-|-------|------------|
-| `/stats/top-products` | `[{ label: 'Estadísticas', href: '/stats' }]` |
-| `/stats/breakdown` | `[{ label: 'Estadísticas', href: '/stats' }]` |
-| `/stats/payment-methods` | `[{ label: 'Estadísticas', href: '/stats' }]` |
-| `/stats/operators` | `[{ label: 'Estadísticas', href: '/stats' }]` |
-
----
-
-## 7. SQL Functions Reference
-
-All SECURITY DEFINER, all with `set search_path = public, extensions`.
-
-| function | description |
-|----------|-------------|
-| `bootstrap_new_user(p_user_id, p_business_name, p_user_name)` | Creates businesses + profiles |
-| `get_business_id()` | STABLE — used in RLS policies. Returns auth.uid()'s business_id |
-| `create_sale_transaction(...)` | Atomically inserts sale + sale_items + payments. Audit `new_data` is a post-insert snapshot `{total, subtotal, status, customer_id, payments[], items[]}` |
-| `update_sale(p_sale_id, p_business_id, p_operator_id, ...)` | Reverts stock manually, DELETEs items, INSERTs new; calls `reconcile_sales_count`; logs `sale_updated` with `customer_id` in old/new data |
-| `delete_sale(p_sale_id, p_business_id, p_operator_id)` | Deletes sale + reverts stock; logs `sale_deleted` with `customer_id` in `old_data` |
-| `get_sale_detail(p_sale_id, p_business_id)` | Full sale with items and payments |
-| `reconcile_sales_count(p_business_id)` | Recalculates `sales_count` from sale_items JOIN sales |
-| `create_operator(p_business_id, p_name, p_role, p_pin, p_permissions?)` | Returns `{success, operator_id?, error?}` |
-| `update_operator(p_operator_id, p_business_id, p_name, p_role, p_permissions)` | Returns `{success, error?}` |
-| `verify_operator_pin(p_business_id, p_operator_id, p_pin)` | Returns `{success, profile_id?, name?, role?, permissions?, error?}` |
-| `get_operator_stats(p_operator_id, p_date_from?, p_date_to?)` | Sales stats for a sub-operator — derives business_id from auth.uid() |
-| `get_owner_stats(p_date_from?, p_date_to?)` | Sales stats for owner — derives business_id from auth.uid() |
-| `swap_default_price_list(p_price_list_id, p_business_id)` | Atomic default swap |
-| `update_business_slug(p_slug)` | Validates format + uniqueness; throws in Spanish on failure; GRANT EXECUTE TO authenticated |
-| `create_category_guarded(p_operator_id, p_business_id, p_name, p_icon, p_icon_color?)` | Verifies `stock_write`; accepts optional `icon_color`; logs `category_created` |
-| `create_brand_guarded(p_operator_id, p_business_id, p_name)` | Verifies `stock_write`; logs `brand_created` |
-| `create_product(p_operator_id, p_business_id, ...)` | Verifies `stock_write`; inserts product; logs `product_created` (migration `20260515_10`) |
-| `update_product(p_operator_id, p_business_id, p_product_id, ...)` | Verifies `stock_write`; logs `product_updated` with full old/new snapshots |
-| `delete_product(p_operator_id, p_business_id, p_product_id)` | Verifies `stock_write`; logs `product_deleted` |
-| `update_category(p_operator_id, p_business_id, p_category_id, p_name, p_icon, p_icon_color)` | Verifies `stock_write`; accepts `icon_color` (migration `20260515_04`); logs `category_updated` |
-| `delete_category(p_operator_id, p_business_id, p_category_id)` | Verifies `stock_write`; logs `category_deleted` |
-| `delete_brand(p_operator_id, p_business_id, p_brand_id)` | Verifies `stock_write`; logs `brand_deleted` |
-| `log_audit_event(p_business_id, p_operator_id, p_actor_role, p_action, p_entity_type, p_entity_id, p_entity_label, p_old_data, p_new_data)` | Helper called by all mutation RPCs to insert an `audit_log` row. `p_operator_id` is NULL for owner actions. |
-| `get_audit_log(p_business_id, p_entity_type?, p_operator_id?, p_date_from?, p_date_to?, p_limit?, p_offset?)` | Returns `{data: AuditLogRow[], total}`. `p_operator_id = '00000000-0000-0000-0000-000000000000'` filters to owner-only (`operator_id IS NULL`); other UUIDs filter by that operator; NULL means no operator filter. Projects `actor_name = COALESCE(o.name, 'Dueño')`. |
-| `get_business_balance(p_business_id, p_from?, p_to?)` | `{income, expenses, profit, margin, by_category, period_from, period_to}` |
-| `get_expenses_list(p_business_id, p_from?, p_to?, p_category?, p_limit?, p_offset?)` | `{data: Expense[], total}` |
-| `create_expense(p_business_id, p_category, p_amount, p_description, ...)` | `{success, id}` |
-| `update_expense(p_business_id, p_expense_id, p_description, p_date, ...)` | Edits non-mercadería expenses; rejects if category = 'mercadería'. Returns `{success, error?}` |
-| `delete_expense(p_business_id, p_expense_id)` | `{success}` |
-| `create_mercaderia_expense(p_business_id, p_description, p_date?, p_supplier_id?, p_operator_id?, p_notes?, p_items?, p_update_stock?)` | Creates mercadería expense + expense_items + optional stock updates. Returns `{success, id, total}` |
-| `update_mercaderia_expense(p_business_id, p_expense_id, p_description, p_date, p_supplier_id?, p_notes?, p_items?)` | Delta-based edit: reverts removed items, applies qty deltas, warns on cost conflicts. Returns `{success, warnings}` |
-| `get_stats_kpis(p_business_id, p_from?, p_to?)` | KPIs with `total_units`, `peak_day`, `day_of_week` |
-| `get_stats_evolution(p_business_id, p_from?, p_to?)` | Sales evolution with prev_period overlay |
-| `get_stats_breakdown(p_business_id, p_from?, p_to?)` | Breakdown by category and brand |
-| `get_top_products_detail(p_business_id, p_from?, p_to?, p_limit?, p_offset?)` | `{data: ProductSalesDetail[], total}` |
-| `get_sales_by_category_detail(p_business_id, p_from?, p_to?, p_limit?, p_offset?)` | `{data: CategorySalesDetail[], total}` |
-| `get_sales_by_brand_detail(p_business_id, p_from?, p_to?, p_limit?, p_offset?)` | `{data: BrandRow[], total}` — `BrandRow`: `brand_id, brand_name, transaction_count, units_sold, revenue, product_count` |
-| `get_sales_by_payment_detail(p_business_id, p_from?, p_to?)` | `{data: PaymentMethodDetail[]}` |
-| `get_sales_by_operator_detail(p_business_id, p_from?, p_to?)` | `{data: OperatorSalesDetail[]}` |
-| `bulk_delete_products(p_business_id, p_ids uuid[])` | Bulk delete with business_id guard |
-| `bulk_set_product_status(p_business_id, p_ids uuid[], p_status text)` | Bulk activate/discontinue |
-| `bulk_update_product_category(p_business_id, p_ids uuid[], p_category_id uuid)` | Bulk category change |
-| `bulk_update_product_brand(p_business_id, p_ids uuid[], p_brand_id uuid)` | Bulk brand change |
-| `get_catalog_products(p_slug)` | Public catalog products (SECURITY DEFINER, GRANT EXECUTE TO anon) |
-| `get_catalog_categories(p_slug)` | Public catalog categories (SECURITY DEFINER, GRANT EXECUTE TO anon) |
-| `set_updated_at()` | Trigger function: sets `updated_at = now()` on UPDATE |
-| `rls_auto_enable` | Admin utility — enables RLS on all tables automatically |
-
-> **`undo_import` does NOT exist in the live DB.** CONTEXT.md documents it as existing, but it was not created. It is planned for P8b.
-
-> **RPC wrapper pattern:** Stats and expenses RPCs return `{ data: [...] }`. Always extract `.data`:
-> ```ts
-> const rows = (rpcResult as unknown as { data: RowType[] } | null)?.data ?? []
-> ```
-
----
-
-## 8. Route Map
-
-| route | description | protection |
-|-------|-------------|-----------|
-| `/login` | Login | public |
-| `/register` | Register | public |
-| `/auth/callback` | PKCE handler | public |
-| `/auth/update-password` | New password form | public (session set by callback) |
-| `/catalogo/[slug]` | Public catalog | public (anon, uses RPCs) |
-| `/operator-select` | Operator selection | requires Supabase session |
-| `/pos` | POS terminal | any active operator |
-| `/inventory` | Inventory (read) | `permissions.stock` |
-| `/products` | Inventory (write) | `permissions.stock` + `permissions.stock_write` |
-| `/price-lists` | Price lists | `permissions.price_lists` |
-| `/dashboard` | KPI dashboard | `permissions.analysis` |
-| `/stats` | Statistics | `permissions.analysis` |
-| `/stats/top-products` | Top products detail | `permissions.analysis` |
-| `/stats/breakdown` | Category/brand breakdown | `permissions.analysis` |
-| `/stats/payment-methods` | Payment methods detail | `permissions.analysis` |
-| `/stats/operators` | Operator sales detail | `permissions.analysis` |
-| `/activity` | Audit log | `permissions.analysis` |
-| `/expenses` | Expenses module | `permissions.expenses` |
-| `/expenses/providers` | Supplier management | `permissions.expenses` |
-| `/profile` | Owner profile | owner only (non-owners get flash → /pos) |
-| `/operator/me` | Active operator profile | any operator (owner included) |
-| `/settings` | Business settings + operators | `permissions.settings` |
-
-**Flash toast system:** `proxy.ts` sets cookie `flash_toast=no-access` (maxAge 5s, non-httpOnly) on permission redirect. `(app)/layout.tsx` reads it server-side and passes to `FlashToast` component.
-
----
-
-## 9. Known Pending Issues
-
-### DB Audit — Pending (non-critical for beta)
-
-| ID | Issue | Status |
-|----|-------|--------|
-| G-3 | `cash_sessions.opened_by` → FK to `profiles` but should FK to `operators`. Deferred until P8a (cash session UI). | ⏳ |
-| M-3 | `inventory_movements.created_by` has no active FK and trigger doesn't populate it. Deferred. | ⏳ |
-
-### P7h Audit Log — Remaining Phases
-
-| Phase | Scope | Status |
-|-------|-------|--------|
-| Fase 1 | Sales + inventory (products, categories, brands, bulk) audit logging; `/activity` UI; `RecentActivityWidget` on dashboard | ✅ shipped 2026-05-15 |
-| Fase 2 | Audit logging for expenses, suppliers, price lists, settings, operators; `audit_log.entity_type` expanded to `expense \| supplier \| price_list \| setting \| operator`; `/activity` entity filter switched from chips to dropdown (9 options) | ✅ shipped 2026-05-16 |
-| Fase 3 | Revert mutation from audit log entry (undo from any entry) | ⏳ |
-
-**Fase 2 RPC signature changes (callers updated in same PR):**
-- `swap_default_price_list(p_operator_id, p_business_id, p_price_list_id)` — was `(p_price_list_id, p_business_id)`
-- `update_business_slug(p_operator_id, p_business_id, p_slug)` — was `(p_slug)`
-- `create_operator(p_actor_operator_id, p_business_id, ...)` — actor param added at the front
-- `update_operator(p_actor_operator_id, p_business_id, p_target_operator_id, ...)` — actor + business added; target renamed
-- `update_expense(..., p_operator_id)` — appended trailing actor param (DEFAULT NULL)
-- `delete_expense(p_business_id, p_expense_id, p_operator_id)` — appended trailing actor param (DEFAULT NULL)
-- `update_mercaderia_expense(..., p_operator_id)` — appended trailing actor param (DEFAULT NULL)
-
-`create_expense` and `create_mercaderia_expense` already accepted `p_operator_id` (used to stamp `expenses.operator_id`); the same value is now reused as the audit actor.
-
-Helper `getActorOperatorId(operator)` in `lib/operator.ts` returns `null` for owner, `profile_id` otherwise — use it whenever you need to pass `p_operator_id` to an audit-logged RPC.
-
-**Scope cut in Fase 1:** `ImportProductsModal.handleCreate` still performs a direct `.update({ icon_color })` on `categories` instead of going through `create_category_guarded` / `update_category`. Move to RPC path in Fase 2.
-
-### Dead Code in proxy.ts
-
-The CONTEXT.md mentions a dead `/stock` guard in `proxy.ts`. This does NOT appear in the current `proxy.ts` source — it was already removed or never added. No action needed.
-
-### CONTEXT.md Errors (not yet corrected in that file)
-
-| Area | Documented | Reality |
-|------|-----------|---------|
-| Project ID | `zrnthycznbrplzpmxmkwk` | `zrnthcznbrplzpmxmkwk` |
-| `businesses.accounting_enabled` | Listed as existing | Does not exist in live DB |
-| `businesses.settings` keys | Only `primary_color` mentioned | Also supports `currency` and `logo_upload_path` |
-| `profiles.onboarding_state` | Not documented | Exists with onboarding wizard state |
-| `sales.status` CHECK | `('pending','completed','cancelled')` | `('completed','cancelled','refunded')` — no `pending`, has `refunded` |
-| `cash_sessions` columns | Lists `status`, `difference` | Neither exists in live DB; `notes` exists instead |
-| `payments.method` CHECK | Lists `credit`, `otro` | Not in live DB — only `cash,card,transfer,mercadopago` |
-| `payments.status` CHECK | `('pending','completed','failed')` | `('completed','pending','refunded','cancelled')` — no `failed` |
-| `expense_items` table | Not documented | Exists — full line-item system for mercadería |
-| `inventory_movements` | No `reason`, `reference_id` | Both exist in live DB |
-| `undo_import` RPC | Documented as existing | Does NOT exist in live DB |
-| `update_expense` RPC | Not documented | Exists — for editing non-mercadería expenses |
-| `create_mercaderia_expense` RPC | Not documented | Exists |
-| `update_mercaderia_expense` RPC | Not documented | Exists |
-| Permissions count | "9 campos" | 11 fields — `price_override` is the 10th, `free_line` is the 11th |
-| `stats` permission | Documented as `stats` | Renamed to `analysis` on 2026-05-16 (covers dashboard, stats, /activity) |
-| `audit_log` table | Not documented | Exists — P7h Phase 1, append-only audit trail |
-| Inventory mutation RPCs | Direct table writes documented | All mutations now go through SECURITY DEFINER RPCs (`create_product`, `update_product`, `delete_product`, etc.) with audit logging |
-
-### Technical Debt — Pending Post-Beta
-
-| Item | Notes |
-|------|-------|
-| `InventoryPanel.tsx` (~1291 lines) | Extract 5 embedded sub-components |
-| `CartPanel.tsx` (~920 lines) | `EditSalePanel` is embedded — separate it |
-| `ProductsPanel.tsx` (294L) | Probably abandoned — verify and delete |
-| `components/sales/` | Empty directory — delete |
-| `formatMoney` duplicated | In PaymentModal, ReceiptPreviewModal, ReceiptTemplate — centralize in `lib/utils.ts` |
-| `validateImageUrl` duplicated | In NewProductModal + EditProductModal |
-| `FieldGroup` duplicated | In both product modals |
-| `DateRangeFilter.tsx` | `QUARTER_RANGES` bakes current year at module load time |
-| Radix `DialogTitle` warnings | Add `<VisuallyHidden><DialogTitle>` to all modals |
-| `useEffect` for sale history in `CartPanel` | Pre-React Query pattern, not migrated |
-| `theme.tsx` FOUC | `localStorage` post-hydration causes flash — should use cookie like sidebar |
-| `settings/page.tsx` auth | Uses `getUser()` + try/catch instead of `requireAuthenticatedBusinessId` |
-| `operator-select/page.tsx` | `role` typed as manual literal union instead of `Exclude<UserRole, 'owner'>` |
-| `!` assertions in env vars | In `client.ts` and `server.ts` |
-| `CartItem` in `lib/types/index.ts` | Client-only type mixed with server types |
-| `categories.public_read_categories` policy | Allows anon SELECT — fine for catalog but broad |
-
----
-
-## 10. Critical Rules (Quick Reference)
+## 4. Critical Rules (Quick Reference)
 
 1. `src/proxy.ts` is the middleware — **NEVER** create or use `middleware.ts`.
 2. `business_id` always from `profiles.business_id` — never inferred from other data.
@@ -986,8 +348,8 @@ The CONTEXT.md mentions a dead `/stock` guard in `proxy.ts`. This does NOT appea
 13. `createClient()` always inside `useMemo(() => createClient(), [])` in Client Components.
 14. Independent queries in Server Components: always `Promise.all`.
 15. RPCs returning `{data: [...]}`: always extract `.data`, never iterate the wrapper.
-16. New permission field: update `lib/operator.ts` (interface + defaults + `OPERATOR_MANAGEMENT_PERMISSION_KEYS` + `parsePermissions` + `normalizePermissions`), `sidebar.tsx`, `api/operator/switch/route.ts`, both operator modals, and the DB column default + `create_operator` RPC role-default JSONBs — same commit.
-17. Filter pattern split: **pill tabs** (with `usePillIndicator`) only for `DateRangeFilter` and section/view navigation; **chips** (flat `pill-tab` buttons, active class `bg-primary/10 text-primary border border-primary/20`) for all data filters. Reference: `SalesHistoryTable.tsx`. Exception: POS `ProductPanel` keeps its own style.
+16. New permission field: update `lib/operator.ts` (interface + defaults + `OPERATOR_MANAGEMENT_PERMISSION_KEYS` + `parsePermissions` + `normalizePermissions`), `sidebar.tsx`, `api/operator/switch/route.ts`, both operator modals, and the DB column default + `create_operator` RPC role-default JSONBs — same commit. See `docs/conventions.md` for the full checklist.
+17. Filter pattern split: **pill tabs** (with `usePillIndicator`) only for `DateRangeFilter` and section/view navigation; **chips** (flat `pill-tab` buttons, active class `bg-primary/10 text-primary border border-primary/20`) for all data filters. Reference: `SalesHistoryTable.tsx`. Exception: POS `ProductPanel` keeps its own style. Details in `docs/conventions.md`.
 18. Sidebar collapsed: from cookie `pos-sidebar-collapsed` in Server Component — no post-hydration `useEffect`.
 19. Prefer `requireAuthenticatedBusinessId(supabase)` in page components.
 20. `/api/operator/logout`: only deletes cookies — **NEVER** restores owner session.
@@ -1002,4 +364,4 @@ The CONTEXT.md mentions a dead `/stock` guard in `proxy.ts`. This does NOT appea
 29. Public catalog: **NEVER** direct queries to `products`/`categories` from anon client — use `get_catalog_products`/`get_catalog_categories` RPCs.
 30. `mercadería` expenses: use `create_mercaderia_expense` / `update_mercaderia_expense` RPCs — not `create_expense` / `update_expense`.
 31. **Audit log: `operator_id = NULL` means owner ("Dueño") everywhere** — in `audit_log` rows, in `get_audit_log` filtering (sentinel UUID `'00000000-0000-0000-0000-000000000000'` maps to `IS NULL`), and in the UI ("Dueño" label). Never insert a synthetic owner row in `operators`.
-32. Inventory mutations: use the RPCs (`create_product`, `update_product`, `delete_product`, `create_category_guarded`, `update_category`, `delete_category`, `create_brand_guarded`, `delete_brand`, `bulk_*`) — they verify `stock_write` and log to `audit_log`. Do **not** call `supabase.from('products' | 'categories' | 'brands').insert/update/delete` directly. (One known exception pending Fase 2: `ImportProductsModal.handleCreate` does a direct `.update({ icon_color })`.)
+32. Inventory mutations: use the RPCs (`create_product`, `update_product`, `delete_product`, `create_category_guarded`, `update_category`, `delete_category`, `create_brand_guarded`, `delete_brand`, `bulk_*`) — they verify `stock_write` and log to `audit_log`. Do **not** call `supabase.from('products' | 'categories' | 'brands').insert/update/delete` directly. (One known exception pending: `ImportProductsModal.handleCreate` — see `docs/backlog.md`.)

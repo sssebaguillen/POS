@@ -10,6 +10,7 @@ import { periodNeedsCustomDates, type DateRangePeriod } from '@/lib/date-utils'
 import { useFormatMoney } from '@/lib/context/CurrencyContext'
 import { PAYMENT_LABELS, isPaymentMethod } from '@/lib/payments'
 import { cn } from '@/lib/utils'
+import { AUDIT_TONE_CLASSES, getAuditActionLabel, getAuditActionTone } from '@/lib/audit'
 import type {
   ActivityActionTone,
   ActivityEntityFilter,
@@ -61,59 +62,6 @@ const ENTITY_TYPE_LABELS: Record<ActivityLogRow['entity_type'], string> = {
   price_list: 'Lista de precios',
   setting:    'Configuración',
   operator:   'Operario',
-}
-
-const ACTION_LABELS: Record<string, string> = {
-  sale_created:               'Venta creada',
-  sale_updated:               'Venta editada',
-  sale_deleted:               'Venta eliminada',
-  product_created:            'Producto creado',
-  product_updated:            'Producto editado',
-  product_deleted:            'Producto eliminado',
-  product_bulk_deleted:       'Productos eliminados (masivo)',
-  product_bulk_status:        'Estado de productos (masivo)',
-  product_bulk_category:      'Categoría de productos (masivo)',
-  product_bulk_brand:         'Marca de productos (masivo)',
-  category_created:           'Categoría creada',
-  category_updated:           'Categoría editada',
-  category_deleted:           'Categoría eliminada',
-  brand_created:              'Marca creada',
-  brand_updated:              'Marca editada',
-  brand_deleted:              'Marca eliminada',
-  expense_created:            'Gasto creado',
-  expense_updated:            'Gasto editado',
-  expense_deleted:            'Gasto eliminado',
-  supplier_created:           'Proveedor creado',
-  supplier_updated:           'Proveedor editado',
-  supplier_deactivated:       'Proveedor desactivado',
-  price_list_created:         'Lista creada',
-  price_list_updated:         'Lista editada',
-  price_list_deleted:         'Lista eliminada',
-  price_list_default_changed: 'Lista predeterminada cambiada',
-  settings_updated:           'Configuración editada',
-  settings_slug_updated:      'URL del catálogo cambiada',
-  operator_created:           'Operario creado',
-  operator_updated:           'Operario editado',
-  operator_deleted:           'Operario eliminado',
-}
-
-const TONE_CLASSES: Record<ActivityActionTone, string> = {
-  created: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300',
-  updated: 'bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300',
-  deleted: 'bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-300',
-  bulk:    'bg-sky-100 text-sky-700 dark:bg-sky-500/15 dark:text-sky-300',
-}
-
-function getActionTone(action: string): ActivityActionTone {
-  if (action.includes('bulk')) return 'bulk'
-  if (action.endsWith('_created')) return 'created'
-  if (action.endsWith('_updated')) return 'updated'
-  if (action.endsWith('_deleted')) return 'deleted'
-  return 'updated'
-}
-
-function getActionLabel(action: string): string {
-  return ACTION_LABELS[action] ?? action
 }
 
 function formatRelativeTime(iso: string): string {
@@ -317,7 +265,7 @@ export default function ActivityView({
                 <tbody>
                   {rows.map(row => {
                     const isOpen = expanded.has(row.id)
-                    const tone = getActionTone(row.action)
+                    const tone = getAuditActionTone(row.action)
                     return (
                       <ActivityRow
                         key={row.id}
@@ -399,8 +347,8 @@ function ActivityRow({ row, isOpen, tone, lookups, onToggle }: RowProps) {
           </span>
         </td>
         <td className="px-4 py-3 align-middle">
-          <span className={cn('inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium', TONE_CLASSES[tone])}>
-            {getActionLabel(row.action)}
+          <span className={cn('inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium', AUDIT_TONE_CLASSES[tone])}>
+            {getAuditActionLabel(row.action)}
           </span>
         </td>
         <td className="px-4 py-3 align-middle">
