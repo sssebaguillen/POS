@@ -89,7 +89,7 @@ function parseVerifyResult(value: unknown): ActiveOperator | null {
     typeof permissionRecord.sales !== 'boolean' ||
     typeof permissionRecord.stock !== 'boolean' ||
     typeof permissionRecord.stock_write !== 'boolean' ||
-    typeof permissionRecord.stats !== 'boolean' ||
+    typeof permissionRecord.analysis !== 'boolean' ||
     typeof permissionRecord.price_lists !== 'boolean' ||
     typeof permissionRecord.price_lists_write !== 'boolean' ||
     typeof permissionRecord.settings !== 'boolean' ||
@@ -106,7 +106,7 @@ function parseVerifyResult(value: unknown): ActiveOperator | null {
       sales: permissionRecord.sales,
       stock: permissionRecord.stock,
       stock_write: permissionRecord.stock_write,
-      stats: permissionRecord.stats,
+      analysis: permissionRecord.analysis,
       price_lists: permissionRecord.price_lists,
       price_lists_write: permissionRecord.price_lists_write,
       settings: permissionRecord.settings,

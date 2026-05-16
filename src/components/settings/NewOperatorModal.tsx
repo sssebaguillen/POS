@@ -17,7 +17,7 @@ type BaseRole = Exclude<OperatorRole, 'custom'>
 const PERMISSION_LABELS: { key: VisiblePermissionKey; label: string }[] = [
   { key: 'sales',       label: 'Ventas' },
   { key: 'stock',       label: 'Ver inventario' },
-  { key: 'stats',       label: 'Estadísticas' },
+  { key: 'analysis',    label: 'Análisis' },
   { key: 'expenses',    label: 'Gastos' },
   { key: 'price_lists', label: 'Ver listas de precios' },
   { key: 'settings',    label: 'Configuración' },
@@ -25,8 +25,8 @@ const PERMISSION_LABELS: { key: VisiblePermissionKey; label: string }[] = [
 ]
 
 const ROLE_DEFAULTS: Record<BaseRole, Permissions> = {
-  manager: { sales: true, stock: true, stock_write: true,  stats: true,  expenses: true,  price_lists: true,  price_lists_write: true,  settings: false, operators_write: false, price_override: true,  free_line: true  },
-  cashier: { sales: true, stock: true, stock_write: false, stats: false, expenses: false, price_lists: false, price_lists_write: false, settings: false, operators_write: false, price_override: false, free_line: false },
+  manager: { sales: true, stock: true, stock_write: true,  analysis: true,  expenses: true,  price_lists: true,  price_lists_write: true,  settings: false, operators_write: false, price_override: true,  free_line: true  },
+  cashier: { sales: true, stock: true, stock_write: false, analysis: false, expenses: false, price_lists: false, price_lists_write: false, settings: false, operators_write: false, price_override: false, free_line: false },
 }
 
 const BASE_ROLES: BaseRole[] = OPERATOR_ROLES.filter((role): role is BaseRole => role !== 'custom')

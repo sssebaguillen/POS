@@ -6,7 +6,7 @@ export interface Permissions {
   sales: boolean
   stock: boolean
   stock_write: boolean
-  stats: boolean
+  analysis: boolean
   price_lists: boolean
   price_lists_write: boolean
   settings: boolean
@@ -20,7 +20,7 @@ export const DEFAULT_PERMISSIONS: Permissions = {
   sales: false,
   stock: false,
   stock_write: false,
-  stats: false,
+  analysis: false,
   price_lists: false,
   price_lists_write: false,
   settings: false,
@@ -34,7 +34,7 @@ export const OPERATOR_MANAGEMENT_PERMISSION_KEYS = [
   'sales',
   'stock',
   'stock_write',
-  'stats',
+  'analysis',
   'price_lists',
   'price_lists_write',
   'expenses',
@@ -52,7 +52,7 @@ export const OWNER_PERMISSIONS: Permissions = {
   sales: true,
   stock: true,
   stock_write: true,
-  stats: true,
+  analysis: true,
   price_lists: true,
   price_lists_write: true,
   settings: true,
@@ -87,7 +87,7 @@ export function parsePermissions(value: unknown): Permissions | null {
     typeof record.sales !== 'boolean' ||
     typeof record.stock !== 'boolean' ||
     typeof record.stock_write !== 'boolean' ||
-    typeof record.stats !== 'boolean' ||
+    typeof record.analysis !== 'boolean' ||
     typeof record.price_lists !== 'boolean' ||
     typeof record.price_lists_write !== 'boolean' ||
     typeof record.settings !== 'boolean' ||
@@ -101,7 +101,7 @@ export function parsePermissions(value: unknown): Permissions | null {
     sales: record.sales,
     stock: record.stock,
     stock_write: record.stock_write,
-    stats: record.stats,
+    analysis: record.analysis,
     price_lists: record.price_lists,
     price_lists_write: record.price_lists_write,
     settings: record.settings,
@@ -119,7 +119,7 @@ export function normalizePermissions(value: Partial<Permissions> | null | undefi
     sales: value?.sales === true,
     stock: value?.stock === true,
     stock_write: value?.stock_write === true,
-    stats: value?.stats === true,
+    analysis: value?.analysis === true,
     price_lists: value?.price_lists === true,
     price_lists_write: value?.price_lists_write === true,
     settings: value?.settings === true,
@@ -139,7 +139,7 @@ export function toOperatorManagementPermissions(
     sales: permissions.sales,
     stock: permissions.stock,
     stock_write: permissions.stock_write,
-    stats: permissions.stats,
+    analysis: permissions.analysis,
     price_lists: permissions.price_lists,
     price_lists_write: permissions.price_lists_write,
     expenses: permissions.expenses,

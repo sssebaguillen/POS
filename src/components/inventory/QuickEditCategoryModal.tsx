@@ -50,8 +50,9 @@ export default function QuickEditCategoryModal({ open, product, categories, busi
         p_business_id: businessId,
         p_name: newName.trim(),
         p_icon: newIcon.trim() || 'Tag',
+        p_icon_color: newIconColor,
       })
-      const result = rpcResult as { success: boolean; error?: string } | null
+      const result = rpcResult as { success: boolean; id?: string; error?: string } | null
       if (rpcError || !result?.success) {
         setError(result?.error ?? translateDbError(rpcError?.message ?? '', 'Error al crear la categoría'))
         setSaving(false)
@@ -65,12 +66,6 @@ export default function QuickEditCategoryModal({ open, product, categories, busi
         .limit(1)
         .single()
       if (fetchError || !fetched) { setError(translateDbError(fetchError?.message ?? '', 'Error al obtener la categoría creada')); setSaving(false); return }
-
-      await supabase
-        .from('categories')
-        .update({ icon_color: newIconColor })
-        .eq('id', fetched.id)
-        .eq('business_id', businessId)
 
       const { error: updateError } = await supabase
         .from('products')

@@ -25,6 +25,7 @@ interface AttachmentState {
 interface Props {
   expense: Expense
   businessId: string
+  operatorId: string | null
   supabaseClient: SupabaseClient
   onUpdated: () => void
   onClose: () => void
@@ -34,6 +35,7 @@ interface Props {
 export default function EditExpensePanel({
   expense,
   businessId,
+  operatorId,
   supabaseClient: supabase,
   onUpdated,
   onClose,
@@ -207,6 +209,7 @@ export default function EditExpensePanel({
             ) : (
               <MercaderiaItemsSection
                 businessId={businessId}
+                operatorId={operatorId}
                 supabaseClient={supabase}
                 items={mercaderiaItems}
                 onItemsChange={setMercaderiaItems}

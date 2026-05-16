@@ -64,6 +64,7 @@ export default async function ExpensesPage({
       expenses={expenses}
       balance={balance}
       businessId={businessId}
+      operatorId={activeOperator?.profile_id ?? null}
       period={period}
       from={from}
       to={to}

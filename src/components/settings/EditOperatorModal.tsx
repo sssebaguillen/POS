@@ -44,7 +44,7 @@ interface PermissionToggleRowProps {
 const PERMISSION_FIELDS: PermissionField[] = [
   { key: 'sales', label: 'Ventas' },
   { key: 'stock', label: 'Ver inventario' },
-  { key: 'stats', label: 'Estadísticas' },
+  { key: 'analysis', label: 'Análisis' },
   { key: 'price_lists', label: 'Ver listas de precios' },
   { key: 'expenses', label: 'Gastos' },
   { key: 'settings', label: 'Configuración' },

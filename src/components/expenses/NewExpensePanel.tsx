@@ -27,6 +27,7 @@ interface AttachmentState {
 
 interface Props {
   businessId: string
+  operatorId: string | null
   supabaseClient: SupabaseClient
   onCreated: () => void
   onClose: () => void
@@ -40,6 +41,7 @@ const categoryOptions = EXPENSE_CATEGORIES.map(c => ({
 
 export default function NewExpensePanel({
   businessId,
+  operatorId,
   supabaseClient: supabase,
   onCreated,
   onClose,
@@ -177,6 +179,7 @@ export default function NewExpensePanel({
               <label className="text-label text-hint">Productos</label>
               <MercaderiaItemsSection
                 businessId={businessId}
+                operatorId={operatorId}
                 supabaseClient={supabase}
                 items={mercaderiaItems}
                 onItemsChange={setMercaderiaItems}

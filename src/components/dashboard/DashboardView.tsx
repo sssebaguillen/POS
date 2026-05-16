@@ -50,11 +50,15 @@ interface SaleHistoryRow extends SaleRecord {
   product_names: string[]
 }
 
-interface RecentSaleRow {
+export interface RecentActivityRow {
   id: string
-  total: number
-  method: PaymentMethod | 'sin dato'
+  action: string
+  entity_type: 'sale' | 'product' | 'category' | 'brand'
+  entity_label: string | null
+  actor_name: string
   created_at: string
+  old_data: Record<string, unknown> | null
+  new_data: Record<string, unknown> | null
 }
 
 interface ProductRecord {
@@ -83,6 +87,7 @@ interface Props {
   wizardCategories: { id: string; name: string; icon: string }[]
   wizardBrands: InventoryBrand[]
   wizardPriceLists: PriceList[]
+  recentActivity: RecentActivityRow[]
 }
 
 function computeTrend(
@@ -119,6 +124,7 @@ export default function DashboardView({
   wizardCategories,
   wizardBrands,
   wizardPriceLists,
+  recentActivity,
 }: Props) {
   const fmt = useFormatMoney()
   const [period, setPeriod] = useState<DateRangePeriod>('hoy')
@@ -126,7 +132,6 @@ export default function DashboardView({
   const [fromDate, setFromDate] = useState('')
   const [toDate, setToDate] = useState('')
   const [suppressWizardLocal, setSuppressWizardLocal] = useState(false)
-  const [deletedSaleIds, setDeletedSaleIds] = useState<Set<string>>(new Set())
 
   useEffect(() => {
     if (!showOnboardingWizard) {
@@ -294,21 +299,6 @@ export default function DashboardView({
     [period, fromDate, toDate]
   )
 
-  const recentSales = useMemo<RecentSaleRow[]>(
-    () => completedSales
-      .filter(s => !deletedSaleIds.has(s.id))
-      .slice()
-      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-      .slice(0, 5)
-      .map(s => ({
-        id: s.id,
-        total: s.total,
-        method: paymentsBySaleId.get(s.id) ?? 'sin dato',
-        created_at: s.created_at,
-      })),
-    [completedSales, deletedSaleIds, paymentsBySaleId]
-  )
-
   const periodLabel =
     period === 'hoy'
       ? 'Hoy'
@@ -417,7 +407,6 @@ export default function DashboardView({
               businessId={businessId}
               businessName={businessName}
               operatorId={operatorId}
-              onSaleDeleted={(id) => setDeletedSaleIds(prev => new Set([...prev, id]))}
             />
           ) : (
             <>
@@ -480,7 +469,7 @@ export default function DashboardView({
                   />
                 </div>
                 <div className="xl:col-span-1 h-full">
-                  <RecentActivityWidget sales={recentSales} />
+                  <RecentActivityWidget entries={recentActivity} />
                 </div>
               </div>
 

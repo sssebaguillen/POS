@@ -195,6 +195,7 @@ export default function OnboardingWizard({
       p_business_id: businessId,
       p_name: trimmed,
       p_icon: iconValue,
+      p_icon_color: categoryColor,
     })
     const result = rpcResult as { success: boolean; error?: string; id?: string } | null
     if (rpcError || !result?.success) {
@@ -203,12 +204,6 @@ export default function OnboardingWizard({
       return
     }
     const createdId = typeof result.id === 'string' ? result.id : null
-    if (createdId) {
-      await supabase
-        .from('categories')
-        .update({ icon_color: categoryColor })
-        .eq('id', createdId)
-    }
     withStepDone('category')
     setCategoryName('')
     setCategoryIcon(DEFAULT_ICON)
@@ -534,6 +529,7 @@ export default function OnboardingWizard({
                 open
                 onClose={() => {}}
                 businessId={businessId}
+                operatorId={operatorId}
                 priceLists={priceLists}
                 categories={categories}
                 brands={brands}

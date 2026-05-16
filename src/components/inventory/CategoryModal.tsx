@@ -114,25 +114,13 @@ export default function CategoryModal({
       p_business_id: businessId,
       p_name: name.trim(),
       p_icon: icon.trim() || DEFAULT_ICON,
+      p_icon_color: iconColor,
     })
 
     const result = rpcResult as { success: boolean; id?: string; error?: string } | null
 
     if (rpcError || !result?.success) {
       setError(result?.error ?? rpcError?.message ?? 'Error al crear la categoría')
-      setCreating(false)
-      return
-    }
-
-    const { error: colorError } = await supabase
-      .from('categories')
-      .update({ icon_color: iconColor })
-      .eq('id', result.id!)
-      .eq('business_id', businessId)
-
-    if (colorError) {
-      setError('Categoría creada, pero no se pudo guardar el color del icono. Editá la categoría para corregirlo.')
-      await refreshCategories()
       setCreating(false)
       return
     }

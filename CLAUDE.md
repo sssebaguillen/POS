@@ -1,7 +1,7 @@
 # Pulsar POS — Claude Code Reference
 
 > **Source of truth for all AI sessions.** When this file and the code conflict, trust the code and update this file.
-> Last verified against live Supabase: 2026-04-30.
+> Last verified against live Supabase: 2026-05-16.
 
 ---
 
@@ -152,6 +152,21 @@ The `expense_items` table and its RPCs (`create_mercaderia_expense`, `update_mer
 
 The `update_mercaderia_expense` RPC performs delta-based stock reconciliation — it reverts removed items, applies quantity deltas, and warns on cost conflicts.
 
+### Audit Log (P7h Phase 1)
+
+- `audit_log` table records every business mutation. Inventory mutations (create/update/delete product, category, brand, bulk product ops) and sale mutations (create/update/delete) all go through SECURITY DEFINER RPCs that call `log_audit_event(...)`.
+- **`operator_id` is NULL when the owner performed the action.** Owners are not in the `operators` table — never look them up. The read RPC `get_audit_log` LEFT JOINs operators and projects `actor_name = COALESCE(o.name, 'Dueño')`; the UI mirrors this with sentinel UUID `'00000000-0000-0000-0000-000000000000'` for the "Owner only" filter (maps to `operator_id IS NULL` in the RPC).
+- All inventory/sale mutation RPCs accept `p_operator_id uuid` (nullable) and pass it through to `log_audit_event`. Server-side callers (Server Components / Route Handlers) pass the active operator id (or null for owner) from `getActiveOperator(cookieStore)?.profile_id`.
+- Audit retention is indefinite. **Do not** add cleanup jobs or TTL.
+
+### Pill Tabs vs Chips
+
+Two distinct filter patterns — never mix:
+- **Pill tabs** (`pill-tabs` / `pill-tab` / `pill-tab-active`, with the `usePillIndicator` sliding indicator): reserved for `DateRangeFilter` and section/view navigation (Settings tabs, Dashboard tabs, /expenses/providers tab switch). Imply a single selection from a small ordered set.
+- **Chips** (flat `pill-tab` buttons with the active class `bg-primary/10 text-primary border border-primary/20 dark:bg-primary/15 dark:border-primary/30`): used for data filters (entity type in `/activity`, category in `/expenses`, status filters in `SalesHistoryTable`). No sliding indicator. Imply data-shape filtering, often with a "Limpiar" button when a non-default value is selected.
+
+The reference implementation for the chip pattern is `SalesHistoryTable.tsx`.
+
 ### General SQL Rules
 
 - All RPC functions: `SECURITY DEFINER` + `set search_path = public, extensions`.
@@ -219,6 +234,7 @@ src/
 │   │   ├── stats/operators/page.tsx
 │   │   ├── profile/page.tsx              # Owner only
 │   │   ├── operator/me/page.tsx          # Active operator personal profile
+│   │   ├── activity/page.tsx             # edge — audit log with chip+DateRangeFilter+operator filters; defense-in-depth `analysis` perm check
 │   │   └── pos/page.tsx                  # edge
 │   ├── api/operator/
 │   │   ├── switch/route.ts               # Writes operator_session + op_perms (11 permissions)
@@ -254,11 +270,15 @@ src/
     ├── operator/
     │   ├── OperatorSelectView.tsx        # Forgot password button (when isOwnerSelected && error)
     │   └── OperatorSwitcher.tsx
+    ├── activity/
+    │   ├── ActivityView.tsx              # Chip entity filter + DateRangeFilter + operator dropdown; useTransition for optimistic filter state
+    │   ├── ActivityDetail.tsx            # Per-action human-readable detail panel (SaleDiff, ProductDiff, BulkProduct*, CategoryDiff, BrandDiff)
+    │   └── types.ts                      # ActivityEntityFilter, ActivityFilterOperator, ActivityLogRow, ActivityActionTone
     ├── dashboard/
-    │   ├── DashboardView.tsx
+    │   ├── DashboardView.tsx             # Exports RecentActivityRow (id, action, entity_type, entity_label, actor_name, created_at, old_data, new_data)
     │   ├── SalesHistoryTable.tsx         # 100% in-memory filter — data denormalized from page.tsx
     │   ├── BalanceWidget.tsx
-    │   └── RecentActivityWidget.tsx
+    │   └── RecentActivityWidget.tsx      # Last 5 audit_log entries; "Ver detalle →" to /activity; shows sale total when entity_label is null
     ├── stats/
     │   ├── TopProductsDetailView.tsx
     │   ├── BreakdownDetailView.tsx
@@ -313,7 +333,7 @@ src/
         └── types.ts
 ```
 
-**Edge Runtime** (`export const runtime = 'edge'`): `/pos`, `/dashboard`, `/stats`, `/operator-select`
+**Edge Runtime** (`export const runtime = 'edge'`): `/pos`, `/dashboard`, `/stats`, `/operator-select`, `/activity`
 
 ---
 
@@ -612,6 +632,28 @@ Line items for `category = 'mercaderia'` expenses. Enables stock ingestion from 
 
 ---
 
+### `audit_log` ⭐ new (P7h Phase 1, 2026-05-15)
+
+Append-only audit trail of business mutations. Indefinite retention. RLS enabled (tenant isolation via `business_id = get_business_id()`).
+
+| column | type | notes |
+|--------|------|-------|
+| id | uuid PK | gen_random_uuid() |
+| business_id | uuid | FK → businesses(id) |
+| operator_id | uuid nullable | FK → operators(id). **NULL = owner ("Dueño")** — owner has no row in `operators` |
+| actor_role | text | snapshot of role at action time (`'owner'`, `'manager'`, `'cashier'`, `'custom'`) |
+| action | text | e.g. `sale_created`, `sale_updated`, `sale_deleted`, `product_created`, `product_updated`, `product_deleted`, `product_bulk_deleted`, `product_bulk_status`, `product_bulk_category`, `product_bulk_brand`, `category_*`, `brand_*` |
+| entity_type | text | `'sale' \| 'product' \| 'category' \| 'brand'` |
+| entity_id | uuid nullable | id of affected entity (null for bulk) |
+| entity_label | text nullable | snapshot label for display (sales have no label — show total from `new_data`/`old_data`) |
+| old_data | jsonb nullable | full pre-state snapshot for `*_updated` / `*_deleted` |
+| new_data | jsonb nullable | full post-state snapshot for `*_created` / `*_updated` |
+| created_at | timestamptz | now() |
+
+Helper: `log_audit_event(p_business_id, p_operator_id, p_actor_role, p_action, p_entity_type, p_entity_id, p_entity_label, p_old_data, p_new_data)` — called by all mutation RPCs. Convention: **`operator_id` is NULL when the owner performed the action**; the read RPC `get_audit_log` and UI both render that as "Dueño". Migrations: `20260515_06_audit_log_table.sql`, `20260515_07_audit_log_instrumentation.sql`, `20260515_08_audit_log_operator_id_nullable.sql`, `20260515_12_audit_sale_data.sql` (sale snapshots).
+
+---
+
 ### `invoices`
 | column | type | notes |
 |--------|------|-------|
@@ -658,7 +700,7 @@ Defined in `lib/operator.ts`. All 11 must be present when constructing the objec
 | `sales` | POS terminal | ✓ | ✓ | ✓ |
 | `stock` | View inventory | ✓ | ✓ | ✓ |
 | `stock_write` | Modify inventory | ✓ | ✓ | ✗ |
-| `stats` | Dashboard & statistics | ✓ | ✓ | ✗ |
+| `analysis` | Dashboard, statistics & activity log | ✓ | ✓ | ✗ |
 | `price_lists` | View price lists | ✓ | ✓ | ✗ |
 | `price_lists_write` | Modify price lists | ✓ | ✓ | ✗ |
 | `expenses` | View and create expenses | ✓ | ✓ | ✗ |
@@ -699,12 +741,16 @@ Non-httpOnly copy of `permissions` object. Read by sidebar client-side. Written 
 ### When adding a new permission field
 
 Update ALL of these in the same commit:
-1. `lib/operator.ts` — `Permissions` interface + `OWNER_PERMISSIONS` + `DEFAULT_PERMISSIONS`
-2. `lib/operator.ts` — `parsePermissions` + `normalizePermissions`
+1. `lib/operator.ts` — `Permissions` interface + `OWNER_PERMISSIONS` + `DEFAULT_PERMISSIONS` + `OPERATOR_MANAGEMENT_PERMISSION_KEYS`
+2. `lib/operator.ts` — `parsePermissions` + `normalizePermissions` + `toOperatorManagementPermissions`
 3. `src/app/api/operator/switch/route.ts` — `parseVerifyResult`
 4. `src/components/sidebar.tsx`
-5. `src/components/settings/NewOperatorModal.tsx`
-6. DB: `operators.permissions` default JSONB
+5. `src/components/settings/NewOperatorModal.tsx` + `EditOperatorModal.tsx`
+6. DB: `operators.permissions` default JSONB + `create_operator` RPC role-default JSONBs
+
+### Permission rename — `stats` → `analysis` (2026-05-16)
+
+The `stats` permission was renamed to `analysis` to cover dashboard, estadísticas, and the new `/activity` route. The change touched: TypeScript `Permissions` interface and all derived constants/normalizers; `proxy.ts` route guard; `sidebar.tsx` link gates; operator modal toggle label ("Estadísticas" → "Análisis"); `create_operator` RPC role-default JSONBs; existing `operators.permissions` rows migrated via `permissions - 'stats' || jsonb_build_object('analysis', permissions->'stats')`; column default updated. Migration: `20260516_01_rename_stats_to_analysis.sql`.
 
 ---
 
@@ -755,9 +801,9 @@ All SECURITY DEFINER, all with `set search_path = public, extensions`.
 |----------|-------------|
 | `bootstrap_new_user(p_user_id, p_business_name, p_user_name)` | Creates businesses + profiles |
 | `get_business_id()` | STABLE — used in RLS policies. Returns auth.uid()'s business_id |
-| `create_sale_transaction(...)` | Atomically inserts sale + sale_items + payments |
-| `update_sale(p_sale_id, p_business_id, ...)` | Reverts stock manually, DELETEs items, INSERTs new; calls `reconcile_sales_count` |
-| `delete_sale(p_sale_id, p_business_id)` | Deletes sale + reverts stock |
+| `create_sale_transaction(...)` | Atomically inserts sale + sale_items + payments. Audit `new_data` is a post-insert snapshot `{total, subtotal, status, customer_id, payments[], items[]}` |
+| `update_sale(p_sale_id, p_business_id, p_operator_id, ...)` | Reverts stock manually, DELETEs items, INSERTs new; calls `reconcile_sales_count`; logs `sale_updated` with `customer_id` in old/new data |
+| `delete_sale(p_sale_id, p_business_id, p_operator_id)` | Deletes sale + reverts stock; logs `sale_deleted` with `customer_id` in `old_data` |
 | `get_sale_detail(p_sale_id, p_business_id)` | Full sale with items and payments |
 | `reconcile_sales_count(p_business_id)` | Recalculates `sales_count` from sale_items JOIN sales |
 | `create_operator(p_business_id, p_name, p_role, p_pin, p_permissions?)` | Returns `{success, operator_id?, error?}` |
@@ -767,8 +813,16 @@ All SECURITY DEFINER, all with `set search_path = public, extensions`.
 | `get_owner_stats(p_date_from?, p_date_to?)` | Sales stats for owner — derives business_id from auth.uid() |
 | `swap_default_price_list(p_price_list_id, p_business_id)` | Atomic default swap |
 | `update_business_slug(p_slug)` | Validates format + uniqueness; throws in Spanish on failure; GRANT EXECUTE TO authenticated |
-| `create_category_guarded(p_operator_id, p_business_id, p_name, p_icon)` | Verifies `stock_write` |
-| `create_brand_guarded(p_operator_id, p_business_id, p_name)` | Verifies `stock_write` |
+| `create_category_guarded(p_operator_id, p_business_id, p_name, p_icon, p_icon_color?)` | Verifies `stock_write`; accepts optional `icon_color`; logs `category_created` |
+| `create_brand_guarded(p_operator_id, p_business_id, p_name)` | Verifies `stock_write`; logs `brand_created` |
+| `create_product(p_operator_id, p_business_id, ...)` | Verifies `stock_write`; inserts product; logs `product_created` (migration `20260515_10`) |
+| `update_product(p_operator_id, p_business_id, p_product_id, ...)` | Verifies `stock_write`; logs `product_updated` with full old/new snapshots |
+| `delete_product(p_operator_id, p_business_id, p_product_id)` | Verifies `stock_write`; logs `product_deleted` |
+| `update_category(p_operator_id, p_business_id, p_category_id, p_name, p_icon, p_icon_color)` | Verifies `stock_write`; accepts `icon_color` (migration `20260515_04`); logs `category_updated` |
+| `delete_category(p_operator_id, p_business_id, p_category_id)` | Verifies `stock_write`; logs `category_deleted` |
+| `delete_brand(p_operator_id, p_business_id, p_brand_id)` | Verifies `stock_write`; logs `brand_deleted` |
+| `log_audit_event(p_business_id, p_operator_id, p_actor_role, p_action, p_entity_type, p_entity_id, p_entity_label, p_old_data, p_new_data)` | Helper called by all mutation RPCs to insert an `audit_log` row. `p_operator_id` is NULL for owner actions. |
+| `get_audit_log(p_business_id, p_entity_type?, p_operator_id?, p_date_from?, p_date_to?, p_limit?, p_offset?)` | Returns `{data: AuditLogRow[], total}`. `p_operator_id = '00000000-0000-0000-0000-000000000000'` filters to owner-only (`operator_id IS NULL`); other UUIDs filter by that operator; NULL means no operator filter. Projects `actor_name = COALESCE(o.name, 'Dueño')`. |
 | `get_business_balance(p_business_id, p_from?, p_to?)` | `{income, expenses, profit, margin, by_category, period_from, period_to}` |
 | `get_expenses_list(p_business_id, p_from?, p_to?, p_category?, p_limit?, p_offset?)` | `{data: Expense[], total}` |
 | `create_expense(p_business_id, p_category, p_amount, p_description, ...)` | `{success, id}` |
@@ -816,12 +870,13 @@ All SECURITY DEFINER, all with `set search_path = public, extensions`.
 | `/inventory` | Inventory (read) | `permissions.stock` |
 | `/products` | Inventory (write) | `permissions.stock` + `permissions.stock_write` |
 | `/price-lists` | Price lists | `permissions.price_lists` |
-| `/dashboard` | KPI dashboard | `permissions.stats` |
-| `/stats` | Statistics | `permissions.stats` |
-| `/stats/top-products` | Top products detail | `permissions.stats` |
-| `/stats/breakdown` | Category/brand breakdown | `permissions.stats` |
-| `/stats/payment-methods` | Payment methods detail | `permissions.stats` |
-| `/stats/operators` | Operator sales detail | `permissions.stats` |
+| `/dashboard` | KPI dashboard | `permissions.analysis` |
+| `/stats` | Statistics | `permissions.analysis` |
+| `/stats/top-products` | Top products detail | `permissions.analysis` |
+| `/stats/breakdown` | Category/brand breakdown | `permissions.analysis` |
+| `/stats/payment-methods` | Payment methods detail | `permissions.analysis` |
+| `/stats/operators` | Operator sales detail | `permissions.analysis` |
+| `/activity` | Audit log | `permissions.analysis` |
 | `/expenses` | Expenses module | `permissions.expenses` |
 | `/expenses/providers` | Supplier management | `permissions.expenses` |
 | `/profile` | Owner profile | owner only (non-owners get flash → /pos) |
@@ -840,6 +895,16 @@ All SECURITY DEFINER, all with `set search_path = public, extensions`.
 |----|-------|--------|
 | G-3 | `cash_sessions.opened_by` → FK to `profiles` but should FK to `operators`. Deferred until P8a (cash session UI). | ⏳ |
 | M-3 | `inventory_movements.created_by` has no active FK and trigger doesn't populate it. Deferred. | ⏳ |
+
+### P7h Audit Log — Remaining Phases
+
+| Phase | Scope | Status |
+|-------|-------|--------|
+| Fase 1 | Sales + inventory (products, categories, brands, bulk) audit logging; `/activity` UI; `RecentActivityWidget` on dashboard | ✅ shipped 2026-05-15 |
+| Fase 2 | Audit logging for expenses, providers/suppliers, price lists, settings mutations | ⏳ |
+| Fase 3 | Revert mutation from audit log entry (undo from any entry) | ⏳ |
+
+**Scope cut in Fase 1:** `ImportProductsModal.handleCreate` still performs a direct `.update({ icon_color })` on `categories` instead of going through `create_category_guarded` / `update_category`. Move to RPC path in Fase 2.
 
 ### Dead Code in proxy.ts
 
@@ -864,6 +929,9 @@ The CONTEXT.md mentions a dead `/stock` guard in `proxy.ts`. This does NOT appea
 | `create_mercaderia_expense` RPC | Not documented | Exists |
 | `update_mercaderia_expense` RPC | Not documented | Exists |
 | Permissions count | "9 campos" | 11 fields — `price_override` is the 10th, `free_line` is the 11th |
+| `stats` permission | Documented as `stats` | Renamed to `analysis` on 2026-05-16 (covers dashboard, stats, /activity) |
+| `audit_log` table | Not documented | Exists — P7h Phase 1, append-only audit trail |
+| Inventory mutation RPCs | Direct table writes documented | All mutations now go through SECURITY DEFINER RPCs (`create_product`, `update_product`, `delete_product`, etc.) with audit logging |
 
 ### Technical Debt — Pending Post-Beta
 
@@ -905,8 +973,8 @@ The CONTEXT.md mentions a dead `/stock` guard in `proxy.ts`. This does NOT appea
 13. `createClient()` always inside `useMemo(() => createClient(), [])` in Client Components.
 14. Independent queries in Server Components: always `Promise.all`.
 15. RPCs returning `{data: [...]}`: always extract `.data`, never iterate the wrapper.
-16. New permission field: update `lib/operator.ts`, `sidebar.tsx`, `api/operator/switch/route.ts`, `NewOperatorModal.tsx` — same commit.
-17. Filter chips: `pill-tabs` / `pill-tab` / `pill-tab-active` everywhere (exception: POS ProductPanel).
+16. New permission field: update `lib/operator.ts` (interface + defaults + `OPERATOR_MANAGEMENT_PERMISSION_KEYS` + `parsePermissions` + `normalizePermissions`), `sidebar.tsx`, `api/operator/switch/route.ts`, both operator modals, and the DB column default + `create_operator` RPC role-default JSONBs — same commit.
+17. Filter pattern split: **pill tabs** (with `usePillIndicator`) only for `DateRangeFilter` and section/view navigation; **chips** (flat `pill-tab` buttons, active class `bg-primary/10 text-primary border border-primary/20`) for all data filters. Reference: `SalesHistoryTable.tsx`. Exception: POS `ProductPanel` keeps its own style.
 18. Sidebar collapsed: from cookie `pos-sidebar-collapsed` in Server Component — no post-hydration `useEffect`.
 19. Prefer `requireAuthenticatedBusinessId(supabase)` in page components.
 20. `/api/operator/logout`: only deletes cookies — **NEVER** restores owner session.
@@ -920,3 +988,5 @@ The CONTEXT.md mentions a dead `/stock` guard in `proxy.ts`. This does NOT appea
 28. No `<form>` HTML — use `onClick`/`onChange` handlers.
 29. Public catalog: **NEVER** direct queries to `products`/`categories` from anon client — use `get_catalog_products`/`get_catalog_categories` RPCs.
 30. `mercadería` expenses: use `create_mercaderia_expense` / `update_mercaderia_expense` RPCs — not `create_expense` / `update_expense`.
+31. **Audit log: `operator_id = NULL` means owner ("Dueño") everywhere** — in `audit_log` rows, in `get_audit_log` filtering (sentinel UUID `'00000000-0000-0000-0000-000000000000'` maps to `IS NULL`), and in the UI ("Dueño" label). Never insert a synthetic owner row in `operators`.
+32. Inventory mutations: use the RPCs (`create_product`, `update_product`, `delete_product`, `create_category_guarded`, `update_category`, `delete_category`, `create_brand_guarded`, `delete_brand`, `bulk_*`) — they verify `stock_write` and log to `audit_log`. Do **not** call `supabase.from('products' | 'categories' | 'brands').insert/update/delete` directly. (One known exception pending Fase 2: `ImportProductsModal.handleCreate` does a direct `.update({ icon_color })`.)

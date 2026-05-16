@@ -10,7 +10,7 @@ import { trackFeatureUsed } from '@/lib/analytics'
 import { Button } from '@/components/ui/button'
 import PageHeader from '@/components/shared/PageHeader'
 import DateRangeFilter from '@/components/shared/DateRangeFilter'
-import { usePillIndicator } from '@/hooks/usePillIndicator'
+import { cn } from '@/lib/utils'
 import { resolveDateRange, buildDateParams, periodNeedsCustomDates, type DateRangePeriod } from '@/lib/date-utils'
 import ExportCSVButton from '@/components/shared/ExportCSVButton'
 import ExpenseSummaryCards from './ExpenseSummaryCards'
@@ -29,6 +29,7 @@ interface Props {
   expenses: Expense[]
   balance: BusinessBalance
   businessId: string
+  operatorId: string | null
   period: DateRangePeriod
   from?: string
   to?: string
@@ -44,6 +45,7 @@ export default function ExpensesView({
   expenses: initialExpenses,
   balance: initialBalance,
   businessId,
+  operatorId,
   period: initialPeriod,
   from: initialFrom,
   to: initialTo,
@@ -62,7 +64,6 @@ export default function ExpensesView({
   const [to, setTo] = useState(initialTo)
   const [selectedCategory, setSelectedCategory] = useState<ExpenseCategory | undefined>(undefined)
   const [mountedAt] = useState(() => Date.now())
-  const { setRef, indicator } = usePillIndicator(selectedCategory ?? 'todos')
 
   const isInitialPeriod = period === initialPeriod && from === initialFrom && to === initialTo
 
@@ -194,34 +195,31 @@ export default function ExpensesView({
             onChange={handlePeriodChange}
           />
 
-          {/* Category filter */}
-          <div className="pill-tabs flex-wrap relative">
-            {indicator && (
-              <span
-                className="pill-tab-indicator"
-                style={{
-                  transform: `translateX(${indicator.left}px)`,
-                  width: indicator.width,
-                }}
-              />
-            )}
-            <button
-              ref={setRef('todos')}
-              onClick={() => setSelectedCategory(undefined)}
-              className={`pill-tab${!selectedCategory ? ' pill-tab-active' : ''}`}
-            >
-              Todos
-            </button>
-            {EXPENSE_CATEGORIES.map(cat => (
+          {/* Category filter (chips) */}
+          <div className="flex flex-wrap gap-1.5">
+            {EXPENSE_CATEGORIES.map(cat => {
+              const active = selectedCategory === cat
+              return (
+                <button
+                  key={cat}
+                  onClick={() => setSelectedCategory(active ? undefined : cat)}
+                  className={cn(
+                    'pill-tab',
+                    active && 'bg-primary/10 text-primary border border-primary/20 dark:bg-primary/15 dark:border-primary/30',
+                  )}
+                >
+                  {EXPENSE_CATEGORY_LABELS[cat]}
+                </button>
+              )
+            })}
+            {selectedCategory && (
               <button
-                key={cat}
-                ref={setRef(cat)}
-                onClick={() => setSelectedCategory(cat)}
-                className={`pill-tab${selectedCategory === cat ? ' pill-tab-active' : ''}`}
+                onClick={() => setSelectedCategory(undefined)}
+                className="pill-tab text-hint hover:text-body"
               >
-                {EXPENSE_CATEGORY_LABELS[cat]}
+                Limpiar
               </button>
-            ))}
+            )}
           </div>
 
           <ExpenseSummaryCards balance={displayBalance} isFiltered={!!selectedCategory} />
@@ -257,6 +255,7 @@ export default function ExpensesView({
       {panelOpen && (
         <NewExpensePanel
           businessId={businessId}
+          operatorId={operatorId}
           supabaseClient={supabase}
           onCreated={handleExpenseCreated}
           onClose={() => setPanelOpen(false)}
@@ -268,6 +267,7 @@ export default function ExpensesView({
         <EditExpensePanel
           expense={editingExpense}
           businessId={businessId}
+          operatorId={operatorId}
           supabaseClient={supabase}
           onUpdated={handleExpenseUpdated}
           onClose={() => setEditingExpense(null)}

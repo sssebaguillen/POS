@@ -165,9 +165,11 @@ export async function proxy(request: NextRequest) {
     pathname === '/dashboard' ||
     pathname.startsWith('/dashboard/') ||
     pathname === '/stats' ||
-    pathname.startsWith('/stats/')
+    pathname.startsWith('/stats/') ||
+    pathname === '/activity' ||
+    pathname.startsWith('/activity/')
 
-  if (isStatsRoute && !hasPermission(operator, 'stats')) {
+  if (isStatsRoute && !hasPermission(operator, 'analysis')) {
     return flashRedirect(new URL('/pos', request.url), cspHeader)
   }
 

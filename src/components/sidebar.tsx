@@ -2,7 +2,7 @@
 
 import { usePathname } from 'next/navigation'
 import Link from 'next/link'
-import { X, ShoppingCart, Package, ClipboardList, BarChart2, LineChart, Settings, Sun, Moon, LogOut, PanelLeftClose, PanelLeftOpen, Receipt, Building2, Sparkles, Globe, ExternalLink } from 'lucide-react'
+import { X, ShoppingCart, Package, ClipboardList, BarChart2, LineChart, Settings, Sun, Moon, LogOut, PanelLeftClose, PanelLeftOpen, Receipt, Building2, Sparkles, Globe, ExternalLink, History } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useState, useEffect, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
@@ -23,8 +23,9 @@ interface NavLink {
 // price_override is intentionally absent — it controls per-line price editing in the POS, not route access.
 const NAV_LINKS: NavLink[] = [
   { href: '/pos',         label: 'Vender',            icon: ShoppingCart,  check: () => true },
-  { href: '/dashboard',   label: 'Dashboard',         icon: BarChart2,     check: (p) => p.stats === true },
-  { href: '/stats',       label: 'Estadísticas',      icon: LineChart,     check: (p) => p.stats === true },
+  { href: '/dashboard',   label: 'Dashboard',         icon: BarChart2,     check: (p) => p.analysis === true },
+  { href: '/stats',       label: 'Estadísticas',      icon: LineChart,     check: (p) => p.analysis === true },
+  { href: '/activity',    label: 'Actividad',         icon: History,       check: (p) => p.analysis === true },
   { href: '/expenses',    label: 'Gastos',            icon: Receipt,       check: (p) => p.expenses === true },
   { href: '/inventory',   label: 'Inventario',        icon: Package,       check: (p) => p.stock === true },
   { href: '/price-lists', label: 'Listas de precios', icon: ClipboardList, check: (p) => p.price_lists === true },
@@ -37,16 +38,16 @@ const NAV_SECTIONS = [
     hrefs: ['/pos'],
   },
   {
-    label: 'Análisis',
-    hrefs: ['/dashboard', '/stats'],
+    label: 'Gestión',
+    hrefs: ['/inventory', '/price-lists'],
   },
   {
     label: 'Finanzas',
     hrefs: ['/expenses'],
   },
   {
-    label: 'Gestión',
-    hrefs: ['/inventory', '/price-lists'],
+    label: 'Análisis',
+    hrefs: ['/dashboard', '/stats', '/activity'],
   },
   {
     label: 'Sistema',

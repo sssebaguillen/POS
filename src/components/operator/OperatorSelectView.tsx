@@ -149,7 +149,7 @@ export default function OperatorSelectView({
       headers: { 'Content-Type': 'application/json' },
       body: isOwnerSelected
         ? JSON.stringify({ isOwner: true, password })
-        : JSON.stringify({ profile_id: selectedOperatorId, pin: effectivePin }),
+        : JSON.stringify({ isOwner: false, profile_id: selectedOperatorId, pin: effectivePin }),
     })
 
     const payload = (await response.json().catch(() => null)) as SwitchResponse | null

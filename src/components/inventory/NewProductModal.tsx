@@ -26,6 +26,7 @@ interface Props {
   open?: boolean
   onClose: () => void
   businessId: string | null
+  operatorId: string | null
   priceLists: PriceList[]
   categories: InventoryCategory[]
   brands: InventoryBrand[]
@@ -54,6 +55,7 @@ export default function NewProductModal({
   open = false,
   onClose,
   businessId,
+  operatorId,
   priceLists,
   categories,
   brands,
@@ -336,15 +338,17 @@ export default function NewProductModal({
       return
     }
 
-    const payload = {
-      business_id: businessId,
+    const priceNum = Number(form.price)
+    const costNum = Number(form.cost) || 0
+
+    const productData: Record<string, unknown> = {
       name: toTitleCase(form.name.trim()),
       sku: form.sku.trim() || null,
       brand_id: form.brand_id || null,
       barcode: form.barcode.trim() || null,
       category_id: form.category_id || null,
-      price: Number(form.price),
-      cost: Number(form.cost) || 0,
+      price: priceNum,
+      cost: costNum,
       stock: Number(form.stock) || 0,
       min_stock: Number(form.min_stock) || 0,
       is_active: form.is_active,
@@ -352,32 +356,39 @@ export default function NewProductModal({
       image_source: imageSource,
     }
 
-    const { data, error } = await supabase
-      .from('products')
-      .insert(payload)
-      .select('id, name, price, cost, stock, min_stock, is_active, category_id, sku, brand_id, brands(id, name), barcode, image_url, image_source, has_variants, categories(name, icon)')
-      .single()
+    if (isPriceEdited && costNum > 0 && selectedListIds.size > 0) {
+      const multiplier = priceNum / costNum
+      productData.price_list_overrides = [...selectedListIds].map(listId => ({
+        price_list_id: listId,
+        multiplier,
+      }))
+    }
 
-    setLoading(false)
-    if (error || !data) {
-      setErrors({ _global: error?.message ?? 'Error al crear el producto' })
+    const { data: rpcResult, error: rpcError } = await supabase.rpc('create_product', {
+      p_operator_id: operatorId,
+      p_business_id: businessId,
+      p_data: productData,
+    })
+
+    const result = rpcResult as { success: boolean; id?: string; error?: string } | null
+
+    if (rpcError || !result?.success || !result.id) {
+      setLoading(false)
+      setErrors({ _global: result?.error ?? rpcError?.message ?? 'Error al crear el producto' })
       return
     }
 
-    if (isPriceEdited && payload.cost > 0 && selectedListIds.size > 0) {
-      const multiplier = payload.price / payload.cost
-      void (async () => {
-        await supabase
-          .from('price_list_overrides')
-          .insert(
-            [...selectedListIds].map(listId => ({
-              price_list_id: listId,
-              product_id: data.id,
-              brand_id: null,
-              multiplier,
-            }))
-          )
-      })()
+    const { data, error: fetchError } = await supabase
+      .from('products')
+      .select('id, name, price, cost, stock, min_stock, is_active, category_id, sku, brand_id, brands(id, name), barcode, image_url, image_source, has_variants, categories(name, icon)')
+      .eq('id', result.id)
+      .single()
+
+    setLoading(false)
+
+    if (fetchError || !data) {
+      setErrors({ _global: fetchError?.message ?? 'Producto creado pero no se pudo recuperar' })
+      return
     }
 
     const created: InventoryProduct = {

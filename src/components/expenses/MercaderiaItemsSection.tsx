@@ -25,6 +25,7 @@ interface NewProductResult {
 
 interface Props {
   businessId: string
+  operatorId: string | null
   supabaseClient: SupabaseClient
   items: MercaderiaItem[]
   onItemsChange: (items: MercaderiaItem[]) => void
@@ -36,6 +37,7 @@ interface Props {
 
 export default function MercaderiaItemsSection({
   businessId,
+  operatorId,
   supabaseClient,
   items,
   onItemsChange,
@@ -254,6 +256,7 @@ export default function MercaderiaItemsSection({
         open={newProductOpen}
         onClose={() => setNewProductOpen(false)}
         businessId={businessId}
+        operatorId={operatorId}
         priceLists={priceLists}
         categories={categories}
         brands={brands}

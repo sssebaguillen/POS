@@ -12,6 +12,7 @@ import type { PriceList } from '@/lib/types'
 import type { InventoryBrand } from '@/components/inventory/types'
 import { CURRENCIES, type SupportedCurrencyCode } from '@/lib/constants/currencies'
 import { parseOnboardingState } from '@/components/onboarding/onboarding-types'
+import type { RecentActivityRow } from '@/components/dashboard/DashboardView'
 
 export default async function DashboardPage() {
   const supabase = await createClient()
@@ -20,7 +21,14 @@ export default async function DashboardPage() {
 
   const { userId, businessId } = await requireAuthenticatedBusinessContext(supabase)
 
-  const [{ data: sales }, { data: products }, { data: business }, balanceResult, { data: profile }] = await Promise.all([
+  const [
+    { data: sales },
+    { data: products },
+    { data: business },
+    balanceResult,
+    { data: profile },
+    { data: recentActivityRaw },
+  ] = await Promise.all([
     supabase
       .from('sales')
       .select('id, subtotal, discount, total, created_at, status, operator_id, operators(name)')
@@ -43,7 +51,19 @@ export default async function DashboardPage() {
       p_to: null,
     }),
     supabase.from('profiles').select('id, role, onboarding_state').eq('id', userId).single(),
+    supabase.rpc('get_audit_log', {
+      p_business_id: businessId,
+      p_entity_type: null,
+      p_operator_id: null,
+      p_date_from: null,
+      p_date_to: null,
+      p_limit: 5,
+      p_offset: 0,
+    }),
   ])
+
+  const recentActivity =
+    ((recentActivityRaw as unknown as { data: RecentActivityRow[] } | null)?.data ?? []) as RecentActivityRow[]
 
   const balance = (balanceResult.data as unknown as BusinessBalance | null) ?? {
     income: 0, expenses: 0, profit: 0, margin: 0, by_category: {}, period_from: '', period_to: '',
@@ -173,6 +193,7 @@ export default async function DashboardPage() {
       wizardCategories={wizardCategories}
       wizardBrands={wizardBrands}
       wizardPriceLists={wizardPriceLists}
+      recentActivity={recentActivity}
     />
   )
 }
