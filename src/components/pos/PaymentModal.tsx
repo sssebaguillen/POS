@@ -1,27 +1,29 @@
 'use client'
 
-import { useCallback, useMemo, useState } from 'react'
-import { Plus, Printer, X } from 'lucide-react'
+import { useCallback, useMemo, useState, type ReactNode } from 'react'
+import { CreditCard, Plus, Printer, X } from 'lucide-react'
 import ReceiptPreviewModal from '@/components/pos/ReceiptPreviewModal'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import SelectDropdown from '@/components/ui/SelectDropdown'
 import type { PaymentMethod } from '@/lib/constants/domain'
 import type { ReceiptData, ReceiptItemInput, SaleItemInput } from '@/lib/printer/types'
+import type { CustomerSelection } from '@/lib/types/pos'
 import { PAYMENT_METHOD_LABELS, PAYMENT_METHODS } from '@/lib/constants/domain'
 import { useCurrency, useFormatMoney } from '@/lib/context/CurrencyContext'
 import { useCartStore } from '@/lib/store/cart.store'
 import { createClient } from '@/lib/supabase/client'
 import { trackSale } from '@/lib/analytics'
 
-const PAYMENT_ICONS: Record<PaymentMethod, string> = {
+const PAYMENT_ICONS: Record<PaymentMethod, ReactNode> = {
   cash: '$',
   card: 'TC',
   transfer: 'TR',
   mercadopago: 'MP',
+  credit: <CreditCard size={14} />,
 }
 
-const PAYMENT_METHOD_OPTIONS = PAYMENT_METHODS.map(id => ({
+const ALL_PAYMENT_METHOD_OPTIONS = PAYMENT_METHODS.map(id => ({
   id,
   label: PAYMENT_METHOD_LABELS[id],
   icon: PAYMENT_ICONS[id],
@@ -38,6 +40,7 @@ interface Props {
   saleItems: SaleItemInput[]
   receiptItems: ReceiptItemInput[]
   operatorId: string | null
+  customer?: CustomerSelection | null
   onClose: () => void
   onSaleCompleted: (message: string) => void
 }
@@ -52,6 +55,7 @@ export default function PaymentModal({
   saleItems,
   receiptItems,
   operatorId,
+  customer = null,
   onClose,
   onSaleCompleted,
 }: Props) {
@@ -74,11 +78,36 @@ export default function PaymentModal({
   const formatMoney = useFormatMoney()
   const currency = useCurrency()
 
+  const creditEligible = customer?.is_credit_enabled === true
+  const creditAvailable = creditEligible
+    ? Math.max(0, customer!.credit_limit - customer!.credit_balance)
+    : 0
+
+  const availableMethods = useMemo(
+    () => PAYMENT_METHODS.filter(method => method !== 'credit' || creditEligible),
+    [creditEligible]
+  )
+  const availableMethodOptions = useMemo(
+    () => ALL_PAYMENT_METHOD_OPTIONS.filter(m => availableMethods.includes(m.id)),
+    [availableMethods]
+  )
+  // Mixed mode never uses credit
+  const mixedAvailableMethods = useMemo(
+    () => availableMethods.filter(m => m !== 'credit'),
+    [availableMethods]
+  )
+
   // Single-mode derived
   const parsedCash = Number(cashReceived)
   const validCash = Number.isFinite(parsedCash) ? parsedCash : 0
   const singleChange = primaryMethod === 'cash' && cashReceived ? Math.max(0, validCash - total) : 0
-  const singleCanConfirm = primaryMethod !== 'cash' || (cashReceived.trim() !== '' && validCash >= total)
+  const creditOverLimit = primaryMethod === 'credit' && total > creditAvailable
+  const singleCanConfirm =
+    primaryMethod === 'cash'
+      ? cashReceived.trim() !== '' && validCash >= total
+      : primaryMethod === 'credit'
+        ? creditEligible && total > 0 && total <= creditAvailable
+        : true
 
   // Mixed-mode derived
   const validPrimary = Number(primaryMixedAmount) || 0
@@ -93,7 +122,7 @@ export default function PaymentModal({
     setPrimaryMethod(method)
     setCashReceived('')
     if (method === secondaryMethod) {
-      const next = PAYMENT_METHODS.find(m => m !== method)
+      const next = mixedAvailableMethods.find(m => m !== method)
       if (next) setSecondaryMethod(next)
     }
   }
@@ -101,7 +130,10 @@ export default function PaymentModal({
   function enterMixedMode() {
     setPrimaryMixedAmount('')
     setSecondaryAmount('')
-    const defaultSecondary = PAYMENT_METHODS.find(m => m !== primaryMethod)!
+    // Credit is not allowed in mixed mode
+    const effectivePrimary: PaymentMethod = primaryMethod === 'credit' ? 'cash' : primaryMethod
+    if (effectivePrimary !== primaryMethod) setPrimaryMethod(effectivePrimary)
+    const defaultSecondary = mixedAvailableMethods.find(m => m !== effectivePrimary)!
     setSecondaryMethod(defaultSecondary)
     setIsMixed(true)
   }
@@ -152,6 +184,7 @@ export default function PaymentModal({
         free_line_description: item.free_line_description,
       })),
       p_payments: payments,
+      p_customer_id: customer?.id ?? null,
     })
 
     const result = rpcResult as { success: boolean; sale_id?: string; created_at?: string; error?: string } | null
@@ -162,6 +195,20 @@ export default function PaymentModal({
       setError(msg)
       setLoading(false)
       return
+    }
+
+    if (!isMixed && primaryMethod === 'credit' && customer && result.sale_id) {
+      const { error: creditError } = await supabase.rpc('apply_customer_credit', {
+        p_sale_id: result.sale_id,
+        p_customer_id: customer.id,
+        p_amount: total,
+      })
+      if (creditError) {
+        console.error(creditError)
+        setError('Venta registrada pero error al aplicar crédito. Contactar soporte.')
+        setLoading(false)
+        return
+      }
     }
 
     const change = isMixed ? mixedChange : singleChange
@@ -228,7 +275,7 @@ export default function PaymentModal({
                 {!isMixed && (
                   <>
                     <div className="grid grid-cols-2 gap-2">
-                      {PAYMENT_METHOD_OPTIONS.map(m => (
+                      {availableMethodOptions.map(m => (
                         <button
                           key={m.id}
                           onClick={() => handlePrimaryMethodChange(m.id)}
@@ -270,14 +317,30 @@ export default function PaymentModal({
                       </div>
                     )}
 
-                    <button
-                      type="button"
-                      onClick={enterMixedMode}
-                      className="flex items-center gap-1.5 text-sm text-primary hover:bg-primary/8 transition-colors font-medium px-2 py-1 rounded-lg -ml-2"
-                    >
-                      <Plus size={15} />
-                      Agregar método
-                    </button>
+                    {primaryMethod === 'credit' && customer && (
+                      <div className="space-y-1 px-1">
+                        <div className="flex justify-between text-sm">
+                          <span className="text-subtle">Crédito disponible</span>
+                          <span className="font-semibold text-heading tabular-nums">{formatMoney(creditAvailable)}</span>
+                        </div>
+                        {creditOverLimit && (
+                          <p className="text-xs text-red-500">
+                            El monto supera el crédito disponible ({formatMoney(creditAvailable)})
+                          </p>
+                        )}
+                      </div>
+                    )}
+
+                    {primaryMethod !== 'credit' && (
+                      <button
+                        type="button"
+                        onClick={enterMixedMode}
+                        className="flex items-center gap-1.5 text-sm text-primary hover:bg-primary/8 transition-colors font-medium px-2 py-1 rounded-lg -ml-2"
+                      >
+                        <Plus size={15} />
+                        Agregar método
+                      </button>
+                    )}
                   </>
                 )}
 
@@ -292,7 +355,7 @@ export default function PaymentModal({
                           <SelectDropdown
                             value={primaryMethod}
                             onChange={v => handlePrimaryMethodChange(v as PaymentMethod)}
-                            options={PAYMENT_METHODS.filter(m => m !== secondaryMethod).map(m => ({
+                            options={mixedAvailableMethods.filter(m => m !== secondaryMethod).map(m => ({
                               value: m,
                               label: PAYMENT_METHOD_LABELS[m],
                             }))}
@@ -327,7 +390,7 @@ export default function PaymentModal({
                           <SelectDropdown
                             value={secondaryMethod}
                             onChange={v => setSecondaryMethod(v as PaymentMethod)}
-                            options={PAYMENT_METHODS.filter(m => m !== primaryMethod).map(m => ({
+                            options={mixedAvailableMethods.filter(m => m !== primaryMethod).map(m => ({
                               value: m,
                               label: PAYMENT_METHOD_LABELS[m],
                             }))}

@@ -33,6 +33,7 @@ const ENTITY_VALUES: ActivityEntityFilter[] = [
   'price_list',
   'setting',
   'operator',
+  'customer',
 ]
 const PAGE_SIZE = 50
 const OWNER_SENTINEL = '00000000-0000-0000-0000-000000000000'
@@ -99,6 +100,7 @@ export default async function ActivityPage({
     { data: categoriesRaw },
     { data: brandsRaw },
     { data: productsRaw },
+    { data: customersRaw },
   ] = await Promise.all([
     supabase
       .from('operators')
@@ -127,6 +129,11 @@ export default async function ActivityPage({
       .select('id, name')
       .eq('business_id', businessId)
       .limit(5000),
+    supabase
+      .from('customers')
+      .select('id, name')
+      .eq('business_id', businessId)
+      .limit(5000),
   ])
 
   const operators: ActivityFilterOperator[] = (operatorsRaw ?? []).map(o => ({
@@ -145,6 +152,9 @@ export default async function ActivityPage({
 
   const productMap: Record<string, string> = {}
   for (const p of productsRaw ?? []) productMap[p.id] = p.name
+
+  const customerMap: Record<string, string> = {}
+  for (const c of customersRaw ?? []) customerMap[c.id] = c.name
 
   const payload = rpcResult as unknown as { data: ActivityLogRow[]; total: number } | null
   const rows = payload?.data ?? []
@@ -165,6 +175,7 @@ export default async function ActivityPage({
       categoryMap={categoryMap}
       brandMap={brandMap}
       productMap={productMap}
+      customerMap={customerMap}
     />
   )
 }

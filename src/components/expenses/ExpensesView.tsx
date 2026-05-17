@@ -8,6 +8,7 @@ import { createClient } from '@/lib/supabase/client'
 import posthog from 'posthog-js'
 import { trackFeatureUsed } from '@/lib/analytics'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import PageHeader from '@/components/shared/PageHeader'
 import DateRangeFilter from '@/components/shared/DateRangeFilter'
 import { cn } from '@/lib/utils'
@@ -63,6 +64,7 @@ export default function ExpensesView({
   const [from, setFrom] = useState(initialFrom)
   const [to, setTo] = useState(initialTo)
   const [selectedCategory, setSelectedCategory] = useState<ExpenseCategory | undefined>(undefined)
+  const [search, setSearch] = useState('')
   const [mountedAt] = useState(() => Date.now())
 
   const isInitialPeriod = period === initialPeriod && from === initialFrom && to === initialTo
@@ -141,12 +143,15 @@ export default function ExpensesView({
   }
 
   const filteredExpenses = useMemo(() => {
-    if (!selectedCategory) {
-      return allExpenses
-    }
-
-    return allExpenses.filter(expense => expense.category === selectedCategory)
-  }, [allExpenses, selectedCategory])
+    const q = search.trim().toLowerCase()
+    return allExpenses.filter(expense => {
+      if (selectedCategory && expense.category !== selectedCategory) return false
+      if (!q) return true
+      const descriptionMatch = expense.description?.toLowerCase().includes(q) ?? false
+      const supplierMatch = expense.supplier?.name?.toLowerCase().includes(q) ?? false
+      return descriptionMatch || supplierMatch
+    })
+  }, [allExpenses, selectedCategory, search])
 
   const csvData = useMemo(() =>
     filteredExpenses.map(e => ({
@@ -195,27 +200,35 @@ export default function ExpensesView({
             onChange={handlePeriodChange}
           />
 
-          {/* Category filter (chips) */}
-          <div className="flex flex-wrap gap-1.5">
-            {EXPENSE_CATEGORIES.map(cat => {
-              const active = selectedCategory === cat
-              return (
-                <button
-                  key={cat}
-                  onClick={() => setSelectedCategory(active ? undefined : cat)}
-                  className={cn(
-                    'pill-tab',
-                    active && 'bg-primary/10 text-primary border border-primary/20 dark:bg-primary/15 dark:border-primary/30',
-                  )}
-                >
-                  {EXPENSE_CATEGORY_LABELS[cat]}
-                </button>
-              )
-            })}
+          {/* Search + category chips — SalesHistoryTable pattern: single flex row, no separating band */}
+          <div className="flex flex-wrap items-center gap-2">
+            <Input
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="Buscar por descripción o proveedor..."
+              className="h-9 w-[260px] shrink-0 rounded-lg text-sm"
+            />
+            <div className="flex flex-wrap gap-1.5 flex-1">
+              {EXPENSE_CATEGORIES.map(cat => {
+                const active = selectedCategory === cat
+                return (
+                  <button
+                    key={cat}
+                    onClick={() => setSelectedCategory(active ? undefined : cat)}
+                    className={cn(
+                      'pill-tab',
+                      active && 'bg-primary/10 text-primary border border-primary/20 dark:bg-primary/15 dark:border-primary/30',
+                    )}
+                  >
+                    {EXPENSE_CATEGORY_LABELS[cat]}
+                  </button>
+                )
+              })}
+            </div>
             {selectedCategory && (
               <button
                 onClick={() => setSelectedCategory(undefined)}
-                className="pill-tab text-hint hover:text-body"
+                className="pill-tab text-hint hover:text-body shrink-0"
               >
                 Limpiar
               </button>

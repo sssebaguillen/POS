@@ -9,6 +9,7 @@ export type ActivityEntityFilter =
   | 'price_list'
   | 'setting'
   | 'operator'
+  | 'customer'
 
 export interface ActivityFilterOperator {
   id: string
@@ -31,6 +32,7 @@ export interface ActivityLogRow {
     | 'price_list'
     | 'setting'
     | 'operator'
+    | 'customer'
   entity_id: string
   entity_label: string | null
   actor_name: string

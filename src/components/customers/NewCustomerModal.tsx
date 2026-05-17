@@ -1,0 +1,206 @@
+'use client'
+
+import { useMemo, useState } from 'react'
+import { createClient } from '@/lib/supabase/client'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
+import { X } from 'lucide-react'
+import type { Customer } from '@/lib/types'
+
+interface Props {
+  open: boolean
+  onClose: () => void
+  businessId: string
+  operatorId: string | null
+  onCreated: (customer: Customer) => void
+}
+
+export default function NewCustomerModal({ open, onClose, businessId, operatorId, onCreated }: Props) {
+  const supabase = useMemo(() => createClient(), [])
+  const [name, setName] = useState('')
+  const [phone, setPhone] = useState('')
+  const [email, setEmail] = useState('')
+  const [dni, setDni] = useState('')
+  const [creditLimit, setCreditLimit] = useState('0')
+  const [isCreditEnabled, setIsCreditEnabled] = useState(false)
+  const [notes, setNotes] = useState('')
+  const [error, setError] = useState<string | null>(null)
+  const [saving, setSaving] = useState(false)
+
+  async function handleCreate() {
+    const trimmedName = name.trim()
+    if (!trimmedName) {
+      setError('El nombre es obligatorio.')
+      return
+    }
+
+    const parsedLimit = Number.parseFloat(creditLimit.replace(',', '.'))
+    if (!Number.isFinite(parsedLimit) || parsedLimit < 0) {
+      setError('El límite de crédito debe ser un número mayor o igual a 0.')
+      return
+    }
+
+    setSaving(true)
+    setError(null)
+
+    const { data: rpcResult, error: rpcError } = await supabase.rpc('create_customer', {
+      p_operator_id: operatorId,
+      p_business_id: businessId,
+      p_name: trimmedName,
+      p_phone: phone.trim() || null,
+      p_email: email.trim() || null,
+      p_dni: dni.trim() || null,
+      p_credit_limit: parsedLimit,
+      p_is_credit_enabled: isCreditEnabled,
+      p_notes: notes.trim() || null,
+    })
+
+    const result = rpcResult as { success: boolean; error?: string; customer?: Customer } | null
+
+    if (rpcError || !result?.success || !result.customer) {
+      setError(result?.error ?? rpcError?.message ?? 'No se pudo crear el cliente.')
+      setSaving(false)
+      return
+    }
+
+    onCreated(result.customer)
+    setSaving(false)
+  }
+
+  if (!open) return null
+
+  return (
+    <Dialog open={open} onOpenChange={nextOpen => !nextOpen && onClose()}>
+      <DialogContent
+        className="sm:max-w-md p-0 gap-0 overflow-hidden bg-card flex flex-col"
+        showCloseButton={false}
+        aria-describedby={undefined}
+      >
+        <div className="flex items-center justify-between px-5 py-4 border-b border-edge shrink-0">
+          <DialogTitle className="text-base font-semibold text-heading">Nuevo cliente</DialogTitle>
+          <button
+            type="button"
+            onClick={onClose}
+            className="p-1.5 rounded-lg hover:bg-hover-bg transition-colors text-hint"
+            aria-label="Cerrar"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        <div className="overflow-y-auto px-5 py-4 flex-1 space-y-4">
+          <div className="space-y-1.5">
+            <label className="text-label text-subtle">
+              Nombre <span className="text-destructive">*</span>
+            </label>
+            <Input
+              value={name}
+              onChange={e => { setName(e.target.value); setError(null) }}
+              placeholder="Nombre del cliente"
+              maxLength={120}
+            />
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <label className="text-label text-subtle">Teléfono</label>
+              <Input
+                value={phone}
+                onChange={e => setPhone(e.target.value)}
+                placeholder="+54 9 XXXX XXXXXX"
+                maxLength={30}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-label text-subtle">DNI</label>
+              <Input
+                value={dni}
+                onChange={e => setDni(e.target.value)}
+                placeholder="DNI"
+                maxLength={20}
+              />
+            </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-label text-subtle">Email</label>
+            <Input
+              type="email"
+              value={email}
+              onChange={e => setEmail(e.target.value)}
+              placeholder="email@ejemplo.com"
+              maxLength={120}
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-label text-subtle">Límite de crédito</label>
+            <Input
+              type="number"
+              inputMode="decimal"
+              min="0"
+              step="0.01"
+              value={creditLimit}
+              onChange={e => { setCreditLimit(e.target.value); setError(null) }}
+              placeholder="0"
+            />
+          </div>
+
+          <div className="flex items-center justify-between rounded-lg border border-edge px-3 py-2.5">
+            <span className="text-sm text-body">Habilitar crédito</span>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={isCreditEnabled}
+              onClick={() => setIsCreditEnabled(prev => !prev)}
+              className={`relative w-9 h-5 rounded-full transition-colors cursor-pointer ${isCreditEnabled ? 'bg-primary' : 'bg-muted-foreground'}`}
+            >
+              <span
+                className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-card shadow-sm transition-transform ${isCreditEnabled ? 'translate-x-4' : 'translate-x-0'}`}
+              />
+            </button>
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-label text-subtle">Notas</label>
+            <textarea
+              value={notes}
+              onChange={e => setNotes(e.target.value)}
+              placeholder="Notas internas (opcional)"
+              rows={3}
+              maxLength={500}
+              className="w-full rounded-lg border border-input bg-card px-3 py-2 text-sm text-body placeholder:text-hint focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:border-ring outline-none transition-colors resize-none dark:bg-input/30"
+            />
+          </div>
+
+          {error && (
+            <p className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
+              {error}
+            </p>
+          )}
+        </div>
+
+        <div className="border-t border-edge px-5 py-4 flex items-center justify-end gap-2.5 shrink-0">
+          <Button
+            type="button"
+            variant="cancel"
+            onClick={onClose}
+            disabled={saving}
+            className="h-9 rounded-lg text-sm"
+          >
+            Cancelar
+          </Button>
+          <Button
+            type="button"
+            onClick={() => void handleCreate()}
+            disabled={saving}
+            className="h-9 rounded-lg text-sm bg-primary hover:bg-primary/90 text-primary-foreground"
+          >
+            {saving ? 'Creando...' : 'Crear cliente'}
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}

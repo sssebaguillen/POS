@@ -2,7 +2,7 @@
 
 import { usePathname } from 'next/navigation'
 import Link from 'next/link'
-import { X, ShoppingCart, Package, ClipboardList, BarChart2, LineChart, Settings, Sun, Moon, LogOut, PanelLeftClose, PanelLeftOpen, Receipt, Building2, Sparkles, Globe, ExternalLink, History } from 'lucide-react'
+import { X, ShoppingCart, Package, ClipboardList, BarChart2, LineChart, Settings, Sun, Moon, LogOut, PanelLeftClose, PanelLeftOpen, Receipt, Building2, Sparkles, Globe, ExternalLink, History, Users } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useState, useEffect, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
@@ -23,6 +23,7 @@ interface NavLink {
 // price_override is intentionally absent — it controls per-line price editing in the POS, not route access.
 const NAV_LINKS: NavLink[] = [
   { href: '/pos',         label: 'Vender',            icon: ShoppingCart,  check: () => true },
+  { href: '/clientes',    label: 'Clientes',          icon: Users,         check: () => true },
   { href: '/dashboard',   label: 'Dashboard',         icon: BarChart2,     check: (p) => p.analysis === true },
   { href: '/stats',       label: 'Estadísticas',      icon: LineChart,     check: (p) => p.analysis === true },
   { href: '/activity',    label: 'Actividad',         icon: History,       check: (p) => p.analysis === true },
@@ -35,7 +36,7 @@ const NAV_LINKS: NavLink[] = [
 const NAV_SECTIONS = [
   {
     label: 'Ventas',
-    hrefs: ['/pos'],
+    hrefs: ['/pos', '/clientes'],
   },
   {
     label: 'Gestión',

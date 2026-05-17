@@ -32,6 +32,9 @@ export const AUDIT_ACTION_LABELS: Record<string, string> = {
   operator_created:           'Operario creado',
   operator_updated:           'Operario editado',
   operator_deleted:           'Operario eliminado',
+  customer_created:           'Cliente creado',
+  customer_updated:           'Cliente editado',
+  customer_credit_settled:    'Pago de cuenta corriente',
 }
 
 export const AUDIT_TONE_CLASSES: Record<ActivityActionTone, string> = {

@@ -41,6 +41,17 @@ export default function SuppliersPanel({ suppliers, businessId, operatorId, supa
   const [formError, setFormError] = useState<string | null>(null)
   const [editError, setEditError] = useState<string | null>(null)
   const [highlightId, setHighlightId] = useState<string | null>(null)
+  const [search, setSearch] = useState('')
+
+  const filteredSuppliers = useMemo(() => {
+    const q = search.trim().toLowerCase()
+    if (!q) return suppliers
+    return suppliers.filter(s =>
+      s.name.toLowerCase().includes(q) ||
+      (s.contact_name?.toLowerCase().includes(q) ?? false) ||
+      (s.phone?.toLowerCase().includes(q) ?? false)
+    )
+  }, [suppliers, search])
 
   function updateForm(key: keyof SupplierForm, value: string) {
     setForm(prev => ({ ...prev, [key]: value }))
@@ -182,6 +193,15 @@ export default function SuppliersPanel({ suppliers, businessId, operatorId, supa
         </div>
       )}
 
+      {suppliers.length > 0 && (
+        <Input
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          placeholder="Buscar por nombre o contacto..."
+          className="h-9 max-w-xs rounded-lg text-sm"
+        />
+      )}
+
       {suppliers.length === 0 && !showForm ? (
         <div className="surface-card px-6 py-12 flex flex-col items-center gap-3">
           <p className="text-body font-medium">Sin proveedores</p>
@@ -206,7 +226,7 @@ export default function SuppliersPanel({ suppliers, businessId, operatorId, supa
               </tr>
             </thead>
             <tbody>
-              {suppliers.map(supplier => (
+              {filteredSuppliers.map(supplier => (
                 <tr
                   key={supplier.id}
                   className={`border-b border-edge/40 transition-colors duration-300 ${

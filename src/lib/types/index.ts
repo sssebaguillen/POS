@@ -66,6 +66,8 @@ export interface Customer {
   email: string | null
   dni: string | null
   credit_balance: number
+  credit_limit: number
+  is_credit_enabled: boolean
   notes: string | null
   created_at: string
 }

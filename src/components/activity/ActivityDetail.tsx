@@ -10,6 +10,7 @@ export interface ActivityLookups {
   categoryMap: Record<string, { name: string; icon: string | null; icon_color: string | null }>
   brandMap: Record<string, string>
   productMap: Record<string, string>
+  customerMap: Record<string, string>
 }
 
 interface Props {
@@ -138,6 +139,27 @@ interface OperatorUpdateData extends OperatorData {
   pin_changed?: boolean
 }
 
+interface CustomerData {
+  name?: string | null
+  phone?: string | null
+  email?: string | null
+  dni?: string | null
+  credit_limit?: number | string | null
+  credit_balance?: number | string | null
+  is_credit_enabled?: boolean
+  notes?: string | null
+}
+
+interface CustomerSettlementOld {
+  credit_balance?: number | string | null
+}
+
+interface CustomerSettlementNew {
+  credit_balance?: number | string | null
+  amount?: number | string | null
+  method?: string | null
+}
+
 const PRODUCT_FIELD_LABELS: Record<string, string> = {
   name:        'Nombre',
   price:       'Precio',
@@ -155,6 +177,20 @@ const CATEGORY_FIELD_LABELS: Record<string, string> = {
   name:       'Nombre',
   icon:       'Ícono',
   icon_color: 'Color',
+}
+
+const SETTINGS_FIELD_LABELS: Record<string, string> = {
+  primary_color:     'Color principal',
+  currency:          'Moneda',
+  free_line_enabled: 'Producto libre',
+}
+
+function formatSettingsValue(key: string, value: unknown): string {
+  if (value === null || value === undefined || value === '') return '—'
+  if (typeof value === 'boolean' || key === 'free_line_enabled') {
+    return value === true || value === 'true' ? 'Habilitado' : 'Deshabilitado'
+  }
+  return String(value)
 }
 
 function toNumber(v: unknown): number {
@@ -262,6 +298,13 @@ function ActivityBody({ row, lookups }: Props) {
     case 'operator_updated':
       return <OperatorDiff oldData={row.old_data as OperatorData | null} newData={row.new_data as OperatorUpdateData | null} />
 
+    case 'customer_created':
+      return <CustomerSummary data={row.new_data as CustomerData | null} />
+    case 'customer_updated':
+      return <CustomerDiff oldData={row.old_data as CustomerData | null} newData={row.new_data as CustomerData | null} />
+    case 'customer_credit_settled':
+      return <CustomerSettlement oldData={row.old_data as CustomerSettlementOld | null} newData={row.new_data as CustomerSettlementNew | null} />
+
     default:
       return <p className="text-sm text-hint">Sin datos adicionales.</p>
   }
@@ -280,6 +323,7 @@ function SaleSummary({ data, lookups, deleted = false }: { data: SaleData | null
   const legacyMethods = !payments.length && Array.isArray(data.payment_methods) ? data.payment_methods : null
   const total = toNumber(data.total)
   const customerId = typeof data.customer_id === 'string' ? data.customer_id : null
+  const customerName = customerId ? lookups.customerMap[customerId] ?? null : null
 
   return (
     <div className={cn('space-y-3', deleted && 'opacity-90')}>
@@ -292,7 +336,7 @@ function SaleSummary({ data, lookups, deleted = false }: { data: SaleData | null
 
       <div className="flex flex-wrap items-baseline gap-x-6 gap-y-2">
         <Stat label="Total" value={formatMoney(total)} emphasis />
-        <Stat label="Cliente" value={customerId ? `Cliente #${customerId.slice(0, 8)}` : 'Sin cliente'} />
+        <Stat label="Cliente" value={customerId ? customerName ?? 'Cliente eliminado' : 'Sin cliente'} />
       </div>
 
       {(payments.length > 0 || legacyMethods) && (
@@ -989,7 +1033,11 @@ function SettingsDiff({ oldData, newData }: { oldData: SettingsData | null; newD
     const before = (oldSettings as Record<string, unknown>)[key]
     const after = (newSettings as Record<string, unknown>)[key]
     if (before === after) continue
-    rows.push({ label: key, before: String(before ?? '—'), after: String(after ?? '—') })
+    rows.push({
+      label:  SETTINGS_FIELD_LABELS[key] ?? key,
+      before: formatSettingsValue(key, before),
+      after:  formatSettingsValue(key, after),
+    })
   }
 
   if (rows.length === 0) return <p className="text-sm text-hint">Sin cambios visibles.</p>
@@ -1126,6 +1174,112 @@ function OperatorDiff({ oldData, newData }: { oldData: OperatorData | null; newD
       )}
       {rows.length === 0 && permChanges.length === 0 && !newData.pin_changed && (
         <p className="text-sm text-hint">Sin cambios visibles.</p>
+      )}
+    </div>
+  )
+}
+
+// =============================================================================
+// Customer panels
+// =============================================================================
+
+const CUSTOMER_FIELD_LABELS: Record<string, string> = {
+  name:              'Nombre',
+  phone:             'Teléfono',
+  email:             'Email',
+  dni:               'DNI',
+  credit_limit:      'Límite de crédito',
+  is_credit_enabled: 'Crédito',
+  notes:             'Notas',
+}
+
+const CUSTOMER_FIELD_ORDER = ['name', 'phone', 'email', 'dni', 'credit_limit', 'is_credit_enabled', 'notes']
+
+function CustomerSummary({ data }: { data: CustomerData | null }) {
+  const formatMoney = useFormatMoney()
+  if (!data) return <p className="text-sm text-hint">Sin datos.</p>
+
+  return (
+    <div className="space-y-3">
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+        {data.name && <Stat label="Nombre" value={String(data.name)} />}
+        {data.phone && <Stat label="Teléfono" value={String(data.phone)} />}
+        {data.email && <Stat label="Email" value={String(data.email)} />}
+        {data.dni && <Stat label="DNI" value={String(data.dni)} />}
+        {data.credit_limit !== undefined && data.credit_limit !== null && (
+          <Stat label="Límite de crédito" value={formatMoney(toNumber(data.credit_limit))} />
+        )}
+        {data.is_credit_enabled !== undefined && (
+          <Stat label="Crédito" value={data.is_credit_enabled ? 'Habilitado' : 'Deshabilitado'} />
+        )}
+      </div>
+    </div>
+  )
+}
+
+function CustomerDiff({ oldData, newData }: { oldData: CustomerData | null; newData: CustomerData | null }) {
+  const formatMoney = useFormatMoney()
+  if (!oldData || !newData) return <p className="text-sm text-hint">Sin datos.</p>
+
+  const oldObj = oldData as unknown as Record<string, unknown>
+  const newObj = newData as unknown as Record<string, unknown>
+
+  const rows: { label: string; before: string; after: string }[] = []
+
+  for (const key of CUSTOMER_FIELD_ORDER) {
+    const before = oldObj[key]
+    const after = newObj[key]
+    if (before === after) continue
+    if (before == null && after == null) continue
+
+    if (key === 'credit_limit') {
+      rows.push({
+        label:  CUSTOMER_FIELD_LABELS[key],
+        before: before == null ? '—' : formatMoney(toNumber(before)),
+        after:  after  == null ? '—' : formatMoney(toNumber(after)),
+      })
+    } else if (key === 'is_credit_enabled') {
+      rows.push({
+        label:  CUSTOMER_FIELD_LABELS[key],
+        before: before === true ? 'Habilitado' : 'Deshabilitado',
+        after:  after  === true ? 'Habilitado' : 'Deshabilitado',
+      })
+    } else {
+      rows.push({
+        label:  CUSTOMER_FIELD_LABELS[key],
+        before: before == null || before === '' ? '—' : String(before),
+        after:  after  == null || after  === '' ? '—' : String(after),
+      })
+    }
+  }
+
+  if (rows.length === 0) return <p className="text-sm text-hint">Sin cambios visibles.</p>
+  return (
+    <div className="space-y-1.5">
+      {rows.map((r, i) => <DiffRow key={i} label={r.label} before={r.before} after={r.after} />)}
+    </div>
+  )
+}
+
+function CustomerSettlement({ oldData, newData }: { oldData: CustomerSettlementOld | null; newData: CustomerSettlementNew | null }) {
+  const formatMoney = useFormatMoney()
+  if (!newData) return <p className="text-sm text-hint">Sin datos.</p>
+
+  const prev = oldData?.credit_balance != null ? toNumber(oldData.credit_balance) : null
+  const next = newData.credit_balance != null ? toNumber(newData.credit_balance) : null
+  const amount = newData.amount != null ? toNumber(newData.amount) : null
+  const method = typeof newData.method === 'string' && isPaymentMethod(newData.method)
+    ? PAYMENT_LABELS[newData.method]
+    : newData.method ?? null
+
+  return (
+    <div className="space-y-3">
+      <div className="flex flex-wrap items-baseline gap-x-6 gap-y-2">
+        {amount !== null && <Stat label="Monto pagado" value={formatMoney(amount)} emphasis />}
+        {method && <Stat label="Método" value={method} />}
+      </div>
+      {prev !== null && next !== null && (
+        <DiffRow label="Saldo" before={formatMoney(prev)} after={formatMoney(next)} />
       )}
     </div>
   )

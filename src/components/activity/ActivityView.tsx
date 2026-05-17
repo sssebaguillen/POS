@@ -33,6 +33,7 @@ interface Props {
   categoryMap: ActivityLookups['categoryMap']
   brandMap: ActivityLookups['brandMap']
   productMap: ActivityLookups['productMap']
+  customerMap: ActivityLookups['customerMap']
 }
 
 // Entity options have grown to 9 (8 entity types + "Todas") with Phase 2.
@@ -50,6 +51,7 @@ const ENTITY_OPTIONS: { value: ActivityEntityFilter; label: string }[] = [
   { value: 'price_list', label: 'Listas de precios' },
   { value: 'setting',    label: 'Configuración' },
   { value: 'operator',   label: 'Operarios' },
+  { value: 'customer',   label: 'Clientes' },
 ]
 
 const ENTITY_TYPE_LABELS: Record<ActivityLogRow['entity_type'], string> = {
@@ -62,6 +64,7 @@ const ENTITY_TYPE_LABELS: Record<ActivityLogRow['entity_type'], string> = {
   price_list: 'Lista de precios',
   setting:    'Configuración',
   operator:   'Operario',
+  customer:   'Cliente',
 }
 
 function formatRelativeTime(iso: string): string {
@@ -107,8 +110,9 @@ export default function ActivityView({
   categoryMap,
   brandMap,
   productMap,
+  customerMap,
 }: Props) {
-  const lookups: ActivityLookups = { categoryMap, brandMap, productMap }
+  const lookups: ActivityLookups = { categoryMap, brandMap, productMap, customerMap }
   const router = useRouter()
   const pathname = usePathname()
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
@@ -359,7 +363,7 @@ function ActivityRow({ row, isOpen, tone, lookups, onToggle }: RowProps) {
               <span className="text-heading font-medium">{row.entity_label}</span>
             </>
           )}
-          {row.entity_type === 'sale' && <SaleSummaryInline row={row} />}
+          {row.entity_type === 'sale' && <SaleSummaryInline row={row} customerMap={lookups.customerMap} />}
         </td>
         <td className="px-4 py-3 align-middle text-body">{row.actor_name}</td>
       </tr>
@@ -401,7 +405,7 @@ function getFirstPaymentLabel(d: SaleSummaryData | null | undefined): string | n
   return isPaymentMethod(method) ? PAYMENT_LABELS[method] : method
 }
 
-function SaleSummaryInline({ row }: { row: ActivityLogRow }) {
+function SaleSummaryInline({ row, customerMap }: { row: ActivityLogRow; customerMap: ActivityLookups['customerMap'] }) {
   const formatMoney = useFormatMoney()
   const oldData = row.old_data as SaleSummaryData | null
   const newData = row.new_data as SaleSummaryData | null
@@ -438,7 +442,10 @@ function SaleSummaryInline({ row }: { row: ActivityLogRow }) {
     const count = getItemCount(data)
     if (count !== null) pieces.push(`${count} ${count === 1 ? 'item' : 'items'}`)
 
-    if (data?.customer_id) pieces.push('Cliente asignado')
+    if (data?.customer_id) {
+      const name = customerMap[data.customer_id]
+      pieces.push(name ?? 'Cliente asignado')
+    }
   }
 
   if (pieces.length === 0) return null

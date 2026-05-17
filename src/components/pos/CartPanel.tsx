@@ -1,9 +1,9 @@
 'use client'
 
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { Minus, Pencil, Plus, Printer, ShoppingCart, Trash2, PenLine } from 'lucide-react'
+import { Minus, Pencil, Plus, Printer, ShoppingCart, Trash2, PenLine, User, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { useCartStore } from '@/lib/store/cart.store'
@@ -19,6 +19,7 @@ import { calculateProductPrice } from '@/lib/price-lists'
 import type { PaymentMethod } from '@/lib/constants/domain'
 import { isPaymentMethod, normalizePayment } from '@/lib/payments'
 import type { PriceList, PriceListOverride } from '@/lib/types'
+import type { CustomerSelection } from '@/lib/types/pos'
 import type { Permissions } from '@/lib/operator'
 import { useToast } from '@/hooks/useToast'
 import { useCurrency, useFormatMoney } from '@/lib/context/CurrencyContext'
@@ -73,6 +74,11 @@ export default function CartPanel({ businessId, businessName, freeLineEnabled, a
   const [showFreeLineForm, setShowFreeLineForm] = useState(false)
   const [freeLineForm, setFreeLineForm] = useState<FreeLineForm>({ description: '', price: '', quantity: '1' })
   const [showPayment, setShowPayment] = useState(false)
+  const [selectedCustomer, setSelectedCustomer] = useState<CustomerSelection | null>(null)
+  const [showCustomerSearch, setShowCustomerSearch] = useState(false)
+  const [customerQuery, setCustomerQuery] = useState('')
+  const [customerResults, setCustomerResults] = useState<CustomerSelection[]>([])
+  const [customerSearching, setCustomerSearching] = useState(false)
   const { toast, showToast, dismissToast } = useToast()
   const [activeTab, setActiveTab] = useState<RightTab>('current')
   const [historyQuery, setHistoryQuery] = useState('')
@@ -421,6 +427,46 @@ export default function CartPanel({ businessId, businessName, freeLineEnabled, a
     }
   }
 
+  useEffect(() => {
+    if (!businessId) return
+    const q = customerQuery.trim()
+    if (q.length < 2) {
+      setCustomerResults([])
+      setCustomerSearching(false)
+      return
+    }
+    setCustomerSearching(true)
+    const handle = setTimeout(async () => {
+      const pattern = `%${q.replace(/[%_]/g, '\\$&')}%`
+      const { data } = await supabase
+        .from('customers')
+        .select('id, name, phone, credit_balance, credit_limit, is_credit_enabled')
+        .eq('business_id', businessId)
+        .or(`name.ilike.${pattern},phone.ilike.${pattern}`)
+        .order('name', { ascending: true })
+        .limit(5)
+      setCustomerResults(
+        (data ?? []).map(row => ({
+          id: row.id as string,
+          name: row.name as string,
+          phone: (row.phone as string | null) ?? null,
+          credit_balance: Number(row.credit_balance ?? 0),
+          credit_limit: Number(row.credit_limit ?? 0),
+          is_credit_enabled: Boolean(row.is_credit_enabled),
+        }))
+      )
+      setCustomerSearching(false)
+    }, 300)
+    return () => clearTimeout(handle)
+  }, [customerQuery, businessId, supabase])
+
+  function selectCustomer(customer: CustomerSelection) {
+    setSelectedCustomer(customer)
+    setShowCustomerSearch(false)
+    setCustomerQuery('')
+    setCustomerResults([])
+  }
+
   function handleCancelSale() {
     const snapshot = items.slice()
     const discountSnapshot = discount
@@ -755,6 +801,93 @@ export default function CartPanel({ businessId, businessName, freeLineEnabled, a
                 </p>
               )}
 
+              {selectedCustomer ? (
+                <div className="flex items-center justify-between gap-2 w-full rounded-xl border border-primary/30 bg-primary/5 px-3 py-2">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <User size={14} className="text-primary shrink-0" />
+                    <div className="min-w-0">
+                      <p className="text-xs font-medium text-heading truncate">{selectedCustomer.name}</p>
+                      {selectedCustomer.is_credit_enabled && (
+                        <p className="text-[10px] text-hint tabular-nums">
+                          Crédito disponible: {formatMoney(Math.max(0, selectedCustomer.credit_limit - selectedCustomer.credit_balance))}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedCustomer(null)}
+                    aria-label="Quitar cliente asignado"
+                    className="text-hint hover:text-red-500 transition-colors shrink-0"
+                  >
+                    <X size={14} />
+                  </button>
+                </div>
+              ) : showCustomerSearch ? (
+                <div className="rounded-xl border border-primary/30 bg-primary/5 p-3 space-y-2">
+                  <p className="text-xs font-medium text-primary">Asignar cliente</p>
+                  <input
+                    type="text"
+                    autoFocus
+                    placeholder="Buscar por nombre o teléfono..."
+                    value={customerQuery}
+                    onChange={e => setCustomerQuery(e.target.value)}
+                    onKeyDown={e => {
+                      if (e.key === 'Escape') {
+                        setShowCustomerSearch(false)
+                        setCustomerQuery('')
+                        setCustomerResults([])
+                      }
+                    }}
+                    className="w-full rounded-lg border border-edge bg-surface px-3 py-1.5 text-sm text-heading placeholder:text-hint focus:outline-none focus:border-primary"
+                  />
+                  <div className="min-h-[1.5rem]">
+                    {customerSearching ? (
+                      <p className="text-xs text-hint px-1">Buscando...</p>
+                    ) : customerQuery.trim().length >= 2 && customerResults.length === 0 ? (
+                      <p className="text-xs text-hint px-1">Sin resultados</p>
+                    ) : customerResults.length > 0 ? (
+                      <ul className="divide-y divide-edge-soft rounded-lg border border-edge bg-surface overflow-hidden">
+                        {customerResults.map(customer => (
+                          <li key={customer.id}>
+                            <button
+                              type="button"
+                              onClick={() => selectCustomer(customer)}
+                              className="w-full text-left px-3 py-1.5 hover:bg-hover-bg transition-colors"
+                            >
+                              <p className="text-xs font-semibold text-heading truncate">{customer.name}</p>
+                              {customer.phone && (
+                                <p className="text-[10px] text-hint truncate">{customer.phone}</p>
+                              )}
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : null}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowCustomerSearch(false)
+                      setCustomerQuery('')
+                      setCustomerResults([])
+                    }}
+                    className="h-8 w-full rounded-lg border border-edge text-sm text-hint hover:text-body hover:bg-hover-bg transition-colors"
+                  >
+                    Cancelar
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setShowCustomerSearch(true)}
+                  className="flex items-center justify-center gap-1.5 w-full h-8 rounded-xl border border-dashed border-primary/40 text-xs text-primary/70 hover:text-primary hover:border-primary hover:bg-primary/5 transition-colors"
+                >
+                  <User size={12} />
+                  Asignar cliente
+                </button>
+              )}
+
               {freeLineEnabled && permissions?.free_line === true && (
                 showFreeLineForm ? (
                   <div className="rounded-xl border border-primary/30 bg-primary/5 p-3 space-y-2">
@@ -1085,8 +1218,10 @@ export default function CartPanel({ businessId, businessName, freeLineEnabled, a
           saleItems={adjustedItems}
           receiptItems={receiptItems}
           operatorId={operatorId}
+          customer={selectedCustomer}
           onSaleCompleted={(message) => {
             showToast({ message })
+            setSelectedCustomer(null)
             // Re-run server components to refresh stock after sale
             router.refresh()
             void queryClient.invalidateQueries({ queryKey: ['pos-daily-history'] })

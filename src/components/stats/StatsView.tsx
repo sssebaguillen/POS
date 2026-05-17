@@ -30,6 +30,7 @@ const PAYMENT_BAR_COLORS = {
   card: 'bg-primary/35 dark:bg-primary/30',
   transfer: 'bg-amber-300 dark:bg-amber-400/35',
   mercadopago: 'bg-sky-300 dark:bg-sky-400/35',
+  credit: 'bg-orange-300 dark:bg-orange-400/35',
 } as const
 
 function getWidgetToggleClass(isActive: boolean): string {
