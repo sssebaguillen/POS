@@ -2,9 +2,20 @@
 
 import { useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Plus, Pencil } from 'lucide-react'
+import { Plus } from 'lucide-react'
+import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import PageHeader from '@/components/shared/PageHeader'
 import { formatMoney } from '@/lib/format'
 import { cn } from '@/lib/utils'
@@ -28,11 +39,15 @@ interface Props {
 
 export default function CustomerView({ businessId, operatorId, initialCustomers }: Props) {
   const router = useRouter()
+  const supabase = useMemo(() => createClient(), [])
   const [customers, setCustomers] = useState<Customer[]>(initialCustomers)
   const [showNewModal, setShowNewModal] = useState(false)
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null)
   const [search, setSearch] = useState('')
   const [creditFilter, setCreditFilter] = useState<CreditFilter>('all')
+  const [deletingCustomer, setDeletingCustomer] = useState<Customer | null>(null)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
+  const [deleting, setDeleting] = useState(false)
 
   const filteredCustomers = useMemo(() => {
     const q = search.trim().toLowerCase()
@@ -53,6 +68,26 @@ export default function CustomerView({ businessId, operatorId, initialCustomers 
       [...prev, customer].sort((a, b) => a.name.localeCompare(b.name, 'es'))
     )
     setShowNewModal(false)
+    router.refresh()
+  }
+
+  async function handleDeleteConfirm() {
+    if (!deletingCustomer) return
+    setDeleting(true)
+    setDeleteError(null)
+    const { data, error } = await supabase.rpc('delete_customer', {
+      p_customer_id: deletingCustomer.id,
+      p_operator_id: operatorId,
+    })
+    const result = data as { success: boolean; error?: string } | null
+    if (error || !result?.success) {
+      setDeleteError(result?.error ?? error?.message ?? 'No se pudo eliminar el cliente.')
+      setDeleting(false)
+      return
+    }
+    setCustomers(prev => prev.filter(c => c.id !== deletingCustomer.id))
+    setDeletingCustomer(null)
+    setDeleting(false)
     router.refresh()
   }
 
@@ -165,14 +200,24 @@ export default function CustomerView({ businessId, operatorId, initialCustomers 
                           {formatMoney(customer.credit_limit)}
                         </td>
                         <td className="px-4 py-3 text-right">
-                          <button
-                            type="button"
-                            onClick={() => setEditingCustomer(customer)}
-                            className="p-1.5 rounded-lg text-hint hover:text-heading hover:bg-hover-bg transition-colors"
-                            aria-label={`Editar ${customer.name}`}
-                          >
-                            <Pencil size={14} />
-                          </button>
+                          <div className="flex items-center justify-end gap-2">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              className="h-8 px-3 text-xs"
+                              onClick={() => setEditingCustomer(customer)}
+                            >
+                              Editar
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="destructive"
+                              className="h-8 px-3 text-xs"
+                              onClick={() => { setDeleteError(null); setDeletingCustomer(customer) }}
+                            >
+                              Eliminar
+                            </Button>
+                          </div>
                         </td>
                       </tr>
                     )
@@ -201,6 +246,35 @@ export default function CustomerView({ businessId, operatorId, initialCustomers 
           onUpdated={handleUpdated}
         />
       )}
+
+      <AlertDialog
+        open={deletingCustomer !== null}
+        onOpenChange={open => { if (!open && !deleting) { setDeletingCustomer(null); setDeleteError(null) } }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Eliminar cliente?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta acción no se puede deshacer. Si el cliente tiene ventas o deuda registrada, será archivado pero no eliminado permanentemente.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          {deleteError && (
+            <p className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
+              {deleteError}
+            </p>
+          )}
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={deleting}
+              onClick={(e) => { e.preventDefault(); void handleDeleteConfirm() }}
+              className="bg-destructive text-white hover:bg-destructive/90"
+            >
+              {deleting ? 'Eliminando...' : 'Eliminar'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }
