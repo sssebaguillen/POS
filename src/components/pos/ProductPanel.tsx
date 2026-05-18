@@ -388,11 +388,19 @@ const ProductCard = memo(function ProductCard({
 
   const displayName = product.name || 'Sin nombre'
 
-  const stockLabel = product.stock === 0
+  const stockLabel = !product.has_variants && product.stock === 0
     ? 'Sin stock'
     : !product.has_variants && product.stock > 0 && product.stock <= product.min_stock
       ? 'Stock bajo'
       : null
+
+  const variantStockTone: 'zero' | 'low' | 'ok' = product.has_variants
+    ? product.stock === 0
+      ? 'zero'
+      : product.stock <= product.min_stock
+        ? 'low'
+        : 'ok'
+    : 'ok'
 
   function handleClick() {
     if (product.has_variants) {
@@ -434,7 +442,7 @@ const ProductCard = memo(function ProductCard({
       {/* Name */}
       <p
         title={displayName}
-        className={`text-sm font-semibold text-heading leading-snug line-clamp-2 mb-1 flex-1${stockLabel ? ' pr-12' : ''}`}
+        className={`text-sm font-semibold text-heading leading-snug line-clamp-2 mb-1 flex-1${stockLabel || product.has_variants ? ' pr-12' : ''}`}
       >
         {displayName}
       </p>
@@ -458,7 +466,16 @@ const ProductCard = memo(function ProductCard({
       )}
 
       {product.has_variants && (
-        <span className="absolute top-2 right-2 text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-primary/80 text-primary-foreground border border-primary/20">
+        <span
+          aria-hidden="true"
+          className={`absolute top-2 right-2 text-[10px] font-medium px-1.5 py-0.5 rounded-full ${
+            variantStockTone === 'zero'
+              ? 'bg-red-100 text-red-600 dark:bg-red-900 dark:text-red-300'
+              : variantStockTone === 'low'
+                ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/60 dark:text-amber-400'
+                : 'bg-primary/80 text-primary-foreground border border-primary/20'
+          }`}
+        >
           Variantes
         </span>
       )}

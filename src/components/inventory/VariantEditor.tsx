@@ -375,13 +375,17 @@ export default function VariantEditor({
   }, [hasVariants, options, variants, mode, onPayloadChange, defaultVariantKey])
 
   function addOption() {
-    const defaultType = attributeTypes[0]
-    if (!defaultType) return
+    if (attributeTypes.length === 0) return
+    const used = new Set(options.map(o => o.attribute_type_id))
+    const nextType =
+      attributeTypes.find(t => t.id !== 'custom' && !used.has(t.id)) ??
+      attributeTypes.find(t => t.id === 'custom') ??
+      attributeTypes[0]
     setOptions(prev => [
       ...prev,
       {
-        attribute_type_id: defaultType.id,
-        name: defaultType.label,
+        attribute_type_id: nextType.id,
+        name: nextType.label,
         position: prev.length,
         values: [],
       },
@@ -509,7 +513,20 @@ export default function VariantEditor({
     : variants
 
   // ─── SelectDropdown options ───────────────────────────────────────────────
-  const attributeTypeOptions = attributeTypes.map(t => ({ value: t.id, label: t.label }))
+  // Build per-row available types: exclude types already used by OTHER options,
+  // but always keep 'custom' (multiple custom attributes allowed) and the row's
+  // own current type (so the SelectDropdown value still resolves to a label).
+  function getAvailableTypesForOption(optIdx: number): AttributeType[] {
+    const currentTypeId = options[optIdx]?.attribute_type_id
+    const usedByOthers = new Set(
+      options
+        .filter((_, i) => i !== optIdx)
+        .map(o => o.attribute_type_id)
+    )
+    return attributeTypes.filter(
+      at => at.id === 'custom' || at.id === currentTypeId || !usedByOthers.has(at.id)
+    )
+  }
 
   return (
     <div className="space-y-3.5">
@@ -558,7 +575,7 @@ export default function VariantEditor({
                         <SelectDropdown
                           value={option.attribute_type_id}
                           onChange={typeId => updateOptionType(optIdx, typeId)}
-                          options={attributeTypeOptions}
+                          options={getAvailableTypesForOption(optIdx).map(t => ({ value: t.id, label: t.label }))}
                         />
                       </div>
                     )}

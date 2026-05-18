@@ -78,6 +78,7 @@ export const useCartStore = create<CartStore>((set, get) => ({
           free_line_description: null,
           variant_id: variant.id,
           variant_label: variantLabel,
+          variant_stock: variant.stock,
           quantity: 1,
           unit_price: variant.price,
           total: variant.price,

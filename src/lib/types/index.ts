@@ -229,6 +229,7 @@ export interface CartItem {
   free_line_description: string | null
   variant_id: string | null
   variant_label: string | null
+  variant_stock?: number | null
   quantity: number
   unit_price: number
   total: number

@@ -187,9 +187,13 @@ export default function CartPanel({ businessId, businessName, freeLineEnabled, a
     })
   }, [adjustedByItemKey, items])
 
-  const hasStockWarning = items.some(
-    item => item.product !== null && item.quantity >= item.product.stock
-  )
+  const hasStockWarning = items.some(item => {
+    if (item.product === null) return false
+    const availableStock = item.variant_id
+      ? (item.variant_stock ?? item.product.stock)
+      : item.product.stock
+    return item.quantity >= availableStock
+  })
 
   const dailyHistoryQuery = useQuery<SaleRow[]>({
     queryKey: ['pos-daily-history', businessId],
@@ -689,7 +693,10 @@ export default function CartPanel({ businessId, businessName, freeLineEnabled, a
                                 )}
                               </div>
                             {!isFreeLine && (() => {
-                              const indicator = getStockIndicator(item.quantity, item.product!.stock, item.product!.min_stock)
+                              const availableStock = item.variant_id
+                                ? (item.variant_stock ?? item.product!.stock)
+                                : item.product!.stock
+                              const indicator = getStockIndicator(item.quantity, availableStock, item.product!.min_stock)
                               if (!indicator) return null
                               const isRed = indicator.type === 'zero' || indicator.type === 'negative'
                               return (
@@ -881,7 +888,7 @@ export default function CartPanel({ businessId, businessName, freeLineEnabled, a
                 <button
                   type="button"
                   onClick={() => setShowCustomerSearch(true)}
-                  className="flex items-center justify-center gap-1.5 w-full h-8 rounded-xl border border-dashed border-primary/40 text-xs text-primary/70 hover:text-primary hover:border-primary hover:bg-primary/5 transition-colors"
+                  className="flex items-center justify-center gap-1.5 w-full h-8 rounded-xl border border-primary/40 text-xs text-primary/70 hover:text-primary hover:border-primary hover:bg-primary/5 transition-colors"
                 >
                   <User size={12} />
                   Asignar cliente
