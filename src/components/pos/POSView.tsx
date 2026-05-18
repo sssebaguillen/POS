@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect, useMemo, useCallback } from 'react'
-import { Search, Menu, ChevronDown, Check, ScanBarcode } from 'lucide-react'
+import { Search, Menu, ChevronDown, Check, ScanBarcode, X } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { useSidebar } from '@/components/shared/AppShell'
@@ -9,6 +9,8 @@ import { useCartStore } from '@/lib/store/cart.store'
 import { createClient } from '@/lib/supabase/client'
 import ProductPanel from '@/components/pos/ProductPanel'
 import CartPanel from '@/components/pos/CartPanel'
+import CartFAB from '@/components/pos/CartFAB'
+import MobileCartDrawer from '@/components/pos/MobileCartDrawer'
 import ProductFilter, { EMPTY_FILTER, type ProductFilterValue } from '@/components/shared/ProductFilter'
 import type { ProductWithCategory, ActiveFilter } from '@/components/pos/types'
 import type { PriceList, PriceListOverride, ProductVariant, ProductWithVariants } from '@/lib/types'
@@ -50,6 +52,8 @@ export default function POSView({ products, businessId, businessName, freeLineEn
   const addVariantItem = useCartStore(s => s.addVariantItem)
   const supabase = useMemo(() => createClient(), [])
   const [confirmingNewSale, setConfirmingNewSale] = useState(false)
+  const [drawerOpen, setDrawerOpen] = useState(false)
+  const [mobileSearchOpen, setMobileSearchOpen] = useState(false)
   const confirmNewSaleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
@@ -295,7 +299,7 @@ export default function POSView({ products, businessId, businessName, freeLineEn
   return (
     <div className="flex flex-col h-full overflow-hidden">
       {/* Top bar */}
-      <header className="h-14 bg-surface border-b border-edge/60 flex items-center px-5 gap-4 shrink-0">
+      <header className="relative h-14 bg-surface border-b border-edge/60 flex items-center px-5 gap-4 shrink-0">
         <button
           onClick={toggle}
           className="p-1.5 -ml-1 rounded-lg hover:bg-hover-bg transition-colors lg:hidden"
@@ -305,8 +309,8 @@ export default function POSView({ products, businessId, businessName, freeLineEn
         </button>
         <span className="text-lg font-bold text-heading shrink-0 font-display">Ventas</span>
 
-        <div className="flex-1 max-w-lg mx-auto">
-          <div className="relative">
+        <div className="hidden lg:flex flex-1 max-w-lg mx-auto">
+          <div className="relative w-full">
             {/* Ícono: muestra ScanBarcode animado cuando detecta escaneo, Search en reposo */}
             <div className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none">
               {scanFeedback ? (
@@ -352,6 +356,14 @@ export default function POSView({ products, businessId, businessName, freeLineEn
           </div>
         </div>
 
+        <button
+          onClick={() => setMobileSearchOpen(true)}
+          className="lg:hidden ml-auto p-1.5 rounded-lg hover:bg-hover-bg transition-colors"
+          aria-label="Buscar"
+        >
+          <Search size={20} className="text-body" />
+        </button>
+
         <div ref={listDropdownRef} className="relative shrink-0" data-tour="pos-price-list-selector">
           <button
             disabled={!canSelectList || priceLists.length === 0}
@@ -364,7 +376,7 @@ export default function POSView({ products, businessId, businessName, freeLineEn
                 : 'opacity-60 cursor-not-allowed text-subtle')
             }
           >
-            <span className="text-hint text-xs">Lista:</span>
+            <span className="text-hint text-xs hidden lg:inline">Lista:</span>
             <span>{priceLists.length === 0 ? '—' : (activePriceList?.name ?? 'Sin lista')}</span>
             {canSelectList && priceLists.length > 0 && <ChevronDown size={14} className="text-hint" />}
           </button>
@@ -388,7 +400,7 @@ export default function POSView({ products, businessId, businessName, freeLineEn
           {formatDate(new Date())}
         </span>
         <Button
-          className={`h-9 px-4 rounded-lg text-sm font-semibold shrink-0 transition-colors ${
+          className={`hidden lg:inline-flex h-9 px-4 rounded-lg text-sm font-semibold shrink-0 transition-colors ${
             confirmingNewSale
               ? 'bg-destructive hover:bg-destructive/90 text-destructive-foreground'
               : 'bg-primary hover:bg-primary/90 text-primary-foreground'
@@ -397,6 +409,51 @@ export default function POSView({ products, businessId, businessName, freeLineEn
         >
           {confirmingNewSale ? '¿Vaciar carrito?' : '+ Nueva venta'}
         </Button>
+
+        {/* Mobile search overlay */}
+        <div
+          className={[
+            'absolute inset-x-0 top-0 h-14 bg-surface border-b border-edge/60',
+            'flex items-center gap-2 px-3 z-20',
+            'transition-all duration-200 ease-out',
+            mobileSearchOpen
+              ? 'opacity-100 translate-y-0 pointer-events-auto'
+              : 'opacity-0 -translate-y-2 pointer-events-none',
+            'lg:hidden',
+          ].join(' ')}
+        >
+          <div className="relative flex-1">
+            <div className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none">
+              {scanFeedback ? (
+                <ScanBarcode
+                  size={16}
+                  className={scanFeedback === 'found' ? 'text-emerald-500' : 'text-red-400'}
+                />
+              ) : (
+                <Search size={16} className="text-hint" />
+              )}
+            </div>
+            <Input
+              ref={searchRef}
+              value={filterValue.search}
+              onChange={e => setFilterValue(prev => ({ ...prev, search: e.target.value }))}
+              onKeyDown={handleSearchKeyDown}
+              placeholder="Buscar o escanear..."
+              className="w-full pl-9 pr-4 h-9 text-sm rounded-lg border border-edge bg-surface focus:outline-none focus:border-primary"
+              autoFocus={mobileSearchOpen}
+            />
+          </div>
+          <button
+            onClick={() => {
+              setMobileSearchOpen(false)
+              setFilterValue(prev => ({ ...prev, search: '' }))
+            }}
+            className="shrink-0 p-1.5 rounded-lg hover:bg-hover-bg transition-colors"
+            aria-label="Cerrar búsqueda"
+          >
+            <X size={20} className="text-body" />
+          </button>
+        </div>
       </header>
 
       {/* Content: products + cart */}
@@ -433,7 +490,7 @@ export default function POSView({ products, businessId, businessName, freeLineEn
             />
           </div>
         </div>
-        <div className="w-[300px] md:w-[340px] lg:w-[380px] shrink-0 bg-surface border-l border-edge/60 flex flex-col" data-tour="pos-cart">
+        <div className="hidden lg:flex w-[300px] md:w-[340px] lg:w-[380px] shrink-0 bg-surface border-l border-edge/60 flex-col" data-tour="pos-cart">
           <CartPanel
             businessId={businessId}
             businessName={businessName}
@@ -444,6 +501,22 @@ export default function POSView({ products, businessId, businessName, freeLineEn
             permissions={activeOperator?.role === 'owner' || !activeOperator ? OWNER_PERMISSIONS : activeOperator.permissions}
           />
         </div>
+      </div>
+
+      {/* Mobile cart — FAB + drawer, hidden on lg+ */}
+      <div className="lg:hidden">
+        <CartFAB onOpen={() => setDrawerOpen(true)} />
+        <MobileCartDrawer
+          open={drawerOpen}
+          onClose={() => setDrawerOpen(false)}
+          businessId={businessId}
+          businessName={businessName}
+          freeLineEnabled={freeLineEnabled}
+          activePriceList={activePriceList}
+          priceListOverrides={priceListOverrides}
+          operatorId={activeOperator?.role === 'owner' || !activeOperator ? null : activeOperator.profile_id}
+          permissions={activeOperator?.role === 'owner' || !activeOperator ? OWNER_PERMISSIONS : activeOperator.permissions}
+        />
       </div>
     </div>
   )

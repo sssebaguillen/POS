@@ -395,7 +395,8 @@ export default function DashboardView({
                 onClick={() => setShowHistory(true)}
                 className={`pill-tab${showHistory ? ' pill-tab-active' : ''}`}
               >
-                Historial de ventas
+                <span className="lg:hidden">Historial</span>
+                <span className="hidden lg:inline">Historial de ventas</span>
               </button>
             </div>
           </div>

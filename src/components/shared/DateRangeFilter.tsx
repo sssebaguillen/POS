@@ -18,6 +18,24 @@ const PERIOD_LABELS: Record<DateRangePeriod, string> = {
   personalizado: 'Personalizado',
 }
 
+const PERIOD_LABELS_SHORT: Record<DateRangePeriod, string> = {
+  hoy: 'Hoy',
+  semana: 'Semana',
+  mes: 'Mes',
+  trimestre: 'Trim.',
+  año: 'Año',
+  personalizado: 'Período',
+}
+
+function PeriodLabel({ period }: { period: DateRangePeriod }) {
+  return (
+    <>
+      <span className="lg:hidden">{PERIOD_LABELS_SHORT[period]}</span>
+      <span className="hidden lg:inline">{PERIOD_LABELS[period]}</span>
+    </>
+  )
+}
+
 const SIMPLE_PERIODS = ['hoy', 'semana', 'mes'] as const
 
 interface DateRangeFilterProps {
@@ -91,9 +109,9 @@ export default function DateRangeFilter({ value, from, to, onChange, useUrlParam
             key={p}
             ref={setRef(p)}
             onClick={() => handleSelect(p)}
-            className={`pill-tab${value === p ? ' pill-tab-active' : ''}`}
+            className={`pill-tab !px-2.5 lg:!px-4${value === p ? ' pill-tab-active' : ''}`}
           >
-            {PERIOD_LABELS[p]}
+            <PeriodLabel period={p} />
           </button>
         ))}
 
@@ -101,9 +119,11 @@ export default function DateRangeFilter({ value, from, to, onChange, useUrlParam
           <PopoverTrigger asChild>
             <button
               ref={setRef('trimestre')}
-              className={`pill-tab${value === 'trimestre' ? ' pill-tab-active' : ''}`}
+              className={`pill-tab !px-2.5 lg:!px-4${value === 'trimestre' ? ' pill-tab-active' : ''}`}
             >
-              {quarterLabel}
+              {value === 'trimestre' && activeQuarter
+                ? activeQuarter
+                : <PeriodLabel period="trimestre" />}
             </button>
           </PopoverTrigger>
           <PopoverContent className="w-40 p-2" align="start">
@@ -124,17 +144,17 @@ export default function DateRangeFilter({ value, from, to, onChange, useUrlParam
         <button
           ref={setRef('año')}
           onClick={handleYearSelect}
-          className={`pill-tab${value === 'año' ? ' pill-tab-active' : ''}`}
+          className={`pill-tab !px-2.5 lg:!px-4${value === 'año' ? ' pill-tab-active' : ''}`}
         >
-          {PERIOD_LABELS['año']}
+          <PeriodLabel period="año" />
         </button>
 
         <button
           ref={setRef('personalizado')}
           onClick={() => handleSelect('personalizado')}
-          className={`pill-tab${value === 'personalizado' ? ' pill-tab-active' : ''}`}
+          className={`pill-tab !px-2.5 lg:!px-4${value === 'personalizado' ? ' pill-tab-active' : ''}`}
         >
-          {PERIOD_LABELS['personalizado']}
+          <PeriodLabel period="personalizado" />
         </button>
       </div>
 
