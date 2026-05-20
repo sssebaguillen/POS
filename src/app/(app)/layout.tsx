@@ -92,6 +92,8 @@ export default async function AppLayout({
   const flashMessage = cookieStore.get('flash_toast')?.value ?? null
   const activeOperator = getActiveOperator(cookieStore)
   const sidebarCollapsed = cookieStore.get('pos-sidebar-collapsed')?.value === 'true'
+  const lastSeenChangelogVersion = cookieStore.get('pulsar-last-seen-version')?.value ?? null
+  const isOwner = !activeOperator || activeOperator.role === 'owner'
 
   let primaryColor = '#7a3e10'
   let businessName = 'Negocio'
@@ -161,9 +163,12 @@ export default async function AppLayout({
       <AppShell
         activeOperatorName={activeOperator?.name ?? null}
         activeOperatorRole={activeOperator?.role ?? null}
+        businessId={businessId}
         businessName={businessName}
         businessSlug={businessSlug}
         initialCollapsed={sidebarCollapsed}
+        initialLastSeenChangelogVersion={lastSeenChangelogVersion}
+        showChangelog={isOwner}
         showOnboardingResume={(() => {
           if (!onboardingStateRaw) return false
           const s = parseOnboardingState(onboardingStateRaw)

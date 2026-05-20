@@ -10,6 +10,8 @@ import { cn } from '@/lib/utils'
 import { useTheme } from '@/components/shared/theme'
 import OperatorSwitcher from '@/components/operator/OperatorSwitcher'
 import OnboardingChecklist from '@/components/onboarding/OnboardingChecklist'
+import ChangelogBanner from '@/components/shared/ChangelogBanner'
+import FeedbackButton from '@/components/shared/FeedbackButton'
 import { parsePermissions, type Permissions, type UserRole } from '@/lib/operator'
 import { resetTracking } from '@/lib/analytics'
 
@@ -68,11 +70,14 @@ interface Props {
   onClose: () => void
   activeOperatorName: string | null
   activeOperatorRole: UserRole | null
+  businessId: string | null
   businessName: string
   businessSlug: string
   collapsed: boolean
   onToggleCollapse: () => void
   showOnboardingResume?: boolean
+  showChangelog?: boolean
+  initialLastSeenChangelogVersion?: string | null
 }
 
 export default function Sidebar({
@@ -80,11 +85,14 @@ export default function Sidebar({
   onClose,
   activeOperatorName,
   activeOperatorRole,
+  businessId,
   businessName,
   businessSlug,
   collapsed,
   onToggleCollapse,
   showOnboardingResume = false,
+  showChangelog = false,
+  initialLastSeenChangelogVersion = null,
 }: Props) {
   const pathname = usePathname()
   const { theme, toggle } = useTheme()
@@ -341,8 +349,25 @@ export default function Sidebar({
           {(!collapsed || isMobileDrawer) && (themeForUi === 'dark' ? 'Modo claro' : 'Modo oscuro')}
         </button>
 
-        {(!collapsed || isMobileDrawer) && (
-          <span className="text-xs text-hint px-2 pt-1">© 2026 Pulsar POS</span>
+        {showChangelog && mounted && (
+          <ChangelogBanner
+            initialLastSeenVersion={initialLastSeenChangelogVersion}
+            collapsed={collapsed}
+            isMobileDrawer={isMobileDrawer}
+          />
+        )}
+
+        {(!collapsed || isMobileDrawer) ? (
+          <div className="flex items-center justify-between px-2 pt-1">
+            <span className="text-xs text-hint">© 2026 Pulsar POS</span>
+            {businessId && <FeedbackButton businessId={businessId} />}
+          </div>
+        ) : (
+          businessId && (
+            <div className="flex justify-center pt-1">
+              <FeedbackButton businessId={businessId} showLabel={false} />
+            </div>
+          )
         )}
       </div>
     </div>

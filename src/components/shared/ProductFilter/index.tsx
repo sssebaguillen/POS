@@ -196,7 +196,7 @@ function TopbarLayout({
 
       {modules.includes('category') && categories.length > 0 && (
         <>
-          <span className="shrink-0 w-px h-5 bg-edge/60" />
+          
           <button
             type="button"
             onClick={() => onChange({ ...value, categoryIds: [] })}
@@ -204,6 +204,7 @@ function TopbarLayout({
           >
             Todos
           </button>
+          <span className="shrink-0 w-px h-5 bg-edge/60" />
           {categories.map(cat => (
             <button
               key={cat.id}

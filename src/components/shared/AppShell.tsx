@@ -16,9 +16,12 @@ interface AppShellProps {
   children: React.ReactNode
   activeOperatorName: string | null
   activeOperatorRole: UserRole | null
+  businessId: string | null
   businessName: string
   businessSlug: string
   initialCollapsed?: boolean
+  initialLastSeenChangelogVersion?: string | null
+  showChangelog?: boolean
   showOnboardingResume?: boolean
 }
 
@@ -38,9 +41,12 @@ export default function AppShell({
   children,
   activeOperatorName,
   activeOperatorRole,
+  businessId,
   businessName,
   businessSlug,
   initialCollapsed = false,
+  initialLastSeenChangelogVersion = null,
+  showChangelog = false,
   showOnboardingResume = false,
 }: AppShellProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
@@ -74,11 +80,14 @@ export default function AppShell({
           onClose={() => setSidebarOpen(false)}
           activeOperatorName={activeOperatorName}
           activeOperatorRole={activeOperatorRole}
+          businessId={businessId}
           businessName={businessName}
           businessSlug={businessSlug}
           collapsed={collapsed}
           onToggleCollapse={toggleCollapse}
           showOnboardingResume={showOnboardingResume}
+          showChangelog={showChangelog}
+          initialLastSeenChangelogVersion={initialLastSeenChangelogVersion}
         />
         {/* Desktop: static offset matching sidebar width. Mobile: no offset (drawer overlay). */}
         <main
