@@ -99,3 +99,4 @@ The CONTEXT.md mentions a dead `/stock` guard in `proxy.ts`. This does NOT appea
 | `!` assertions in env vars | In `client.ts` and `server.ts` |
 | `CartItem` in `lib/types/index.ts` | Client-only type mixed with server types |
 | `categories.public_read_categories` policy | Allows anon SELECT — fine for catalog but broad |
+| Vestigial `categories.is_active` | Column exists, always inserted as `true`, never set to `false`. `delete_category` RPC does a hard `DELETE FROM categories`. The `is_active = true` filter in `CategoryModal.refreshCategories` is dead code. Drop the column + INSERT defaults + UI filter in one migration. (Verify `brands.is_active` for the same pattern at the same time.) |

@@ -320,7 +320,7 @@ export default function OnboardingWizard({
       >
         <DialogTitle className="sr-only">Configuración inicial</DialogTitle>
         <div className="border-b border-edge px-5 py-4 shrink-0">
-          <h2 className="text-base font-semibold text-heading">Configurá tu negocio</h2>
+          <h2 className="text-base font-semibold text-heading">Configura tu negocio</h2>
           <p className="text-xs text-subtle mt-1">
             {step === 0 && 'Datos básicos'}
             {step === 1 && 'Primera categoría'}
@@ -416,7 +416,7 @@ export default function OnboardingWizard({
 
           {step === 1 && (
             <form id="onboarding-category-form" onSubmit={handleCreateCategory} className="space-y-4">
-              <p className="text-sm text-subtle">Creá una categoría para organizar tus productos (opcional).</p>
+              <p className="text-sm text-subtle">Crea una categoría para organizar tus productos (opcional).</p>
               <div className="space-y-1.5">
                 <label className="text-label text-subtle">Nombre</label>
                 <Input
@@ -502,7 +502,7 @@ export default function OnboardingWizard({
 
           {step === 2 && (
             <form id="onboarding-brand-form" onSubmit={handleCreateBrand} className="space-y-4">
-              <p className="text-sm text-subtle">Creá una marca para clasificar mejor tus productos (opcional).</p>
+              <p className="text-sm text-subtle">Crea una marca para clasificar mejor tus productos (opcional).</p>
               <div className="space-y-1.5">
                 <label className="text-label text-subtle">Nombre</label>
                 <Input
@@ -523,7 +523,7 @@ export default function OnboardingWizard({
 
           {step === 3 && (
             <div className="space-y-3">
-              <p className="text-sm text-subtle">Cargá tu primer producto (opcional).</p>
+              <p className="text-sm text-subtle">Carga tu primer producto (opcional).</p>
               <NewProductModal
                 embedded
                 open

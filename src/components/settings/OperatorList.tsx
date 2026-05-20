@@ -94,7 +94,7 @@ export default function OperatorList({
         <div>
           <h2 className="text-base font-semibold text-foreground font-display">Operarios</h2>
           <p className="text-sm text-muted-foreground mt-1">
-            Creá subusuarios con PIN para cambiar el operador activo durante el turno.
+            Crea subusuarios con PIN para cambiar el operador activo durante el turno.
           </p>
         </div>
         <Button

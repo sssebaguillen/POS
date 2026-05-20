@@ -305,7 +305,7 @@ export default function ImportProductsModal({
           setStep('mapping')
         }
       } catch {
-        setParseError('No se pudo leer el archivo. Asegurate de que sea un archivo Excel o CSV válido.')
+        setParseError('No se pudo leer el archivo. Asegúrate de que sea un archivo Excel o CSV válido.')
       }
     }
     reader.readAsBinaryString(file)
@@ -653,7 +653,7 @@ export default function ImportProductsModal({
                   </div>
                   <div>
                     <p className="text-body font-medium text-heading">
-                      {fileName ?? 'Arrastrá tu archivo aquí o hacé clic para seleccionar'}
+                      {fileName ?? 'Arrastra tu archivo aquí o haz clic para seleccionar'}
                     </p>
                     <p className="text-caption text-hint mt-1">
                       Formatos soportados: .xlsx, .xls, .csv, .ods
@@ -813,7 +813,8 @@ export default function ImportProductsModal({
         <div className="flex items-center justify-between px-6 py-4 border-t border-edge/60 shrink-0 bg-surface">
           <Button
             variant="cancel"
-            className="h-9 px-5 rounded-xl text-sm"
+            size="lg"
+            className="px-5"
             onClick={() => {
               if (step === 'mapping') setStep('upload')
               else if (step === 'preview') setStep(columnMappings.some(m => m.systemField === 'ignore' || parsedRows.length === 0) ? 'mapping' : 'upload')
@@ -826,7 +827,8 @@ export default function ImportProductsModal({
 
           {step === 'mapping' && (
             <Button
-              className="h-9 px-5 rounded-lg text-sm bg-primary hover:bg-primary/90 text-primary-foreground"
+              size="lg"
+              className="px-5"
               onClick={handleMappingConfirm}
             >
               Continuar
@@ -835,7 +837,8 @@ export default function ImportProductsModal({
 
           {step === 'preview' && (
             <Button
-              className="h-9 px-5 rounded-lg text-sm bg-primary hover:bg-primary/90 text-primary-foreground"
+              size="lg"
+              className="px-5"
               onClick={handleConfirmImport}
               disabled={importing || resolvedRows.length === 0}
             >

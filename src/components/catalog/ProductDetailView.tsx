@@ -335,7 +335,7 @@ export default function ProductDetailView({
           <div className="mt-auto pt-2">
             {product.has_variants && !allOptionsSelected && (
               <p className="mb-2 text-sm text-muted-foreground">
-                Seleccioná todas las opciones para continuar.
+                Selecciona todas las opciones para continuar.
               </p>
             )}
             <Button

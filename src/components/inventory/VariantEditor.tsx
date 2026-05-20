@@ -173,6 +173,8 @@ interface Props {
   hasVariants: boolean
   onHasVariantsChange: (v: boolean) => void
   onPayloadChange: (payload: VariantPayloadNew | VariantPayloadEdit | null) => void
+  /** When true, render only the variants body; the caller renders the toggle elsewhere. */
+  hideToggle?: boolean
 }
 
 export default function VariantEditor({
@@ -185,6 +187,7 @@ export default function VariantEditor({
   hasVariants,
   onHasVariantsChange,
   onPayloadChange,
+  hideToggle = false,
 }: Props) {
   const supabase = useMemo(() => createClient(), [])
   const currency = useCurrency()
@@ -530,22 +533,27 @@ export default function VariantEditor({
 
   return (
     <div className="space-y-3.5">
-      <div className="border-t border-edge" />
-
-      <div className="flex items-center justify-between">
-        <p className="text-[10px] font-semibold text-subtle uppercase tracking-widest">Variantes</p>
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-subtle">Este producto tiene variantes</span>
-          <button
-            type="button"
-            onClick={() => onHasVariantsChange(!hasVariants)}
-            className={`relative w-9 h-5 rounded-full transition-colors cursor-pointer shrink-0 ${hasVariants ? 'bg-primary' : 'bg-muted-foreground'}`}
-            aria-label="Activar variantes"
-          >
-            <span className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-card shadow-sm transition-transform ${hasVariants ? 'translate-x-4' : 'translate-x-0'}`} />
-          </button>
-        </div>
-      </div>
+      {!hideToggle && (
+        <>
+          <div className="border-t border-edge" />
+          <div className="flex items-center justify-between">
+            <p className="text-label text-subtle">Variantes</p>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-subtle">Este producto tiene variantes</span>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={hasVariants}
+                onClick={() => onHasVariantsChange(!hasVariants)}
+                className={`relative w-9 h-5 rounded-full transition-colors cursor-pointer shrink-0 ${hasVariants ? 'bg-primary' : 'bg-input'}`}
+                aria-label="Activar variantes"
+              >
+                <span className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-card shadow-sm transition-transform ${hasVariants ? 'translate-x-4' : 'translate-x-0'}`} />
+              </button>
+            </div>
+          </div>
+        </>
+      )}
 
       {hasVariants && (
         <div className="space-y-3">
@@ -585,14 +593,14 @@ export default function VariantEditor({
                         onChange={e => updateOptionName(optIdx, e.target.value)}
                         placeholder="Nombre del atributo"
                         disabled={isLocked}
-                        className="h-9 rounded-lg text-sm bg-surface border-edge flex-1 min-w-0 disabled:opacity-60"
+                        className="flex-1 min-w-0 disabled:opacity-60"
                       />
                     )}
                     {!isLocked && (
                       <button
                         type="button"
                         onClick={() => removeOption(optIdx)}
-                        className="shrink-0 p-1.5 rounded-lg text-hint hover:text-red-500 hover:bg-red-50 transition-colors"
+                        className="shrink-0 p-1.5 rounded-lg text-hint hover:text-destructive hover:bg-destructive/10 transition-colors"
                       >
                         <X className="w-3.5 h-3.5" />
                       </button>
@@ -610,7 +618,7 @@ export default function VariantEditor({
                         <button
                           type="button"
                           onClick={() => removeValue(optIdx, valIdx)}
-                          className="text-hint hover:text-red-500 transition-colors ml-0.5"
+                          className="text-hint hover:text-destructive transition-colors ml-0.5"
                         >
                           <X className="w-2.5 h-2.5" />
                         </button>
@@ -802,7 +810,7 @@ export default function VariantEditor({
                                       <div>
                                         <p className="text-[10px] font-semibold text-subtle uppercase tracking-widest">Imagen de variante</p>
                                         <p className="mt-1 text-sm font-medium text-body">{variant.label}</p>
-                                        <p className="mt-0.5 text-xs text-hint">Si no cargás imagen, se usa la foto del producto base.</p>
+                                        <p className="mt-0.5 text-xs text-hint">Si no cargas imagen, se usa la foto del producto base.</p>
                                       </div>
 
                                       {/* Preview */}
@@ -844,7 +852,7 @@ export default function VariantEditor({
                                             <label className="flex flex-col items-center gap-2 cursor-pointer rounded-xl border border-dashed border-edge bg-surface px-4 py-4 hover:border-primary/40 transition-colors">
                                               <Upload className="h-5 w-5 text-hint" />
                                               <span className="text-xs text-hint text-center">
-                                                {uploadingVariantKey === key ? 'Subiendo...' : 'Arrastrá o hacé clic para seleccionar'}
+                                                {uploadingVariantKey === key ? 'Subiendo...' : 'Arrastra o haz clic para seleccionar'}
                                               </span>
                                               <span className="text-[10px] text-hint">PNG, JPG, WebP · máx. 2 MB</span>
                                               <input
@@ -860,7 +868,7 @@ export default function VariantEditor({
                                             </label>
                                           )}
                                           {imageTab === 'upload' && imageError && (
-                                            <p className="mt-1 text-caption text-red-500">{imageError}</p>
+                                            <p className="mt-1 text-caption text-destructive">{imageError}</p>
                                           )}
                                           {imageTab === 'url' && (
                                             <div className="flex flex-col gap-2">
@@ -872,7 +880,7 @@ export default function VariantEditor({
                                                     setVariantUrlErrors(prev => ({ ...prev, [key]: '' }))
                                                   }}
                                                   placeholder="https://..."
-                                                  className={`h-9 rounded-xl text-sm bg-surface ${urlError ? 'border-red-400 focus-visible:ring-red-200' : 'border-edge focus-visible:ring-ring/50 focus-visible:border-ring'}`}
+                                                  aria-invalid={!!urlError}
                                                 />
                                                 <button
                                                   type="button"
@@ -888,7 +896,7 @@ export default function VariantEditor({
                                                   OK
                                                 </button>
                                               </div>
-                                              {urlError && <p className="text-caption text-red-500">{urlError}</p>}
+                                              {urlError && <p className="text-caption text-destructive">{urlError}</p>}
                                             </div>
                                           )}
                                         </div>
@@ -904,7 +912,7 @@ export default function VariantEditor({
                                             setVariantUrlErrors(prev => ({ ...prev, [key]: '' }))
                                             setVariantImageErrors(prev => ({ ...prev, [key]: '' }))
                                           }}
-                                          className="text-left text-xs text-red-500 hover:text-red-600"
+                                          className="text-left text-xs text-destructive hover:text-destructive/80"
                                         >
                                           Quitar imagen
                                         </button>

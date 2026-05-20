@@ -205,7 +205,7 @@ export default function SuppliersPanel({ suppliers, businessId, operatorId, supa
       {suppliers.length === 0 && !showForm ? (
         <div className="surface-card px-6 py-12 flex flex-col items-center gap-3">
           <p className="text-body font-medium">Sin proveedores</p>
-          <p className="text-sm text-hint">Agregá tu primer proveedor para organizar tus compras</p>
+          <p className="text-sm text-hint">Agrega tu primer proveedor para organizar tus compras</p>
           <Button
             className="h-9 rounded-lg text-sm font-semibold bg-primary hover:bg-primary/90 text-primary-foreground gap-2 mt-1"
             onClick={() => setShowForm(true)}

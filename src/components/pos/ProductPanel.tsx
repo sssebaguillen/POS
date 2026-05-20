@@ -107,7 +107,7 @@ export default function ProductPanel({ products, search, activeFilter, activePri
           <div className="surface-card p-12 text-center text-hint">
             <p className="text-sm">No se encontraron productos</p>
             {search && (
-              <p className="text-xs mt-1">Intentá con otro término o código</p>
+              <p className="text-xs mt-1">Intenta con otro término o código</p>
             )}
           </div>
         ) : (
@@ -188,7 +188,7 @@ function PaginatedProductGrid({
       <div ref={sentinelRef} />
       {visibleCount < products.length && (
         <p className="py-4 text-center text-xs text-subtle">
-          Mostrando {visibleCount} de {products.length}. Seguí scrolleando para ver más.
+          Mostrando {visibleCount} de {products.length}. Sigue desplazándote para ver más.
         </p>
       )}
     </>

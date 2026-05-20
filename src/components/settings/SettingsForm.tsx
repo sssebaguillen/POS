@@ -163,7 +163,7 @@ export default function SettingsForm({
   async function handleLogoFileUpload(file: File) {
     setLogoUploadError('')
     if (!LOGO_ALLOWED_TYPES.has(file.type)) {
-      setLogoUploadError('Formato no permitido. Usá JPEG, PNG, WebP o SVG.')
+      setLogoUploadError('Formato no permitido. Usa JPEG, PNG, WebP o SVG.')
       return
     }
     if (file.size > LOGO_MAX_BYTES) {
@@ -490,7 +490,7 @@ export default function SettingsForm({
                       <div className="p-3">
                         <div className="flex flex-col items-center gap-2 rounded-lg border border-dashed border-border bg-muted/20 px-4 py-5">
                           <Upload className="h-5 w-5 text-muted-foreground" />
-                          <span className="text-xs text-muted-foreground">Arrastrá o hacé clic para seleccionar</span>
+                          <span className="text-xs text-muted-foreground">Arrastra o haz clic para seleccionar</span>
                           <span className="text-[10px] text-muted-foreground">JPEG, PNG, WebP, SVG · máx. 2 MB</span>
                         </div>
                       </div>
@@ -534,7 +534,7 @@ export default function SettingsForm({
         {activeTab === 'catalogo' && (
           <div className="surface-card p-6 max-w-3xl mx-auto w-full">
             <h2 className="text-base font-semibold text-foreground font-display">Catálogo</h2>
-            <p className="text-sm text-muted-foreground mt-1">Configurá la URL pública de tu catálogo de productos.</p>
+            <p className="text-sm text-muted-foreground mt-1">Configura la URL pública de tu catálogo de productos.</p>
 
             <div className="mt-6 space-y-5">
               <div className="space-y-1.5">

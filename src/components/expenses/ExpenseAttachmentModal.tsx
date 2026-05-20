@@ -61,7 +61,7 @@ function PreviewContent({ signedUrl, type, name }: { signedUrl: string; type: Ex
           <FileText size={40} className="text-hint opacity-50" />
           <p className="text-sm text-body text-center">No se pudo cargar el documento.</p>
           <p className="text-xs text-hint text-center">
-            Usá el botón &ldquo;Abrir&rdquo; para verlo en una nueva pestaña.
+            Usa el botón &ldquo;Abrir&rdquo; para verlo en una nueva pestaña.
           </p>
         </div>
       )
@@ -106,7 +106,7 @@ function PreviewContent({ signedUrl, type, name }: { signedUrl: string; type: Ex
         Este tipo de archivo no se puede previsualizar.
       </p>
       <p className="text-xs text-hint text-center">
-        Usá el botón &ldquo;Abrir en nueva pestaña&rdquo; para descargarlo.
+        Usa el botón &ldquo;Abrir en nueva pestaña&rdquo; para descargarlo.
       </p>
     </div>
   )

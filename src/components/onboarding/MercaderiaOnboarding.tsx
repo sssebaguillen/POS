@@ -32,15 +32,15 @@ interface Step {
 const STEPS: Step[] = [
   {
     refKey: 'search',
-    title: 'Buscá el producto que recibiste',
-    body: 'Escribí el nombre o escaneá el código de barras. Si el producto no existe todavía, podés crearlo desde acá.',
+    title: 'Busca el producto que recibiste',
+    body: 'Escribe el nombre o escanea el código de barras. Si el producto no existe todavía, puedes crearlo desde aquí.',
     buttonLabel: 'Entendido →',
     requiresItems: false,
   },
   {
     refKey: 'cost',
     title: 'El costo viene de tu catálogo',
-    body: "Podés editarlo si el precio cambió. Activá 'Actualizar costo' para que ese nuevo precio quede guardado en el producto.",
+    body: "Puedes editarlo si el precio cambió. Activa 'Actualizar costo' para que ese nuevo precio quede guardado en el producto.",
     buttonLabel: 'Entendido →',
     requiresItems: true,
   },

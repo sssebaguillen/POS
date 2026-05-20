@@ -24,7 +24,7 @@ export default function RegisterPage() {
 
   async function handleRegister() {
     if (!businessName || !userName || !email || !password) {
-      setError('Completá todos los campos')
+      setError('Completa todos los campos')
       return
     }
     if (password.length < 6) {
@@ -41,7 +41,7 @@ export default function RegisterPage() {
     })
 
     if (authError || !authData.user) {
-      setError('Error al crear la cuenta. Intentá con otro email.')
+      setError('Error al crear la cuenta. Intenta con otro email.')
       setLoading(false)
       return
     }
@@ -67,7 +67,7 @@ export default function RegisterPage() {
     })
 
     if (signInError) {
-      setError('Cuenta creada. Por favor ingresá manualmente.')
+      setError('Cuenta creada. Por favor ingresa manualmente.')
       setLoading(false)
       return
     }
@@ -84,8 +84,8 @@ export default function RegisterPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-background">
       <div className="bg-card p-8 rounded-xl shadow-sm border border-border w-full max-w-md">
-        <h1 className="text-2xl font-bold text-foreground mb-2">Creá tu negocio</h1>
-        <p className="text-muted-foreground mb-6">Empezá gratis, sin tarjeta de crédito</p>
+        <h1 className="text-2xl font-bold text-foreground mb-2">Crea tu negocio</h1>
+        <p className="text-muted-foreground mb-6">Empieza gratis, sin tarjeta de crédito</p>
 
         <div className="space-y-4">
           <Input
@@ -118,9 +118,9 @@ export default function RegisterPage() {
         </div>
 
         <p className="text-center text-sm text-muted-foreground mt-4">
-          ¿Ya tenés cuenta?{' '}
+          ¿Ya tienes cuenta?{' '}
           <Link href="/login" className="text-primary hover:underline">
-            Ingresá
+            Ingresa
           </Link>
         </p>
       </div>

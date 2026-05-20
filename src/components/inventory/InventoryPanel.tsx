@@ -218,7 +218,7 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
 
   const updateProduct = useCallback(async (productId: string, values: Partial<InventoryProduct>) => {
     if (readOnly) {
-      setCrudError('No tenés permiso para editar el inventario.')
+      setCrudError('No tienes permiso para editar el inventario.')
       return
     }
 
@@ -333,7 +333,7 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
 
   const handleDeleteProductImpl = useCallback((product: InventoryProduct) => {
     if (readOnly) {
-      setCrudError('No tenés permiso para editar el inventario.')
+      setCrudError('No tienes permiso para editar el inventario.')
       return
     }
 
@@ -422,7 +422,7 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
 
   const handleEdit = useCallback((product: InventoryProduct) => {
     if (readOnly) {
-      setCrudError('No tenés permiso para editar el inventario.')
+      setCrudError('No tienes permiso para editar el inventario.')
       return
     }
     setEditingProduct(product)
@@ -625,7 +625,7 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
         <div className="flex-1 overflow-y-auto p-6">
           <div className="surface-card p-6">
             <p className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
-              No se encontró tu negocio. Intentá recargar la página.
+              No se encontró tu negocio. Intenta recargar la página.
             </p>
           </div>
         </div>
@@ -698,7 +698,7 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
           <button
             type="button"
             onClick={() => setFilterOpen(true)}
-            className={`h-9 px-4 rounded-xl border text-sm font-medium flex items-center gap-2 transition-colors shrink-0 ${
+            className={`h-9 px-4 rounded-lg border text-sm font-medium flex items-center gap-2 transition-colors shrink-0 ${
               activeFilterCount > 0
                 ? 'border-primary bg-primary/5 text-primary'
                 : 'border-edge bg-surface text-body hover:bg-surface-alt'
@@ -859,14 +859,14 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
 
       {readOnly && (
         <div className="mx-5 mt-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-700 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-400">
-          Solo podés ver el inventario, sin permiso para editarlo.
+          Solo puedes ver el inventario, sin permiso para editarlo.
         </div>
       )}
 
       <div ref={scrollContainerRef} className="flex-1 overflow-y-auto p-5">
         {filtered.length === 0 ? (
           <div className="surface-card p-12 text-center text-hint">
-            Sin resultados. Probá ajustando los filtros.
+            Sin resultados. Prueba ajustando los filtros.
           </div>
         ) : viewMode === 'grid' ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4">
@@ -929,7 +929,7 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
         )}
         {visibleCount < filtered.length && (
           <div className="py-4 text-center text-xs text-subtle">
-            Mostrando {visibleCount} de {filtered.length}. Seguí scrolleando para ver más.
+            Mostrando {visibleCount} de {filtered.length}. Sigue desplazándote para ver más.
           </div>
         )}
       </div>
@@ -1051,7 +1051,7 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
         <span>Valor inventario {formatMoney(inventoryValue)}</span>
         <span>Margen promedio {avgMargin.toFixed(0)}%</span>
         <span className="flex items-center gap-1.5">
-          <span className="w-2 h-2 rounded-full bg-red-500" />
+          <span className="w-2 h-2 rounded-full bg-destructive" />
           {outOfStock} sin stock
         </span>
         <span className="flex items-center gap-1.5">

@@ -54,6 +54,7 @@ export default function CategoryModal({
   const [creating, setCreating] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
+  const [confirmDeleteCount, setConfirmDeleteCount] = useState<number | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editName, setEditName] = useState('')
@@ -190,6 +191,24 @@ export default function CategoryModal({
     setSaving(false)
   }
 
+  async function requestDelete(categoryId: string) {
+    // Open the dialog immediately with a null count (renders a generic line while
+    // counting), then patch the count in. Keeps the click feeling instant.
+    setConfirmDeleteId(categoryId)
+    setConfirmDeleteCount(null)
+    const { count, error: countError } = await supabase
+      .from('products')
+      .select('id', { count: 'exact', head: true })
+      .eq('business_id', businessId)
+      .eq('category_id', categoryId)
+    if (countError) {
+      // Counting failed; show the dialog without a count rather than blocking.
+      setConfirmDeleteCount(0)
+      return
+    }
+    setConfirmDeleteCount(count ?? 0)
+  }
+
   async function handleDelete(categoryId: string) {
     setDeletingId(categoryId)
     setError(null)
@@ -210,6 +229,8 @@ export default function CategoryModal({
 
     await refreshCategories()
     setDeletingId(null)
+    setConfirmDeleteId(null)
+    setConfirmDeleteCount(null)
   }
 
   function handleClose() {
@@ -340,7 +361,7 @@ export default function CategoryModal({
                               type="button"
                               size="sm"
                               variant="destructive"
-                              onClick={() => setConfirmDeleteId(category.id)}
+                              onClick={() => void requestDelete(category.id)}
                               disabled={creating || deletingId !== null || !stockWriteAllowed || editingId !== null}
                             >
                               {deletingId === category.id ? 'Eliminando...' : 'Eliminar'}
@@ -363,7 +384,7 @@ export default function CategoryModal({
                 <div className="grid grid-cols-1 sm:grid-cols-[1fr_160px] gap-2.5">
                   <div className="flex flex-col gap-1">
                     <label className="text-label text-subtle">
-                      Nombre<span className="text-red-400 ml-0.5">*</span>
+                      Nombre<span className="text-destructive ml-0.5">*</span>
                     </label>
                     <Input
                       value={name}
@@ -372,7 +393,6 @@ export default function CategoryModal({
                         setError(null)
                       }}
                       placeholder="Ej: Panificados"
-                      className="h-9 rounded-xl text-sm bg-surface border-edge focus-visible:ring-ring/50 focus-visible:border-ring"
                       required
                     />
                   </div>
@@ -397,7 +417,8 @@ export default function CategoryModal({
                   <Button
                     type="button"
                     variant="cancel"
-                    className="h-9 px-5 rounded-xl text-sm"
+                    size="lg"
+                    className="px-5"
                     onClick={handleClose}
                     disabled={creating || deletingId !== null}
                   >
@@ -405,7 +426,8 @@ export default function CategoryModal({
                   </Button>
                   <Button
                     type="button"
-                    className="h-9 px-5 rounded-lg text-sm bg-primary hover:bg-primary/90 text-primary-foreground"
+                    size="lg"
+                    className="px-5"
                     onClick={() => void handleCreate()}
                     disabled={creating || deletingId !== null || !stockWriteAllowed}
                   >
@@ -418,12 +440,25 @@ export default function CategoryModal({
         </DialogContent>
       </Dialog>
 
-      <AlertDialog open={confirmDeleteId !== null} onOpenChange={open => { if (!open) setConfirmDeleteId(null) }}>
+      <AlertDialog open={confirmDeleteId !== null} onOpenChange={open => { if (!open) { setConfirmDeleteId(null); setConfirmDeleteCount(null) } }}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>¿Eliminar categoría?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Esta acción eliminará la categoría permanentemente y no se puede deshacer.
+            <AlertDialogDescription asChild>
+              <div className="space-y-1.5">
+                <p>Esta acción es permanente y no se puede deshacer.</p>
+                {confirmDeleteCount === null ? (
+                  <p className="text-hint">Calculando productos afectados…</p>
+                ) : confirmDeleteCount > 0 ? (
+                  <p>
+                    {confirmDeleteCount === 1
+                      ? '1 producto quedará sin categoría.'
+                      : `${confirmDeleteCount} productos quedarán sin categoría.`}
+                  </p>
+                ) : (
+                  <p className="text-hint">No hay productos asignados a esta categoría.</p>
+                )}
+              </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

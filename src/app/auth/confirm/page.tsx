@@ -31,9 +31,9 @@ export default async function ConfirmPage({ searchParams }: Props) {
     <div className="min-h-screen flex items-center justify-center bg-background">
       <div className="bg-card p-8 rounded-xl shadow-sm border border-border w-full max-w-md text-center">
         <MailCheck className="mx-auto mb-4 h-12 w-12 text-primary" />
-        <h1 className="text-2xl font-bold text-foreground mb-2">Confirmá tu cuenta</h1>
+        <h1 className="text-2xl font-bold text-foreground mb-2">Confirma tu cuenta</h1>
         <p className="text-muted-foreground text-sm mb-6">
-          Hacé click en el botón para activar tu cuenta en Pulsar.
+          Haz clic en el botón para activar tu cuenta en Pulsar.
         </p>
         <ConfirmButton
           token_hash={token_hash}

@@ -85,16 +85,16 @@ export const statusConfig = {
   },
   out: {
     label: 'SIN STOCK',
-    border: 'border-red-300 dark:border-red-800/50 border-dashed',
-    hoverBorder: 'hover:border-red-300 dark:hover:border-red-800/50',
-    badge: 'bg-red-50 dark:bg-red-950/30 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800/50',
-    bar: 'bg-red-500',
+    border: 'border-destructive/40 dark:border-destructive/50 border-dashed',
+    hoverBorder: 'hover:border-destructive/40 dark:hover:border-destructive/50',
+    badge: 'bg-destructive/10 dark:bg-destructive/20 text-destructive border border-destructive/30',
+    bar: 'bg-destructive',
   },
   discontinued: {
     label: 'DISCONTINUADO',
     border: 'border-faint border-dashed',
     hoverBorder: 'hover:border-muted-foreground/40',
     badge: 'bg-muted text-muted-foreground',
-    bar: 'bg-muted-foreground',
+    bar: 'bg-input',
   },
 } as const

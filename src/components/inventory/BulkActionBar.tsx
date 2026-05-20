@@ -198,9 +198,9 @@ export default function BulkActionBar({
             </Popover>
 
             <Button
-              variant="outline"
+              variant="destructive"
               size="sm"
-              className="rounded-lg text-xs gap-1.5 border-red-200 dark:border-red-800/50 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30"
+              className="text-xs gap-1.5"
               disabled={loading}
               onClick={() => setShowDeleteConfirm(true)}
             >

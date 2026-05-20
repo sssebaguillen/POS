@@ -598,7 +598,7 @@ export default function CartPanel({ businessId, businessName, freeLineEnabled, a
                 <div className="flex flex-col items-center justify-center h-full text-faint select-none px-6 text-center">
                   <ShoppingCart size={48} className="mb-3 opacity-30" />
                   <p className="text-sm text-hint leading-tight">
-                    Escaneá un producto o seleccionalo
+                    Escanea un producto o selecciónalo
                     <br />
                     del panel para comenzar
                   </p>

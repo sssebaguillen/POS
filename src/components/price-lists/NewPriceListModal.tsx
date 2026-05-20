@@ -236,7 +236,7 @@ export default function NewPriceListModal({
                   <span className="font-semibold">
                     {affectedProducts.length} {affectedProducts.length === 1 ? 'producto tiene' : 'productos tienen'} un precio de venta que no coincide con este margen.
                   </span>
-                  {' '}¿Qué querés hacer con {affectedProducts.length === 1 ? 'ese producto' : 'ellos'}?
+                  {' '}¿Qué quieres hacer con {affectedProducts.length === 1 ? 'ese producto' : 'ellos'}?
                 </p>
 
                 <button

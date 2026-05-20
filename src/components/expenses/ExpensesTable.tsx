@@ -112,7 +112,7 @@ export default function ExpensesTable({ expenses, businessId, operatorId, supaba
     return (
       <div className="surface-card px-6 py-16 flex flex-col items-center gap-2">
         <p className="text-body font-medium">Sin gastos para el período</p>
-        <p className="text-sm text-hint">Registrá un nuevo gasto con el botón de arriba</p>
+        <p className="text-sm text-hint">Registra un nuevo gasto con el botón de arriba</p>
       </div>
     )
   }

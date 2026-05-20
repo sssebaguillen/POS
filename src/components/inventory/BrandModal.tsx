@@ -142,10 +142,25 @@ export default function BrandModal({
     setSaving(false)
   }
 
-  function handleDelete(brand: InventoryBrand) {
+  async function handleDelete(brand: InventoryBrand) {
+    const { count, error: countError } = await supabase
+      .from('products')
+      .select('id', { count: 'exact', head: true })
+      .eq('business_id', businessId)
+      .eq('brand_id', brand.id)
+
+    const productCount = countError ? null : (count ?? 0)
+    const impactLine = productCount === null
+      ? 'No se pudo contar los productos afectados.'
+      : productCount === 0
+        ? 'No hay productos asignados a esta marca.'
+        : productCount === 1
+          ? '1 producto quedará sin marca.'
+          : `${productCount} productos quedarán sin marca.`
+
     setPendingConfirm({
       title: `Eliminar marca "${brand.name}"`,
-      message: 'Esto quitará la marca de todos los productos y listas de precios asociadas.',
+      message: `Esta acción es permanente y no se puede deshacer. ${impactLine} Las listas de precios asociadas también dejarán de aplicarse a esta marca.`,
       onConfirm: async () => {
         setDeletingId(brand.id)
         setError(null)
@@ -288,7 +303,7 @@ export default function BrandModal({
             )}
             <div className="flex flex-col gap-1">
               <label className="text-label text-subtle">
-                Nombre<span className="text-red-400 ml-0.5">*</span>
+                Nombre<span className="text-destructive ml-0.5">*</span>
               </label>
               <Input
                 value={name}
@@ -297,7 +312,6 @@ export default function BrandModal({
                   setError(null)
                 }}
                 placeholder="Ej: Coca-Cola"
-                className="h-9 rounded-xl text-sm bg-surface border-edge focus-visible:ring-ring/50 focus-visible:border-ring"
                 required
               />
             </div>
@@ -306,7 +320,8 @@ export default function BrandModal({
               <Button
                 type="button"
                 variant="cancel"
-                className="h-9 px-5 rounded-xl text-sm"
+                size="lg"
+                className="px-5"
                 onClick={handleClose}
                 disabled={creating || deletingId !== null}
               >
@@ -314,7 +329,8 @@ export default function BrandModal({
               </Button>
               <Button
                 type="button"
-                className="h-9 px-5 rounded-lg text-sm bg-primary hover:bg-primary/90 text-primary-foreground"
+                size="lg"
+                className="px-5"
                 onClick={() => void handleCreate()}
                 disabled={creating || deletingId !== null || !stockWriteAllowed}
               >

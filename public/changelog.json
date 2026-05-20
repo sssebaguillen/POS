@@ -1,0 +1,19 @@
+{
+  "current": "0.3.0",
+  "releases": [
+    {
+      "version": "0.3.0",
+      "date": "2026-05-20",
+      "label": "Registro de actividad y pulido general",
+      "changes": [
+        { "type": "improvement", "text": "Registro de actividad: panel de detalle separado por entidad (ventas, productos, categorías, marcas, gastos, proveedores, listas, ajustes, operarios, clientes) para una lectura más clara" },
+        { "type": "improvement", "text": "Filtros del registro de actividad reorganizados en chips por entidad, con barra de filtros y resultados independientes" },
+        { "type": "new", "text": "Indicador visual cuando un producto tiene un precio manual que se aparta de la lista activa" },
+        { "type": "improvement", "text": "Alta y edición de productos: flujo de variantes más prolijo y formularios más fáciles de seguir" },
+        { "type": "improvement", "text": "Modales de Marca y Categoría con validaciones y campos más consistentes" },
+        { "type": "improvement", "text": "Mensajes de error en español para permisos, conexión, archivos pesados y campos obligatorios" },
+        { "type": "improvement", "text": "Etiquetas de permisos de operarios traducidas al español en toda la app" }
+      ]
+    }
+  ]
+}

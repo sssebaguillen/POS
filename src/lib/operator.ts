@@ -47,6 +47,20 @@ export const OPERATOR_MANAGEMENT_PERMISSION_KEYS = [
 export type OperatorManagementPermissionKey = (typeof OPERATOR_MANAGEMENT_PERMISSION_KEYS)[number]
 export type OperatorManagementPermissions = Pick<Permissions, OperatorManagementPermissionKey>
 
+export const PERMISSION_LABELS: Record<keyof Permissions, string> = {
+  sales: 'Ventas',
+  stock: 'Inventario (lectura)',
+  stock_write: 'Inventario (edición)',
+  analysis: 'Análisis',
+  price_lists: 'Listas (lectura)',
+  price_lists_write: 'Listas (edición)',
+  settings: 'Configuración',
+  expenses: 'Gastos',
+  operators_write: 'Operarios',
+  price_override: 'Override de precio',
+  free_line: 'Línea libre',
+}
+
 export const OWNER_PERMISSIONS: Permissions = {
   ...DEFAULT_PERMISSIONS,
   sales: true,
@@ -197,6 +211,10 @@ export function getActiveOperator(cookieStore: CookieStoreLike): ActiveOperator 
 
 export function hasPermission(operator: ActiveOperator, permission: keyof Permissions): boolean {
   return operator.permissions[permission] === true
+}
+
+export function getPermissionLabel(permission: string): string {
+  return PERMISSION_LABELS[permission as keyof Permissions] ?? permission
 }
 
 /**

@@ -96,7 +96,7 @@ export default function EditExpensePanel({
 
     if (isMercaderia) {
       if (mercaderiaItems.length === 0) {
-        setError('Agregá al menos un producto')
+        setError('Agrega al menos un producto')
         return
       }
       setSaving(true)

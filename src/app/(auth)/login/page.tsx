@@ -40,7 +40,7 @@ export default function LoginPage() {
     const normalizedEmail = email.trim()
 
     if (!normalizedEmail) {
-      setForgotError('Ingresá tu email primero')
+      setForgotError('Ingresa tu email primero')
       return
     }
 
@@ -54,7 +54,7 @@ export default function LoginPage() {
       setForgotSent(true)
       posthog.capture('password_reset_requested', { email: normalizedEmail })
     } catch {
-      setForgotError('Ocurrió un error, intentá de nuevo')
+      setForgotError('Ocurrió un error, intenta de nuevo')
     } finally {
       setForgotLoading(false)
     }
@@ -64,7 +64,7 @@ export default function LoginPage() {
     <div className="min-h-screen flex items-center justify-center bg-background">
       <div className="bg-card p-8 rounded-xl shadow-sm border border-border w-full max-w-md">
         <h1 className="text-2xl font-bold text-foreground mb-1">Pulsar POS</h1>
-        <p className="text-muted-foreground mb-6 text-sm">Ingresá a tu negocio</p>
+        <p className="text-muted-foreground mb-6 text-sm">Ingresa a tu negocio</p>
 
         <div className="space-y-3">
           <Input
@@ -88,9 +88,9 @@ export default function LoginPage() {
         </div>
 
         <p className="text-center text-sm text-muted-foreground mt-4">
-          ¿No tenés cuenta?{' '}
+          ¿No tienes cuenta?{' '}
           <Link href="/register" className="text-primary hover:underline">
-            Registrá tu negocio
+            Registra tu negocio
           </Link>
         </p>
 
@@ -101,7 +101,7 @@ export default function LoginPage() {
             className="text-primary hover:underline disabled:opacity-50"
             disabled={forgotLoading || forgotSent}
           >
-            {forgotSent ? 'Revisá tu email' : '¿Olvidaste tu contraseña?'}
+            {forgotSent ? 'Revisa tu email' : '¿Olvidaste tu contraseña?'}
           </button>
         </p>
 

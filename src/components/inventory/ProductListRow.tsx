@@ -150,7 +150,7 @@ const ProductListRow = memo(function ProductListRow({
               type="button"
               onClick={() => onDelete(product)}
               disabled={loadingId === product.id}
-              className="text-xs px-3 py-2 rounded-lg bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800/50 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors disabled:opacity-50 touch-manipulation"
+              className="text-xs px-3 py-2 rounded-lg bg-destructive/10 text-destructive hover:bg-destructive/20 dark:bg-destructive/20 dark:hover:bg-destructive/30 transition-colors disabled:opacity-50 touch-manipulation"
             >
               Eliminar
             </button>

@@ -128,7 +128,7 @@ export default function Sidebar({
     mounted && permissions !== null && !check(permissions)
 
   function handleRestrictedClick(label: string) {
-    setToast(`No tenés permisos para acceder a ${label}`)
+    setToast(`No tienes permisos para acceder a ${label}`)
     onClose()
   }
 

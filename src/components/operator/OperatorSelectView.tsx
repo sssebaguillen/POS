@@ -203,7 +203,7 @@ export default function OperatorSelectView({
 
       setForgotSent(true)
     } catch {
-      setForgotError('Ocurrió un error, intentá de nuevo.')
+      setForgotError('Ocurrió un error, intenta de nuevo.')
     } finally {
       setForgotLoading(false)
     }
@@ -217,7 +217,7 @@ export default function OperatorSelectView({
           <div className="animate-fade-in">
             <div className="mb-8">
               <p className="text-xs uppercase tracking-wide text-muted-foreground">Inicio de turno</p>
-              <h1 className="mt-1 text-2xl font-bold text-foreground">Seleccioná un operador</h1>
+              <h1 className="mt-1 text-2xl font-bold text-foreground">Selecciona un operador</h1>
             </div>
 
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -263,7 +263,7 @@ export default function OperatorSelectView({
 
             {availableOperatorsCount === 0 && (
               <div className="mt-4 rounded-xl border border-border/60 bg-muted/20 p-4 text-sm text-muted-foreground">
-                <p>No hay operadores creados. Creá uno desde Configuración.</p>
+                <p>No hay operadores creados. Crea uno desde Configuración.</p>
                 <div className="mt-3">
                   <Button
                     type="button"
@@ -381,7 +381,7 @@ export default function OperatorSelectView({
                     className="text-sm text-primary hover:underline disabled:opacity-50"
                     disabled={forgotLoading || forgotSent}
                   >
-                    {forgotSent ? 'Revisá tu email' : '¿Olvidaste tu contraseña?'}
+                    {forgotSent ? 'Revisa tu email' : '¿Olvidaste tu contraseña?'}
                   </button>
                   {forgotError && (
                     <p className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">

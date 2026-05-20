@@ -149,7 +149,7 @@ export default function CartPanel({
           <CheckCircle2 className="h-12 w-12 text-green-500" />
           <div>
             <p className="text-base font-semibold text-foreground">Pedido enviado</p>
-            <p className="mt-1 text-sm text-muted-foreground">Revisá tu WhatsApp para continuar con el pedido.</p>
+            <p className="mt-1 text-sm text-muted-foreground">Revisa tu WhatsApp para continuar con el pedido.</p>
           </div>
           <Button type="button" className="w-full" onClick={handleNewOrder}>
             Nuevo pedido

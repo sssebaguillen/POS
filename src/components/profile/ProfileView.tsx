@@ -192,7 +192,7 @@ export default function ProfileView({ profile, email, business }: Props) {
                   <div className="rounded-xl border border-emerald-200 bg-emerald-50 dark:bg-emerald-950/30 dark:border-emerald-800/50 px-4 py-3 space-y-1">
                     <p className="text-sm font-medium text-emerald-700 dark:text-emerald-400">Email enviado</p>
                     <p className="text-sm text-emerald-600 dark:text-emerald-500">
-                      Se envió un email de confirmación a <strong>{emailInput}</strong>. Revisá tu bandeja para completar el cambio.
+                      Se envió un email de confirmación a <strong>{emailInput}</strong>. Revisa tu bandeja para completar el cambio.
                     </p>
                   </div>
                   <Button variant="outline" size="sm" onClick={cancelEditEmail}>Cerrar</Button>

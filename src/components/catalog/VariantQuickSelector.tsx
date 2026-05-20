@@ -211,10 +211,10 @@ export default function VariantQuickSelector({
         className="w-full h-8 text-xs gap-1.5 mt-1"
         disabled={!canAdd}
         onClick={handleAdd}
-        title={partiallySelected ? 'Seleccioná todas las opciones' : undefined}
+        title={partiallySelected ? 'Selecciona todas las opciones' : undefined}
       >
         <ShoppingCart className="h-3 w-3" />
-        {partiallySelected ? 'Seleccioná todas las opciones' : 'Agregar al carrito'}
+        {partiallySelected ? 'Selecciona todas las opciones' : 'Agregar al carrito'}
       </Button>
     </div>
   )

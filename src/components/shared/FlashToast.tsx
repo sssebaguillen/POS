@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { X } from 'lucide-react'
 
 const MESSAGES: Record<string, string> = {
-  'no-access': 'No tenés permisos para acceder a esa sección',
+  'no-access': 'No tienes permisos para acceder a esa sección',
 }
 
 interface Props {

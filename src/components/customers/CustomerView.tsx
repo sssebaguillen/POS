@@ -147,12 +147,12 @@ export default function CustomerView({ businessId, operatorId, initialCustomers 
           {customers.length === 0 ? (
             <div className="surface-card px-6 py-12 flex flex-col items-center gap-3">
               <p className="text-body font-medium">Todavía no hay clientes.</p>
-              <p className="text-sm text-hint">Agregá el primero con el botón de arriba.</p>
+              <p className="text-sm text-hint">Agrega el primero con el botón de arriba.</p>
             </div>
           ) : filteredCustomers.length === 0 ? (
             <div className="surface-card px-6 py-12 flex flex-col items-center gap-3">
               <p className="text-body font-medium">Sin resultados.</p>
-              <p className="text-sm text-hint">Probá con otra búsqueda o filtro.</p>
+              <p className="text-sm text-hint">Prueba con otra búsqueda o filtro.</p>
             </div>
           ) : (
             <div className="surface-card overflow-hidden">

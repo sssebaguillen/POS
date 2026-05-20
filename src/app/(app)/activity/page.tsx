@@ -7,6 +7,8 @@ import { requireAuthenticatedBusinessId } from '@/lib/business'
 import { getActiveOperator, hasPermission } from '@/lib/operator'
 import { resolveDateRange } from '@/lib/date-utils'
 import ActivityView from '@/components/activity/ActivityView'
+import { ENTITY_FILTER_VALUES, OWNER_OPERATOR_FILTER_VALUE } from '@/components/activity/config'
+import { parseActivityPeriod } from '@/components/activity/utils'
 import type {
   ActivityFilterOperator,
   ActivityLogRow,
@@ -22,24 +24,11 @@ interface SearchParams {
   page?: string
 }
 
-const ENTITY_VALUES: ActivityEntityFilter[] = [
-  'all',
-  'sale',
-  'product',
-  'category',
-  'brand',
-  'expense',
-  'supplier',
-  'price_list',
-  'setting',
-  'operator',
-  'customer',
-]
 const PAGE_SIZE = 50
 const OWNER_SENTINEL = '00000000-0000-0000-0000-000000000000'
 
 function parseEntity(value: string | undefined): ActivityEntityFilter {
-  if (value && (ENTITY_VALUES as string[]).includes(value)) {
+  if (value && ENTITY_FILTER_VALUES.includes(value as ActivityEntityFilter)) {
     return value as ActivityEntityFilter
   }
   return 'all'
@@ -84,11 +73,11 @@ export default async function ActivityPage({
   const page = parsePage(params.page)
   const operatorFilter = params.operator ?? null
 
-  const period = params.period ?? 'mes'
+  const period = parseActivityPeriod(params.period)
   const { from: dateFrom, to: dateTo } = resolveDateRange(period, params.from, params.to)
 
   const rpcOperatorId =
-    operatorFilter === 'owner'
+    operatorFilter === OWNER_OPERATOR_FILTER_VALUE
       ? OWNER_SENTINEL
       : operatorFilter && operatorFilter !== 'all'
         ? operatorFilter
@@ -104,7 +93,7 @@ export default async function ActivityPage({
   ] = await Promise.all([
     supabase
       .from('operators')
-      .select('id, name, role')
+      .select('id, name')
       .eq('business_id', businessId)
       .order('name'),
     supabase.rpc('get_audit_log', {
@@ -139,7 +128,6 @@ export default async function ActivityPage({
   const operators: ActivityFilterOperator[] = (operatorsRaw ?? []).map(o => ({
     id: o.id,
     name: o.name,
-    role: o.role,
   }))
 
   const categoryMap: Record<string, { name: string; icon: string | null; icon_color: string | null }> = {}

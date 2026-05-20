@@ -83,7 +83,7 @@ export default function NewExpensePanel({
 
     if (isMercaderia) {
       if (mercaderiaItems.length === 0) {
-        setError('Agregá al menos un producto')
+        setError('Agrega al menos un producto')
         return
       }
       setSaving(true)
@@ -107,7 +107,7 @@ export default function NewExpensePanel({
       if (rpcError || !data?.success) {
         const errKey = data?.error
         if (errKey === 'no_items') {
-          setError('Agregá al menos un producto')
+          setError('Agrega al menos un producto')
         } else if (errKey === 'unauthorized') {
           setError('Sin permiso para registrar gastos')
         } else {

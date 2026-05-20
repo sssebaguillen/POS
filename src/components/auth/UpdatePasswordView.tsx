@@ -66,7 +66,7 @@ export default function UpdatePasswordView() {
       <div className="bg-card p-8 rounded-xl shadow-sm border border-border w-full max-w-md">
         <h1 className="text-2xl font-bold text-foreground mb-1">Actualizar contraseña</h1>
         <p className="text-muted-foreground mb-6 text-sm">
-          Definí una nueva contraseña para tu cuenta.
+          Define una nueva contraseña para tu cuenta.
         </p>
 
         <div className="space-y-3">

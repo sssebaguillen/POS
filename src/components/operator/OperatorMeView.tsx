@@ -283,7 +283,7 @@ export default function OperatorMeView({
     setSavingPin(false)
 
     if (updateError) {
-      showToast({ message: 'No se pudo actualizar el PIN. Intentá de nuevo.' })
+      showToast({ message: 'No se pudo actualizar el PIN. Intenta de nuevo.' })
       return
     }
 
@@ -324,7 +324,7 @@ export default function OperatorMeView({
               <div>
                 <h2 id="section-stats" className="text-base font-semibold text-foreground font-display">Estadísticas personales</h2>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  Revisá tus ventas, productos más vendidos e historial reciente.
+                  Revisa tus ventas, productos más vendidos e historial reciente.
                 </p>
               </div>
               <div className="flex items-center gap-4">
@@ -453,7 +453,7 @@ export default function OperatorMeView({
               <div className="mb-5">
                 <h2 id="section-pin" className="text-base font-semibold text-foreground font-display">Cambiar PIN</h2>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  Verificá tu PIN actual antes de definir uno nuevo.
+                  Verifica tu PIN actual antes de definir uno nuevo.
                 </p>
               </div>
 

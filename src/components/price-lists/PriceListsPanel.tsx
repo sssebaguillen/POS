@@ -324,7 +324,7 @@ export default function PriceListsPanel({
 
     if (error) {
       console.error('swap_default_price_list:', error)
-      setCrudError('No se pudo cambiar la lista predeterminada. Intentá de nuevo.')
+      setCrudError('No se pudo cambiar la lista predeterminada. Intenta de nuevo.')
       setSavingDefaultId(null)
       return
     }

@@ -153,7 +153,7 @@ export default function ExpenseAttachmentUploader({ businessId, onUpload, onRemo
           <>
             <Upload size={22} className="text-hint" />
             <p className="text-sm text-body text-center">
-              Arrastrá un archivo aquí o <span className="text-primary font-medium">hacé clic para elegir</span>
+              Arrastra un archivo aquí o <span className="text-primary font-medium">haz clic para elegir</span>
             </p>
             <p className="text-xs text-hint">Imágenes, PDF, Excel, CSV — máx. 10MB</p>
           </>

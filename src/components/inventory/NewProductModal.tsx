@@ -4,7 +4,7 @@ import { startTransition, useCallback, useEffect, useMemo, useState } from 'reac
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { ChevronRight, Upload, X } from 'lucide-react'
+import { ChevronDown, ChevronRight, Upload, X } from 'lucide-react'
 import {
   Dialog,
   DialogContent,
@@ -13,12 +13,14 @@ import {
 import type { PriceList } from '@/lib/types'
 import type { InventoryBrand, InventoryCategory, InventoryProduct } from '@/components/inventory/types'
 import { validateImageUrl } from '@/lib/validation'
+import { translateDbError } from '@/lib/errors'
 import FieldGroup from '@/components/inventory/FieldGroup'
 import VariantEditor from '@/components/inventory/VariantEditor'
 import type { VariantPayloadNew, VariantPayloadEdit } from '@/components/inventory/VariantEditor'
 import { useCurrency } from '@/lib/context/CurrencyContext'
 import { getCurrencySymbol, toTitleCase } from '@/lib/format'
 import CategoryIconPreview from '@/components/inventory/CategoryIconPreview'
+import PriceOverrideIndicator from '@/components/inventory/PriceOverrideIndicator'
 
 interface Props {
   /** When true, renders only the form (no Dialog). Used by onboarding wizard. */
@@ -112,6 +114,38 @@ export default function NewProductModal({
     return categories.filter(category => category.name.toLowerCase().includes(query))
   }, [categories, categoryInput])
 
+  // Combobox keyboard nav: highlightedIndex covers [Sin categoría, ...filteredCategories] for the
+  // category dropdown and [...filteredBrands] for the brand dropdown. -1 means nothing highlighted.
+  const [categoryHighlight, setCategoryHighlight] = useState(-1)
+  const [brandHighlight, setBrandHighlight] = useState(-1)
+
+  useEffect(() => { setCategoryHighlight(showCategoryOptions ? 0 : -1) }, [showCategoryOptions])
+  useEffect(() => { setCategoryHighlight(0) }, [categoryInput])
+  useEffect(() => { setBrandHighlight(showBrandOptions ? 0 : -1) }, [showBrandOptions])
+  useEffect(() => { setBrandHighlight(0) }, [brandInput])
+
+  function selectCategoryByIndex(index: number) {
+    // index 0 = "Sin categoría", 1+ = filteredCategories[index - 1]
+    if (index === 0) {
+      set('category_id', '')
+      setCategoryInput('')
+    } else {
+      const category = filteredCategories[index - 1]
+      if (!category) return
+      set('category_id', category.id)
+      setCategoryInput(category.name)
+    }
+    setShowCategoryOptions(false)
+  }
+
+  function selectBrandByIndex(index: number) {
+    const brand = filteredBrands[index]
+    if (!brand) return
+    set('brand_id', brand.id)
+    setBrandInput(brand.name)
+    setShowBrandOptions(false)
+  }
+
   const suggestedPrice = (() => {
     if (!defaultPriceList) return null
     const parsedCost = Number(form.cost)
@@ -157,7 +191,7 @@ export default function NewProductModal({
       .from('product-images')
       .upload(filename, file, { upsert: true })
     if (uploadError) {
-      setErrors(prev => ({ ...prev, image: `Error al subir imagen: ${uploadError.message}` }))
+      setErrors(prev => ({ ...prev, image: translateDbError(uploadError.message, 'No se pudo subir la imagen. Intenta con otra foto.') }))
       setImageUploading(false)
       return
     }
@@ -224,7 +258,7 @@ export default function NewProductModal({
       if (form.min_stock && (isNaN(Number(form.min_stock)) || Number(form.min_stock) < 0)) e.min_stock = 'Mínimo inválido'
     } else {
       if (!variantPayload || variantPayload.options.length === 0) {
-        e._global = 'Definí al menos un atributo con valores para las variantes'
+        e._global = 'Define al menos un atributo con valores para las variantes'
       } else {
         const activeVariants = variantPayload.variants.filter(v => v.is_active)
         if (activeVariants.length === 0) {
@@ -279,7 +313,7 @@ export default function NewProductModal({
       const result = rpcResult as { success: boolean; product_id?: string; error?: string } | null
 
       if (rpcError || !result?.success) {
-        setErrors({ _global: result?.error ?? rpcError?.message ?? 'Error al crear el producto con variantes' })
+        setErrors({ _global: result?.error ?? translateDbError(rpcError?.message ?? '', 'No se pudo crear el producto con variantes. Revisa los datos e inténtalo de nuevo.') })
         return
       }
 
@@ -374,7 +408,7 @@ export default function NewProductModal({
 
     if (rpcError || !result?.success || !result.id) {
       setLoading(false)
-      setErrors({ _global: result?.error ?? rpcError?.message ?? 'Error al crear el producto' })
+      setErrors({ _global: result?.error ?? translateDbError(rpcError?.message ?? '', 'No se pudo crear el producto. Revisa los datos e inténtalo de nuevo.') })
       return
     }
 
@@ -387,7 +421,7 @@ export default function NewProductModal({
     setLoading(false)
 
     if (fetchError || !data) {
-      setErrors({ _global: fetchError?.message ?? 'Producto creado pero no se pudo recuperar' })
+      setErrors({ _global: translateDbError(fetchError?.message ?? '', 'El producto se creó, pero no se pudo mostrar todavía. Recarga la página.') })
       return
     }
 
@@ -439,27 +473,45 @@ export default function NewProductModal({
 
             <div className="space-y-3.5">
 
-              {/* Información */}
-              <div>
-                <p className="mb-2 text-[10px] font-semibold text-subtle uppercase tracking-widest">Información</p>
-                <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
-                  <div className="sm:col-span-2">
-                    <FieldGroup label="Nombre" required error={errors.name}>
-                      <Input
-                        value={form.name}
-                        onChange={e => set('name', e.target.value)}
-                        placeholder="Ej: Pan sin TACC x500g"
-                        className={`h-9 rounded-xl text-sm bg-surface ${errors.name ? 'border-red-400 focus-visible:ring-red-200' : 'border-edge focus-visible:ring-ring/50 focus-visible:border-ring'}`}
-                        autoFocus
-                      />
-                    </FieldGroup>
-                  </div>
+              <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
+                <FieldGroup label="Nombre" required error={errors.name}>
+                  <Input
+                    value={form.name}
+                    onChange={e => set('name', e.target.value)}
+                    placeholder="Ej: Pan sin TACC x500g"
+                    aria-invalid={!!errors.name}
+                    autoFocus
+                  />
+                </FieldGroup>
 
-                  {/* Categoría */}
+                <FieldGroup label="Variantes">
+                  <div className="flex items-center justify-between gap-3 h-8 rounded-lg border border-input bg-card px-2.5">
+                    <span className="text-sm text-body truncate">
+                      {hasVariants ? 'Este producto tiene variantes' : 'Producto único, sin variantes'}
+                    </span>
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={hasVariants}
+                      onClick={() => setHasVariants(!hasVariants)}
+                      className={`relative w-9 h-5 rounded-full transition-colors cursor-pointer shrink-0 ${hasVariants ? 'bg-primary' : 'bg-input'}`}
+                      aria-label="Activar variantes"
+                    >
+                      <span className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-card shadow-sm transition-transform ${hasVariants ? 'translate-x-4' : 'translate-x-0'}`} />
+                    </button>
+                  </div>
+                </FieldGroup>
+
+                {/* Categoría */}
                   <FieldGroup label="Categoría">
                     <div className="relative">
                       <Input
                         value={categoryInput}
+                        role="combobox"
+                        aria-expanded={showCategoryOptions}
+                        aria-controls="category-listbox"
+                        aria-autocomplete="list"
+                        aria-activedescendant={showCategoryOptions && categoryHighlight >= 0 ? `category-option-${categoryHighlight}` : undefined}
                         onFocus={() => setShowCategoryOptions(true)}
                         onBlur={() => {
                           setTimeout(() => {
@@ -474,41 +526,83 @@ export default function NewProductModal({
                           const exactCategory = categories.find(category => category.name.toLowerCase() === nextValue.trim().toLowerCase())
                           set('category_id', exactCategory ? exactCategory.id : '')
                         }}
+                        onKeyDown={event => {
+                          const max = filteredCategories.length // index of last (Sin categoría at 0, items at 1..max)
+                          if (event.key === 'ArrowDown') {
+                            event.preventDefault()
+                            setShowCategoryOptions(true)
+                            setCategoryHighlight(prev => Math.min(prev + 1, max))
+                          } else if (event.key === 'ArrowUp') {
+                            event.preventDefault()
+                            setCategoryHighlight(prev => Math.max(prev - 1, 0))
+                          } else if (event.key === 'Enter' && showCategoryOptions) {
+                            event.preventDefault()
+                            selectCategoryByIndex(categoryHighlight)
+                          } else if (event.key === 'Escape' && showCategoryOptions) {
+                            event.preventDefault()
+                            setShowCategoryOptions(false)
+                          }
+                        }}
                         placeholder="Seleccionar categoría"
-                        className="h-9 rounded-xl text-sm bg-surface border-edge focus-visible:ring-ring/50 focus-visible:border-ring"
+                        className="pr-8"
                       />
+                      <button
+                        type="button"
+                        tabIndex={-1}
+                        aria-label={showCategoryOptions ? 'Cerrar categorías' : 'Abrir categorías'}
+                        onMouseDown={event => {
+                          event.preventDefault()
+                          setShowCategoryOptions(prev => !prev)
+                        }}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 text-hint hover:text-body transition-colors"
+                      >
+                        <ChevronDown className={`w-3.5 h-3.5 transition-transform ${showCategoryOptions ? 'rotate-180' : ''}`} />
+                      </button>
                       {showCategoryOptions && (
-                        <div className="mt-1 w-full overflow-y-auto max-h-52 surface-elevated" onMouseDown={e => e.preventDefault()}>
+                        <div
+                          id="category-listbox"
+                          role="listbox"
+                          className="absolute top-full left-0 right-0 mt-1 z-50 overflow-y-auto max-h-52 surface-elevated"
+                          onMouseDown={e => e.preventDefault()}
+                        >
                           <button
                             type="button"
-                            className="w-full px-3 py-2 text-left text-sm text-body hover:bg-hover-bg transition-colors"
+                            role="option"
+                            id="category-option-0"
+                            aria-selected={categoryHighlight === 0}
+                            className={`w-full px-3 py-2 text-left text-sm transition-colors ${categoryHighlight === 0 ? 'bg-surface-alt text-body' : 'text-body hover:bg-hover-bg'}`}
+                            onMouseEnter={() => setCategoryHighlight(0)}
                             onMouseDown={event => {
                               event.preventDefault()
-                              set('category_id', '')
-                              setCategoryInput('')
-                              setShowCategoryOptions(false)
+                              selectCategoryByIndex(0)
                             }}
                           >
                             Sin categoría
                           </button>
-                          {filteredCategories.map(category => (
-                            <button
-                              key={category.id}
-                              type="button"
-                              className="w-full px-3 py-2 text-left text-sm text-body hover:bg-hover-bg transition-colors"
-                              onMouseDown={event => {
-                                event.preventDefault()
-                                set('category_id', category.id)
-                                setCategoryInput(category.name)
-                                setShowCategoryOptions(false)
-                              }}
-                            >
-                              <span className="flex items-center gap-2">
-                                <CategoryIconPreview icon={category.icon} color={category.icon_color ?? '#7a3e10'} size={16} />
-                                {category.name}
-                              </span>
-                            </button>
-                          ))}
+                          {filteredCategories.map((category, idx) => {
+                            const index = idx + 1
+                            const isHighlighted = categoryHighlight === index
+                            return (
+                              <button
+                                key={category.id}
+                                type="button"
+                                role="option"
+                                id={`category-option-${index}`}
+                                aria-selected={isHighlighted}
+                                className={`w-full px-3 py-2 text-left text-sm transition-colors ${isHighlighted ? 'bg-surface-alt text-body' : 'text-body hover:bg-hover-bg'}`}
+                                onMouseEnter={() => setCategoryHighlight(index)}
+                                onMouseDown={event => {
+                                  event.preventDefault()
+                                  selectCategoryByIndex(index)
+                                }}
+                              >
+                                <span className="flex items-center gap-2">
+                                  <CategoryIconPreview icon={category.icon} color={category.icon_color ?? '#7a3e10'} size={16} />
+                                  {category.name}
+                                </span>
+                              </button>
+                            )
+                          })}
                         </div>
                       )}
                     </div>
@@ -519,6 +613,11 @@ export default function NewProductModal({
                     <div className="relative">
                       <Input
                         value={brandInput}
+                        role="combobox"
+                        aria-expanded={showBrandOptions}
+                        aria-controls="brand-listbox"
+                        aria-autocomplete="list"
+                        aria-activedescendant={showBrandOptions && brandHighlight >= 0 ? `brand-option-${brandHighlight}` : undefined}
                         onFocus={() => setShowBrandOptions(true)}
                         onBlur={() => {
                           setTimeout(() => {
@@ -533,44 +632,79 @@ export default function NewProductModal({
                           const exactBrand = brands.find(brand => brand.name.toLowerCase() === nextValue.trim().toLowerCase())
                           set('brand_id', exactBrand ? exactBrand.id : '')
                         }}
+                        onKeyDown={event => {
+                          const lastIndex = filteredBrands.length - 1
+                          if (event.key === 'ArrowDown' && lastIndex >= 0) {
+                            event.preventDefault()
+                            setShowBrandOptions(true)
+                            setBrandHighlight(prev => Math.min(prev + 1, lastIndex))
+                          } else if (event.key === 'ArrowUp' && lastIndex >= 0) {
+                            event.preventDefault()
+                            setBrandHighlight(prev => Math.max(prev - 1, 0))
+                          } else if (event.key === 'Enter' && showBrandOptions && lastIndex >= 0) {
+                            event.preventDefault()
+                            selectBrandByIndex(brandHighlight)
+                          } else if (event.key === 'Escape' && showBrandOptions) {
+                            event.preventDefault()
+                            setShowBrandOptions(false)
+                          }
+                        }}
                         placeholder="Seleccionar marca"
-                        className="h-9 rounded-xl text-sm bg-surface border-edge focus-visible:ring-ring/50 focus-visible:border-ring"
+                        className="pr-8"
                       />
+                      <button
+                        type="button"
+                        tabIndex={-1}
+                        aria-label={showBrandOptions ? 'Cerrar marcas' : 'Abrir marcas'}
+                        onMouseDown={event => {
+                          event.preventDefault()
+                          setShowBrandOptions(prev => !prev)
+                        }}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 text-hint hover:text-body transition-colors"
+                      >
+                        <ChevronDown className={`w-3.5 h-3.5 transition-transform ${showBrandOptions ? 'rotate-180' : ''}`} />
+                      </button>
                       {showBrandOptions && (
-                        <div className="mt-1 w-full overflow-y-auto max-h-52 surface-elevated" onMouseDown={e => e.preventDefault()}>
+                        <div
+                          id="brand-listbox"
+                          role="listbox"
+                          className="absolute top-full left-0 right-0 mt-1 z-50 overflow-y-auto max-h-52 surface-elevated"
+                          onMouseDown={e => e.preventDefault()}
+                        >
                           {filteredBrands.length === 0 ? (
                             <div className="px-3 py-2 text-xs text-hint">
-                              No se encontró la marca. Creala desde el botón Marcas.
+                              No se encontró la marca. Créala desde el botón Marcas.
                             </div>
                           ) : (
-                            filteredBrands.map(brand => (
-                              <button
-                                key={brand.id}
-                                type="button"
-                                className="w-full px-3 py-2 text-left text-sm text-body hover:bg-hover-bg transition-colors"
-                                onMouseDown={event => {
-                                  event.preventDefault()
-                                  set('brand_id', brand.id)
-                                  setBrandInput(brand.name)
-                                  setShowBrandOptions(false)
-                                }}
-                              >
-                                {brand.name}
-                              </button>
-                            ))
+                            filteredBrands.map((brand, idx) => {
+                              const isHighlighted = brandHighlight === idx
+                              return (
+                                <button
+                                  key={brand.id}
+                                  type="button"
+                                  role="option"
+                                  id={`brand-option-${idx}`}
+                                  aria-selected={isHighlighted}
+                                  className={`w-full px-3 py-2 text-left text-sm transition-colors ${isHighlighted ? 'bg-surface-alt text-body' : 'text-body hover:bg-hover-bg'}`}
+                                  onMouseEnter={() => setBrandHighlight(idx)}
+                                  onMouseDown={event => {
+                                    event.preventDefault()
+                                    selectBrandByIndex(idx)
+                                  }}
+                                >
+                                  {brand.name}
+                                </button>
+                              )
+                            })
                           )}
                         </div>
                       )}
                     </div>
                   </FieldGroup>
-                </div>
               </div>
 
-              {!hasVariants && <div className="border-t border-edge my-1" />}
-
               {/* Precios */}
-              {!hasVariants && <div>
-                <p className="mb-2 text-[10px] font-semibold text-subtle uppercase tracking-widest">Precios</p>
+              {!hasVariants && (
                 <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
                   <FieldGroup
                     label="Costo"
@@ -586,7 +720,8 @@ export default function NewProductModal({
                         value={form.cost}
                         onChange={e => handleCostChange(e.target.value)}
                         placeholder="0"
-                        className={`h-9 rounded-xl text-sm pl-7 bg-surface ${errors.cost ? 'border-red-400 focus-visible:ring-red-200' : 'border-edge focus-visible:ring-ring/50 focus-visible:border-ring'}`}
+                        aria-invalid={!!errors.cost}
+                        className="pl-7"
                       />
                     </div>
                   </FieldGroup>
@@ -595,10 +730,12 @@ export default function NewProductModal({
                     label={
                       <span className="inline-flex items-center gap-1.5">
                         Precio venta
-                        {isPriceEdited && (
-                          <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium normal-case tracking-normal text-amber-600 dark:text-amber-400">
-                            personalizado
-                          </span>
+                        {isPriceEdited && priceLists.length > 0 && (
+                          <PriceOverrideIndicator
+                            selectedListIds={selectedListIds}
+                            priceLists={priceLists}
+                            onChange={setSelectedListIds}
+                          />
                         )}
                       </span>
                     }
@@ -614,54 +751,17 @@ export default function NewProductModal({
                         value={form.price}
                         onChange={e => handlePriceChange(e.target.value)}
                         placeholder="0"
-                        className={`h-9 rounded-xl text-sm pl-7 bg-surface ${errors.price ? 'border-red-400 focus-visible:ring-red-200' : 'border-edge focus-visible:ring-ring/50 focus-visible:border-ring'}`}
+                        aria-invalid={!!errors.price}
+                        className="pl-7"
                       />
                     </div>
                   </FieldGroup>
 
-                  {isPriceEdited && priceLists.length > 0 && (
-                    <div className="rounded-xl border border-edge bg-surface-alt px-3 py-2.5 flex flex-col gap-2 sm:col-span-2">
-                      <p className="text-xs text-subtle">Aplicar este precio personalizado en:</p>
-                      <div className="flex flex-wrap gap-x-4 gap-y-1.5">
-                        {priceLists.map(list => (
-                          <label key={list.id} className="flex items-center gap-2 cursor-pointer select-none">
-                            <button
-                              type="button"
-                              role="checkbox"
-                              aria-checked={selectedListIds.has(list.id)}
-                              onClick={() => setSelectedListIds(prev => {
-                                const next = new Set(prev)
-                                if (next.has(list.id)) next.delete(list.id)
-                                else next.add(list.id)
-                                return next
-                              })}
-                              className={`w-4 h-4 rounded border-2 shrink-0 flex items-center justify-center transition-colors ${
-                                selectedListIds.has(list.id)
-                                  ? 'bg-primary border-primary'
-                                  : 'border-edge bg-surface'
-                              }`}
-                            >
-                              {selectedListIds.has(list.id) && (
-                                <svg viewBox="0 0 10 8" className="w-2.5 h-2 fill-none stroke-primary-foreground stroke-[2]"><path d="M1 4l3 3 5-6" strokeLinecap="round" strokeLinejoin="round" /></svg>
-                              )}
-                            </button>
-                            <span className="text-xs text-body">
-                              {list.name}
-                              {list.is_default && <span className="ml-1 text-hint">(default)</span>}
-                            </span>
-                          </label>
-                        ))}
-                      </div>
-                    </div>
-                  )}
                 </div>
-              </div>}
+              )}
 
-              {!hasVariants && <div className="border-t border-edge my-1" />}
-
-              {/* Stock */}
-              {!hasVariants && <div>
-                <p className="mb-2 text-[10px] font-semibold text-subtle uppercase tracking-widest">Stock</p>
+              {/* Stock + Código de barras */}
+              {!hasVariants && (
                 <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
                   <FieldGroup label="Stock inicial" error={errors.stock}>
                     <Input
@@ -671,7 +771,7 @@ export default function NewProductModal({
                       value={form.stock}
                       onChange={e => set('stock', e.target.value)}
                       placeholder="0"
-                      className={`h-9 rounded-xl text-sm bg-surface ${errors.stock ? 'border-red-400 focus-visible:ring-red-200' : 'border-edge focus-visible:ring-ring/50 focus-visible:border-ring'}`}
+                      aria-invalid={!!errors.stock}
                     />
                   </FieldGroup>
                   <FieldGroup label="Stock mínimo" error={errors.min_stock}>
@@ -682,62 +782,64 @@ export default function NewProductModal({
                       value={form.min_stock}
                       onChange={e => set('min_stock', e.target.value)}
                       placeholder="0"
-                      className={`h-9 rounded-xl text-sm bg-surface ${errors.min_stock ? 'border-red-400 focus-visible:ring-red-200' : 'border-edge focus-visible:ring-ring/50 focus-visible:border-ring'}`}
+                      aria-invalid={!!errors.min_stock}
                     />
                   </FieldGroup>
+                  <div className="sm:col-span-2">
+                    <FieldGroup label="Código de barras">
+                      <Input
+                        value={form.barcode}
+                        onChange={e => set('barcode', e.target.value)}
+                        placeholder="Ej: 7790001234567"
+                      />
+                    </FieldGroup>
+                  </div>
                 </div>
-              </div>}
+              )}
 
-              {/* Variantes — siempre visible entre Stock y el collapsable */}
+              {/* Variant body — toggle lifted to row 1, so hide it here */}
               <VariantEditor
                 businessId={businessId}
                 mode="new"
                 hasVariants={hasVariants}
                 onHasVariantsChange={setHasVariants}
                 onPayloadChange={handleVariantPayloadChange}
+                hideToggle
               />
 
-              {/* Collapsable — Imagen y detalles adicionales */}
-              <button
-                type="button"
-                onClick={() => setShowAdvanced(v => !v)}
-                className="flex items-center gap-2 w-full px-3 py-2.5 rounded-xl border border-edge bg-surface hover:bg-hover-bg transition-colors text-left"
-              >
-                <ChevronRight className={`w-3.5 h-3.5 text-hint transition-transform shrink-0 ${showAdvanced ? 'rotate-90' : ''}`} />
-                <span className="text-xs font-medium text-subtle">Imagen y detalles adicionales</span>
-                <span className="text-xs text-hint ml-1">
-                  {hasVariants ? '· Foto del producto base' : '· SKU, código de barras, foto'}
-                </span>
-              </button>
+              {/* Collapsable — Imagen y detalles adicionales (toggle + content in one container) */}
+              <div className="rounded-lg border border-edge bg-surface overflow-hidden">
+                <button
+                  type="button"
+                  onClick={() => setShowAdvanced(v => !v)}
+                  className="flex items-center gap-2 w-full px-3 py-2.5 hover:bg-hover-bg transition-colors text-left"
+                  aria-expanded={showAdvanced}
+                >
+                  <ChevronRight className={`w-3.5 h-3.5 text-hint transition-transform shrink-0 ${showAdvanced ? 'rotate-90' : ''}`} />
+                  <span className="text-xs font-medium text-subtle">Imagen y detalles adicionales</span>
+                  <span className="text-xs text-hint ml-1">
+                    {hasVariants ? '· Foto del producto base' : '· SKU, foto'}
+                  </span>
+                </button>
 
-              {showAdvanced && (
-                <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
+                {showAdvanced && (
+                <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 border-t border-edge px-3 py-3">
                   {!hasVariants && (
-                    <FieldGroup label="SKU">
-                      <Input
-                        value={form.sku}
-                        onChange={e => set('sku', e.target.value)}
-                        placeholder="Ej: PSTACC-500"
-                        className="h-9 rounded-xl text-sm bg-surface border-edge focus-visible:ring-ring/50 focus-visible:border-ring"
-                      />
-                    </FieldGroup>
-                  )}
-
-                  {!hasVariants && (
-                    <FieldGroup label="Código de barras">
-                      <Input
-                        value={form.barcode}
-                        onChange={e => set('barcode', e.target.value)}
-                        placeholder="Ej: 7790001234567"
-                        className="h-9 rounded-xl text-sm bg-surface border-edge focus-visible:ring-ring/50 focus-visible:border-ring"
-                      />
-                    </FieldGroup>
+                    <div className="sm:col-span-2">
+                      <FieldGroup label="SKU">
+                        <Input
+                          value={form.sku}
+                          onChange={e => set('sku', e.target.value)}
+                          placeholder="Ej: PSTACC-500"
+                        />
+                      </FieldGroup>
+                    </div>
                   )}
 
                   <div className="sm:col-span-2">
                     <p className="text-label text-subtle mb-2">Imagen del producto</p>
                     {imageUrl && imageSource === 'upload' ? (
-                      <div className="flex items-start gap-3 rounded-xl border border-edge bg-surface px-3 py-3">
+                      <div className="flex items-start gap-3 rounded-lg border border-edge bg-surface px-3 py-3">
                         <img
                           src={imageUrl}
                           alt="Vista previa"
@@ -751,14 +853,14 @@ export default function NewProductModal({
                               setImageUrl(null)
                               setImageSource(null)
                             }}
-                            className="text-xs text-red-500 hover:text-red-600 text-left"
+                            className="text-xs text-destructive hover:text-destructive/80 text-left"
                           >
                             Quitar imagen
                           </button>
                         </div>
                       </div>
                     ) : (
-                      <div className="rounded-xl border border-edge overflow-hidden">
+                      <div className="rounded-lg border border-edge overflow-hidden">
                         <div className="flex border-b border-edge">
                           <button
                             type="button"
@@ -785,10 +887,10 @@ export default function NewProductModal({
                         </div>
                         <div className="p-3">
                           {imageTab === 'upload' && (
-                            <label className="flex flex-col items-center gap-2 cursor-pointer rounded-xl border border-dashed border-edge bg-surface px-4 py-5 hover:border-primary/40 transition-colors">
+                            <label className="flex flex-col items-center gap-2 cursor-pointer rounded-lg border border-dashed border-edge bg-surface px-4 py-5 hover:border-primary/40 transition-colors">
                               <Upload className="h-5 w-5 text-hint" />
                               <span className="text-xs text-hint">
-                                {imageUploading ? 'Subiendo...' : 'Arrastrá o hacé clic para seleccionar'}
+                                {imageUploading ? 'Subiendo...' : 'Arrastra o haz clic para seleccionar'}
                               </span>
                               <span className="text-[10px] text-hint">PNG, JPG, WebP · máx. 2 MB</span>
                               <input
@@ -804,7 +906,7 @@ export default function NewProductModal({
                             </label>
                           )}
                           {imageTab === 'upload' && errors.image && (
-                            <p className="text-caption text-red-500 mt-1">{errors.image}</p>
+                            <p className="text-caption text-destructive mt-1">{errors.image}</p>
                           )}
                           {imageTab === 'url' && (
                             <div className="flex flex-col gap-2">
@@ -820,7 +922,7 @@ export default function NewProductModal({
                                     }
                                   }}
                                   placeholder="https://..."
-                                  className={`h-9 rounded-xl text-sm bg-surface ${urlError ? 'border-red-400 focus-visible:ring-red-200' : 'border-edge focus-visible:ring-ring/50 focus-visible:border-ring'}`}
+                                  aria-invalid={!!urlError}
                                 />
                                 <Button
                                   type="button"
@@ -833,17 +935,17 @@ export default function NewProductModal({
                                       setImageSource('url')
                                     }
                                   }}
-                                  className="h-9 px-4 rounded-lg text-sm bg-primary hover:bg-primary/90 text-primary-foreground shrink-0"
+                                  className="shrink-0"
                                 >
                                   Confirmar
                                 </Button>
                               </div>
-                              {urlError && <p className="text-caption text-red-500">{urlError}</p>}
+                              {urlError && <p className="text-caption text-destructive">{urlError}</p>}
                               {imageUrl && imageSource === 'url' && (
                                 <div className="flex items-start gap-3">
                                   {imgError ? (
-                                    <div className="h-20 w-20 rounded-lg border-2 border-red-400 bg-red-50 shrink-0 flex items-center justify-center p-1">
-                                      <p className="text-[10px] text-red-500 text-center leading-tight">No se pudo cargar. Verificá que la URL sea pública y directa.</p>
+                                    <div className="h-20 w-20 rounded-lg border border-destructive/40 bg-destructive/10 shrink-0 flex items-center justify-center p-1">
+                                      <p className="text-caption text-destructive text-center leading-tight">No se pudo cargar. Verifica que la URL sea pública y directa.</p>
                                     </div>
                                   ) : (
                                     <img
@@ -863,7 +965,7 @@ export default function NewProductModal({
                                       setUrlError('')
                                       setImgError(false)
                                     }}
-                                    className="text-xs text-red-500 hover:text-red-600 mt-1"
+                                    className="text-xs text-destructive hover:text-destructive/80 mt-1"
                                   >
                                     Quitar imagen
                                   </button>
@@ -876,7 +978,8 @@ export default function NewProductModal({
                     )}
                   </div>
                 </div>
-              )}
+                )}
+              </div>
 
             </div>
           </div>
@@ -887,8 +990,10 @@ export default function NewProductModal({
               <div className="flex min-w-0 items-center gap-3">
                 <button
                   type="button"
+                  role="switch"
+                  aria-checked={form.is_active}
                   onClick={() => set('is_active', !form.is_active)}
-                  className={`relative w-9 h-5 rounded-full transition-colors cursor-pointer shrink-0 ${form.is_active ? 'bg-primary' : 'bg-muted-foreground'}`}
+                  className={`relative w-9 h-5 rounded-full transition-colors cursor-pointer shrink-0 ${form.is_active ? 'bg-primary' : 'bg-input'}`}
                   aria-label="Cambiar estado activo"
                 >
                   <span className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-card shadow-sm transition-transform ${form.is_active ? 'translate-x-4' : 'translate-x-0'}`} />
@@ -900,18 +1005,20 @@ export default function NewProductModal({
                   <Button
                     type="button"
                     variant="cancel"
+                    size="lg"
                     onClick={handleClose}
                     disabled={loading}
-                    className="h-9 w-full rounded-xl px-5 text-sm sm:w-auto"
+                    className="w-full px-5 sm:w-auto"
                   >
                     Cancelar
                   </Button>
                 )}
                 <Button
                   type="button"
+                  size="lg"
                   onClick={() => void handleSubmit()}
                   disabled={loading}
-                  className="h-9 w-full rounded-lg bg-primary px-5 text-sm text-primary-foreground hover:bg-primary/90 sm:w-auto"
+                  className="w-full px-5 sm:w-auto"
                 >
                   {loading ? 'Guardando…' : 'Crear producto'}
                 </Button>

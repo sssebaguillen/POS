@@ -1,5 +1,4 @@
-export type ActivityEntityFilter =
-  | 'all'
+export type ActivityEntityType =
   | 'sale'
   | 'product'
   | 'category'
@@ -11,10 +10,18 @@ export type ActivityEntityFilter =
   | 'operator'
   | 'customer'
 
+export type ActivityEntityFilter = 'all' | ActivityEntityType
+
 export interface ActivityFilterOperator {
   id: string
   name: string
-  role: string
+}
+
+export interface ActivityLookups {
+  categoryMap: Record<string, { name: string; icon: string | null; icon_color: string | null }>
+  brandMap: Record<string, string>
+  productMap: Record<string, string>
+  customerMap: Record<string, string>
 }
 
 export interface ActivityLogRow {
@@ -22,17 +29,7 @@ export interface ActivityLogRow {
   operator_id: string | null
   actor_role: 'owner' | 'manager' | 'cashier' | 'custom'
   action: string
-  entity_type:
-    | 'sale'
-    | 'product'
-    | 'category'
-    | 'brand'
-    | 'expense'
-    | 'supplier'
-    | 'price_list'
-    | 'setting'
-    | 'operator'
-    | 'customer'
+  entity_type: ActivityEntityType
   entity_id: string
   entity_label: string | null
   actor_name: string

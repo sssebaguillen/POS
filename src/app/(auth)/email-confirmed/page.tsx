@@ -11,7 +11,7 @@ export default function EmailConfirmedPage() {
         <CheckCircle2 className="mx-auto mb-4 h-12 w-12 text-primary" />
         <h1 className="text-2xl font-bold text-foreground mb-2">¡Email confirmado!</h1>
         <p className="text-muted-foreground text-sm mb-6">
-          Tu cuenta está lista. Ya podés iniciar sesión en Pulsar.
+          Tu cuenta está lista. Ya puedes iniciar sesión en Pulsar.
         </p>
         <Button asChild className="w-full">
           <Link href="/login">Ir al inicio de sesión</Link>
