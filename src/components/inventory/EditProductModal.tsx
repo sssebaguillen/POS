@@ -1,6 +1,6 @@
 'use client'
 
-import { startTransition, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { startTransition, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -17,6 +17,7 @@ import { useCurrency } from '@/lib/context/CurrencyContext'
 import { getCurrencySymbol, toTitleCase } from '@/lib/format'
 import CategoryIconPreview from '@/components/inventory/CategoryIconPreview'
 import PriceOverrideIndicator from '@/components/inventory/PriceOverrideIndicator'
+import FloatingDropdown from '@/components/ui/FloatingDropdown'
 
 interface EditProductModalProps {
   open: boolean
@@ -101,6 +102,9 @@ export default function EditProductModal({
   const [urlError, setUrlError] = useState('')
   const [imageUploading, setImageUploading] = useState(false)
   const [imgError, setImgError] = useState(false)
+  const categoryAnchorRef = useRef<HTMLDivElement>(null)
+  const brandAnchorRef = useRef<HTMLDivElement>(null)
+  const dropdownLayerId = useId()
 
   const supabase = useMemo(() => createClient(), [])
   const currency = useCurrency()
@@ -154,11 +158,6 @@ export default function EditProductModal({
   // Combobox keyboard nav: category index 0 = "Sin categoría", 1..n = filteredCategories.
   const [categoryHighlight, setCategoryHighlight] = useState(-1)
   const [brandHighlight, setBrandHighlight] = useState(-1)
-  useEffect(() => { setCategoryHighlight(showCategoryOptions ? 0 : -1) }, [showCategoryOptions])
-  useEffect(() => { setCategoryHighlight(0) }, [categoryInput])
-  useEffect(() => { setBrandHighlight(showBrandOptions ? 0 : -1) }, [showBrandOptions])
-  useEffect(() => { setBrandHighlight(0) }, [brandInput])
-
   function selectCategoryByIndex(index: number) {
     if (index === 0) {
       setField('category_id', '')
@@ -170,6 +169,13 @@ export default function EditProductModal({
       setCategoryInput(category.name)
     }
     setShowCategoryOptions(false)
+    setCategoryHighlight(-1)
+  }
+
+  function closeCategoryOptions() {
+    setShowCategoryOptions(false)
+    setCategoryHighlight(-1)
+    if (!form.category_id) setCategoryInput('')
   }
 
   function selectBrandByIndex(index: number) {
@@ -178,6 +184,13 @@ export default function EditProductModal({
     setField('brand_id', brand.id)
     setBrandInput(brand.name)
     setShowBrandOptions(false)
+    setBrandHighlight(-1)
+  }
+
+  function closeBrandOptions() {
+    setShowBrandOptions(false)
+    setBrandHighlight(-1)
+    if (!form.brand_id) setBrandInput('')
   }
 
   const margin = useMemo(() => {
@@ -461,6 +474,7 @@ export default function EditProductModal({
   return (
     <Dialog open={open} onOpenChange={nextOpen => !nextOpen && handleClose()}>
       <DialogContent className="flex max-h-[calc(100dvh-2rem)] flex-col gap-0 overflow-hidden bg-card p-0 sm:max-w-[640px]" showCloseButton={false}>
+        <div id={dropdownLayerId} className="pointer-events-none absolute inset-0 z-[70]" />
         <div className="flex items-center justify-between px-5 py-4 border-b border-edge shrink-0">
           <DialogTitle className="text-base font-semibold text-heading">Editar producto</DialogTitle>
           <button
@@ -512,7 +526,7 @@ export default function EditProductModal({
 
                 {/* Categoría */}
                 <FieldGroup label="Categoría">
-                  <div className="relative">
+                  <div ref={categoryAnchorRef} className="relative">
                     <Input
                       value={categoryInput}
                       role="combobox"
@@ -520,17 +534,15 @@ export default function EditProductModal({
                       aria-controls="edit-category-listbox"
                       aria-autocomplete="list"
                       aria-activedescendant={showCategoryOptions && categoryHighlight >= 0 ? `edit-category-option-${categoryHighlight}` : undefined}
-                      onFocus={() => setShowCategoryOptions(true)}
-                      onBlur={() => {
-                        setTimeout(() => {
-                          setShowCategoryOptions(false)
-                          if (!form.category_id) setCategoryInput('')
-                        }, 120)
+                      onFocus={() => {
+                        setShowCategoryOptions(true)
+                        setCategoryHighlight(0)
                       }}
                       onChange={event => {
                         const nextValue = event.target.value
                         setCategoryInput(nextValue)
                         setShowCategoryOptions(true)
+                        setCategoryHighlight(0)
                         const exactCategory = categories.find(category => category.name.toLowerCase() === nextValue.trim().toLowerCase())
                         setField('category_id', exactCategory ? exactCategory.id : '')
                       }}
@@ -548,7 +560,7 @@ export default function EditProductModal({
                           selectCategoryByIndex(categoryHighlight)
                         } else if (event.key === 'Escape' && showCategoryOptions) {
                           event.preventDefault()
-                          setShowCategoryOptions(false)
+                          closeCategoryOptions()
                         }
                       }}
                       placeholder="Seleccionar categoría"
@@ -560,17 +572,27 @@ export default function EditProductModal({
                       aria-label={showCategoryOptions ? 'Cerrar categorías' : 'Abrir categorías'}
                       onMouseDown={event => {
                         event.preventDefault()
-                        setShowCategoryOptions(prev => !prev)
+                        setShowCategoryOptions(prev => {
+                          const nextOpen = !prev
+                          setCategoryHighlight(nextOpen ? 0 : -1)
+                          if (!nextOpen && !form.category_id) setCategoryInput('')
+                          return nextOpen
+                        })
                       }}
                       className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 text-hint hover:text-body transition-colors"
                     >
                       <ChevronDown className={`w-3.5 h-3.5 transition-transform ${showCategoryOptions ? 'rotate-180' : ''}`} />
                     </button>
-                    {showCategoryOptions && (
+                    <FloatingDropdown
+                      anchorRef={categoryAnchorRef}
+                      open={showCategoryOptions}
+                      className="max-h-52"
+                      onClose={closeCategoryOptions}
+                      portalTargetId={dropdownLayerId}
+                    >
                       <div
                         id="edit-category-listbox"
                         role="listbox"
-                        className="absolute top-full left-0 right-0 mt-1 z-50 overflow-y-auto max-h-52 surface-elevated"
                         onMouseDown={e => e.preventDefault()}
                       >
                         <button
@@ -612,13 +634,13 @@ export default function EditProductModal({
                           )
                         })}
                       </div>
-                    )}
+                    </FloatingDropdown>
                   </div>
                 </FieldGroup>
 
                 {/* Marca */}
                 <FieldGroup label="Marca">
-                  <div className="relative">
+                  <div ref={brandAnchorRef} className="relative">
                     <Input
                       value={brandInput}
                       role="combobox"
@@ -626,17 +648,15 @@ export default function EditProductModal({
                       aria-controls="edit-brand-listbox"
                       aria-autocomplete="list"
                       aria-activedescendant={showBrandOptions && brandHighlight >= 0 ? `edit-brand-option-${brandHighlight}` : undefined}
-                      onFocus={() => setShowBrandOptions(true)}
-                      onBlur={() => {
-                        setTimeout(() => {
-                          setShowBrandOptions(false)
-                          if (!form.brand_id) setBrandInput('')
-                        }, 120)
+                      onFocus={() => {
+                        setShowBrandOptions(true)
+                        setBrandHighlight(0)
                       }}
                       onChange={event => {
                         const nextValue = event.target.value
                         setBrandInput(nextValue)
                         setShowBrandOptions(true)
+                        setBrandHighlight(0)
                         const exactBrand = brands.find(brand => brand.name.toLowerCase() === nextValue.trim().toLowerCase())
                         setField('brand_id', exactBrand ? exactBrand.id : '')
                       }}
@@ -654,7 +674,7 @@ export default function EditProductModal({
                           selectBrandByIndex(brandHighlight)
                         } else if (event.key === 'Escape' && showBrandOptions) {
                           event.preventDefault()
-                          setShowBrandOptions(false)
+                          closeBrandOptions()
                         }
                       }}
                       placeholder="Seleccionar marca"
@@ -666,17 +686,27 @@ export default function EditProductModal({
                       aria-label={showBrandOptions ? 'Cerrar marcas' : 'Abrir marcas'}
                       onMouseDown={event => {
                         event.preventDefault()
-                        setShowBrandOptions(prev => !prev)
+                        setShowBrandOptions(prev => {
+                          const nextOpen = !prev
+                          setBrandHighlight(nextOpen ? 0 : -1)
+                          if (!nextOpen && !form.brand_id) setBrandInput('')
+                          return nextOpen
+                        })
                       }}
                       className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 text-hint hover:text-body transition-colors"
                     >
                       <ChevronDown className={`w-3.5 h-3.5 transition-transform ${showBrandOptions ? 'rotate-180' : ''}`} />
                     </button>
-                    {showBrandOptions && (
+                    <FloatingDropdown
+                      anchorRef={brandAnchorRef}
+                      open={showBrandOptions}
+                      className="max-h-52"
+                      onClose={closeBrandOptions}
+                      portalTargetId={dropdownLayerId}
+                    >
                       <div
                         id="edit-brand-listbox"
                         role="listbox"
-                        className="absolute top-full left-0 right-0 mt-1 z-50 overflow-y-auto max-h-52 surface-elevated"
                         onMouseDown={e => e.preventDefault()}
                       >
                         {filteredBrands.length === 0 ? (
@@ -706,7 +736,7 @@ export default function EditProductModal({
                           })
                         )}
                       </div>
-                    )}
+                    </FloatingDropdown>
                   </div>
                 </FieldGroup>
               </div>
