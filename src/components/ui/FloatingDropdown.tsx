@@ -94,7 +94,7 @@ export default function FloatingDropdown({
         return
       }
 
-      onClose()
+      onClose?.()
     }
 
     document.addEventListener('mousedown', handleMouseDown)
