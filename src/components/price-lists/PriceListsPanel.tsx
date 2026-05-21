@@ -18,11 +18,12 @@ import EditPriceListModal from '@/components/price-lists/EditPriceListModal'
 import ProductOverrideModal from '@/components/price-lists/ProductOverrideModal'
 import BrandOverrideModal from '@/components/price-lists/BrandOverrideModal'
 import ExportPriceListModal from '@/components/price-lists/ExportPriceListModal'
+import VariantPriceModal from '@/components/price-lists/VariantPriceModal'
 import type { PriceList, PriceListOverride } from '@/lib/types'
 import type { PriceListProduct } from '@/components/price-lists/types'
 import type { PriceListExportItem } from '@/components/price-lists/ExportPriceListModal'
 import { calculateProductPrice } from '@/lib/price-lists'
-import { trackFeatureUsed } from '@/lib/analytics'
+import { trackFeatureUsed, trackPriceListSwitched } from '@/lib/analytics'
 import { useFormatMoney } from '@/lib/context/CurrencyContext'
 import { usePillIndicator } from '@/hooks/usePillIndicator'
 
@@ -79,6 +80,7 @@ export default function PriceListsPanel({
   const [savingDefaultId, setSavingDefaultId] = useState<string | null>(null)
   const [crudError, setCrudError] = useState<string | null>(null)
   const [search, setSearch] = useState('')
+  const [variantPreviewProductId, setVariantPreviewProductId] = useState<string | null>(null)
 
   const supabase = useMemo(() => createClient(), [])
 
@@ -330,6 +332,7 @@ export default function PriceListsPanel({
     }
 
     setLists(prev => prev.map(list => ({ ...list, is_default: list.id === listId })))
+    trackPriceListSwitched()
     setSavingDefaultId(null)
   }
 
@@ -485,6 +488,7 @@ export default function PriceListsPanel({
               searchActive={!!search.trim()}
               onEditBrandOverride={setOverrideBrandId}
               onEditProductOverride={setOverrideProductId}
+              onVariantPreview={setVariantPreviewProductId}
             />
           </div>
         )}
@@ -562,6 +566,23 @@ export default function PriceListsPanel({
           items={exportItems}
         />
       )}
+
+      {activeList && variantPreviewProductId && (() => {
+        const row = productRows.find(r => r.product.id === variantPreviewProductId)
+        if (!row) return null
+        return (
+          <VariantPriceModal
+            key={`${activeList.id}:${variantPreviewProductId}`}
+            open
+            onClose={() => setVariantPreviewProductId(null)}
+            product={row.product}
+            activeList={activeList}
+            activeMultiplier={row.activeMultiplier}
+            productOverride={row.productOverride}
+            brandOverride={row.brandOverride}
+          />
+        )
+      })()}
     </div>
   )
 }
@@ -573,6 +594,7 @@ interface GroupedPriceRowsTableProps {
   searchActive: boolean
   onEditBrandOverride: (brandId: string) => void
   onEditProductOverride: (productId: string) => void
+  onVariantPreview: (productId: string) => void
 }
 
 function GroupedPriceRowsTable({
@@ -582,6 +604,7 @@ function GroupedPriceRowsTable({
   searchActive,
   onEditBrandOverride,
   onEditProductOverride,
+  onVariantPreview,
 }: GroupedPriceRowsTableProps) {
   const formatMoney = useFormatMoney()
   const [visibleGroupCount, setVisibleGroupCount] = useState(20)
@@ -629,7 +652,7 @@ function GroupedPriceRowsTable({
           <TableRow>
             <TableHead>Producto</TableHead>
             <TableHead className="text-right">Costo</TableHead>
-            <TableHead className="text-right">Precio lista</TableHead>
+            <TableHead className="text-right">Precio de lista</TableHead>
             <TableHead className="text-right">Margen %</TableHead>
             <TableHead className="text-right">Ajuste</TableHead>
           </TableRow>
@@ -675,13 +698,15 @@ function GroupedPriceRowsTable({
                       <div className="flex justify-end">
                         <Button
                           variant="outline"
-                          size="icon-sm"
+                          size="sm"
+                          className="rounded-lg text-xs gap-1.5"
                           onClick={e => { e.stopPropagation(); group.brandId && onEditBrandOverride(group.brandId) }}
                           aria-label={`Ajustar margen de la marca ${group.label}`}
                           title={`Ajustar margen de ${group.label}`}
                           disabled={readOnly || !group.brandId}
                         >
-                          <Pencil size={14} />
+                          <Pencil size={13} />
+                          Ajustar
                         </Button>
                       </div>
                     </TableCell>
@@ -694,15 +719,28 @@ function GroupedPriceRowsTable({
                         <p className="text-xs text-hint">{row.product.categories?.name ?? 'Sin categoría'}</p>
                       </TableCell>
                       <TableCell className={`text-right tabular-nums${row.product.cost === 0 ? ' text-hint' : ''}`}>
-                        {formatMoney(row.product.cost)}
+                        {row.product.has_variants && row.product.cost > 0
+                          ? <><span className="text-hint">desde </span>{formatMoney(row.product.cost)}</>
+                          : formatMoney(row.product.cost)
+                        }
                       </TableCell>
                       <TableCell className="text-right tabular-nums">
                         {row.product.has_variants ? (
                           <div className="flex flex-col items-end gap-0.5">
-                            <span>{formatMoney(row.product.price)}</span>
-                            <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-primary/10 dark:bg-primary/20 text-primary border border-primary/20 dark:border-primary/40 whitespace-nowrap">
-                              por variante
-                            </span>
+                            <div className="flex items-center gap-1.5 flex-wrap justify-end">
+                              {(row.productOverride ?? row.brandOverride) && (
+                                <span className="inline-flex rounded-full px-2 py-0.5 text-[10px] font-medium bg-primary/10 dark:bg-primary/20 text-primary border border-primary/20 dark:border-primary/40">
+                                  Ajuste
+                                </span>
+                              )}
+                              <button
+                                type="button"
+                                onClick={() => onVariantPreview(row.product.id)}
+                                className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-primary/10 dark:bg-primary/20 text-primary border border-primary/20 dark:border-primary/40 whitespace-nowrap hover:bg-primary/20 dark:hover:bg-primary/30 transition-colors cursor-pointer"
+                              >
+                                por variante
+                              </button>
+                            </div>
                           </div>
                         ) : (
                           <>
@@ -716,7 +754,7 @@ function GroupedPriceRowsTable({
                         )}
                       </TableCell>
                       <TableCell className="text-right tabular-nums">
-                        {row.product.has_variants || row.margin === null ? (
+                        {row.margin === null ? (
                           <span className="text-hint">—</span>
                         ) : (
                           <span className={
@@ -731,22 +769,20 @@ function GroupedPriceRowsTable({
                         )}
                       </TableCell>
                       <TableCell>
-                        {!row.product.has_variants && (
-                          <div className="flex justify-end">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="rounded-lg text-xs gap-1.5"
-                              onClick={() => onEditProductOverride(row.product.id)}
-                              aria-label={`Ajustar precio de ${row.product.name}`}
-                              title="Ajustar precio de este producto"
-                              disabled={readOnly}
-                            >
-                              <Pencil size={13} />
-                              Ajustar
-                            </Button>
-                          </div>
-                        )}
+                        <div className="flex justify-end">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="rounded-lg text-xs gap-1.5"
+                            onClick={() => onEditProductOverride(row.product.id)}
+                            aria-label={`Ajustar precio de ${row.product.name}`}
+                            title="Ajustar precio de este producto"
+                            disabled={readOnly}
+                          >
+                            <Pencil size={13} />
+                            Ajustar
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}

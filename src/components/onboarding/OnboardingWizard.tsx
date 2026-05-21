@@ -19,6 +19,7 @@ import {
 import { CATEGORY_ICONS, ICON_COLOR_PRESETS } from '@/components/inventory/IconPickerPanel'
 import { DynamicIcon } from '@/components/inventory/CategoryIconPreview'
 import { cn } from '@/lib/utils'
+import { trackOnboardingStepCompleted, trackOnboardingCompleted } from '@/lib/analytics'
 
 const DEFAULT_ICON = 'Package'
 const DEFAULT_COLOR = '#7a3e10'
@@ -146,6 +147,7 @@ export default function OnboardingWizard({
     }
     const next = [...stepsDone, id]
     setStepsDone(next)
+    trackOnboardingStepCompleted(id)
     return next
   }
 
@@ -305,6 +307,7 @@ export default function OnboardingWizard({
       console.error('Onboarding finalize failed', error.message)
       return
     }
+    trackOnboardingCompleted()
     window.dispatchEvent(new Event('onboarding-state-changed'))
     router.refresh()
     onFinishedWizard()

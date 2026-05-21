@@ -1,6 +1,7 @@
 'use client'
 
 import { useRef, useState } from 'react'
+import { trackExpenseCreated } from '@/lib/analytics'
 import { X } from 'lucide-react'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { Button } from '@/components/ui/button'
@@ -111,6 +112,12 @@ export default function NewExpensePanel({
         }
         return
       }
+      trackExpenseCreated({
+        tipo: 'mercaderia',
+        update_stock: canUpdateStock,
+        update_cost: mercaderiaItems.some(i => i.update_cost),
+        line_count: mercaderiaItems.length,
+      })
       onCreated()
       onClose()
       return
@@ -141,6 +148,12 @@ export default function NewExpensePanel({
       setError(rpcError?.message ?? 'No se pudo registrar el gasto')
       return
     }
+    trackExpenseCreated({
+      tipo: category,
+      update_stock: false,
+      update_cost: false,
+      line_count: 0,
+    })
     onCreated()
     onClose()
   }

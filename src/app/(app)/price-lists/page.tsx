@@ -11,7 +11,7 @@ export default async function PriceListsPage() {
   const activeOperator = getActiveOperator(cookieStore)
   const businessId = await requireAuthenticatedBusinessId(supabase)
 
-  const [{ data: lists }, { data: products }] = await Promise.all([
+  const [{ data: lists }, { data: products }, { data: variantCostRows }] = await Promise.all([
     supabase
       .from('price_lists')
       .select('id, business_id, name, description, multiplier, is_default, created_at')
@@ -19,10 +19,15 @@ export default async function PriceListsPage() {
       .order('created_at'),
     supabase
       .from('products')
-      .select('id, name, cost, price, has_variants, brand_id, brands(id, name), category_id, categories(name, icon), default_variant:product_variants!default_variant_id(price, cost)')
+      .select('id, name, cost, price, has_variants, brand_id, brands(id, name), category_id, categories(name, icon)')
       .eq('business_id', businessId)
       .eq('is_active', true)
       .order('name'),
+    supabase
+      .from('product_variants')
+      .select('product_id, cost, price, is_active')
+      .eq('business_id', businessId)
+      .eq('is_active', true),
   ])
 
   const priceListIds = (lists ?? []).map(list => list.id)
@@ -34,6 +39,18 @@ export default async function PriceListsPage() {
         .in('price_list_id', priceListIds)
     : { data: [] }
 
+  // Build min-cost and min-price maps for variant products
+  const variantCostByProduct = new Map<string, { minCost: number; minPrice: number }>()
+  for (const v of variantCostRows ?? []) {
+    const cost = Number(v.cost)
+    const price = Number(v.price)
+    const existing = variantCostByProduct.get(v.product_id)
+    variantCostByProduct.set(v.product_id, {
+      minCost: existing ? Math.min(existing.minCost, cost > 0 ? cost : Infinity) : (cost > 0 ? cost : Infinity),
+      minPrice: existing ? Math.min(existing.minPrice, price > 0 ? price : Infinity) : (price > 0 ? price : Infinity),
+    })
+  }
+
   return (
     <PriceListsPanel
       businessId={businessId}
@@ -41,10 +58,13 @@ export default async function PriceListsPage() {
       readOnly={activeOperator !== null && activeOperator.permissions.price_lists_write !== true}
       initialLists={(lists ?? []).map(normalizePriceList)}
       products={(products ?? []).map(product => {
-        const variantArr = product.default_variant as { price: number; cost: number }[] | null
-        const variant = variantArr?.[0] ?? null
-        const displayCost = product.has_variants ? Number(variant?.cost ?? 0) : Number(product.cost)
-        const displayPrice = product.has_variants ? Number(variant?.price ?? 0) : Number(product.price)
+        const variantData = product.has_variants ? variantCostByProduct.get(product.id) : null
+        const displayCost = variantData
+          ? (Number.isFinite(variantData.minCost) ? variantData.minCost : 0)
+          : Number(product.cost)
+        const displayPrice = variantData
+          ? (Number.isFinite(variantData.minPrice) ? variantData.minPrice : 0)
+          : Number(product.price)
         return {
           id: product.id,
           name: product.name,

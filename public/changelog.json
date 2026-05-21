@@ -8,7 +8,10 @@
       "changes": [
         { "type": "new", "text": "Ya podés registrar gastos de mercadería eligiendo la variante exacta de cada producto (talle, color, etc.). El stock y el costo se actualizan directo en esa variante." },
         { "type": "improvement", "text": "Al buscar productos en un gasto de mercadería, cada variante aparece como su propio resultado con su stock y costo real." },
-        { "type": "new", "text": "El botón de modo oscuro/claro del menú ahora tiene una animación de círculo que se expande desde donde hacés clic." }
+        { "type": "new", "text": "El botón de modo oscuro/claro del menú ahora tiene una animación de círculo que se expande desde donde hacés clic." },
+        { "type": "improvement", "text": "Las listas de precios ahora aplican el multiplicador sobre el costo real de cada variante, en lugar de ignorarlas. El carrito también refleja el precio de lista correcto al agregar una variante." },
+        { "type": "improvement", "text": "En las listas de precios, los productos con variantes muestran el costo mínimo real (\"desde $X\"), el margen correspondiente, y el botón para ajustar el multiplicador del producto." },
+        { "type": "new", "text": "Al ver una lista de precios, podés hacer clic en el badge \"por variante\" para abrir un panel con el detalle de cada variante: costo, precio de lista calculado y margen." }
       ]
     },
     {

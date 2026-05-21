@@ -230,6 +230,8 @@ export interface CartItem {
   variant_id: string | null
   variant_label: string | null
   variant_stock?: number | null
+  variant_cost?: number
+  variant_base_price?: number
   quantity: number
   unit_price: number
   total: number

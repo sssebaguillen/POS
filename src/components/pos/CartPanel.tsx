@@ -113,12 +113,13 @@ export default function CartPanel({ businessId, businessName, freeLineEnabled, a
           free_line_description: item.free_line_description,
         }
       }
-      // Variant items use their own price; skip price list calculation
-      const unitPrice = item.variant_id || item.priceIsManual || !activePriceList
+      const effectiveCost = item.variant_id ? (item.variant_cost ?? 0) : item.product.cost
+      const effectivePrice = item.variant_id ? (item.variant_base_price ?? item.unit_price) : item.product.price
+      const unitPrice = item.priceIsManual || !activePriceList
         ? item.unit_price
         : calculateProductPrice(
-            item.product.cost,
-            item.product.price,
+            effectiveCost,
+            effectivePrice,
             item.product.id,
             item.product.brand_id,
             activePriceList,
@@ -621,10 +622,10 @@ export default function CartPanel({ businessId, businessName, freeLineEnabled, a
 
                     const originalPrice = !isFreeLine && item.priceIsManual
                       ? !activePriceList
-                        ? item.product!.price
+                        ? (item.variant_id ? (item.variant_base_price ?? item.unit_price) : item.product!.price)
                         : calculateProductPrice(
-                            item.product!.cost,
-                            item.product!.price,
+                            item.variant_id ? (item.variant_cost ?? 0) : item.product!.cost,
+                            item.variant_id ? (item.variant_base_price ?? item.unit_price) : item.product!.price,
                             item.product!.id,
                             item.product!.brand_id,
                             activePriceList,

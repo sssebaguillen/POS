@@ -22,6 +22,7 @@ import { getCurrencySymbol, toTitleCase } from '@/lib/format'
 import CategoryIconPreview from '@/components/inventory/CategoryIconPreview'
 import PriceOverrideIndicator from '@/components/inventory/PriceOverrideIndicator'
 import FloatingDropdown from '@/components/ui/FloatingDropdown'
+import { trackProductCreated } from '@/lib/analytics'
 
 interface Props {
   /** When true, renders only the form (no Dialog). Used by onboarding wizard. */
@@ -375,6 +376,7 @@ export default function NewProductModal({
             : (newProduct.categories ?? null),
           has_variants: true,
         }
+        trackProductCreated({ has_variants: true })
         onCreated(created)
         onSuccess?.(created)
       }
@@ -451,6 +453,7 @@ export default function NewProductModal({
         : (data.categories ?? null),
     }
 
+    trackProductCreated({ has_variants: false })
     onCreated(created)
     onSuccess?.(created)
     resetFormState()
