@@ -596,7 +596,7 @@ export default function CartPanel({ businessId, businessName, freeLineEnabled, a
             <div className="flex-1 overflow-y-auto">
               {isEmpty ? (
                 <div className="flex flex-col items-center justify-center h-full text-faint select-none px-6 text-center">
-                  <ShoppingCart size={48} className="mb-3 opacity-30" />
+                  <ShoppingCart size={48} className="mb-3 opacity-50" />
                   <p className="text-sm text-hint leading-tight">
                     Escanea un producto o selecciónalo
                     <br />

@@ -1,6 +1,14 @@
 {
-  "current": "0.3.0",
+  "current": "0.3.1",
   "releases": [
+    {
+      "version": "0.3.1",
+      "date": "2026-05-21",
+      "label": "Mejoras en la UI",
+      "changes": [
+        { "type": "improvement", "text": "Las tarjetas de productos en la pantalla de ventas ahora se ven más parejas cuando abrís o cerrás el menú lateral" }
+      ]
+    },
     {
       "version": "0.3.0",
       "date": "2026-05-20",

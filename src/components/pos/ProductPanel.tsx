@@ -81,7 +81,7 @@ export default function ProductPanel({ products, search, activeFilter, activePri
           <p className="text-xs font-semibold text-hint uppercase tracking-wider mb-3">
             Más vendidos, últimos 30 días
           </p>
-          <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))' }}>
+          <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))' }}>
             {topSellers.map((product, index) => (
               <ProductCard
                 key={product.id}
@@ -171,7 +171,7 @@ function PaginatedProductGrid({
 
   return (
     <>
-      <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))' }}>
+      <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))' }}>
         {visibleProducts.map((product, index) => (
           <ProductCard
             key={product.id}

@@ -1,6 +1,6 @@
 'use client'
 
-import { startTransition, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
+import { startTransition, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -104,7 +104,6 @@ export default function EditProductModal({
   const [imgError, setImgError] = useState(false)
   const categoryAnchorRef = useRef<HTMLDivElement>(null)
   const brandAnchorRef = useRef<HTMLDivElement>(null)
-  const dropdownLayerId = useId()
 
   const supabase = useMemo(() => createClient(), [])
   const currency = useCurrency()
@@ -474,7 +473,6 @@ export default function EditProductModal({
   return (
     <Dialog open={open} onOpenChange={nextOpen => !nextOpen && handleClose()}>
       <DialogContent className="flex max-h-[calc(100dvh-2rem)] flex-col gap-0 overflow-hidden bg-card p-0 sm:max-w-[640px]" showCloseButton={false}>
-        <div id={dropdownLayerId} className="pointer-events-none absolute inset-0 z-[70]" />
         <div className="flex items-center justify-between px-5 py-4 border-b border-edge shrink-0">
           <DialogTitle className="text-base font-semibold text-heading">Editar producto</DialogTitle>
           <button
@@ -588,7 +586,6 @@ export default function EditProductModal({
                       open={showCategoryOptions}
                       className="max-h-52"
                       onClose={closeCategoryOptions}
-                      portalTargetId={dropdownLayerId}
                     >
                       <div
                         id="edit-category-listbox"
@@ -702,7 +699,6 @@ export default function EditProductModal({
                       open={showBrandOptions}
                       className="max-h-52"
                       onClose={closeBrandOptions}
-                      portalTargetId={dropdownLayerId}
                     >
                       <div
                         id="edit-brand-listbox"
