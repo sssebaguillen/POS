@@ -6,9 +6,11 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { Input } from '@/components/ui/input'
 import { useFormatMoney } from '@/lib/context/CurrencyContext'
 
-interface ProductResult {
-  id: string
-  name: string
+export interface ProductResult {
+  product_id: string
+  product_name: string
+  variant_id: string | null
+  variant_label: string | null
   stock: number
   cost: number
 }
@@ -44,14 +46,11 @@ export default function ProductSearchInput({
         return
       }
       setLoading(true)
-      const { data } = await supabaseClient
-        .from('products')
-        .select('id, name, stock, cost')
-        .eq('business_id', businessId)
-        .eq('is_active', true)
-        .or(`name.ilike.%${term}%,barcode.eq.${term}`)
-        .order('name')
-        .limit(8)
+      const { data } = await supabaseClient.rpc('search_expense_products', {
+        p_business_id: businessId,
+        p_term: term,
+        p_limit: 20,
+      })
       setLoading(false)
       if (data) {
         setResults(data as ProductResult[])
@@ -129,12 +128,17 @@ export default function ProductSearchInput({
             <div className="max-h-56 overflow-y-auto py-1">
               {results.map(product => (
                 <button
-                  key={product.id}
+                  key={product.variant_id ?? product.product_id}
                   type="button"
                   onMouseDown={e => { e.preventDefault(); handleSelect(product) }}
                   className="w-full flex items-center justify-between px-3 py-2 text-sm hover:bg-hover-bg transition-colors text-left gap-3"
                 >
-                  <span className="text-body font-medium truncate">{product.name}</span>
+                  <span className="text-body font-medium truncate">
+                    {product.product_name}
+                    {product.variant_label && (
+                      <span className="text-hint font-normal"> — {product.variant_label}</span>
+                    )}
+                  </span>
                   <span className="text-hint text-xs whitespace-nowrap shrink-0">
                     Stock: {product.stock} · {formatMoney(product.cost)}
                   </span>

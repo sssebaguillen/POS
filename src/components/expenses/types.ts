@@ -31,6 +31,8 @@ export interface Expense {
 export interface MercaderiaItem {
   product_id: string
   product_name: string
+  variant_id: string | null
+  variant_label: string | null
   quantity: number
   unit_cost: number
   update_cost: boolean

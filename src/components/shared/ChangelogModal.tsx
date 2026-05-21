@@ -55,12 +55,12 @@ export default function ChangelogModal({ open, onOpenChange, releases, onClose }
 
         <div className="max-h-[60vh] overflow-y-auto -mx-4 px-4 space-y-6">
           {releases.map((release, idx) => (
-            <section key={release.version} className={cn(idx > 0 && 'border-t border-edge-soft pt-5')}>
+            <section key={release.version} className={cn(idx > 0 && 'border-t border-edge pt-5')}>
               <div className="mb-3">
-                <p className="text-sm font-semibold text-heading">
+                <p className="text-xs font-semibold text-heading mb-0.5">
                   v{release.version} · {release.label}
                 </p>
-                <p className="text-xs text-hint mt-0.5">{formatDate(release.date)}</p>
+                <p className="text-xs text-hint">{formatDate(release.date)}</p>
               </div>
               <ul className="space-y-2.5">
                 {release.changes.map((change, i) => (

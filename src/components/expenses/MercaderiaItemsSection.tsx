@@ -5,7 +5,7 @@ import { Trash2 } from 'lucide-react'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { cn } from '@/lib/utils'
 import type { MercaderiaItem } from './types'
-import ProductSearchInput from './ProductSearchInput'
+import ProductSearchInput, { type ProductResult } from './ProductSearchInput'
 import type { PriceList } from '@/lib/types'
 import type { InventoryBrand } from '@/components/inventory/types'
 import NewProductModal from '@/components/inventory/NewProductModal'
@@ -88,20 +88,28 @@ export default function MercaderiaItemsSection({
     if (brandResult.data) setBrands(brandResult.data as InventoryBrand[])
   }
 
-  function addProductToItems(product: { id: string; name: string; cost: number }) {
-    const existing = items.find(i => i.product_id === product.id)
+  function addProductToItems(product: ProductResult) {
+    const existing = items.find(
+      i => i.product_id === product.product_id &&
+           (i.variant_id ?? null) === (product.variant_id ?? null)
+    )
     if (existing) {
       onItemsChange(
         items.map(i =>
-          i.product_id === product.id ? { ...i, quantity: i.quantity + 1 } : i
+          i.product_id === product.product_id &&
+          (i.variant_id ?? null) === (product.variant_id ?? null)
+            ? { ...i, quantity: i.quantity + 1 }
+            : i
         )
       )
     } else {
       onItemsChange([
         ...items,
         {
-          product_id: product.id,
-          product_name: product.name,
+          product_id: product.product_id,
+          product_name: product.product_name,
+          variant_id: product.variant_id ?? null,
+          variant_label: product.variant_label ?? null,
           quantity: 1,
           unit_cost: product.cost,
           update_cost: false,
@@ -143,11 +151,16 @@ export default function MercaderiaItemsSection({
         <div className="space-y-2">
           {items.map((item, index) => (
             <div
-              key={item.product_id}
+              key={`${item.product_id}:${item.variant_id ?? 'null'}`}
               className="rounded-lg border border-edge bg-surface p-3 space-y-2"
             >
               <div className="flex items-center justify-between gap-2">
-                <span className="text-sm font-medium text-heading truncate">{item.product_name}</span>
+                <span className="text-sm font-medium text-heading truncate">
+                  {item.product_name}
+                  {item.variant_label && (
+                    <span className="font-normal text-hint"> — {item.variant_label}</span>
+                  )}
+                </span>
                 <button
                   type="button"
                   onClick={() => removeItem(index)}
@@ -261,7 +274,17 @@ export default function MercaderiaItemsSection({
         categories={categories}
         brands={brands}
         initialName={newProductInitialName}
-        onCreated={product => addProductToItems(product as unknown as NewProductResult)}
+        onCreated={product => {
+          const p = product as unknown as NewProductResult
+          addProductToItems({
+            product_id: p.id,
+            product_name: p.name,
+            variant_id: null,
+            variant_label: null,
+            stock: 0,
+            cost: p.cost,
+          })
+        }}
       />
     </div>
   )

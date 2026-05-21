@@ -46,7 +46,13 @@ export function useChangelog(initialLastSeenVersion: string | null) {
 
   const latestRelease = payload?.releases[0] ?? null
   const releases = payload?.releases ?? []
-  const hasUnread = Boolean(latestRelease && latestRelease.version !== lastSeenVersion)
+
+  const lastSeenIdx = lastSeenVersion
+    ? releases.findIndex(r => r.version === lastSeenVersion)
+    : -1
+  const unreadReleases = lastSeenIdx === -1 ? releases : releases.slice(0, lastSeenIdx)
+
+  const hasUnread = unreadReleases.length > 0
 
   const markAsSeen = useCallback(() => {
     if (!latestRelease) return
@@ -55,5 +61,5 @@ export function useChangelog(initialLastSeenVersion: string | null) {
     setLastSeenVersion(version)
   }, [latestRelease])
 
-  return { latestRelease, releases, hasUnread, markAsSeen }
+  return { latestRelease, releases, unreadReleases, hasUnread, markAsSeen }
 }

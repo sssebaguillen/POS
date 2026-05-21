@@ -132,6 +132,26 @@ export default function Sidebar({
 
   const themeForUi = themeToggleMounted ? theme : 'light'
 
+  function handleThemeToggle(e: React.MouseEvent<HTMLButtonElement>) {
+    const x = e.clientX
+    const y = e.clientY
+    const endRadius = Math.hypot(
+      Math.max(x, window.innerWidth - x),
+      Math.max(y, window.innerHeight - y)
+    )
+    document.documentElement.style.setProperty('--vt-x', `${x}px`)
+    document.documentElement.style.setProperty('--vt-y', `${y}px`)
+    document.documentElement.style.setProperty('--vt-r', `${endRadius}px`)
+
+    if (!document.startViewTransition) {
+      toggle()
+      return
+    }
+    document.startViewTransition(() => {
+      toggle()
+    })
+  }
+
   const isRestricted = (check: (p: Permissions) => boolean): boolean =>
     mounted && permissions !== null && !check(permissions)
 
@@ -334,7 +354,7 @@ export default function Sidebar({
 
         {/* Theme toggle */}
         <button
-          onClick={toggle}
+          onClick={handleThemeToggle}
           title={collapsed && !isMobileDrawer
             ? (themeForUi === 'dark' ? 'Modo claro' : 'Modo oscuro')
             : undefined}

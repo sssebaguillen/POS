@@ -421,3 +421,26 @@
 .catalog-card:hover .catalog-card-panel {
   display: block;
 }
+
+/* ─── Theme toggle — View Transition circle expand ────────────────────────────
+   Captures click coordinates via --vt-x / --vt-y CSS vars set in JS.
+   The new root snapshot clips in as a growing circle from the click origin.
+─────────────────────────────────────────────────────────────────────────────── */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+
+::view-transition-new(root) {
+  animation: theme-circle-expand 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+@keyframes theme-circle-expand {
+  from {
+    clip-path: circle(0px at var(--vt-x, 50%) var(--vt-y, 50%));
+  }
+  to {
+    clip-path: circle(var(--vt-r, 150vmax) at var(--vt-x, 50%) var(--vt-y, 50%));
+  }
+}

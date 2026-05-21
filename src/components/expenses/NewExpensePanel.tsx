@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import { X } from 'lucide-react'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { Button } from '@/components/ui/button'
@@ -57,20 +57,15 @@ export default function NewExpensePanel({
   const [mercaderiaItems, setMercaderiaItems] = useState<MercaderiaItem[]>([])
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [showOnboarding, setShowOnboarding] = useState(false)
+  const [showOnboarding, setShowOnboarding] = useState(
+    () => !localStorage.getItem(MERCADERIA_ONBOARDING_KEY)
+  )
 
   const isMercaderia = category === 'mercaderia'
 
   const searchInputRef = useRef<HTMLDivElement>(null)
   const firstItemCostRef = useRef<HTMLInputElement>(null)
   const totalRef = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    if (category === 'mercaderia') {
-      const done = localStorage.getItem(MERCADERIA_ONBOARDING_KEY)
-      if (!done) setShowOnboarding(true)
-    }
-  }, [category])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -97,6 +92,7 @@ export default function NewExpensePanel({
         p_items: mercaderiaItems.map(i => ({
           product_id: i.product_id,
           product_name: i.product_name,
+          variant_id: i.variant_id ?? undefined,
           quantity: i.quantity,
           unit_cost: i.unit_cost,
           update_cost: i.update_cost,

@@ -1,26 +1,36 @@
 {
-  "current": "0.3.1",
+  "current": "0.0.3",
   "releases": [
     {
-      "version": "0.3.1",
+      "version": "0.0.3",
       "date": "2026-05-21",
-      "label": "Mejoras en la UI",
+      "label": "Variantes en gastos y detalles visuales",
       "changes": [
-        { "type": "improvement", "text": "Mejoras en la interfaz de usuario en el punto de venta y en la pantalla de productos" }
+        { "type": "new", "text": "Ya podés registrar gastos de mercadería eligiendo la variante exacta de cada producto (talle, color, etc.). El stock y el costo se actualizan directo en esa variante." },
+        { "type": "improvement", "text": "Al buscar productos en un gasto de mercadería, cada variante aparece como su propio resultado con su stock y costo real." },
+        { "type": "new", "text": "El botón de modo oscuro/claro del menú ahora tiene una animación de círculo que se expande desde donde hacés clic." }
       ]
     },
     {
-      "version": "0.3.0",
-      "date": "2026-05-20",
-      "label": "Registro de actividad y pulido general",
+      "version": "0.0.2",
+      "date": "2026-05-16",
+      "label": "Registro de actividad y mejoras generales",
       "changes": [
-        { "type": "improvement", "text": "Registro de actividad: panel de detalle separado por entidad (ventas, productos, categorías, marcas, gastos, proveedores, listas, ajustes, operarios, clientes) para una lectura más clara" },
-        { "type": "improvement", "text": "Filtros del registro de actividad reorganizados en chips por entidad, con barra de filtros y resultados independientes" },
-        { "type": "new", "text": "Indicador visual cuando un producto tiene un precio manual que se aparta de la lista activa" },
-        { "type": "improvement", "text": "Alta y edición de productos: flujo de variantes más prolijo y formularios más fáciles de seguir" },
-        { "type": "improvement", "text": "Modales de Marca y Categoría con validaciones y campos más consistentes" },
-        { "type": "improvement", "text": "Mensajes de error en español para permisos, conexión, archivos pesados y campos obligatorios" },
-        { "type": "improvement", "text": "Etiquetas de permisos de operarios traducidas al español en toda la app" }
+        { "type": "new", "text": "Registro de actividad completo: podés ver qué cambió, quién lo hizo y cuándo, para ventas, productos, gastos, operarios y más." },
+        { "type": "improvement", "text": "Filtros por entidad, operario y fecha en el registro de actividad para encontrar lo que buscás más rápido." },
+        { "type": "new", "text": "Indicador cuando un producto tiene precio manual que se aparta de la lista de precios activa." },
+        { "type": "improvement", "text": "Formularios de alta y edición de productos con variantes más claros y fáciles de completar." },
+        { "type": "improvement", "text": "Mensajes de error en español en toda la app." }
+      ]
+    },
+    {
+      "version": "0.0.1",
+      "date": "2026-05-09",
+      "label": "Variantes de productos",
+      "changes": [
+        { "type": "new", "text": "Podés crear variantes para tus productos (por ejemplo, talle y color). Cada variante tiene su propio stock, costo y precio." },
+        { "type": "new", "text": "En el punto de venta, al agregar un producto con variantes podés elegir cuál querés vender antes de sumarlo al carrito." },
+        { "type": "new", "text": "El catálogo público también muestra las variantes disponibles para que tus clientes elijan." }
       ]
     }
   ]

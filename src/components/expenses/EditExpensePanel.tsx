@@ -65,15 +65,26 @@ export default function EditExpensePanel({
   useEffect(() => {
     if (!isMercaderia) return
     supabase
-      .from('expense_items')
-      .select('product_id, product_name, quantity, unit_cost, update_cost')
-      .eq('expense_id', expense.id)
+      .rpc('get_mercaderia_expense_items', {
+        p_expense_id: expense.id,
+        p_business_id: expense.business_id,
+      })
       .then(({ data }) => {
         if (data) {
           setMercaderiaItems(
-            data.map(item => ({
+            (data as Array<{
+              product_id: string
+              product_name: string
+              variant_id: string | null
+              variant_label: string | null
+              quantity: number
+              unit_cost: number
+              update_cost: boolean
+            }>).map(item => ({
               product_id: item.product_id,
               product_name: item.product_name,
+              variant_id: item.variant_id ?? null,
+              variant_label: item.variant_label ?? null,
               quantity: item.quantity,
               unit_cost: item.unit_cost,
               update_cost: item.update_cost,
@@ -83,7 +94,7 @@ export default function EditExpensePanel({
         }
         setLoadingItems(false)
       })
-  }, [expense.id, isMercaderia, supabase])
+  }, [expense.id, expense.business_id, isMercaderia, supabase])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -110,6 +121,7 @@ export default function EditExpensePanel({
         p_items: mercaderiaItems.map(i => ({
           product_id: i.product_id,
           product_name: i.product_name,
+          variant_id: i.variant_id ?? undefined,
           quantity: i.quantity,
           unit_cost: i.unit_cost,
           update_cost: i.update_cost,
