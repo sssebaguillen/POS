@@ -6,7 +6,7 @@
       "date": "2026-05-21",
       "label": "Mejoras en la UI",
       "changes": [
-        { "type": "improvement", "text": "Las tarjetas de productos en la pantalla de ventas ahora se ven más parejas cuando abrís o cerrás el menú lateral" }
+        { "type": "improvement", "text": "Mejoras en la interfaz de usuario en el punto de venta y en la pantalla de productos" }
       ]
     },
     {
