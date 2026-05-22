@@ -119,13 +119,13 @@ export default function ExpensesTable({ expenses, businessId, operatorId, supaba
 
   return (
     <>
-      <div className="surface-card overflow-hidden">
+      <div className="surface-card overflow-x-auto">
         {attachmentError && (
           <div className="px-4 py-2 text-xs text-destructive border-b border-edge/40 bg-destructive/5">
             {attachmentError}
           </div>
         )}
-        <table className="w-full text-sm">
+        <table className="w-full min-w-[640px] text-sm">
           <thead className="border-b border-edge/60">
             <tr className="text-xs text-hint font-medium">
               <th className="text-foreground text-left px-4 py-3">Fecha</th>

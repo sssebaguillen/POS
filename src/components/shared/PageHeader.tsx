@@ -20,7 +20,7 @@ export default function PageHeader({ title, breadcrumbs, children }: Props) {
   const { toggle } = useSidebar()
 
   return (
-    <header className="h-14 border-b border-edge/60 bg-surface flex items-center px-5 gap-4 shrink-0">
+    <header className="sticky top-0 z-10 h-14 border-b border-edge/60 bg-surface flex items-center px-5 gap-4 shrink-0">
       {/* Mobile: opens the drawer overlay */}
       <button
         onClick={toggle}
