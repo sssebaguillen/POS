@@ -93,6 +93,8 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
   const tagsDropdownRef = useRef<HTMLDivElement>(null)
   const ioButtonRef = useRef<HTMLButtonElement>(null)
   const tagsButtonRef = useRef<HTMLButtonElement>(null)
+  const ioPortalRef = useRef<HTMLDivElement>(null)
+  const tagsPortalRef = useRef<HTMLDivElement>(null)
   const { toast, showToast, dismissToast } = useToast()
   const formatMoney = useFormatMoney()
 
@@ -210,11 +212,14 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
     return () => { timers.forEach(id => clearTimeout(id)) }
   }, [])
 
-  // Close dropdowns on outside click
+  // Close dropdowns on outside click — also exclude the portaled content
   useEffect(() => {
     function handleClick(e: MouseEvent) {
-      if (ioDropdownRef.current && !ioDropdownRef.current.contains(e.target as Node)) setIoDropdownOpen(false)
-      if (tagsDropdownRef.current && !tagsDropdownRef.current.contains(e.target as Node)) setTagsDropdownOpen(false)
+      const t = e.target as Node
+      const insideIo = ioDropdownRef.current?.contains(t) || ioPortalRef.current?.contains(t)
+      if (!insideIo) setIoDropdownOpen(false)
+      const insideTags = tagsDropdownRef.current?.contains(t) || tagsPortalRef.current?.contains(t)
+      if (!insideTags) setTagsDropdownOpen(false)
     }
     document.addEventListener('mousedown', handleClick)
     return () => document.removeEventListener('mousedown', handleClick)
@@ -704,6 +709,7 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
           {/* Mobile dropdown — rendered via portal to escape overflow:hidden */}
           {ioDropdownOpen && typeof document !== 'undefined' && createPortal(
             <div
+              ref={ioPortalRef}
               className="inv:hidden"
               style={{
                 position: 'fixed',
@@ -776,6 +782,7 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
           {/* Mobile dropdown — rendered via portal to escape overflow:hidden */}
           {tagsDropdownOpen && typeof document !== 'undefined' && createPortal(
             <div
+              ref={tagsPortalRef}
               className="inv:hidden"
               style={{
                 position: 'fixed',
