@@ -64,9 +64,10 @@ interface Props {
   priceListOverrides: PriceListOverride[]
   operatorId: string | null
   permissions: Permissions | null
+  sessionId?: string | null
 }
 
-export default function CartPanel({ businessId, businessName, freeLineEnabled, activePriceList, priceListOverrides, operatorId, permissions }: Props) {
+export default function CartPanel({ businessId, businessName, freeLineEnabled, activePriceList, priceListOverrides, operatorId, permissions, sessionId = null }: Props) {
   const currency = useCurrency()
   const formatMoney = useFormatMoney()
   const router = useRouter()
@@ -1226,6 +1227,7 @@ export default function CartPanel({ businessId, businessName, freeLineEnabled, a
           saleItems={adjustedItems}
           receiptItems={receiptItems}
           operatorId={operatorId}
+          sessionId={sessionId}
           customer={selectedCustomer}
           onSaleCompleted={(message) => {
             showToast({ message })

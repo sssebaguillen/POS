@@ -1,0 +1,218 @@
+'use client'
+
+import { useState, useMemo } from 'react'
+import { Vault } from 'lucide-react'
+import { createClient } from '@/lib/supabase/client'
+import { useFormatMoney } from '@/lib/context/CurrencyContext'
+import { Button } from '@/components/ui/button'
+import PageHeader from '@/components/shared/PageHeader'
+import OpenSessionModal from '@/components/pos/OpenSessionModal'
+import SessionDetailPanel from '@/components/caja/SessionDetailPanel'
+import type { ActiveSessionRow, SessionRow } from '@/app/(app)/caja/page'
+import { useRouter } from 'next/navigation'
+
+interface Props {
+  businessId: string
+  activeSession: ActiveSessionRow | null
+  initialSessions: SessionRow[]
+  initialTotal: number
+  operatorId: string | null
+}
+
+const PAGE_SIZE = 20
+
+function formatDateTime(iso: string) {
+  return new Date(iso).toLocaleString('es-AR', {
+    day: '2-digit', month: '2-digit', year: 'numeric',
+    hour: '2-digit', minute: '2-digit',
+  })
+}
+
+function formatDuration(seconds: number) {
+  const h = Math.floor(seconds / 3600)
+  const m = Math.floor((seconds % 3600) / 60)
+  if (h > 0) return `${h}h ${m}m`
+  return `${m}m`
+}
+
+function DiffBadge({ diff }: { diff: number | null }) {
+  if (diff === null) return <span className="text-muted-foreground text-xs">—</span>
+  if (diff === 0) return <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400">Cuadra</span>
+  if (diff > 0) return <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400">+{diff.toFixed(2)}</span>
+  return <span className="text-xs font-medium text-destructive">{diff.toFixed(2)}</span>
+}
+
+export default function CajaView({ businessId, activeSession: initialActiveSession, initialSessions, initialTotal, operatorId }: Props) {
+  const formatMoney = useFormatMoney()
+  const router = useRouter()
+  const supabase = useMemo(() => createClient(), [])
+
+  const [activeSession, setActiveSession] = useState<ActiveSessionRow | null>(initialActiveSession)
+  const [sessions, setSessions] = useState<SessionRow[]>(initialSessions)
+  const [total, setTotal] = useState(initialTotal)
+  const [offset, setOffset] = useState(0)
+  const [loadingMore, setLoadingMore] = useState(false)
+
+  const [showOpenModal, setShowOpenModal] = useState(false)
+  const [selectedSession, setSelectedSession] = useState<SessionRow | null>(null)
+
+  async function loadMore() {
+    const newOffset = offset + PAGE_SIZE
+    setLoadingMore(true)
+    const { data } = await supabase.rpc('get_sessions_list', { p_limit: PAGE_SIZE, p_offset: newOffset })
+    const result = data as { success: boolean; data: SessionRow[]; total: number } | null
+    if (result?.success) {
+      setSessions(prev => [...prev, ...(result.data ?? [])])
+      setOffset(newOffset)
+    }
+    setLoadingMore(false)
+  }
+
+  function handleOpened(sessionId: string) {
+    setShowOpenModal(false)
+    router.refresh()
+  }
+
+  return (
+    <>
+      <div className="flex flex-col h-full overflow-hidden">
+        <PageHeader title="Caja" />
+
+        <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-5">
+          {/* Active session card */}
+          {activeSession ? (
+            <div className="border border-emerald-500/30 bg-emerald-500/5 rounded-xl p-4">
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex items-center gap-2">
+                  <Vault size={18} className="text-emerald-600 dark:text-emerald-400 shrink-0" />
+                  <div>
+                    <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-400">Caja abierta</p>
+                    <p className="text-xs text-muted-foreground">
+                      Desde {formatDateTime(activeSession.opened_at)} · {activeSession.opened_by_name}
+                    </p>
+                  </div>
+                </div>
+                <div className="text-right shrink-0">
+                  <p className="text-lg font-bold">{formatMoney(activeSession.sales_total)}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {activeSession.sales_count} {activeSession.sales_count === 1 ? 'venta' : 'ventas'}
+                  </p>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="border border-border rounded-xl p-4 flex items-center justify-between gap-4">
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <Vault size={16} className="shrink-0" />
+                <span className="text-sm">No hay una sesión de caja abierta</span>
+              </div>
+              <Button size="sm" onClick={() => setShowOpenModal(true)}>
+                Abrir caja
+              </Button>
+            </div>
+          )}
+
+          {/* Sessions history table */}
+          <div>
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-3">
+              Historial ({total})
+            </p>
+
+            {sessions.length === 0 ? (
+              <div className="border border-border rounded-xl p-8 text-center text-sm text-muted-foreground">
+                No hay sesiones registradas aún
+              </div>
+            ) : (
+              <div className="border border-border rounded-xl overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-border bg-muted/30">
+                        <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground">Apertura</th>
+                        <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground">Abrió</th>
+                        <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground hidden md:table-cell">Cerró</th>
+                        <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground hidden md:table-cell">Duración</th>
+                        <th className="text-right px-4 py-2.5 text-xs font-medium text-muted-foreground">Ventas</th>
+                        <th className="text-right px-4 py-2.5 text-xs font-medium text-muted-foreground">Total</th>
+                        <th className="text-right px-4 py-2.5 text-xs font-medium text-muted-foreground hidden lg:table-cell">Esp.</th>
+                        <th className="text-right px-4 py-2.5 text-xs font-medium text-muted-foreground hidden lg:table-cell">Contado</th>
+                        <th className="text-right px-4 py-2.5 text-xs font-medium text-muted-foreground">Dif.</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border">
+                      {sessions.map(s => (
+                        <tr
+                          key={s.id}
+                          onClick={() => setSelectedSession(s)}
+                          className="hover:bg-muted/30 cursor-pointer transition-colors"
+                        >
+                          <td className="px-4 py-3 whitespace-nowrap">
+                            <div>{formatDateTime(s.opened_at)}</div>
+                            {s.status === 'open' && (
+                              <span className="inline-block text-xs px-1.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 font-medium mt-0.5">
+                                Abierta
+                              </span>
+                            )}
+                          </td>
+                          <td className="px-4 py-3 text-muted-foreground">{s.opened_by_name}</td>
+                          <td className="px-4 py-3 text-muted-foreground hidden md:table-cell">
+                            {s.closed_by_name ?? '—'}
+                          </td>
+                          <td className="px-4 py-3 text-muted-foreground hidden md:table-cell">
+                            {formatDuration(s.duration_seconds)}
+                          </td>
+                          <td className="px-4 py-3 text-right">{s.sales_count}</td>
+                          <td className="px-4 py-3 text-right font-medium">{formatMoney(s.sales_total)}</td>
+                          <td className="px-4 py-3 text-right hidden lg:table-cell">
+                            {s.expected_amount !== null ? formatMoney(s.expected_amount) : '—'}
+                          </td>
+                          <td className="px-4 py-3 text-right hidden lg:table-cell">
+                            {s.closing_amount !== null ? formatMoney(s.closing_amount) : '—'}
+                          </td>
+                          <td className="px-4 py-3 text-right">
+                            {s.status === 'open'
+                              ? <span className="text-xs text-muted-foreground">—</span>
+                              : <DiffBadge diff={s.difference} />
+                            }
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {sessions.length < total && (
+                  <div className="border-t border-border px-4 py-3 text-center">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={loadMore}
+                      disabled={loadingMore}
+                    >
+                      {loadingMore ? 'Cargando…' : `Ver más (${total - sessions.length} restantes)`}
+                    </Button>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {showOpenModal && (
+        <OpenSessionModal
+          operatorId={operatorId}
+          onOpened={handleOpened}
+          onClose={() => setShowOpenModal(false)}
+        />
+      )}
+
+      {selectedSession && (
+        <SessionDetailPanel
+          session={selectedSession}
+          onClose={() => setSelectedSession(null)}
+        />
+      )}
+    </>
+  )
+}

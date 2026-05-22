@@ -11,12 +11,24 @@ import ProductPanel from '@/components/pos/ProductPanel'
 import CartPanel from '@/components/pos/CartPanel'
 import CartFAB from '@/components/pos/CartFAB'
 import MobileCartDrawer from '@/components/pos/MobileCartDrawer'
+import CashSessionWidget from '@/components/pos/CashSessionWidget'
+import OpenSessionModal from '@/components/pos/OpenSessionModal'
+import CloseSessionModal from '@/components/pos/CloseSessionModal'
 import ProductFilter, { EMPTY_FILTER, type ProductFilterValue } from '@/components/shared/ProductFilter'
 import type { ProductWithCategory, ActiveFilter } from '@/components/pos/types'
 import type { PriceList, PriceListOverride, ProductVariant, ProductWithVariants } from '@/lib/types'
 import type { ActiveOperator } from '@/lib/operator'
 import { OWNER_PERMISSIONS } from '@/lib/operator'
 import { trackFeatureUsed } from '@/lib/analytics'
+
+interface ActiveSession {
+  id: string
+  opening_amount: number
+  opened_at: string
+  opened_by_name: string
+  sales_count: number
+  sales_total: number
+}
 
 interface Props {
   products: ProductWithCategory[]
@@ -56,12 +68,28 @@ export default function POSView({ products, businessId, businessName, freeLineEn
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false)
   const confirmNewSaleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
+  // Cash session state
+  const [activeSession, setActiveSession] = useState<ActiveSession | null | undefined>(undefined)
+  const [showOpenModal, setShowOpenModal] = useState(false)
+  const [showCloseModal, setShowCloseModal] = useState(false)
+
+  const operatorId = activeOperator?.role === 'owner' || !activeOperator ? null : activeOperator.profile_id
+
   useEffect(() => {
     return () => {
       if (scanFeedbackTimerRef.current) clearTimeout(scanFeedbackTimerRef.current)
       if (confirmNewSaleTimerRef.current) clearTimeout(confirmNewSaleTimerRef.current)
     }
   }, [])
+
+  const fetchActiveSession = useCallback(async () => {
+    const { data } = await supabase.rpc('get_active_session')
+    setActiveSession((data as ActiveSession | null) ?? null)
+  }, [supabase])
+
+  useEffect(() => {
+    void fetchActiveSession()
+  }, [fetchActiveSession])
 
   const TOP_FILTER_LIMIT = 8
 
@@ -491,14 +519,24 @@ export default function POSView({ products, businessId, businessName, freeLineEn
           </div>
         </div>
         <div className="hidden lg:flex w-[300px] md:w-[340px] lg:w-[380px] shrink-0 bg-surface border-l border-edge/60 flex-col" data-tour="pos-cart">
+          {activeSession !== undefined && (
+            <div className="px-3 pt-3">
+              <CashSessionWidget
+                session={activeSession}
+                onOpenClick={() => setShowOpenModal(true)}
+                onCloseClick={() => setShowCloseModal(true)}
+              />
+            </div>
+          )}
           <CartPanel
             businessId={businessId}
             businessName={businessName}
             freeLineEnabled={freeLineEnabled}
             activePriceList={activePriceList}
             priceListOverrides={priceListOverrides}
-            operatorId={activeOperator?.role === 'owner' || !activeOperator ? null : activeOperator.profile_id}
+            operatorId={operatorId}
             permissions={activeOperator?.role === 'owner' || !activeOperator ? OWNER_PERMISSIONS : activeOperator.permissions}
+            sessionId={activeSession?.id ?? null}
           />
         </div>
       </div>
@@ -514,10 +552,34 @@ export default function POSView({ products, businessId, businessName, freeLineEn
           freeLineEnabled={freeLineEnabled}
           activePriceList={activePriceList}
           priceListOverrides={priceListOverrides}
-          operatorId={activeOperator?.role === 'owner' || !activeOperator ? null : activeOperator.profile_id}
+          operatorId={operatorId}
           permissions={activeOperator?.role === 'owner' || !activeOperator ? OWNER_PERMISSIONS : activeOperator.permissions}
+          sessionId={activeSession?.id ?? null}
         />
       </div>
+
+      {showOpenModal && (
+        <OpenSessionModal
+          operatorId={operatorId}
+          onOpened={sessionId => {
+            setShowOpenModal(false)
+            void fetchActiveSession()
+          }}
+          onClose={() => setShowOpenModal(false)}
+        />
+      )}
+
+      {showCloseModal && activeSession && (
+        <CloseSessionModal
+          sessionId={activeSession.id}
+          operatorId={operatorId}
+          onClosed={() => {
+            setShowCloseModal(false)
+            void fetchActiveSession()
+          }}
+          onClose={() => setShowCloseModal(false)}
+        />
+      )}
     </div>
   )
 }

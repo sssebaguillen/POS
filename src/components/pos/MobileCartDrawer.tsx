@@ -15,6 +15,7 @@ interface Props {
   priceListOverrides: PriceListOverride[]
   operatorId: string | null
   permissions: Permissions
+  sessionId?: string | null
 }
 
 export default function MobileCartDrawer({
@@ -27,6 +28,7 @@ export default function MobileCartDrawer({
   priceListOverrides,
   operatorId,
   permissions,
+  sessionId = null,
 }: Props) {
   return (
     <Sheet open={open} onOpenChange={(o) => { if (!o) onClose() }}>
@@ -48,6 +50,7 @@ export default function MobileCartDrawer({
             priceListOverrides={priceListOverrides}
             operatorId={operatorId}
             permissions={permissions}
+            sessionId={sessionId}
           />
         </div>
       </SheetContent>

@@ -41,6 +41,7 @@ interface Props {
   saleItems: SaleItemInput[]
   receiptItems: ReceiptItemInput[]
   operatorId: string | null
+  sessionId?: string | null
   customer?: CustomerSelection | null
   onClose: () => void
   onSaleCompleted: (message: string) => void
@@ -56,6 +57,7 @@ export default function PaymentModal({
   saleItems,
   receiptItems,
   operatorId,
+  sessionId = null,
   customer = null,
   onClose,
   onSaleCompleted,
@@ -187,6 +189,7 @@ export default function PaymentModal({
         })),
         p_payments: payments,
         p_customer_id: customer?.id ?? null,
+        p_session_id: sessionId ?? null,
       })
 
       const result = rpcResult as { success: boolean; sale_id?: string; created_at?: string; error?: string } | null

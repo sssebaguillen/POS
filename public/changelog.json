@@ -1,6 +1,19 @@
 {
-  "current": "0.0.3",
+  "current": "0.0.4",
   "releases": [
+    {
+      "version": "0.0.4",
+      "date": "2026-05-23",
+      "label": "Módulo de caja",
+      "changes": [
+        { "type": "new", "text": "Nueva sección Caja en el menú: podés ver el historial de todas las sesiones con sus montos, duración, operario que abrió y cerró, y la diferencia del arqueo." },
+        { "type": "new", "text": "Abrí y cerrá la caja directamente desde el punto de venta. Mientras la caja está abierta, el widget muestra en tiempo real cuántas ventas se hicieron en el turno y el total acumulado." },
+        { "type": "new", "text": "Al cerrar la caja, el sistema calcula automáticamente el efectivo esperado (fondo inicial más ventas en efectivo), te deja ingresar el monto contado físicamente, y te muestra si hay sobrante o faltante antes de confirmar." },
+        { "type": "new", "text": "El detalle de cada sesión muestra el desglose de ventas por método de pago (efectivo, tarjeta, transferencia, etc.) y las notas del cierre si las hubiera." },
+        { "type": "improvement", "text": "Cada venta queda asociada a la sesión de caja en la que se realizó, lo que permite rastrear exactamente qué se vendió en cada turno." },
+        { "type": "improvement", "text": "Al abrir una nueva sesión, el sistema sugiere automáticamente como fondo inicial el monto con el que cerró la sesión anterior, para facilitar el traspaso entre turnos." }
+      ]
+    },
     {
       "version": "0.0.3",
       "date": "2026-05-21",

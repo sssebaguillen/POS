@@ -2,7 +2,7 @@
 
 import { usePathname } from 'next/navigation'
 import Link from 'next/link'
-import { X, ShoppingCart, Package, ClipboardList, BarChart2, LineChart, Settings, Sun, Moon, LogOut, PanelLeftClose, PanelLeftOpen, Receipt, Building2, Sparkles, Globe, ExternalLink, History, Users } from 'lucide-react'
+import { X, ShoppingCart, Package, ClipboardList, BarChart2, LineChart, Settings, Sun, Moon, LogOut, PanelLeftClose, PanelLeftOpen, Receipt, Building2, Sparkles, Globe, ExternalLink, History, Users, Vault } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useState, useEffect, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
@@ -30,6 +30,7 @@ const NAV_LINKS: NavLink[] = [
   { href: '/stats',       label: 'Estadísticas',      icon: LineChart,     check: (p) => p.analysis === true },
   { href: '/activity',    label: 'Actividad',         icon: History,       check: (p) => p.analysis === true },
   { href: '/expenses',    label: 'Gastos',            icon: Receipt,       check: (p) => p.expenses === true },
+  { href: '/caja',       label: 'Caja',              icon: Vault,         check: (p) => p.analysis === true },
   { href: '/inventory',   label: 'Inventario',        icon: Package,       check: (p) => p.stock === true },
   { href: '/price-lists', label: 'Listas de precios', icon: ClipboardList, check: (p) => p.price_lists === true },
   { href: '/settings',    label: 'Configuración',     icon: Settings,      check: (p) => p.settings === true },
@@ -46,7 +47,7 @@ const NAV_SECTIONS = [
   },
   {
     label: 'Finanzas',
-    hrefs: ['/expenses'],
+    hrefs: ['/expenses', '/caja'],
   },
   {
     label: 'Análisis',
