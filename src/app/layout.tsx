@@ -4,6 +4,7 @@ import { DM_Sans, Sora } from 'next/font/google'
 import './globals.css'
 import { ThemeProvider } from '@/components/shared/theme'
 import { SpeedInsights } from "@vercel/speed-insights/next"
+import { Analytics } from "@vercel/analytics/next"
 import PostHogPageView from '@/components/shared/PostHogPageView'
 
 const dmSans = DM_Sans({
@@ -40,6 +41,7 @@ export default async function RootLayout({
           <PostHogPageView />
         </ThemeProvider>
         <SpeedInsights />
+        <Analytics />
       </body>
     </html>
   )
