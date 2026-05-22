@@ -2,6 +2,7 @@
 
 import { useRef, useState } from 'react'
 import { trackExpenseCreated } from '@/lib/analytics'
+import { ERR } from '@/lib/errors'
 import { X } from 'lucide-react'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { Button } from '@/components/ui/button'
@@ -73,89 +74,101 @@ export default function NewExpensePanel({
     setError(null)
 
     if (!description.trim()) {
-      setError('La descripción es obligatoria')
+      setError(ERR.EXP41)
       return
     }
 
     if (isMercaderia) {
       if (mercaderiaItems.length === 0) {
-        setError('Agrega al menos un producto')
+        setError(ERR.EXP43)
         return
       }
       setSaving(true)
-      const { data, error: rpcError } = await supabase.rpc('create_mercaderia_expense', {
-        p_business_id: businessId,
-        p_description: description.trim(),
-        p_date: date || null,
-        p_supplier_id: supplierId,
-        p_operator_id: operatorId,
-        p_notes: notes.trim() || null,
-        p_items: mercaderiaItems.map(i => ({
-          product_id: i.product_id,
-          product_name: i.product_name,
-          variant_id: i.variant_id ?? undefined,
-          quantity: i.quantity,
-          unit_cost: i.unit_cost,
-          update_cost: i.update_cost,
-        })),
-        p_update_stock: canUpdateStock,
-      })
-      setSaving(false)
-      if (rpcError || !data?.success) {
-        const errKey = data?.error
-        if (errKey === 'no_items') {
-          setError('Agrega al menos un producto')
-        } else if (errKey === 'unauthorized') {
-          setError('Sin permiso para registrar gastos')
-        } else {
-          setError(rpcError?.message ?? 'No se pudo registrar el gasto')
+      try {
+        const { data, error: rpcError } = await supabase.rpc('create_mercaderia_expense', {
+          p_business_id: businessId,
+          p_description: description.trim(),
+          p_date: date || null,
+          p_supplier_id: supplierId,
+          p_operator_id: operatorId,
+          p_notes: notes.trim() || null,
+          p_items: mercaderiaItems.map(i => ({
+            product_id: i.product_id,
+            product_name: i.product_name,
+            variant_id: i.variant_id ?? undefined,
+            quantity: i.quantity,
+            unit_cost: i.unit_cost,
+            update_cost: i.update_cost,
+          })),
+          p_update_stock: canUpdateStock,
+        })
+        if (rpcError || !data?.success) {
+          const errKey = data?.error
+          if (errKey === 'no_items') {
+            setError(ERR.EXP43)
+          } else if (errKey === 'unauthorized') {
+            setError(ERR.EXP2)
+          } else if (errKey === 'cost_conflict') {
+            setError(ERR.EXP5)
+          } else {
+            setError(ERR.EXP1)
+          }
+          return
         }
-        return
+        trackExpenseCreated({
+          tipo: 'mercaderia',
+          update_stock: canUpdateStock,
+          update_cost: mercaderiaItems.some(i => i.update_cost),
+          line_count: mercaderiaItems.length,
+        })
+        onCreated()
+        onClose()
+      } catch {
+        setError(ERR.EXP1)
+      } finally {
+        setSaving(false)
       }
-      trackExpenseCreated({
-        tipo: 'mercaderia',
-        update_stock: canUpdateStock,
-        update_cost: mercaderiaItems.some(i => i.update_cost),
-        line_count: mercaderiaItems.length,
-      })
-      onCreated()
-      onClose()
       return
     }
 
     const numAmount = parseFloat(amount)
     if (!amount || isNaN(numAmount) || numAmount <= 0) {
-      setError('El monto debe ser mayor a 0')
+      setError(ERR.EXP42)
       return
     }
 
     setSaving(true)
-    const { data, error: rpcError } = await supabase.rpc('create_expense', {
-      p_business_id: businessId,
-      p_category: category,
-      p_amount: numAmount,
-      p_description: description.trim(),
-      p_date: date || null,
-      p_supplier_id: supplierId,
-      p_operator_id: operatorId,
-      p_attachment_url: attachment?.url ?? null,
-      p_attachment_type: attachment?.type ?? null,
-      p_attachment_name: attachment?.name ?? null,
-      p_notes: notes.trim() || null,
-    })
-    setSaving(false)
-    if (rpcError || !data?.success) {
-      setError(rpcError?.message ?? 'No se pudo registrar el gasto')
-      return
+    try {
+      const { data, error: rpcError } = await supabase.rpc('create_expense', {
+        p_business_id: businessId,
+        p_category: category,
+        p_amount: numAmount,
+        p_description: description.trim(),
+        p_date: date || null,
+        p_supplier_id: supplierId,
+        p_operator_id: operatorId,
+        p_attachment_url: attachment?.url ?? null,
+        p_attachment_type: attachment?.type ?? null,
+        p_attachment_name: attachment?.name ?? null,
+        p_notes: notes.trim() || null,
+      })
+      if (rpcError || !data?.success) {
+        setError(ERR.EXP1)
+        return
+      }
+      trackExpenseCreated({
+        tipo: category,
+        update_stock: false,
+        update_cost: false,
+        line_count: 0,
+      })
+      onCreated()
+      onClose()
+    } catch {
+      setError(ERR.EXP1)
+    } finally {
+      setSaving(false)
     }
-    trackExpenseCreated({
-      tipo: category,
-      update_stock: false,
-      update_cost: false,
-      line_count: 0,
-    })
-    onCreated()
-    onClose()
   }
 
   return (

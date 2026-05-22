@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { OPERATOR_ROLE_LABELS, PROFILE_ROLE_LABELS, type OperatorRole } from '@/lib/constants/domain'
 import { trackOperatorSwitch } from '@/lib/analytics'
+import { ERR } from '@/lib/errors'
 
 const DEFAULT_PIN_LENGTH = 4
 const OWNER_CARD_ID = '__owner__'
@@ -157,7 +158,7 @@ export default function OperatorSelectView({
 
     if (!response.ok || !payload?.success) {
       setError(
-        payload?.error ?? (isOwnerSelected ? 'Contraseña incorrecta.' : 'PIN incorrecto.')
+        payload?.error ?? (isOwnerSelected ? ERR.OPR71 : ERR.OPR72)
       )
       if (isOwnerSelected) setPassword('')
       else setPin('')
@@ -193,7 +194,7 @@ export default function OperatorSelectView({
       } = await supabase.auth.getUser()
 
       if (!user?.email) {
-        setForgotError('No se pudo obtener el email de la cuenta.')
+        setForgotError(ERR.OPR73)
         return
       }
 
@@ -203,7 +204,7 @@ export default function OperatorSelectView({
 
       setForgotSent(true)
     } catch {
-      setForgotError('Ocurrió un error, intenta de nuevo.')
+      setForgotError(ERR.OPR74)
     } finally {
       setForgotLoading(false)
     }

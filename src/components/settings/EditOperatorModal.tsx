@@ -14,7 +14,7 @@ import {
   type OperatorManagementPermissionKey,
   type OperatorManagementPermissions,
 } from '@/lib/operator'
-import { translateDbError } from '@/lib/errors'
+import { translateDbError, ERR } from '@/lib/errors'
 
 interface EditOperatorModalProps {
   operator: SettingsOperator
@@ -187,23 +187,23 @@ export default function EditOperatorModal({
     event.preventDefault()
 
     if (isOwner && !trimmedName) {
-      setError('El nombre es obligatorio.')
+      setError(ERR.OPR41)
       return
     }
 
     if (isOwner && (newPin.length > 0 || confirmPin.length > 0)) {
       if (!newPin || !confirmPin) {
-        setError('Completa ambos campos de PIN para continuar.')
+        setError(ERR.OPR43)
         return
       }
 
       if (newPin !== confirmPin) {
-        setError('Los PIN ingresados no coinciden.')
+        setError(ERR.OPR44)
         return
       }
 
       if (!/^\d{4}$|^\d{6}$/.test(newPin)) {
-        setError('El PIN debe contener exactamente 4 o 6 dígitos.')
+        setError(ERR.OPR42)
         return
       }
     }
@@ -230,7 +230,7 @@ export default function EditOperatorModal({
 
     if (updateError) {
       setLoading(false)
-      onError(translateDbError(updateError.message, 'No se pudo actualizar el operario.'))
+      onError(translateDbError(updateError.message, ERR.OPR1))
       return
     }
 

@@ -9,6 +9,7 @@ import NewOperatorModal from '@/components/settings/NewOperatorModal'
 import EditOperatorModal from '@/components/settings/EditOperatorModal'
 import ConfirmModal from '@/components/shared/ConfirmModal'
 import { useToast } from '@/hooks/useToast'
+import { ERR } from '@/lib/errors'
 import Toast from '@/components/shared/Toast'
 import { Plus } from 'lucide-react'
 
@@ -79,7 +80,7 @@ export default function OperatorList({
 
           if (rpcError || !result?.success) {
             restoreOperator()
-            showToast({ message: result?.error ?? rpcError?.message ?? 'No se pudo eliminar el operario.' })
+            showToast({ message: result?.error ?? ERR.OPR1 })
           }
         }, TOAST_DURATION + 500)
 

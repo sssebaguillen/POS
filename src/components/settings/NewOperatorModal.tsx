@@ -9,6 +9,7 @@ import { X } from 'lucide-react'
 import { isSettingsOperator, type SettingsOperator } from '@/components/settings/types'
 import { OPERATOR_ROLES, OPERATOR_ROLE_LABELS, type OperatorRole } from '@/lib/constants/domain'
 import type { Permissions } from '@/lib/operator'
+import { ERR } from '@/lib/errors'
 
 // Sub-toggles are shown nested under their parent; standalone permissions are shown directly
 type VisiblePermissionKey = Exclude<keyof Permissions, 'operators_write' | 'stock_write' | 'price_lists_write' | 'price_override'>
@@ -133,12 +134,12 @@ export default function NewOperatorModal({
 
     const trimmedName = name.trim()
     if (!trimmedName) {
-      setError('El nombre es obligatorio.')
+      setError(ERR.OPR41)
       return
     }
 
     if (!/^\d{4}$|^\d{6}$/.test(pin)) {
-      setError('El PIN debe contener exactamente 4 o 6 dígitos.')
+      setError(ERR.OPR42)
       return
     }
 
@@ -151,17 +152,22 @@ export default function NewOperatorModal({
     setLoading(true)
     setError(null)
 
-    const { data: createData, error: createError } = await supabase.rpc('create_operator', {
-      p_actor_operator_id: operatorId,
-      p_business_id: businessId,
-      p_name: trimmedName,
-      p_role: roleToSend,
-      p_pin: pin,
-      p_permissions: permissions,
-    })
+    try {
+      const { data: createData, error: createError } = await supabase.rpc('create_operator', {
+        p_actor_operator_id: operatorId,
+        p_business_id: businessId,
+        p_name: trimmedName,
+        p_role: roleToSend,
+        p_pin: pin,
+        p_permissions: permissions,
+      })
 
-    if (createError || !createData?.success) {
-      setError(createData?.error ?? createError?.message ?? 'Error al crear el operador.')
+      if (createError || !createData?.success) {
+        setError(createData?.error ?? ERR.OPR1)
+        return
+      }
+    } catch {
+      setError(ERR.OPR1)
       setLoading(false)
       return
     }

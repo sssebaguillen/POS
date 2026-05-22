@@ -10,6 +10,7 @@ import { formatMoney } from '@/lib/format'
 import { PAYMENT_LABELS } from '@/lib/payments'
 import Toast from '@/components/shared/Toast'
 import type { Customer } from '@/lib/types'
+import { ERR } from '@/lib/errors'
 
 type SettlementMethod = 'cash' | 'card' | 'transfer'
 
@@ -47,42 +48,46 @@ export default function EditCustomerModal({ open, onClose, customer, operatorId,
   async function handleSave() {
     const trimmedName = name.trim()
     if (!trimmedName) {
-      setError('El nombre es obligatorio.')
+      setError(ERR.CST41)
       return
     }
 
     const parsedLimit = Number.parseFloat(creditLimit.replace(',', '.'))
     if (!Number.isFinite(parsedLimit) || parsedLimit < 0) {
-      setError('El límite de crédito debe ser un número mayor o igual a 0.')
+      setError(ERR.CST42)
       return
     }
 
     setSaving(true)
     setError(null)
 
-    const { data: rpcResult, error: rpcError } = await supabase.rpc('update_customer', {
-      p_operator_id: operatorId,
-      p_business_id: customer.business_id,
-      p_customer_id: customer.id,
-      p_name: trimmedName,
-      p_phone: phone.trim() || null,
-      p_email: email.trim() || null,
-      p_dni: dni.trim() || null,
-      p_credit_limit: parsedLimit,
-      p_is_credit_enabled: isCreditEnabled,
-      p_notes: notes.trim() || null,
-    })
+    try {
+      const { data: rpcResult, error: rpcError } = await supabase.rpc('update_customer', {
+        p_operator_id: operatorId,
+        p_business_id: customer.business_id,
+        p_customer_id: customer.id,
+        p_name: trimmedName,
+        p_phone: phone.trim() || null,
+        p_email: email.trim() || null,
+        p_dni: dni.trim() || null,
+        p_credit_limit: parsedLimit,
+        p_is_credit_enabled: isCreditEnabled,
+        p_notes: notes.trim() || null,
+      })
 
-    const result = rpcResult as { success: boolean; error?: string; customer?: Customer } | null
+      const result = rpcResult as { success: boolean; error?: string; customer?: Customer } | null
 
-    if (rpcError || !result?.success || !result.customer) {
-      setError(result?.error ?? rpcError?.message ?? 'No se pudo actualizar el cliente.')
+      if (rpcError || !result?.success || !result.customer) {
+        setError(result?.error ?? ERR.CST1)
+        return
+      }
+
+      onUpdated(result.customer)
+    } catch {
+      setError(ERR.CST1)
+    } finally {
       setSaving(false)
-      return
     }
-
-    onUpdated(result.customer)
-    setSaving(false)
   }
 
   async function handleSettlePayment() {

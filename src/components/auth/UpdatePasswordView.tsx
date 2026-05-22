@@ -2,6 +2,7 @@
 
 import { useMemo, useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { ERR } from '@/lib/errors'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 
@@ -23,7 +24,7 @@ export default function UpdatePasswordView() {
     }
     supabase.auth.exchangeCodeForSession(code).then(({ error }) => {
       if (error) {
-        setError('El enlace expiró o ya fue usado. Solicitá uno nuevo desde la pantalla de login.')
+        setError(ERR.AUT71)
       } else {
         setSessionReady(true)
       }
@@ -32,33 +33,37 @@ export default function UpdatePasswordView() {
 
   async function handleUpdatePassword() {
     if (newPassword.length < 8) {
-      setError('La contraseña debe tener al menos 8 caracteres')
+      setError(ERR.AUT41)
       return
     }
 
     if (newPassword !== confirmPassword) {
-      setError('Las contraseñas no coinciden')
+      setError(ERR.AUT42)
       return
     }
 
     setLoading(true)
     setError('')
 
-    const { error: updateError } = await supabase.auth.updateUser({
-      password: newPassword,
-    })
+    try {
+      const { error: updateError } = await supabase.auth.updateUser({
+        password: newPassword,
+      })
 
-    setLoading(false)
+      if (updateError) {
+        setError(ERR.AUT1)
+        return
+      }
 
-    if (updateError) {
-      setError('No se pudo actualizar la contraseña. El enlace puede haber expirado.')
-      return
+      setSuccessMessage('¡Contraseña actualizada! Redirigiendo...')
+      window.setTimeout(() => {
+        window.location.href = '/operator-select'
+      }, 2000)
+    } catch {
+      setError(ERR.AUT1)
+    } finally {
+      setLoading(false)
     }
-
-    setSuccessMessage('¡Contraseña actualizada! Redirigiendo...')
-    window.setTimeout(() => {
-      window.location.href = '/operator-select'
-    }, 2000)
   }
 
   return (

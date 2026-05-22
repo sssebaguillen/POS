@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { X } from 'lucide-react'
 import type { Customer } from '@/lib/types'
+import { ERR } from '@/lib/errors'
 
 interface Props {
   open: boolean
@@ -31,41 +32,45 @@ export default function NewCustomerModal({ open, onClose, businessId, operatorId
   async function handleCreate() {
     const trimmedName = name.trim()
     if (!trimmedName) {
-      setError('El nombre es obligatorio.')
+      setError(ERR.CST41)
       return
     }
 
     const parsedLimit = Number.parseFloat(creditLimit.replace(',', '.'))
     if (!Number.isFinite(parsedLimit) || parsedLimit < 0) {
-      setError('El límite de crédito debe ser un número mayor o igual a 0.')
+      setError(ERR.CST42)
       return
     }
 
     setSaving(true)
     setError(null)
 
-    const { data: rpcResult, error: rpcError } = await supabase.rpc('create_customer', {
-      p_operator_id: operatorId,
-      p_business_id: businessId,
-      p_name: trimmedName,
-      p_phone: phone.trim() || null,
-      p_email: email.trim() || null,
-      p_dni: dni.trim() || null,
-      p_credit_limit: parsedLimit,
-      p_is_credit_enabled: isCreditEnabled,
-      p_notes: notes.trim() || null,
-    })
+    try {
+      const { data: rpcResult, error: rpcError } = await supabase.rpc('create_customer', {
+        p_operator_id: operatorId,
+        p_business_id: businessId,
+        p_name: trimmedName,
+        p_phone: phone.trim() || null,
+        p_email: email.trim() || null,
+        p_dni: dni.trim() || null,
+        p_credit_limit: parsedLimit,
+        p_is_credit_enabled: isCreditEnabled,
+        p_notes: notes.trim() || null,
+      })
 
-    const result = rpcResult as { success: boolean; error?: string; customer?: Customer } | null
+      const result = rpcResult as { success: boolean; error?: string; customer?: Customer } | null
 
-    if (rpcError || !result?.success || !result.customer) {
-      setError(result?.error ?? rpcError?.message ?? 'No se pudo crear el cliente.')
+      if (rpcError || !result?.success || !result.customer) {
+        setError(result?.error ?? ERR.CST1)
+        return
+      }
+
+      onCreated(result.customer)
+    } catch {
+      setError(ERR.CST1)
+    } finally {
       setSaving(false)
-      return
     }
-
-    onCreated(result.customer)
-    setSaving(false)
   }
 
   if (!open) return null

@@ -13,6 +13,7 @@ import { CURRENCIES, type SupportedCurrencyCode } from '@/lib/constants/currenci
 import { Upload } from 'lucide-react'
 import { usePillIndicator } from '@/hooks/usePillIndicator'
 import { BUSINESS_SLUG_REGEX } from '@/lib/validation'
+import { ERR } from '@/lib/errors'
 
 interface SettingsFormProps {
   business: SettingsBusiness
@@ -163,11 +164,11 @@ export default function SettingsForm({
   async function handleLogoFileUpload(file: File) {
     setLogoUploadError('')
     if (!LOGO_ALLOWED_TYPES.has(file.type)) {
-      setLogoUploadError('Formato no permitido. Usa JPEG, PNG, WebP o SVG.')
+      setLogoUploadError(ERR.SET61)
       return
     }
     if (file.size > LOGO_MAX_BYTES) {
-      setLogoUploadError('El archivo supera el máximo de 2 MB.')
+      setLogoUploadError(ERR.SET62)
       return
     }
 
@@ -192,7 +193,7 @@ export default function SettingsForm({
     })
 
     if (uploadError) {
-      setLogoUploadError(uploadError.message)
+      setLogoUploadError(ERR.SET6)
       setLogoUploading(false)
       return
     }
@@ -215,7 +216,7 @@ export default function SettingsForm({
 
     const name = form.name.trim()
     if (!name) {
-      setError('El nombre del negocio es obligatorio.')
+      setError(ERR.SET43)
       return
     }
 
@@ -223,38 +224,42 @@ export default function SettingsForm({
     setError('')
     setSuccess('')
 
-    const { data: rpcResult, error: updateError } = await supabase.rpc('update_business_settings', {
-      p_operator_id: operatorId,
-      p_business_id: business.id,
-      p_name: name,
-      p_description: form.description.trim() || null,
-      p_whatsapp: form.whatsapp.trim() || null,
-      p_logo_url: normalizedLogoUrl || null,
-      p_settings_patch: {
-        primary_color: form.primaryColor,
-        currency: form.currencyCode,
-        free_line_enabled: form.freeLineEnabled,
-      },
-    })
+    try {
+      const { data: rpcResult, error: updateError } = await supabase.rpc('update_business_settings', {
+        p_operator_id: operatorId,
+        p_business_id: business.id,
+        p_name: name,
+        p_description: form.description.trim() || null,
+        p_whatsapp: form.whatsapp.trim() || null,
+        p_logo_url: normalizedLogoUrl || null,
+        p_settings_patch: {
+          primary_color: form.primaryColor,
+          currency: form.currencyCode,
+          free_line_enabled: form.freeLineEnabled,
+        },
+      })
 
-    setLoading(false)
+      const result = rpcResult as { success: boolean; error?: string } | null
 
-    const result = rpcResult as { success: boolean; error?: string } | null
+      if (updateError || !result?.success) {
+        setError(result?.error ?? ERR.SET1)
+        return
+      }
 
-    if (updateError || !result?.success) {
-      setError(result?.error ?? updateError?.message ?? 'No se pudo guardar la configuración.')
-      return
+      setSuccess('Configuración guardada.')
+      await invalidateBusinessQueries()
+    } catch {
+      setError(ERR.SET1)
+    } finally {
+      setLoading(false)
     }
-
-    setSuccess('Configuración guardada.')
-    await invalidateBusinessQueries()
   }
 
   async function handleSlugSubmit() {
     const slug = normalizedBusinessSlug
 
     if (!BUSINESS_SLUG_REGEX.test(slug)) {
-      setSlugError('El slug debe usar solo letras minúsculas, números o guiones, y tener entre 3 y 50 caracteres.')
+      setSlugError(ERR.SET41)
       setSlugSuccess('')
       return
     }
@@ -263,21 +268,25 @@ export default function SettingsForm({
     setSlugError('')
     setSlugSuccess('')
 
-    const { error: slugUpdateError } = await supabase.rpc('update_business_slug', {
-      p_operator_id: operatorId,
-      p_business_id: business.id,
-      p_slug: slug,
-    })
+    try {
+      const { error: slugUpdateError } = await supabase.rpc('update_business_slug', {
+        p_operator_id: operatorId,
+        p_business_id: business.id,
+        p_slug: slug,
+      })
 
-    setSlugLoading(false)
+      if (slugUpdateError) {
+        setSlugError(ERR.SET1)
+        return
+      }
 
-    if (slugUpdateError) {
-      setSlugError(slugUpdateError.message)
-      return
+      setSlugSuccess('URL del catálogo actualizada.')
+      await invalidateBusinessQueries()
+    } catch {
+      setSlugError(ERR.SET1)
+    } finally {
+      setSlugLoading(false)
     }
-
-    setSlugSuccess('URL del catálogo actualizada.')
-    await invalidateBusinessQueries()
   }
 
   async function handleCopyPublicUrl() {

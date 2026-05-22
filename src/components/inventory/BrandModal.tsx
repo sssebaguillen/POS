@@ -8,7 +8,7 @@ import { X, Pencil, Check } from 'lucide-react'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import ConfirmModal from '@/components/shared/ConfirmModal'
 import type { InventoryBrand } from '@/components/inventory/types'
-import { translateDbError } from '@/lib/errors'
+import { translateDbError, ERR } from '@/lib/errors'
 
 type ConfirmState = { title: string; message: string; onConfirm: () => void } | null
 
@@ -56,7 +56,7 @@ export default function BrandModal({
       .order('name')
 
     if (fetchError || !data) {
-      setError(fetchError?.message ?? 'Error al actualizar marcas')
+      setError(ERR.INV6)
       return
     }
 
@@ -66,35 +66,39 @@ export default function BrandModal({
 
   async function handleCreate() {
     if (!stockWriteAllowed) {
-      setError('Acceso denegado: Permisos de inventario insuficientes')
+      setError(ERR.INV2)
       return
     }
 
     if (!name.trim()) {
-      setError('El nombre es obligatorio')
+      setError(ERR.INV41)
       return
     }
 
     setCreating(true)
     setError(null)
 
-    const { data: rpcResult, error: rpcError } = await supabase.rpc('create_brand_guarded', {
-      p_operator_id: operatorId,
-      p_business_id: businessId,
-      p_name: name.trim(),
-    })
+    try {
+      const { data: rpcResult, error: rpcError } = await supabase.rpc('create_brand_guarded', {
+        p_operator_id: operatorId,
+        p_business_id: businessId,
+        p_name: name.trim(),
+      })
 
-    const result = rpcResult as { success: boolean; error?: string } | null
+      const result = rpcResult as { success: boolean; error?: string } | null
 
-    if (rpcError || !result?.success) {
-      setError(result?.error ?? rpcError?.message ?? 'Error al crear la marca')
+      if (rpcError || !result?.success) {
+        setError(result?.error ?? ERR.INV1)
+        return
+      }
+
+      setName('')
+      await refreshBrands()
+    } catch {
+      setError(ERR.INV1)
+    } finally {
       setCreating(false)
-      return
     }
-
-    setName('')
-    await refreshBrands()
-    setCreating(false)
   }
 
   function startEdit(brand: InventoryBrand) {
@@ -112,34 +116,38 @@ export default function BrandModal({
     if (!stockWriteAllowed) return
 
     if (!editName.trim()) {
-      setError('El nombre es obligatorio')
+      setError(ERR.INV41)
       return
     }
 
     setSaving(true)
     setError(null)
 
-    const { data: rpcResult, error: rpcError } = await supabase.rpc('update_brand', {
-      p_operator_id: operatorId,
-      p_business_id: businessId,
-      p_brand_id: brandId,
-      p_name: editName.trim(),
-    })
+    try {
+      const { data: rpcResult, error: rpcError } = await supabase.rpc('update_brand', {
+        p_operator_id: operatorId,
+        p_business_id: businessId,
+        p_brand_id: brandId,
+        p_name: editName.trim(),
+      })
 
-    const result = rpcResult as { success: boolean; error?: string } | null
+      const result = rpcResult as { success: boolean; error?: string } | null
 
-    if (rpcError || !result?.success) {
-      setError(result?.error ?? rpcError?.message ?? 'Error al actualizar la marca')
+      if (rpcError || !result?.success) {
+        setError(result?.error ?? ERR.INV1)
+        return
+      }
+
+      const updated = brands.map(b => b.id === brandId ? { ...b, name: editName.trim() } : b)
+      setBrands(updated)
+      onBrandsChanged(updated)
+      setEditingId(null)
+      setEditName('')
+    } catch {
+      setError(ERR.INV1)
+    } finally {
       setSaving(false)
-      return
     }
-
-    const updated = brands.map(b => b.id === brandId ? { ...b, name: editName.trim() } : b)
-    setBrands(updated)
-    onBrandsChanged(updated)
-    setEditingId(null)
-    setEditName('')
-    setSaving(false)
   }
 
   async function handleDelete(brand: InventoryBrand) {
@@ -165,22 +173,26 @@ export default function BrandModal({
         setDeletingId(brand.id)
         setError(null)
 
-        const { data: rpcResult, error: rpcError } = await supabase.rpc('delete_brand', {
-          p_operator_id: operatorId,
-          p_business_id: businessId,
-          p_brand_id: brand.id,
-        })
+        try {
+          const { data: rpcResult, error: rpcError } = await supabase.rpc('delete_brand', {
+            p_operator_id: operatorId,
+            p_business_id: businessId,
+            p_brand_id: brand.id,
+          })
 
-        const result = rpcResult as { success: boolean; error?: string } | null
+          const result = rpcResult as { success: boolean; error?: string } | null
 
-        if (rpcError || !result?.success) {
-          setError(result?.error ?? translateDbError(rpcError?.message ?? '', 'No se pudo eliminar la marca.'))
+          if (rpcError || !result?.success) {
+            setError(result?.error ?? translateDbError(rpcError?.message ?? '', ERR.INV1))
+            return
+          }
+
+          await refreshBrands()
+        } catch {
+          setError(ERR.INV1)
+        } finally {
           setDeletingId(null)
-          return
         }
-
-        await refreshBrands()
-        setDeletingId(null)
       },
     })
   }

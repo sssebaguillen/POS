@@ -8,6 +8,7 @@ import { normalizePayment } from '@/lib/payments'
 import { useFormatMoney } from '@/lib/context/CurrencyContext'
 import { printReceiptEscPos, supportsWebSerial } from '@/lib/printer/escpos'
 import type { ReceiptData } from '@/lib/printer/types'
+import { ERR } from '@/lib/errors'
 
 interface Props {
   receipt: ReceiptData
@@ -43,7 +44,7 @@ export default function ReceiptPreviewModal({ receipt, onClose, autoPrintOnOpen 
     window.setTimeout(() => {
       openBrowserPrint().catch(printError => {
         console.error(printError)
-        setError('No se pudo abrir la impresión del ticket.')
+        setError(ERR.POS61)
       })
     }, 80)
   }, [autoPrintOnOpen, openBrowserPrint])
@@ -80,7 +81,7 @@ export default function ReceiptPreviewModal({ receipt, onClose, autoPrintOnOpen 
       await openBrowserPrint()
     } catch (printError) {
       console.error(printError)
-      setError('No se pudo abrir el diálogo de impresión.')
+      setError(ERR.POS62)
     }
   }
 
@@ -92,7 +93,7 @@ export default function ReceiptPreviewModal({ receipt, onClose, autoPrintOnOpen 
       await printReceiptEscPos(receipt)
     } catch (printError) {
       console.error(printError)
-      setError(printError instanceof Error ? printError.message : 'No se pudo imprimir directo en la termica.')
+      setError(ERR.POS63)
     } finally {
       setPrintingDirect(false)
     }
@@ -110,7 +111,7 @@ export default function ReceiptPreviewModal({ receipt, onClose, autoPrintOnOpen 
     } catch (shareError) {
       if (!(shareError instanceof Error) || shareError.name !== 'AbortError') {
         console.error(shareError)
-        setError('No se pudo abrir el menu de compartir.')
+        setError(ERR.POS64)
       }
     } finally {
       setSharing(false)

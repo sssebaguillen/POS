@@ -10,7 +10,7 @@ import { VisuallyHidden } from '@radix-ui/react-visually-hidden'
 import ConfirmModal from '@/components/shared/ConfirmModal'
 import type { PriceList, PriceListOverride } from '@/lib/types'
 import { normalizePriceList } from '@/lib/mappers'
-import { translateDbError } from '@/lib/errors'
+import { translateDbError, ERR } from '@/lib/errors'
 
 type ConfirmState = { title: string; message: string; onConfirm: () => void } | null
 
@@ -78,18 +78,18 @@ export default function EditPriceListModal({
 
   async function handleSave() {
     if (!name.trim()) {
-      setError('El nombre es obligatorio')
+      setError(ERR.PRL41)
       return
     }
 
     const parsedPercentage = Number(percentage)
     if (!percentage.trim() || !Number.isFinite(parsedPercentage) || parsedPercentage <= 0) {
-      setError('El margen debe ser un número mayor a 0.')
+      setError(ERR.PRL42)
       return
     }
 
     if (affectedProducts.length > 0 && overwriteManual === null) {
-      setError('Indicá qué hacer con los productos que no coinciden con este margen')
+      setError(ERR.PRL43)
       return
     }
 
@@ -120,57 +120,61 @@ export default function EditPriceListModal({
       }
     }
 
-    const { data: rpcResult, error: rpcError } = await supabase.rpc('update_price_list', {
-      p_operator_id: operatorId,
-      p_business_id: businessId,
-      p_price_list_id: list.id,
-      p_name: name.trim(),
-      p_description: description.trim() || null,
-      p_multiplier: newMultiplier,
-      p_overrides_upsert: upsertPayload,
-      p_overrides_delete_ids: deletePayload,
-    })
+    try {
+      const { data: rpcResult, error: rpcError } = await supabase.rpc('update_price_list', {
+        p_operator_id: operatorId,
+        p_business_id: businessId,
+        p_price_list_id: list.id,
+        p_name: name.trim(),
+        p_description: description.trim() || null,
+        p_multiplier: newMultiplier,
+        p_overrides_upsert: upsertPayload,
+        p_overrides_delete_ids: deletePayload,
+      })
 
-    type UpdateResult = {
-      success: boolean
-      error?: string
-      upserted_overrides?: { id: string; price_list_id: string; product_id: string; brand_id: string | null; multiplier: number | string }[]
-      deleted_ids?: string[]
-    }
+      type UpdateResult = {
+        success: boolean
+        error?: string
+        upserted_overrides?: { id: string; price_list_id: string; product_id: string; brand_id: string | null; multiplier: number | string }[]
+        deleted_ids?: string[]
+      }
 
-    const result = rpcResult as UpdateResult | null
+      const result = rpcResult as UpdateResult | null
 
-    if (rpcError || !result?.success) {
+      if (rpcError || !result?.success) {
+        setError(result?.error ?? ERR.PRL1)
+        return
+      }
+
+      const upsertedOverrides: PriceListOverride[] = (result.upserted_overrides ?? []).map(o => ({
+        id: o.id,
+        price_list_id: o.price_list_id,
+        product_id: o.product_id,
+        brand_id: o.brand_id,
+        multiplier: Number(o.multiplier),
+      }))
+      const deletedOverrideIds: string[] = result.deleted_ids ?? []
+
+      setOverwriteManual(null)
+      onSaved(
+        normalizePriceList({
+          id: list.id,
+          business_id: list.business_id,
+          name: name.trim(),
+          description: description.trim() || null,
+          multiplier: newMultiplier,
+          is_default: list.is_default,
+          created_at: list.created_at,
+        }),
+        upsertedOverrides,
+        deletedOverrideIds
+      )
+      onClose()
+    } catch {
+      setError(ERR.PRL1)
+    } finally {
       setSaving(false)
-      setError(result?.error ?? rpcError?.message ?? 'Error al guardar la lista')
-      return
     }
-
-    const upsertedOverrides: PriceListOverride[] = (result.upserted_overrides ?? []).map(o => ({
-      id: o.id,
-      price_list_id: o.price_list_id,
-      product_id: o.product_id,
-      brand_id: o.brand_id,
-      multiplier: Number(o.multiplier),
-    }))
-    const deletedOverrideIds: string[] = result.deleted_ids ?? []
-
-    setSaving(false)
-    setOverwriteManual(null)
-    onSaved(
-      normalizePriceList({
-        id: list.id,
-        business_id: list.business_id,
-        name: name.trim(),
-        description: description.trim() || null,
-        multiplier: newMultiplier,
-        is_default: list.is_default,
-        created_at: list.created_at,
-      }),
-      upsertedOverrides,
-      deletedOverrideIds
-    )
-    onClose()
   }
 
   function handleDelete() {

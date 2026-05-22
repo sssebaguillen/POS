@@ -14,6 +14,7 @@ import { useCurrency, useFormatMoney } from '@/lib/context/CurrencyContext'
 import { useCartStore } from '@/lib/store/cart.store'
 import { createClient } from '@/lib/supabase/client'
 import { trackSale } from '@/lib/analytics'
+import { ERR } from '@/lib/errors'
 
 const PAYMENT_ICONS: Record<PaymentMethod, ReactNode> = {
   cash: '$',
@@ -151,7 +152,7 @@ export default function PaymentModal({
 
   async function handleConfirm(openReceiptPreview: boolean) {
     if (!businessId) {
-      setError('No se pudo identificar el negocio actual. Iniciá sesión nuevamente.')
+      setError(ERR.POS3)
       return
     }
 
@@ -165,82 +166,83 @@ export default function PaymentModal({
         ]
       : [{ method: primaryMethod, amount: primaryMethod === 'cash' ? validCash : total }]
 
-    const { data: rpcResult, error: rpcError } = await supabase.rpc('create_sale_transaction', {
-      p_business_id: businessId,
-      p_subtotal: subtotal,
-      p_discount: discount,
-      p_total: total,
-      p_status: 'completed',
-      p_price_list_id: priceListId,
-      p_operator_id: operatorId ?? null,
-      p_items: saleItems.map(item => ({
-        product_id: item.product_id,
-        variant_id: item.variant_id ?? null,
-        quantity: item.quantity,
-        unit_price: item.unit_price,
-        total: item.total,
-        unit_price_override: item.unit_price_override,
-        override_reason: item.override_reason,
-        free_line_description: item.free_line_description,
-      })),
-      p_payments: payments,
-      p_customer_id: customer?.id ?? null,
-    })
-
-    const result = rpcResult as { success: boolean; sale_id?: string; created_at?: string; error?: string } | null
-
-    if (rpcError || !result?.success) {
-      const msg = result?.error ?? rpcError?.message ?? 'No se pudo registrar la venta'
-      console.error(msg)
-      setError(msg)
-      setLoading(false)
-      return
-    }
-
-    if (!isMixed && primaryMethod === 'credit' && customer && result.sale_id) {
-      const { error: creditError } = await supabase.rpc('apply_customer_credit', {
-        p_sale_id: result.sale_id,
-        p_customer_id: customer.id,
-        p_amount: total,
+    try {
+      const { data: rpcResult, error: rpcError } = await supabase.rpc('create_sale_transaction', {
+        p_business_id: businessId,
+        p_subtotal: subtotal,
+        p_discount: discount,
+        p_total: total,
+        p_status: 'completed',
+        p_price_list_id: priceListId,
+        p_operator_id: operatorId ?? null,
+        p_items: saleItems.map(item => ({
+          product_id: item.product_id,
+          variant_id: item.variant_id ?? null,
+          quantity: item.quantity,
+          unit_price: item.unit_price,
+          total: item.total,
+          unit_price_override: item.unit_price_override,
+          override_reason: item.override_reason,
+          free_line_description: item.free_line_description,
+        })),
+        p_payments: payments,
+        p_customer_id: customer?.id ?? null,
       })
-      if (creditError) {
-        console.error(creditError)
-        setError('Venta registrada pero error al aplicar crédito. Contactar soporte.')
-        setLoading(false)
+
+      const result = rpcResult as { success: boolean; sale_id?: string; created_at?: string; error?: string } | null
+
+      if (rpcError || !result?.success) {
+        setError(result?.error ?? ERR.POS1)
         return
       }
-    }
 
-    const change = isMixed ? mixedChange : singleChange
-    const nextReceipt: ReceiptData = {
-      saleId: result.sale_id ?? '',
-      businessName,
-      createdAt: result.created_at ?? new Date().toISOString(),
-      items: receiptItems,
-      subtotal,
-      discount,
-      total,
-      paymentMethod: primaryMethod,
-      cashReceived: !isMixed && primaryMethod === 'cash' ? validCash : null,
-      change,
-      currency,
-    }
+      if (!isMixed && primaryMethod === 'credit' && customer && result.sale_id) {
+        const { error: creditError } = await supabase.rpc('apply_customer_credit', {
+          p_sale_id: result.sale_id,
+          p_customer_id: customer.id,
+          p_amount: total,
+        })
+        if (creditError) {
+          console.error(creditError)
+          setError('Venta registrada pero error al aplicar crédito. Contactar soporte.')
+          return
+        }
+      }
 
-    trackSale({
-      total,
-      itemCount: saleItems.length,
-      paymentMethods: isMixed ? [primaryMethod, secondaryMethod] : [primaryMethod],
-      isMultiPayment: isMixed,
-    })
+      const change = isMixed ? mixedChange : singleChange
+      const nextReceipt: ReceiptData = {
+        saleId: result.sale_id ?? '',
+        businessName,
+        createdAt: result.created_at ?? new Date().toISOString(),
+        items: receiptItems,
+        subtotal,
+        discount,
+        total,
+        paymentMethod: primaryMethod,
+        cashReceived: !isMixed && primaryMethod === 'cash' ? validCash : null,
+        change,
+        currency,
+      }
 
-    onSaleCompleted('Venta registrada')
-    clearCart()
-    setLoading(false)
+      trackSale({
+        total,
+        itemCount: saleItems.length,
+        paymentMethods: isMixed ? [primaryMethod, secondaryMethod] : [primaryMethod],
+        isMultiPayment: isMixed,
+      })
 
-    if (openReceiptPreview) {
-      setReceipt(nextReceipt)
-    } else {
-      onClose()
+      onSaleCompleted('Venta registrada')
+      clearCart()
+
+      if (openReceiptPreview) {
+        setReceipt(nextReceipt)
+      } else {
+        onClose()
+      }
+    } catch {
+      setError(ERR.POS1)
+    } finally {
+      setLoading(false)
     }
   }
 

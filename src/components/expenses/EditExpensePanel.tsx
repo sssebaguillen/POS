@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { Info, Lock, X } from 'lucide-react'
+import { ERR } from '@/lib/errors'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -64,12 +65,12 @@ export default function EditExpensePanel({
 
   useEffect(() => {
     if (!isMercaderia) return
-    supabase
-      .rpc('get_mercaderia_expense_items', {
-        p_expense_id: expense.id,
-        p_business_id: expense.business_id,
-      })
-      .then(({ data }) => {
+    void (async () => {
+      try {
+        const { data } = await supabase.rpc('get_mercaderia_expense_items', {
+          p_expense_id: expense.id,
+          p_business_id: expense.business_id,
+        })
         if (data) {
           setMercaderiaItems(
             (data as Array<{
@@ -92,8 +93,12 @@ export default function EditExpensePanel({
             }))
           )
         }
+      } catch {
+        // Items failed to load — keep the form open without pre-populated items
+      } finally {
         setLoadingItems(false)
-      })
+      }
+    })()
   }, [expense.id, expense.business_id, isMercaderia, supabase])
 
   async function handleSubmit(e: React.FormEvent) {
@@ -101,84 +106,96 @@ export default function EditExpensePanel({
     setError(null)
 
     if (!description.trim()) {
-      setError('La descripción es obligatoria')
+      setError(ERR.EXP41)
       return
     }
 
     if (isMercaderia) {
       if (mercaderiaItems.length === 0) {
-        setError('Agrega al menos un producto')
+        setError(ERR.EXP43)
         return
       }
       setSaving(true)
-      const { data, error: rpcError } = await supabase.rpc('update_mercaderia_expense', {
+      try {
+        const { data, error: rpcError } = await supabase.rpc('update_mercaderia_expense', {
+          p_business_id: businessId,
+          p_expense_id: expense.id,
+          p_description: description.trim(),
+          p_date: date || null,
+          p_supplier_id: supplierId,
+          p_notes: notes.trim() || null,
+          p_items: mercaderiaItems.map(i => ({
+            product_id: i.product_id,
+            product_name: i.product_name,
+            variant_id: i.variant_id ?? undefined,
+            quantity: i.quantity,
+            unit_cost: i.unit_cost,
+            update_cost: i.update_cost,
+          })),
+          p_operator_id: operatorId,
+        })
+        if (rpcError || !data?.success) {
+          const errKey = data?.error
+          if (errKey === 'unauthorized') {
+            setError(ERR.EXP2)
+          } else if (errKey === 'not_found') {
+            setError(ERR.EXP3)
+          } else if (errKey === 'cost_conflict') {
+            setError(ERR.EXP5)
+          } else {
+            setError(ERR.EXP1)
+          }
+          return
+        }
+        onUpdated()
+        onClose()
+      } catch {
+        setError(ERR.EXP1)
+      } finally {
+        setSaving(false)
+      }
+      return
+    }
+
+    const numAmount = parseFloat(amount)
+    if (!amount || isNaN(numAmount) || numAmount <= 0) {
+      setError(ERR.EXP42)
+      return
+    }
+
+    setSaving(true)
+    try {
+      const { data, error: rpcError } = await supabase.rpc('update_expense', {
         p_business_id: businessId,
         p_expense_id: expense.id,
         p_description: description.trim(),
         p_date: date || null,
         p_supplier_id: supplierId,
         p_notes: notes.trim() || null,
-        p_items: mercaderiaItems.map(i => ({
-          product_id: i.product_id,
-          product_name: i.product_name,
-          variant_id: i.variant_id ?? undefined,
-          quantity: i.quantity,
-          unit_cost: i.unit_cost,
-          update_cost: i.update_cost,
-        })),
+        p_amount: numAmount,
+        p_attachment_url: attachment?.url ?? null,
+        p_attachment_type: attachment?.type ?? null,
+        p_attachment_name: attachment?.name ?? null,
         p_operator_id: operatorId,
       })
-      setSaving(false)
       if (rpcError || !data?.success) {
         const errKey = data?.error
         if (errKey === 'unauthorized') {
-          setError('Sin permiso para editar este gasto')
+          setError(ERR.EXP2)
         } else if (errKey === 'not_found') {
-          setError('No se encontró el gasto')
+          setError(ERR.EXP3)
         } else {
-          setError(rpcError?.message ?? 'No se pudo guardar los cambios')
+          setError(ERR.EXP1)
         }
         return
       }
       onUpdated()
       onClose()
-      return
+    } catch {
+      setError(ERR.EXP1)
+    } finally {
+      setSaving(false)
     }
-
-    const numAmount = parseFloat(amount)
-    if (!amount || isNaN(numAmount) || numAmount <= 0) {
-      setError('El monto debe ser mayor a 0')
-      return
-    }
-
-    setSaving(true)
-    const { data, error: rpcError } = await supabase.rpc('update_expense', {
-      p_business_id: businessId,
-      p_expense_id: expense.id,
-      p_description: description.trim(),
-      p_date: date || null,
-      p_supplier_id: supplierId,
-      p_notes: notes.trim() || null,
-      p_amount: numAmount,
-      p_attachment_url: attachment?.url ?? null,
-      p_attachment_type: attachment?.type ?? null,
-      p_attachment_name: attachment?.name ?? null,
-      p_operator_id: operatorId,
-    })
-    setSaving(false)
-    if (rpcError || !data?.success) {
-      const errKey = data?.error
-      if (errKey === 'unauthorized') {
-        setError('Sin permiso para editar este gasto')
-      } else if (errKey === 'not_found') {
-        setError('No se encontró el gasto')
-      } else {
-        setError(rpcError?.message ?? 'No se pudo guardar los cambios')
-      }
-      return
-    }
-    onUpdated()
-    onClose()
   }
 
   return (

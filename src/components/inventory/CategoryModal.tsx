@@ -17,7 +17,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import type { InventoryCategory } from '@/components/inventory/types'
-import { translateDbError } from '@/lib/errors'
+import { translateDbError, ERR } from '@/lib/errors'
 import CategoryIconPreview from '@/components/inventory/CategoryIconPreview'
 import IconPickerPanel, { CATEGORY_ICONS } from '@/components/inventory/IconPickerPanel'
 
@@ -81,7 +81,7 @@ export default function CategoryModal({
       .order('position')
 
     if (fetchError || !data) {
-      setError(fetchError?.message ?? 'Error al actualizar categorías')
+      setError(ERR.INV6)
       return
     }
 
@@ -98,39 +98,43 @@ export default function CategoryModal({
 
   async function handleCreate() {
     if (!stockWriteAllowed) {
-      setError('Acceso denegado: Permisos de inventario insuficientes')
+      setError(ERR.INV2)
       return
     }
 
     if (!name.trim()) {
-      setError('El nombre es obligatorio')
+      setError(ERR.INV41)
       return
     }
 
     setCreating(true)
     setError(null)
 
-    const { data: rpcResult, error: rpcError } = await supabase.rpc('create_category_guarded', {
-      p_operator_id: operatorId,
-      p_business_id: businessId,
-      p_name: name.trim(),
-      p_icon: icon.trim() || DEFAULT_ICON,
-      p_icon_color: iconColor,
-    })
+    try {
+      const { data: rpcResult, error: rpcError } = await supabase.rpc('create_category_guarded', {
+        p_operator_id: operatorId,
+        p_business_id: businessId,
+        p_name: name.trim(),
+        p_icon: icon.trim() || DEFAULT_ICON,
+        p_icon_color: iconColor,
+      })
 
-    const result = rpcResult as { success: boolean; id?: string; error?: string } | null
+      const result = rpcResult as { success: boolean; id?: string; error?: string } | null
 
-    if (rpcError || !result?.success) {
-      setError(result?.error ?? rpcError?.message ?? 'Error al crear la categoría')
+      if (rpcError || !result?.success) {
+        setError(result?.error ?? ERR.INV1)
+        return
+      }
+
+      setName('')
+      setIcon(DEFAULT_ICON)
+      setIconColor(DEFAULT_COLOR)
+      await refreshCategories()
+    } catch {
+      setError(ERR.INV1)
+    } finally {
       setCreating(false)
-      return
     }
-
-    setName('')
-    setIcon(DEFAULT_ICON)
-    setIconColor(DEFAULT_COLOR)
-    await refreshCategories()
-    setCreating(false)
   }
 
   function startEdit(category: InventoryCategory) {
@@ -153,42 +157,46 @@ export default function CategoryModal({
     if (!stockWriteAllowed) return
 
     if (!editName.trim()) {
-      setError('El nombre es obligatorio')
+      setError(ERR.INV41)
       return
     }
 
     setSaving(true)
     setError(null)
 
-    const { data: rpcResult, error: rpcError } = await supabase.rpc('update_category', {
-      p_operator_id: operatorId,
-      p_business_id: businessId,
-      p_category_id: categoryId,
-      p_name: editName.trim(),
-      p_icon: editIcon.trim() || DEFAULT_ICON,
-      p_icon_color: editIconColor,
-    })
+    try {
+      const { data: rpcResult, error: rpcError } = await supabase.rpc('update_category', {
+        p_operator_id: operatorId,
+        p_business_id: businessId,
+        p_category_id: categoryId,
+        p_name: editName.trim(),
+        p_icon: editIcon.trim() || DEFAULT_ICON,
+        p_icon_color: editIconColor,
+      })
 
-    const result = rpcResult as { success: boolean; error?: string } | null
+      const result = rpcResult as { success: boolean; error?: string } | null
 
-    if (rpcError || !result?.success) {
-      setError(result?.error ?? rpcError?.message ?? 'Error al actualizar la categoría')
+      if (rpcError || !result?.success) {
+        setError(result?.error ?? ERR.INV1)
+        return
+      }
+
+      const updated = categories.map(c =>
+        c.id === categoryId
+          ? { ...c, name: editName.trim(), icon: editIcon.trim() || DEFAULT_ICON, icon_color: editIconColor }
+          : c
+      )
+      setCategories(updated)
+      onCategoriesChanged(updated)
+      setEditingId(null)
+      setEditName('')
+      setEditIcon(DEFAULT_ICON)
+      setEditIconColor(DEFAULT_COLOR)
+    } catch {
+      setError(ERR.INV1)
+    } finally {
       setSaving(false)
-      return
     }
-
-    const updated = categories.map(c =>
-      c.id === categoryId
-        ? { ...c, name: editName.trim(), icon: editIcon.trim() || DEFAULT_ICON, icon_color: editIconColor }
-        : c
-    )
-    setCategories(updated)
-    onCategoriesChanged(updated)
-    setEditingId(null)
-    setEditName('')
-    setEditIcon(DEFAULT_ICON)
-    setEditIconColor(DEFAULT_COLOR)
-    setSaving(false)
   }
 
   async function requestDelete(categoryId: string) {
@@ -213,24 +221,28 @@ export default function CategoryModal({
     setDeletingId(categoryId)
     setError(null)
 
-    const { data: rpcResult, error: rpcError } = await supabase.rpc('delete_category', {
-      p_operator_id: operatorId,
-      p_business_id: businessId,
-      p_category_id: categoryId,
-    })
+    try {
+      const { data: rpcResult, error: rpcError } = await supabase.rpc('delete_category', {
+        p_operator_id: operatorId,
+        p_business_id: businessId,
+        p_category_id: categoryId,
+      })
 
-    const result = rpcResult as { success: boolean; error?: string } | null
+      const result = rpcResult as { success: boolean; error?: string } | null
 
-    if (rpcError || !result?.success) {
-      setError(result?.error ?? translateDbError(rpcError?.message ?? '', 'No se pudo eliminar la categoría.'))
+      if (rpcError || !result?.success) {
+        setError(result?.error ?? translateDbError(rpcError?.message ?? '', ERR.INV1))
+        return
+      }
+
+      await refreshCategories()
+      setConfirmDeleteId(null)
+      setConfirmDeleteCount(null)
+    } catch {
+      setError(ERR.INV1)
+    } finally {
       setDeletingId(null)
-      return
     }
-
-    await refreshCategories()
-    setDeletingId(null)
-    setConfirmDeleteId(null)
-    setConfirmDeleteCount(null)
   }
 
   function handleClose() {

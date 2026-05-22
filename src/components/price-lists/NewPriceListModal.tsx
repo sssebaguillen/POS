@@ -8,6 +8,7 @@ import { X } from 'lucide-react'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { VisuallyHidden } from '@radix-ui/react-visually-hidden'
 import type { PriceList } from '@/lib/types'
+import { ERR } from '@/lib/errors'
 
 interface NewPriceListModalProps {
   open: boolean
@@ -65,18 +66,18 @@ export default function NewPriceListModal({
 
   async function handleSubmit() {
     if (!name.trim()) {
-      setError('El nombre es obligatorio')
+      setError(ERR.PRL41)
       return
     }
 
     const parsedPercentage = Number(percentage)
     if (!percentage.trim() || !Number.isFinite(parsedPercentage) || parsedPercentage <= 0) {
-      setError('El margen debe ser un número mayor a 0.')
+      setError(ERR.PRL42)
       return
     }
 
     if (affectedProducts.length > 0 && overwriteManual === null) {
-      setError('Indicá qué hacer con los productos que no coinciden con este margen')
+      setError(ERR.PRL43)
       return
     }
 
@@ -93,63 +94,67 @@ export default function NewPriceListModal({
           }))
         : null
 
-    const { data: rpcResult, error: rpcError } = await supabase.rpc('create_price_list', {
-      p_operator_id: operatorId,
-      p_business_id: businessId,
-      p_name: name.trim(),
-      p_description: description.trim() || null,
-      p_multiplier: newMultiplier,
-      p_is_default: !hasDefault,
-      p_overrides: overridesPayload,
-    })
+    try {
+      const { data: rpcResult, error: rpcError } = await supabase.rpc('create_price_list', {
+        p_operator_id: operatorId,
+        p_business_id: businessId,
+        p_name: name.trim(),
+        p_description: description.trim() || null,
+        p_multiplier: newMultiplier,
+        p_is_default: !hasDefault,
+        p_overrides: overridesPayload,
+      })
 
-    setSaving(false)
-
-    type CreateResult = {
-      success: boolean
-      error?: string
-      list?: {
-        id: string
-        business_id: string
-        name: string
-        description: string | null
-        multiplier: number | string
-        is_default: boolean
-        created_at: string
+      type CreateResult = {
+        success: boolean
+        error?: string
+        list?: {
+          id: string
+          business_id: string
+          name: string
+          description: string | null
+          multiplier: number | string
+          is_default: boolean
+          created_at: string
+        }
+        overrides?: { id: string; price_list_id: string; product_id: string; brand_id: string | null; multiplier: number | string }[]
       }
-      overrides?: { id: string; price_list_id: string; product_id: string; brand_id: string | null; multiplier: number | string }[]
+
+      const result = rpcResult as CreateResult | null
+
+      if (rpcError || !result?.success || !result.list) {
+        setError(result?.error ?? ERR.PRL1)
+        return
+      }
+
+      const createdList = result.list
+      const createdOverrides = (result.overrides ?? []).map(o => ({
+        price_list_id: o.price_list_id,
+        product_id: o.product_id,
+        brand_id: null as null,
+        multiplier: Number(o.multiplier),
+      }))
+
+      onCreated(
+        {
+          id: createdList.id,
+          business_id: createdList.business_id,
+          name: createdList.name,
+          description: createdList.description,
+          multiplier: Number(createdList.multiplier),
+          is_default: createdList.is_default,
+          created_at: createdList.created_at,
+        },
+        createdOverrides
+      )
+
+      resetForm()
+      onClose()
+    } catch {
+      setError(ERR.PRL1)
+    } finally {
+      setSaving(false)
     }
-
-    const result = rpcResult as CreateResult | null
-
-    if (rpcError || !result?.success || !result.list) {
-      setError(result?.error ?? rpcError?.message ?? 'Error al crear la lista de precios')
-      return
-    }
-
-    const createdList = result.list
-    const createdOverrides = (result.overrides ?? []).map(o => ({
-      price_list_id: o.price_list_id,
-      product_id: o.product_id,
-      brand_id: null as null,
-      multiplier: Number(o.multiplier),
-    }))
-
-    onCreated(
-      {
-        id: createdList.id,
-        business_id: createdList.business_id,
-        name: createdList.name,
-        description: createdList.description,
-        multiplier: Number(createdList.multiplier),
-        is_default: createdList.is_default,
-        created_at: createdList.created_at,
-      },
-      createdOverrides
-    )
-
-    resetForm()
-    onClose()
   }
 
   return (
