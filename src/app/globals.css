@@ -5,6 +5,7 @@
 @theme {
   --font-sans: var(--font-dm-sans), ui-sans-serif, system-ui, sans-serif;
   --font-display: var(--font-sora), ui-sans-serif, system-ui, sans-serif;
+  --breakpoint-inv: 900px;
 
   /* shadcn standard tokens */
   --color-background: var(--background);

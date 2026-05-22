@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { LayoutGrid, LayoutList, X, CheckSquare, Plus, SlidersHorizontal as FilterIcon } from 'lucide-react'
+import { LayoutGrid, LayoutList, X, CheckSquare, Plus, SlidersHorizontal as FilterIcon, Search, Tag, ArrowDownToLine } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -86,6 +86,13 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [selectionMode, setSelectionMode] = useState(false)
   const [bulkLoading, setBulkLoading] = useState(false)
+  const [mobileSearchOpen, setMobileSearchOpen] = useState(false)
+  const [ioDropdownOpen, setIoDropdownOpen] = useState(false)
+  const [tagsDropdownOpen, setTagsDropdownOpen] = useState(false)
+  const ioDropdownRef = useRef<HTMLDivElement>(null)
+  const tagsDropdownRef = useRef<HTMLDivElement>(null)
+  const ioButtonRef = useRef<HTMLButtonElement>(null)
+  const tagsButtonRef = useRef<HTMLButtonElement>(null)
   const { toast, showToast, dismissToast } = useToast()
   const formatMoney = useFormatMoney()
 
@@ -201,6 +208,16 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
   useEffect(() => {
     const timers = deleteTimersRef.current
     return () => { timers.forEach(id => clearTimeout(id)) }
+  }, [])
+
+  // Close dropdowns on outside click
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (ioDropdownRef.current && !ioDropdownRef.current.contains(e.target as Node)) setIoDropdownOpen(false)
+      if (tagsDropdownRef.current && !tagsDropdownRef.current.contains(e.target as Node)) setTagsDropdownOpen(false)
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
   }, [])
 
   const activeProducts = products.filter(p => p.is_active)
@@ -634,47 +651,161 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
   }
 
   return (
-    <div className="flex flex-col h-full overflow-hidden">
+    <div className="relative flex flex-col h-full overflow-hidden">
       <PageHeader title="Inventario">
-        <Button
-          variant="outline"
-          size="sm"
-          className="rounded-lg text-xs"
-          onClick={() => { setShowImport(true); trackFeatureUsed('import_products') }}
-          disabled={readOnly || !businessId}
-          title={readOnly ? 'Sin permiso de inventario' : undefined}
+        {/* Mobile search icon */}
+        <button
+          onClick={() => setMobileSearchOpen(true)}
+          className="inv:hidden p-1.5 rounded-lg hover:bg-hover-bg transition-colors"
+          aria-label="Buscar"
         >
-          Importar
-        </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          className="rounded-lg text-xs"
-          onClick={exportCsv}
-          disabled={filtered.length === 0}
-        >
-          Exportar
-        </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          className="rounded-lg text-xs"
-          onClick={() => setShowCategories(true)}
-          disabled={readOnly}
-          title={readOnly ? 'Sin permiso de inventario' : undefined}
-        >
-          Categorías
-        </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          className="rounded-lg text-xs"
-          onClick={() => setShowBrands(true)}
-          disabled={readOnly}
-          title={readOnly ? 'Sin permiso de inventario' : undefined}
-        >
-          Marcas
-        </Button>
+          <Search size={18} className="text-body" />
+        </button>
+
+        {/* Import/Export — desktop shows text, mobile shows icon dropdown */}
+        <div ref={ioDropdownRef} className="relative">
+          {/* Mobile: single icon that opens dropdown */}
+          <button
+            ref={ioButtonRef}
+            type="button"
+            onClick={() => {
+              const rect = ioButtonRef.current?.getBoundingClientRect()
+              setIoDropdownOpen(prev => !prev)
+              void rect
+            }}
+            className="inv:hidden p-1.5 rounded-lg border border-edge hover:bg-surface-alt transition-colors"
+            aria-label="Importar / Exportar"
+            title="Importar / Exportar"
+          >
+            <ArrowDownToLine size={17} className="text-body" />
+          </button>
+          {/* Desktop: plain buttons */}
+          <div className="hidden inv:flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="rounded-lg text-xs"
+              onClick={() => { setShowImport(true); trackFeatureUsed('import_products') }}
+              disabled={readOnly || !businessId}
+              title={readOnly ? 'Sin permiso de inventario' : undefined}
+            >
+              Importar
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="rounded-lg text-xs"
+              onClick={exportCsv}
+              disabled={filtered.length === 0}
+            >
+              Exportar
+            </Button>
+          </div>
+          {/* Mobile dropdown — rendered via portal to escape overflow:hidden */}
+          {ioDropdownOpen && typeof document !== 'undefined' && createPortal(
+            <div
+              className="inv:hidden"
+              style={{
+                position: 'fixed',
+                top: (ioButtonRef.current?.getBoundingClientRect().bottom ?? 0) + 4,
+                right: window.innerWidth - (ioButtonRef.current?.getBoundingClientRect().right ?? 0),
+                zIndex: 9999,
+                minWidth: 140,
+              }}
+            >
+              <div className="rounded-lg border border-edge bg-surface shadow-lg py-1">
+                <button
+                  type="button"
+                  className="w-full text-left px-4 py-2.5 text-sm hover:bg-surface-alt transition-colors disabled:opacity-50 disabled:pointer-events-none"
+                  disabled={readOnly || !businessId}
+                  onClick={() => { setIoDropdownOpen(false); setShowImport(true); trackFeatureUsed('import_products') }}
+                >
+                  Importar
+                </button>
+                <button
+                  type="button"
+                  className="w-full text-left px-4 py-2.5 text-sm hover:bg-surface-alt transition-colors disabled:opacity-50 disabled:pointer-events-none"
+                  disabled={filtered.length === 0}
+                  onClick={() => { setIoDropdownOpen(false); exportCsv() }}
+                >
+                  Exportar
+                </button>
+              </div>
+            </div>,
+            document.body
+          )}
+        </div>
+
+        {/* Categories/Brands — desktop shows text, mobile shows icon dropdown */}
+        <div ref={tagsDropdownRef} className="relative">
+          {/* Mobile: single icon that opens dropdown */}
+          <button
+            ref={tagsButtonRef}
+            type="button"
+            onClick={() => setTagsDropdownOpen(prev => !prev)}
+            className="inv:hidden p-1.5 rounded-lg border border-edge hover:bg-surface-alt transition-colors"
+            disabled={readOnly}
+            aria-label="Categorías / Marcas"
+            title="Categorías / Marcas"
+          >
+            <Tag size={17} className="text-body" />
+          </button>
+          {/* Desktop: plain buttons */}
+          <div className="hidden inv:flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="rounded-lg text-xs"
+              onClick={() => setShowCategories(true)}
+              disabled={readOnly}
+              title={readOnly ? 'Sin permiso de inventario' : undefined}
+            >
+              Categorías
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="rounded-lg text-xs"
+              onClick={() => setShowBrands(true)}
+              disabled={readOnly}
+              title={readOnly ? 'Sin permiso de inventario' : undefined}
+            >
+              Marcas
+            </Button>
+          </div>
+          {/* Mobile dropdown — rendered via portal to escape overflow:hidden */}
+          {tagsDropdownOpen && typeof document !== 'undefined' && createPortal(
+            <div
+              className="inv:hidden"
+              style={{
+                position: 'fixed',
+                top: (tagsButtonRef.current?.getBoundingClientRect().bottom ?? 0) + 4,
+                right: window.innerWidth - (tagsButtonRef.current?.getBoundingClientRect().right ?? 0),
+                zIndex: 9999,
+                minWidth: 140,
+              }}
+            >
+              <div className="rounded-lg border border-edge bg-surface shadow-lg py-1">
+                <button
+                  type="button"
+                  className="w-full text-left px-4 py-2.5 text-sm hover:bg-surface-alt transition-colors"
+                  onClick={() => { setTagsDropdownOpen(false); setShowCategories(true) }}
+                >
+                  Categorías
+                </button>
+                <button
+                  type="button"
+                  className="w-full text-left px-4 py-2.5 text-sm hover:bg-surface-alt transition-colors"
+                  onClick={() => { setTagsDropdownOpen(false); setShowBrands(true) }}
+                >
+                  Marcas
+                </button>
+              </div>
+            </div>,
+            document.body
+          )}
+        </div>
+
         {!readOnly && (
           <Button
             size="sm"
@@ -682,10 +813,46 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
             onClick={() => setShowNewProduct(true)}
           >
             <Plus size={15} />
-            Nuevo producto
+            <span className="hidden inv:inline">Nuevo producto</span>
           </Button>
         )}
       </PageHeader>
+
+      {/* Mobile search overlay */}
+      <div
+        className={[
+          'absolute inset-x-0 top-0 h-14 bg-surface border-b border-edge/60',
+          'flex items-center gap-2 px-3 z-30',
+          'transition-all duration-200 ease-out',
+          mobileSearchOpen
+            ? 'opacity-100 translate-y-0 pointer-events-auto'
+            : 'opacity-0 -translate-y-2 pointer-events-none',
+          'inv:hidden',
+        ].join(' ')}
+      >
+        <div className="relative flex-1">
+          <div className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none">
+            <Search size={16} className="text-hint" />
+          </div>
+          <Input
+            value={query}
+            onChange={e => setFilterValue(prev => ({ ...prev, search: e.target.value }))}
+            placeholder="Buscar producto, marca o código..."
+            className="w-full pl-9 pr-4 h-9 text-sm rounded-lg border border-edge bg-surface"
+            autoFocus={mobileSearchOpen}
+          />
+        </div>
+        <button
+          onClick={() => {
+            setMobileSearchOpen(false)
+            setFilterValue(prev => ({ ...prev, search: '' }))
+          }}
+          className="shrink-0 p-1.5 rounded-lg hover:bg-hover-bg transition-colors"
+          aria-label="Cerrar búsqueda"
+        >
+          <X size={20} className="text-body" />
+        </button>
+      </div>
 
       <div className="bg-surface border-b border-edge/60 px-5 py-3">
         <div className="flex items-center gap-3">
@@ -693,7 +860,7 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
             value={query}
             onChange={e => setFilterValue(prev => ({ ...prev, search: e.target.value }))}
             placeholder="Buscar producto, marca o código..."
-            className="h-9 max-w-xs rounded-lg text-sm"
+            className="hidden inv:flex h-9 max-w-xs rounded-lg text-sm"
           />
           <button
             type="button"
@@ -713,7 +880,8 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
             )}
           </button>
 
-          <div className="pill-tabs shrink-0">
+          <div className="hidden inv:block shrink-0">
+          <div className="pill-tabs">
             {indicator && (
               <span
                 className="pill-tab-indicator"
@@ -739,8 +907,9 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
               </button>
             ))}
           </div>
+          </div>
 
-          <div className="flex items-center gap-2 ml-auto shrink-0">
+          <div className="hidden inv:flex items-center gap-2 ml-auto shrink-0">
             <span className="text-xs text-subtle shrink-0 whitespace-nowrap">
               {filtered.length} productos
               {selectionMode && selectedIds.size > 0 && (
@@ -781,7 +950,7 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
             )}
           </div>
 
-          <div className="flex items-center gap-1 shrink-0 border border-edge rounded-lg p-0.5">
+          <div className="flex items-center gap-1 shrink-0 border border-edge rounded-lg p-0.5 inv:ml-0 ml-auto">
             <button
               type="button"
               onClick={() => { setViewMode('list'); document.cookie = 'inventory-view-mode=list; path=/; max-age=31536000; SameSite=Lax'; localStorage.setItem('inventory-view-mode', 'list') }}
@@ -1042,23 +1211,34 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
         />
       )}
 
-      <div className="bg-surface border-t border-edge/60 px-5 py-2.5 flex items-center gap-6 text-caption text-subtle shrink-0 overflow-x-auto">
-        <span className="flex items-center gap-1.5">
+      <div className="bg-surface border-t border-edge/60 px-4 py-2 flex items-center gap-4 text-caption text-subtle shrink-0 overflow-x-auto whitespace-nowrap">
+        <span className="flex items-center gap-1.5 shrink-0">
           <span className="w-2 h-2 rounded-full bg-emerald-500" />
-          {activeProducts.length} productos activos
+          <span className="hidden inv:inline">{activeProducts.length} productos activos</span>
+          <span className="inv:hidden">{activeProducts.length} activos</span>
         </span>
-        <span>{totalStock} uds en stock</span>
-        <span>Valor inventario {formatMoney(inventoryValue)}</span>
-        <span>Margen promedio {avgMargin.toFixed(0)}%</span>
-        <span className="flex items-center gap-1.5">
+        <span className="shrink-0">
+          <span className="hidden inv:inline">{totalStock} uds en stock</span>
+          <span className="inv:hidden">{totalStock} uds.</span>
+        </span>
+        <span className="shrink-0">
+          <span className="hidden inv:inline">Valor inventario {formatMoney(inventoryValue)}</span>
+          <span className="inv:hidden">{formatMoney(inventoryValue)}</span>
+        </span>
+        <span className="shrink-0">
+          <span className="hidden inv:inline">Margen promedio {avgMargin.toFixed(0)}%</span>
+          <span className="inv:hidden">~{avgMargin.toFixed(0)}%</span>
+        </span>
+        <span className="flex items-center gap-1.5 shrink-0">
           <span className="w-2 h-2 rounded-full bg-destructive" />
           {outOfStock} sin stock
         </span>
-        <span className="flex items-center gap-1.5">
+        <span className="flex items-center gap-1.5 shrink-0">
           <span className="w-2 h-2 rounded-full bg-amber-500" />
-          {lowStock} stock bajo
+          <span className="hidden inv:inline">{lowStock} stock bajo</span>
+          <span className="inv:hidden">{lowStock} bajo</span>
         </span>
-        <span className="ml-auto">{categoryCount} categorías</span>
+        <span className="ml-auto shrink-0 hidden inv:inline">{categoryCount} categorías</span>
       </div>
 
       {quickEditCategoryProduct !== null && businessId && (
