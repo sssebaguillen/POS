@@ -60,7 +60,7 @@ export default function ActivityResults({
 
       <div
         className={cn(
-          'surface-card overflow-hidden transition-opacity duration-150',
+          'surface-card overflow-x-auto transition-opacity duration-150',
           isPending && 'opacity-60 pointer-events-none',
         )}
       >
@@ -71,7 +71,7 @@ export default function ActivityResults({
             <EmptyActivityState />
           )
         ) : (
-          <table className="w-full text-sm">
+          <table className="w-full text-sm min-w-[640px]">
             <thead className="border-b border-edge/60 text-left text-hint">
               <tr>
                 <th className="px-4 py-3 w-8"></th>

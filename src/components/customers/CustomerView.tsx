@@ -155,8 +155,8 @@ export default function CustomerView({ businessId, operatorId, initialCustomers 
               <p className="text-sm text-hint">Prueba con otra búsqueda o filtro.</p>
             </div>
           ) : (
-            <div className="surface-card overflow-hidden">
-              <table className="w-full text-sm">
+            <div className="surface-card overflow-x-auto">
+              <table className="w-full text-sm min-w-[600px]">
                 <thead className="border-b border-edge/60">
                   <tr className="text-xs text-hint font-medium">
                     <th className="text-foreground text-left px-4 py-3">Nombre</th>
