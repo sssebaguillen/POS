@@ -21,6 +21,7 @@ import { getCartItemId } from '@/lib/types'
 import type { ActiveOperator } from '@/lib/operator'
 import { OWNER_PERMISSIONS } from '@/lib/operator'
 import { trackFeatureUsed } from '@/lib/analytics'
+import { Skeleton } from '@/components/ui/skeleton'
 
 interface ActiveSession {
   id: string
@@ -560,15 +561,17 @@ export default function POSView({ products, businessId, businessName, freeLineEn
           </div>
         </div>
         <div className="hidden lg:flex w-[300px] md:w-[340px] lg:w-[380px] shrink-0 bg-surface border-l border-edge/60 flex-col" data-tour="pos-cart">
-          {activeSession !== undefined && (
-            <div className="px-3 pt-3">
-              <CashSessionWidget
-                session={activeSession}
-                onOpenClick={() => setShowOpenModal(true)}
-                onCloseClick={() => setShowCloseModal(true)}
-              />
-            </div>
-          )}
+          <div className="px-3 pt-3">
+            <Skeleton isLoading={activeSession === undefined}>
+              <div>
+                <CashSessionWidget
+                  session={activeSession ?? null}
+                  onOpenClick={() => setShowOpenModal(true)}
+                  onCloseClick={() => setShowCloseModal(true)}
+                />
+              </div>
+            </Skeleton>
+          </div>
           <CartPanel
             ref={cartPanelRef}
             businessId={businessId}
