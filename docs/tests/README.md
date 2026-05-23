@@ -16,11 +16,9 @@ Tests de regresión manual + scripts SQL automatizables para validar los flujos 
 
 Los tests en `05-db-automatizados.sql` se ejecutan directamente en el SQL Editor de Supabase (o vía MCP desde Claude Code). Cada bloque es independiente y muestra `PASS` o `FAIL` con el detalle del error.
 
-## Bug crítico conocido — stock negativo
+## Decisión de diseño — stock negativo permitido
 
-⚠️ El trigger `update_stock_on_sale` no valida stock disponible antes de decrementar. Con ventas concurrentes el stock puede volverse negativo. **Resolver antes de incorporar usuarios de alto volumen.**
-
-Ver `02-stock-mercaderia.md` sección "Stock negativo" y `05-db-automatizados.sql` para reproducirlo.
+El POS permite vender con stock en 0 o negativo. Es una decisión explícita para no bloquear la velocidad de venta en almacenes de alto volumen, donde es común vender un producto antes de haberlo cargado al sistema. El stock negativo es una señal de mercadería pendiente de registrar, no un error.
 
 ## Convención de estado
 

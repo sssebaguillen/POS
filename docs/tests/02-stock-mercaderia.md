@@ -47,25 +47,23 @@
 
 ---
 
-## 2.5 ⚠️ Stock negativo — bug conocido
+## 2.5 Stock negativo — comportamiento esperado
 
-**Este test debería FALLAR hasta que se corrija el bug.**
+**Decisión de diseño explícita:** el POS permite vender con stock en 0 o negativo. En almacenes de alto volumen es común vender un producto antes de haberlo cargado al sistema. El stock negativo es una señal de que hay mercadería pendiente de registrar, no un error.
 
-El trigger `update_stock_on_sale` no valida stock disponible. Si el stock llega a 0 y se vende 1 más, el stock queda en -1 sin error.
+- [ ] Crear un producto con stock = 1
+- [ ] Vender 1 unidad → stock queda en 0
+- [ ] Vender 1 unidad más → stock queda en -1, la venta se completa sin error
+- [ ] **Resultado esperado (correcto):** venta completada, stock = -1
+- [ ] Cargar mercadería de ese producto → stock vuelve a positivo
 
-- [ ] Crear un producto con stock = 2
-- [ ] Vender 2 unidades (en dos ventas separadas de 1 c/u) → stock debería quedar en 0
-- [ ] Intentar vender 1 unidad más
-- [ ] **Resultado esperado (correcto):** error que impida la venta
-- [ ] **Resultado actual (bug):** la venta se completa y el stock queda en -1
-
-**Verificar en SQL:**
+**Verificar stock negativo actual en SQL:**
 ```sql
 SELECT name, stock FROM products 
 WHERE stock < 0 AND business_id = get_business_id();
 ```
 
-**Fix pendiente:** agregar constraint `CHECK (stock >= 0)` en `products` y `product_variants`, y validación en el trigger o en el RPC antes de decrementar.
+Stock negativo en esta query es normal y esperado, no indica un problema.
 
 ---
 
