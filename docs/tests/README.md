@@ -1,0 +1,29 @@
+# Tests — Pulsar POS
+
+Tests de regresión manual + scripts SQL automatizables para validar los flujos críticos antes de incorporar usuarios de alto volumen.
+
+## Estructura
+
+| Archivo | Flujo | Tipo |
+|---|---|---|
+| `01-ventas.md` | Flujo de venta en el POS | Manual |
+| `02-stock-mercaderia.md` | Stock y gastos de mercadería | Manual + SQL |
+| `03-listas-precios.md` | Listas de precios y distribución | Manual |
+| `04-caja.md` | Sesiones de caja y arqueo | Manual |
+| `05-db-automatizados.sql` | Validaciones de capa DB | SQL (Supabase) |
+
+## Cómo ejecutar los tests SQL
+
+Los tests en `05-db-automatizados.sql` se ejecutan directamente en el SQL Editor de Supabase (o vía MCP desde Claude Code). Cada bloque es independiente y muestra `PASS` o `FAIL` con el detalle del error.
+
+## Bug crítico conocido — stock negativo
+
+⚠️ El trigger `update_stock_on_sale` no valida stock disponible antes de decrementar. Con ventas concurrentes el stock puede volverse negativo. **Resolver antes de incorporar usuarios de alto volumen.**
+
+Ver `02-stock-mercaderia.md` sección "Stock negativo" y `05-db-automatizados.sql` para reproducirlo.
+
+## Convención de estado
+
+- `[ ]` — pendiente
+- `[x]` — pasó
+- `[!]` — falló (anotar qué pasó)
