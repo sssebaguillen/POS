@@ -196,7 +196,7 @@ export default function Sidebar({
           </button>
         ) : (
           <button
-            onClick={onToggleCollapse}
+            onClick={e => { onToggleCollapse(); e.currentTarget.blur() }}
             className={cn(
               'p-1.5 rounded-lg hover:bg-hover-bg transition-colors text-hint',
               collapsed && 'mx-auto'
@@ -329,7 +329,7 @@ export default function Sidebar({
                   ? 'p-2.5 flex items-center justify-center w-full'
                   : 'flex items-center gap-2 px-3 py-2 text-left w-full'
               )}
-              onClick={() => { router.push('/profile'); if (isMobileDrawer) onClose() }}
+              onClick={e => { router.push('/profile'); if (isMobileDrawer) onClose(); e.currentTarget.blur() }}
             >
               <Building2 size={18} />
               {(!collapsed || isMobileDrawer) && businessName}
@@ -355,7 +355,7 @@ export default function Sidebar({
 
         {/* Theme toggle */}
         <button
-          onClick={handleThemeToggle}
+          onClick={e => { handleThemeToggle(e); e.currentTarget.blur() }}
           title={collapsed && !isMobileDrawer
             ? (themeForUi === 'dark' ? 'Modo claro' : 'Modo oscuro')
             : undefined}

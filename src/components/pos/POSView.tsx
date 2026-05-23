@@ -8,7 +8,7 @@ import { useSidebar } from '@/components/shared/AppShell'
 import { useCartStore } from '@/lib/store/cart.store'
 import { createClient } from '@/lib/supabase/client'
 import ProductPanel from '@/components/pos/ProductPanel'
-import CartPanel from '@/components/pos/CartPanel'
+import CartPanel, { type CartPanelHandle } from '@/components/pos/CartPanel'
 import CartFAB from '@/components/pos/CartFAB'
 import MobileCartDrawer from '@/components/pos/MobileCartDrawer'
 import CashSessionWidget from '@/components/pos/CashSessionWidget'
@@ -16,7 +16,8 @@ import OpenSessionModal from '@/components/pos/OpenSessionModal'
 import CloseSessionModal from '@/components/pos/CloseSessionModal'
 import ProductFilter, { EMPTY_FILTER, type ProductFilterValue } from '@/components/shared/ProductFilter'
 import type { ProductWithCategory, ActiveFilter } from '@/components/pos/types'
-import type { PriceList, PriceListOverride, ProductVariant, ProductWithVariants } from '@/lib/types'
+import type { CartItem, PriceList, PriceListOverride, ProductVariant, ProductWithVariants } from '@/lib/types'
+import { getCartItemId } from '@/lib/types'
 import type { ActiveOperator } from '@/lib/operator'
 import { OWNER_PERMISSIONS } from '@/lib/operator'
 import { trackFeatureUsed } from '@/lib/analytics'
@@ -56,14 +57,24 @@ export default function POSView({ products, businessId, businessName, freeLineEn
   const [filterValue, setFilterValue] = useState<ProductFilterValue>(EMPTY_FILTER)
   const [scanFeedback, setScanFeedback] = useState<ScanFeedback>(null)
   const searchRef = useRef<HTMLInputElement>(null)
+  const cartPanelRef = useRef<CartPanelHandle>(null)
   const scanFeedbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const lastGlobalPrintableKeyAtRef = useRef(0)
+  const itemCountRef = useRef(0)
+  const confirmingNewSaleRef = useRef(false)
+  const itemsRef = useRef<CartItem[]>([])
   const itemCount = useCartStore(s => s.items.length)
+  const cartItems = useCartStore(s => s.items)
+  itemCountRef.current = itemCount
+  itemsRef.current = cartItems
   const clearCart = useCartStore(s => s.clearCart)
+  const removeItem = useCartStore(s => s.removeItem)
+  const updateQuantity = useCartStore(s => s.updateQuantity)
   const addItem = useCartStore(s => s.addItem)
   const addVariantItem = useCartStore(s => s.addVariantItem)
   const supabase = useMemo(() => createClient(), [])
   const [confirmingNewSale, setConfirmingNewSale] = useState(false)
+  confirmingNewSaleRef.current = confirmingNewSale
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false)
   const confirmNewSaleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -297,30 +308,60 @@ export default function POSView({ products, businessId, businessName, freeLineEn
         // Respetar Enter sobre controles interactivos, salvo que venga de un escaneo/tecleo global reciente.
         if (activeIsInteractive && !recentlyBufferedInput) return
 
-        // Enter con foco fuera del input: intentar agregar con el valor actual del input
         e.preventDefault()
         const currentValue = searchRef.current.value
         if (currentValue.trim()) {
-          const added = tryAddBySearch(currentValue)
-          if (added) {
-            setFilterValue(prev => ({ ...prev, search: '' }))
-          }
+          // Enter con foco fuera del input: intentar agregar con el valor actual del input
+          tryAddBySearch(currentValue)
+          setFilterValue(prev => ({ ...prev, search: '' }))
+        } else if (itemCountRef.current > 0 && !cartPanelRef.current?.isPaymentOpen()) {
+          // Carrito con productos y búsqueda vacía → abrir modal de pago
+          cartPanelRef.current?.openPaymentModal()
+          return
         }
         searchRef.current.focus()
+      } else if (e.key === 'Escape') {
+        // ESC global: espeja la lógica del botón "Nueva venta / ¿Vaciar carrito?"
+        if (cartPanelRef.current?.isPaymentOpen()) return  // el modal de pago maneja su propio ESC
+        if (itemCountRef.current === 0) return
+        e.preventDefault()
+        if (!confirmingNewSaleRef.current) {
+          setConfirmingNewSale(true)
+          if (confirmNewSaleTimerRef.current) clearTimeout(confirmNewSaleTimerRef.current)
+          confirmNewSaleTimerRef.current = setTimeout(() => setConfirmingNewSale(false), 3000)
+        } else {
+          if (confirmNewSaleTimerRef.current) clearTimeout(confirmNewSaleTimerRef.current)
+          setConfirmingNewSale(false)
+          clearCart()
+          setFilterValue(EMPTY_FILTER)
+          setScanFeedback(null)
+          searchRef.current?.focus()
+        }
+      } else if (e.key === 'Backspace') {
+        // Backspace: quita 1 unidad del último item del carrito
+        if (cartPanelRef.current?.isPaymentOpen()) return
+        const items = itemsRef.current
+        if (items.length === 0) return
+        e.preventDefault()
+        const last = items[items.length - 1]
+        const itemId = getCartItemId(last)
+        if (last.quantity > 1) {
+          updateQuantity(itemId, last.quantity - 1)
+        } else {
+          removeItem(itemId)
+        }
       }
     }
 
     document.addEventListener('keydown', handleGlobalKeyDown)
     return () => document.removeEventListener('keydown', handleGlobalKeyDown)
-  }, [tryAddBySearch])
+  }, [tryAddBySearch, clearCart, removeItem, updateQuantity])
 
   const handleSearchKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
-      const added = tryAddBySearch(filterValue.search)
-      if (added) {
-        setFilterValue(prev => ({ ...prev, search: '' }))
-        searchRef.current?.focus()
-      }
+      tryAddBySearch(filterValue.search)
+      setFilterValue(prev => ({ ...prev, search: '' }))
+      searchRef.current?.focus()
     }
   }, [filterValue.search, tryAddBySearch])
 
@@ -529,6 +570,7 @@ export default function POSView({ products, businessId, businessName, freeLineEn
             </div>
           )}
           <CartPanel
+            ref={cartPanelRef}
             businessId={businessId}
             businessName={businessName}
             freeLineEnabled={freeLineEnabled}
@@ -537,6 +579,8 @@ export default function POSView({ products, businessId, businessName, freeLineEn
             operatorId={operatorId}
             permissions={activeOperator?.role === 'owner' || !activeOperator ? OWNER_PERMISSIONS : activeOperator.permissions}
             sessionId={activeSession?.id ?? null}
+            confirmingClear={confirmingNewSale}
+            onVaciar={handleNewSale}
           />
         </div>
       </div>
@@ -555,6 +599,8 @@ export default function POSView({ products, businessId, businessName, freeLineEn
           operatorId={operatorId}
           permissions={activeOperator?.role === 'owner' || !activeOperator ? OWNER_PERMISSIONS : activeOperator.permissions}
           sessionId={activeSession?.id ?? null}
+          confirmingClear={confirmingNewSale}
+          onVaciar={handleNewSale}
         />
       </div>
 

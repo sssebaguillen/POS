@@ -104,6 +104,7 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
 
   const supabase = useMemo(() => createClient(), [])
   const { setRef, indicator } = usePillIndicator(statusFilter)
+  const { setRef: setViewRef, indicator: viewIndicator } = usePillIndicator(viewMode)
 
   const activeFilterCount = countActiveFilters(filterValue)
 
@@ -957,20 +958,33 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
             )}
           </div>
 
-          <div className="flex items-center gap-1 shrink-0 border border-edge rounded-lg p-0.5 inv:ml-0 ml-auto">
+          <div className="relative flex items-center gap-1 shrink-0 border border-edge rounded-lg p-1 inv:ml-0 ml-auto">
+            {viewIndicator && (
+              <span
+                className="absolute inset-y-1 bg-primary rounded-md pointer-events-none"
+                style={{
+                  transform: `translateX(${viewIndicator.left}px)`,
+                  width: viewIndicator.width,
+                  transition: 'transform 200ms cubic-bezier(0.4, 0, 0.2, 1), width 200ms cubic-bezier(0.4, 0, 0.2, 1)',
+                  willChange: 'transform, width',
+                }}
+              />
+            )}
             <button
+              ref={setViewRef('list')}
               type="button"
               onClick={() => { setViewMode('list'); document.cookie = 'inventory-view-mode=list; path=/; max-age=31536000; SameSite=Lax'; localStorage.setItem('inventory-view-mode', 'list') }}
-              className={`p-2 rounded-md transition-colors touch-manipulation ${viewMode === 'list' ? 'bg-primary text-primary-foreground' : 'text-subtle hover:text-body hover:bg-surface-alt'}`}
+              className={`relative p-2 rounded-md transition-colors touch-manipulation ${viewMode === 'list' ? 'text-primary-foreground' : 'text-subtle hover:text-body'}`}
               title="Vista lista"
               aria-label="Vista lista"
             >
               <LayoutList size={15} />
             </button>
             <button
+              ref={setViewRef('grid')}
               type="button"
               onClick={() => { setViewMode('grid'); document.cookie = 'inventory-view-mode=grid; path=/; max-age=31536000; SameSite=Lax'; localStorage.setItem('inventory-view-mode', 'grid') }}
-              className={`p-2 rounded-md transition-colors touch-manipulation ${viewMode === 'grid' ? 'bg-primary text-primary-foreground' : 'text-subtle hover:text-body hover:bg-surface-alt'}`}
+              className={`relative p-2 rounded-md transition-colors touch-manipulation ${viewMode === 'grid' ? 'text-primary-foreground' : 'text-subtle hover:text-body'}`}
               title="Vista cuadrícula"
               aria-label="Vista cuadrícula"
             >
@@ -1291,7 +1305,7 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
       {typeof document !== 'undefined' && createPortal(
         <>
           <div
-            className={`fixed inset-0 z-40 dark:bg-black/60 transition-opacity duration-200 ${filterOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}
+            className={`fixed inset-0 z-40 transition-opacity duration-200 ${filterOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}
             onClick={() => setFilterOpen(false)}
           />
           <div

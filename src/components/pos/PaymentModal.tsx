@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useMemo, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { CreditCard, Plus, Printer, X } from 'lucide-react'
 import ReceiptPreviewModal from '@/components/pos/ReceiptPreviewModal'
 import { Button } from '@/components/ui/button'
@@ -152,7 +152,7 @@ export default function PaymentModal({
     onClose()
   }, [clearCart, onClose])
 
-  async function handleConfirm(openReceiptPreview: boolean) {
+  async function handleConfirm(openReceiptPreview: boolean, cashAmount?: number, methodOverride?: PaymentMethod) {
     if (!businessId) {
       setError(ERR.POS3)
       return
@@ -161,12 +161,14 @@ export default function PaymentModal({
     setError('')
     setLoading(true)
 
+    const effectiveMethod = methodOverride ?? primaryMethod
+    const effectiveCash = cashAmount ?? validCash
     const payments = isMixed
       ? [
           { method: primaryMethod, amount: validPrimary },
           { method: secondaryMethod, amount: validSecondary },
         ]
-      : [{ method: primaryMethod, amount: primaryMethod === 'cash' ? validCash : total }]
+      : [{ method: effectiveMethod, amount: effectiveMethod === 'cash' ? effectiveCash : total }]
 
     try {
       const { data: rpcResult, error: rpcError } = await supabase.rpc('create_sale_transaction', {
@@ -199,7 +201,7 @@ export default function PaymentModal({
         return
       }
 
-      if (!isMixed && primaryMethod === 'credit' && customer && result.sale_id) {
+      if (!isMixed && effectiveMethod === 'credit' && customer && result.sale_id) {
         const { error: creditError } = await supabase.rpc('apply_customer_credit', {
           p_sale_id: result.sale_id,
           p_customer_id: customer.id,
@@ -212,7 +214,7 @@ export default function PaymentModal({
         }
       }
 
-      const change = isMixed ? mixedChange : singleChange
+      const change = isMixed ? mixedChange : (effectiveMethod === 'cash' ? Math.max(0, effectiveCash - total) : 0)
       const nextReceipt: ReceiptData = {
         saleId: result.sale_id ?? '',
         businessName,
@@ -221,8 +223,8 @@ export default function PaymentModal({
         subtotal,
         discount,
         total,
-        paymentMethod: primaryMethod,
-        cashReceived: !isMixed && primaryMethod === 'cash' ? validCash : null,
+        paymentMethod: effectiveMethod,
+        cashReceived: !isMixed && effectiveMethod === 'cash' ? effectiveCash : null,
         change,
         currency,
       }
@@ -230,7 +232,7 @@ export default function PaymentModal({
       trackSale({
         total,
         itemCount: saleItems.length,
-        paymentMethods: isMixed ? [primaryMethod, secondaryMethod] : [primaryMethod],
+        paymentMethods: isMixed ? [primaryMethod, secondaryMethod] : [effectiveMethod],
         isMultiPayment: isMixed,
       })
 
@@ -249,6 +251,67 @@ export default function PaymentModal({
     }
   }
 
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      const isInputFocused =
+        document.activeElement instanceof HTMLInputElement ||
+        document.activeElement instanceof HTMLTextAreaElement
+
+      if (e.key === 'Escape') {
+        if (!loading) { e.preventDefault(); onClose() }
+        return
+      }
+
+      if (loading || !!receipt || isMixed) return
+
+      // Input enfocado: solo Enter confirma el monto escrito; el resto no interrumpe
+      if (isInputFocused) {
+        if (e.key === 'Enter') {
+          e.preventDefault()
+          void handleConfirm(false, validCash >= total ? validCash : total)
+        }
+        return
+      }
+
+      // Sin input enfocado — shortcuts completos
+      if (e.key === 'Enter') {
+        e.preventDefault()
+        if (primaryMethod === 'cash') {
+          void handleConfirm(false, validCash >= total ? validCash : total)
+        } else if (canConfirm) {
+          void handleConfirm(false)
+        }
+        return
+      }
+
+      if (e.key === ' ') {
+        e.preventDefault()
+        void handleConfirm(false, undefined, 'card')
+        return
+      }
+
+      if (e.key === 'p' || e.key === 'P') {
+        e.preventDefault()
+        if (primaryMethod === 'cash') {
+          void handleConfirm(true, validCash >= total ? validCash : total)
+        } else if (canConfirm) {
+          void handleConfirm(true)
+        }
+        return
+      }
+
+      // 1–4 seleccionan método de pago
+      const numIdx = parseInt(e.key) - 1
+      if (numIdx >= 0 && numIdx < 4 && numIdx < availableMethods.length) {
+        e.preventDefault()
+        handlePrimaryMethodChange(availableMethods[numIdx])
+      }
+    }
+    document.addEventListener('keydown', onKeyDown)
+    return () => document.removeEventListener('keydown', onKeyDown)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, receipt, isMixed, primaryMethod, validCash, total, canConfirm, availableMethods, onClose])
+
   return (
     <>
       {receipt ? (
@@ -258,7 +321,7 @@ export default function PaymentModal({
           autoPrintOnOpen
         />
       ) : (
-        <div className="fixed inset-0 bg-foreground/40 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-foreground/40 g-black/40 dark:bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="surface-elevated rounded-2xl w-full max-w-sm max-h-[calc(100vh-2rem)] flex flex-col overflow-hidden">
           <>
             <div className="flex items-center justify-between px-5 pt-5 pb-4 border-b border-edge-soft">
@@ -280,21 +343,31 @@ export default function PaymentModal({
                 {!isMixed && (
                   <>
                     <div className="grid grid-cols-2 gap-2">
-                      {availableMethodOptions.map(m => (
-                        <button
-                          key={m.id}
-                          onClick={() => handlePrimaryMethodChange(m.id)}
-                          type="button"
-                          className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border text-sm font-medium transition-all ${
-                            primaryMethod === m.id
-                              ? 'border-primary bg-primary text-primary-foreground'
-                              : 'border-edge text-body hover:border-primary/40'
-                          }`}
-                        >
-                          <span>{m.icon}</span>
-                          {m.label}
-                        </button>
-                      ))}
+                      {availableMethodOptions.map((m, idx) => {
+                        const isSelected = primaryMethod === m.id
+                        const numKey = idx < 4 ? String(idx + 1) : null
+                        const confirmKey = m.id === 'cash' ? 'Enter' : m.id === 'card' ? 'Esp.' : null
+                        const kbdCls = `text-[10px] font-mono leading-none px-1 py-px rounded border ${isSelected ? 'border-white/25 text-white/50' : 'border-edge text-hint'}`
+                        return (
+                          <button
+                            key={m.id}
+                            onClick={() => handlePrimaryMethodChange(m.id)}
+                            type="button"
+                            className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border text-sm font-medium transition-all ${
+                              isSelected
+                                ? 'border-primary bg-primary text-primary-foreground'
+                                : 'border-edge text-body hover:border-primary/40'
+                            }`}
+                          >
+                            <span>{m.icon}</span>
+                            {m.label}
+                            <div className="ml-auto flex items-center gap-1">
+                              {numKey && <kbd className={kbdCls}>{numKey}</kbd>}
+                              {confirmKey && <kbd className={kbdCls}>{confirmKey}</kbd>}
+                            </div>
+                          </button>
+                        )
+                      })}
                     </div>
 
                     {primaryMethod === 'cash' && (
@@ -306,7 +379,6 @@ export default function PaymentModal({
                           value={cashReceived}
                           onChange={e => setCashReceived(e.target.value)}
                           className="text-lg font-bold h-11"
-                          autoFocus
                         />
                         {cashReceived && validCash >= total && (
                           <div className="flex justify-between text-sm px-1">
@@ -456,6 +528,7 @@ export default function PaymentModal({
                   >
                     <Printer />
                     {loading ? 'Preparando ticket...' : 'Confirmar e imprimir ticket'}
+                    {!loading && <kbd className="ml-auto text-[10px] font-mono leading-none px-1 py-px rounded border border-edge text-hint">P</kbd>}
                   </Button>
                 </div>
               </div>

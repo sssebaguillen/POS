@@ -1,6 +1,20 @@
 {
-  "current": "0.0.4",
+  "current": "0.0.4.1",
   "releases": [
+    {
+      "version": "0.0.4.1",
+      "date": "2026-05-23",
+      "label": "Atajos de teclado en el punto de venta",
+      "changes": [
+        { "type": "new", "text": "Atajos de teclado globales en el punto de venta: Enter agrega el producto buscado al carrito o abre el cobro si el carrito tiene items y la búsqueda está vacía. Backspace quita una unidad del último producto agregado." },
+        { "type": "new", "text": "Presionando ESC en el punto de venta activás la confirmación para vaciar el carrito, igual que el botón de Nueva venta. Si lo presionás dos veces seguidas, el carrito se vacía." },
+        { "type": "new", "text": "Dentro del modal de cobro: Enter registra la venta en efectivo, Espacio la registra con tarjeta, las teclas 1–4 cambian el método de pago y P abre la previsualización del comprobante." },
+        { "type": "improvement", "text": "Si el input de monto en efectivo tiene el foco, los atajos del modal se desactivan para no interrumpir mientras escribís." },
+        { "type": "improvement", "text": "Los botones de método de pago y el botón de imprimir muestran su atajo de teclado correspondiente." },
+        { "type": "improvement", "text": "El botón de Vaciar del carrito ahora pide confirmación antes de vaciar, igual que el botón de Nueva venta." },
+        { "type": "improvement", "text": "El toggle lista/grilla en el inventario ahora tiene una animación deslizante al cambiar de vista." }
+      ]
+    },
     {
       "version": "0.0.4",
       "date": "2026-05-23",

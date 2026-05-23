@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Minus, Pencil, Plus, Printer, ShoppingCart, Trash2, PenLine, User, X } from 'lucide-react'
@@ -56,6 +56,11 @@ interface FreeLineForm {
   quantity: string
 }
 
+export interface CartPanelHandle {
+  openPaymentModal: () => void
+  isPaymentOpen: () => boolean
+}
+
 interface Props {
   businessId: string | null
   businessName: string
@@ -65,9 +70,11 @@ interface Props {
   operatorId: string | null
   permissions: Permissions | null
   sessionId?: string | null
+  confirmingClear?: boolean
+  onVaciar?: () => void
 }
 
-export default function CartPanel({ businessId, businessName, freeLineEnabled, activePriceList, priceListOverrides, operatorId, permissions, sessionId = null }: Props) {
+const CartPanel = forwardRef<CartPanelHandle, Props>(function CartPanel({ businessId, businessName, freeLineEnabled, activePriceList, priceListOverrides, operatorId, permissions, sessionId = null, confirmingClear: externalConfirming, onVaciar }: Props, ref) {
   const currency = useCurrency()
   const formatMoney = useFormatMoney()
   const router = useRouter()
@@ -99,6 +106,11 @@ export default function CartPanel({ businessId, businessName, freeLineEnabled, a
   const queryClient = useQueryClient()
 
   const isEmpty = items.length === 0
+
+  useImperativeHandle(ref, () => ({
+    openPaymentModal: () => { if (!isEmpty && !showPayment) setShowPayment(true) },
+    isPaymentOpen: () => showPayment,
+  }), [isEmpty, showPayment])
 
   const adjustedItems = useMemo(() => {
     return items.map(item => {
@@ -473,7 +485,24 @@ export default function CartPanel({ businessId, businessName, freeLineEnabled, a
     setCustomerResults([])
   }
 
+  const [localConfirming, setLocalConfirming] = useState(false)
+  const confirmClearTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const isConfirmingClear = externalConfirming ?? localConfirming
+
   function handleCancelSale() {
+    if (onVaciar) {
+      // estado controlado desde POSView — delegar toda la lógica
+      onVaciar()
+      return
+    }
+    // modo autónomo (sin prop onVaciar)
+    if (!localConfirming) {
+      setLocalConfirming(true)
+      confirmClearTimerRef.current = setTimeout(() => setLocalConfirming(false), 3000)
+      return
+    }
+    if (confirmClearTimerRef.current) clearTimeout(confirmClearTimerRef.current)
+    setLocalConfirming(false)
     const snapshot = items.slice()
     const discountSnapshot = discount
     clearCart()
@@ -565,7 +594,7 @@ export default function CartPanel({ businessId, businessName, freeLineEnabled, a
         <div className="border-b border-edge/60">
           <div className="grid grid-cols-2">
             <button
-              onClick={() => setActiveTab('current')}
+              onClick={e => { setActiveTab('current'); e.currentTarget.blur() }}
               className={`h-11 text-sm font-medium border-b-2 transition-colors inline-flex items-center justify-center gap-2 ${
                 activeTab === 'current'
                   ? 'text-[var(--primary-active-text)] border-primary'
@@ -580,7 +609,7 @@ export default function CartPanel({ businessId, businessName, freeLineEnabled, a
               )}
             </button>
             <button
-              onClick={() => setActiveTab('history')}
+              onClick={e => { setActiveTab('history'); e.currentTarget.blur() }}
               className={`h-11 text-sm font-medium border-b-2 transition-colors ${
                 activeTab === 'history'
                   ? 'text-[var(--primary-active-text)] border-primary'
@@ -979,12 +1008,12 @@ export default function CartPanel({ businessId, businessName, freeLineEnabled, a
 
               <div className="grid grid-cols-2 gap-2">
                 <Button
-                  variant="cancel"
-                  className="h-10 rounded-xl text-sm font-medium"
+                  variant={isConfirmingClear ? 'destructive' : 'cancel'}
+                  className="h-10 rounded-xl text-sm font-medium transition-colors"
                   disabled={isEmpty}
-                  onClick={handleCancelSale}
+                  onClick={e => { handleCancelSale(); e.currentTarget.blur() }}
                 >
-                  Vaciar
+                  {isConfirmingClear ? '¿Vaciar carrito?' : 'Vaciar'}
                 </Button>
                 <Button
                   className={`h-10 rounded-xl text-sm font-semibold text-primary-foreground transition-colors ${
@@ -1250,4 +1279,6 @@ export default function CartPanel({ businessId, businessName, freeLineEnabled, a
       )}
     </>
   )
-}
+})
+
+export default CartPanel

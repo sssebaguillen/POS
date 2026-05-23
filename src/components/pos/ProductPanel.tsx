@@ -402,11 +402,12 @@ const ProductCard = memo(function ProductCard({
         : 'ok'
     : 'ok'
 
-  function handleClick() {
+  function handleClick(e: React.MouseEvent<HTMLButtonElement>) {
     if (product.has_variants) {
       setPopoverOpen(true)
     } else {
       onAdd(product)
+      e.currentTarget.blur()
     }
   }
 
@@ -503,6 +504,7 @@ const ProductCard = memo(function ProductCard({
         align="start"
         sideOffset={4}
         style={{ animation: 'none' }}
+        onCloseAutoFocus={e => e.preventDefault()}
       >
         <VariantSelectorContent
           product={product}

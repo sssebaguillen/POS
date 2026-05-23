@@ -199,7 +199,7 @@ function TopbarLayout({
           
           <button
             type="button"
-            onClick={() => onChange({ ...value, categoryIds: [] })}
+            onClick={e => { onChange({ ...value, categoryIds: [] }); e.currentTarget.blur() }}
             className={chip(value.categoryIds.length === 0)}
           >
             Todos
@@ -209,7 +209,7 @@ function TopbarLayout({
             <button
               key={cat.id}
               type="button"
-              onClick={() => toggleCategory(cat.id)}
+              onClick={e => { toggleCategory(cat.id); e.currentTarget.blur() }}
               className={chip(value.categoryIds.includes(cat.id))}
             >
               <span className="flex items-center gap-1.5">
@@ -228,7 +228,7 @@ function TopbarLayout({
             <button
               key={brand.id}
               type="button"
-              onClick={() => toggleBrand(brand.id)}
+              onClick={e => { toggleBrand(brand.id); e.currentTarget.blur() }}
               className={chip(value.brandIds.includes(brand.id))}
             >
               {brand.name}

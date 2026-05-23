@@ -83,7 +83,7 @@ export default function QuickEditBrandModal({ open, product, brands, businessId,
   return (
     <Dialog open={open} onOpenChange={next => { if (!next) onClose() }} modal={false}>
       <DialogPortal>
-        <div className="fixed inset-0 z-50 bg-black/40 dark:bg-black/60 backdrop-blur-sm" />
+        <div className="fixed inset-0 z-50 bg-foreground/40 dark:bg-black/60 backdrop-blur-sm" />
       </DialogPortal>
       <DialogContent showCloseButton={false} className="max-w-sm gap-0 p-0 overflow-hidden rounded-2xl" aria-describedby={undefined}>
         <DialogTitle className="sr-only">Cambiar marca</DialogTitle>
