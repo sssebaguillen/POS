@@ -292,6 +292,7 @@ export default function POSView({ products, businessId, businessName, freeLineEn
         active instanceof HTMLSelectElement
 
       if (isTextInputActive) return
+      if (cartPanelRef.current?.isPaymentOpen()) return
 
       if (e.key.length === 1) {
         // Caracter imprimible — redirigir al input de búsqueda

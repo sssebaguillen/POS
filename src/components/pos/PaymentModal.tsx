@@ -276,10 +276,9 @@ export default function PaymentModal({
       // Sin input enfocado — shortcuts completos
       if (e.key === 'Enter') {
         e.preventDefault()
-        if (primaryMethod === 'cash') {
-          void handleConfirm(false, validCash >= total ? validCash : total)
-        } else if (canConfirm) {
-          void handleConfirm(false)
+        if (canConfirm) {
+          const cashAmt = primaryMethod === 'cash' ? (validCash >= total ? validCash : total) : undefined
+          void handleConfirm(false, cashAmt)
         }
         return
       }
@@ -292,10 +291,9 @@ export default function PaymentModal({
 
       if (e.key === 'p' || e.key === 'P') {
         e.preventDefault()
-        if (primaryMethod === 'cash') {
-          void handleConfirm(true, validCash >= total ? validCash : total)
-        } else if (canConfirm) {
-          void handleConfirm(true)
+        if (canConfirm) {
+          const cashAmt = primaryMethod === 'cash' ? (validCash >= total ? validCash : total) : undefined
+          void handleConfirm(true, cashAmt)
         }
         return
       }
@@ -346,8 +344,8 @@ export default function PaymentModal({
                       {availableMethodOptions.map((m, idx) => {
                         const isSelected = primaryMethod === m.id
                         const numKey = idx < 4 ? String(idx + 1) : null
-                        const confirmKey = m.id === 'cash' ? 'Enter' : m.id === 'card' ? 'Esp.' : null
-                        const kbdCls = `text-[10px] font-mono leading-none px-1 py-px rounded border ${isSelected ? 'border-white/25 text-white/50' : 'border-edge text-hint'}`
+                        const confirmKey = m.id === 'card' ? 'Esp.' : null
+                        const kbdCls = `text-[10px] font-mono leading-none px-1 py-px rounded border opacity-50 border-current text-current`
                         return (
                           <button
                             key={m.id}
@@ -513,11 +511,12 @@ export default function PaymentModal({
 
                 <div className="space-y-2">
                   <Button
-                    className="w-full h-11 font-semibold bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg"
+                    className="relative w-full h-11 font-semibold bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg"
                     disabled={!canConfirm || loading}
                     onClick={() => handleConfirm(false)}
                   >
                     {loading ? 'Registrando...' : 'Confirmar venta'}
+                    {!loading && <kbd className="absolute right-3 text-[10px] font-mono leading-none px-1 py-px rounded border opacity-50 border-current text-current">Enter</kbd>}
                   </Button>
 
                   <Button
@@ -528,7 +527,7 @@ export default function PaymentModal({
                   >
                     <Printer />
                     {loading ? 'Preparando ticket...' : 'Confirmar e imprimir ticket'}
-                    {!loading && <kbd className="ml-auto text-[10px] font-mono leading-none px-1 py-px rounded border border-edge text-hint">P</kbd>}
+                    {!loading && <kbd className="ml-auto text-[10px] font-mono leading-none px-1 py-px rounded border opacity-50 border-current text-current">P</kbd>}
                   </Button>
                 </div>
               </div>
