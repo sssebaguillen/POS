@@ -18,6 +18,7 @@ interface Props {
   sessionId?: string | null
   confirmingClear?: boolean
   onVaciar?: () => void
+  onSaleCompleted?: () => void
 }
 
 export default function MobileCartDrawer({
@@ -33,6 +34,7 @@ export default function MobileCartDrawer({
   sessionId = null,
   confirmingClear,
   onVaciar,
+  onSaleCompleted,
 }: Props) {
   return (
     <Sheet open={open} onOpenChange={(o) => { if (!o) onClose() }}>
@@ -57,6 +59,7 @@ export default function MobileCartDrawer({
             sessionId={sessionId}
             confirmingClear={confirmingClear}
             onVaciar={onVaciar}
+            onSaleCompleted={onSaleCompleted}
           />
         </div>
       </SheetContent>

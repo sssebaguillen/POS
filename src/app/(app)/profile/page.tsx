@@ -30,7 +30,7 @@ export default async function ProfilePage() {
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
-      <PageHeader title="Perfil" breadcrumbs={[{ label: 'Configuración', href: '/settings' }]} />
+      <PageHeader title="Cuenta" />
       <ProfileView profile={profile} email={user.email ?? ''} business={business} />
     </div>
   )

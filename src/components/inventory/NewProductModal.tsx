@@ -322,13 +322,15 @@ export default function NewProductModal({
         p_variants: variantPayload.variants,
       })
 
-      setLoading(false)
       const result = rpcResult as { success: boolean; product_id?: string; error?: string } | null
 
       if (rpcError || !result?.success) {
+        setLoading(false)
         setErrors({ _global: result?.error ?? translateDbError(rpcError?.message ?? '', 'No se pudo crear el producto con variantes. Revisa los datos e inténtalo de nuevo.') })
         return
       }
+
+      setLoading(false)
 
       // Fetch the created product for the onCreated callback
       const { data: newProduct } = await supabase

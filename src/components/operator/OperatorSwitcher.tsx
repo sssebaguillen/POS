@@ -70,7 +70,7 @@ export default function OperatorSwitcher({ operatorName, operatorRole }: Operato
             <span className="mt-1 block font-medium text-heading">{operatorName}</span>
           </button>
         </PopoverTrigger>
-        <PopoverContent align="start" className="surface-elevated w-64 p-3">
+        <PopoverContent side="top" align="start" className="surface-elevated w-64 p-3">
           <div className="space-y-1 border-b border-border/60 pb-3">
             <p className="text-sm font-semibold text-foreground">{operatorName}</p>
             <p className="text-xs uppercase tracking-wide text-muted-foreground">{roleLabel(operatorRole)}</p>

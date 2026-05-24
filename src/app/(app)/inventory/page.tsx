@@ -26,7 +26,6 @@ export default async function InventoryPage() {
       .from('categories')
       .select('id, business_id, name, icon, icon_color')
       .eq('business_id', businessId)
-      .eq('is_active', true)
       .order('position'),
     supabase
       .from('brands')

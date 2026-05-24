@@ -20,8 +20,8 @@ interface EditPriceListModalProps {
   list: PriceList
   businessId: string
   operatorId: string | null
-  products: { id: string; name: string; price: number; cost: number }[]
-  existingOverrides: { id: string; product_id: string | null; multiplier: number }[]
+  products: { id: string; name: string; price: number; cost: number; has_variants?: boolean }[]
+  existingOverrides: { id: string; price_list_id: string; product_id: string | null; multiplier: number }[]
   onSaved: (list: PriceList, upsertedOverrides: PriceListOverride[], deletedOverrideIds: string[]) => void
   onDeleted: (id: string) => void
 }
@@ -104,20 +104,30 @@ export default function EditPriceListModal({
     let deletePayload: string[] | null = null
 
     if (multiplierChanged && affectedProducts.length > 0) {
+      const upserts: { product_id: string; multiplier: number }[] = []
+      const deletes: string[] = []
+
       if (overwriteManual === false) {
-        upsertPayload = affectedProducts.map(p => ({
-          product_id: p.id,
-          multiplier: p.price / p.cost,
-        }))
+        // "Respetar": non-variant → override with derived multiplier; variant → remove any stale override.
+        for (const p of affectedProducts) {
+          if (!p.has_variants) {
+            upserts.push({ product_id: p.id, multiplier: p.price / p.cost })
+          } else {
+            const existing = existingOverrides.find(o => o.product_id === p.id && o.price_list_id === list.id)
+            if (existing) deletes.push(existing.id)
+          }
+        }
       } else {
+        // "Sobrescribir": delete auto-overrides so the new list multiplier applies directly.
         const autoOverrides = existingOverrides.filter(o =>
           o.product_id !== null &&
           Math.abs(o.multiplier - oldMultiplier) <= 0.0001
         )
-        if (autoOverrides.length > 0) {
-          deletePayload = autoOverrides.map(o => o.id)
-        }
+        deletes.push(...autoOverrides.map(o => o.id))
       }
+
+      if (upserts.length > 0) upsertPayload = upserts
+      if (deletes.length > 0) deletePayload = deletes
     }
 
     try {

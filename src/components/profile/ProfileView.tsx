@@ -2,7 +2,6 @@
 
 import { useState, useMemo } from 'react'
 import { User } from 'lucide-react'
-import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -67,7 +66,7 @@ export default function ProfileView({ profile, email, business }: Props) {
       .update({ name: nameInput.trim() })
       .eq('id', profile.id)
     setNameSaving(false)
-    if (error) { setNameError(error.message); return }
+    if (error) { console.error(error); setNameError('No pudimos guardar el cambio. Intentá de nuevo.'); return }
     setName(nameInput.trim())
     setEditingName(false)
   }
@@ -84,7 +83,14 @@ export default function ProfileView({ profile, email, business }: Props) {
     setEmailError(null)
     const { error } = await supabase.auth.updateUser({ email: emailInput.trim() })
     setEmailSaving(false)
-    if (error) { setEmailError(error.message); return }
+    if (error) {
+      console.error(error)
+      const msg = error.message.toLowerCase().includes('already') || error.message.toLowerCase().includes('registered')
+        ? 'Ese email ya está en uso.'
+        : 'No pudimos actualizar el email. Intentá de nuevo.'
+      setEmailError(msg)
+      return
+    }
     setEmailSuccess(true)
   }
 
@@ -109,7 +115,14 @@ export default function ProfileView({ profile, email, business }: Props) {
     setPwError(null)
     const { error } = await supabase.auth.updateUser({ password: newPw })
     setPwSaving(false)
-    if (error) { setPwError(error.message); return }
+    if (error) {
+      console.error(error)
+      const msg = error.message.toLowerCase().includes('least')
+        ? 'La contraseña debe tener al menos 8 caracteres.'
+        : 'No pudimos cambiar la contraseña. Intentá de nuevo.'
+      setPwError(msg)
+      return
+    }
     setPwSuccess(true)
   }
 
@@ -142,13 +155,6 @@ export default function ProfileView({ profile, email, business }: Props) {
               </span>
             )}
           </div>
-          <button
-            type="button"
-            className="text-sm text-hint hover:text-body transition-colors"
-            onClick={() => alert('Próximamente')}
-          >
-            Cambiar foto
-          </button>
         </div>
 
         {/* Info */}
@@ -189,10 +195,10 @@ export default function ProfileView({ profile, email, business }: Props) {
             {editingEmail ? (
               emailSuccess ? (
                 <div className="space-y-3">
-                  <div className="rounded-xl border border-emerald-200 bg-emerald-50 dark:bg-emerald-950/30 dark:border-emerald-800/50 px-4 py-3 space-y-1">
-                    <p className="text-sm font-medium text-emerald-700 dark:text-emerald-400">Email enviado</p>
-                    <p className="text-sm text-emerald-600 dark:text-emerald-500">
-                      Se envió un email de confirmación a <strong>{emailInput}</strong>. Revisa tu bandeja para completar el cambio.
+                  <div className="rounded-xl border border-primary/20 bg-primary/8 px-4 py-3 space-y-1">
+                    <p className="text-sm font-medium text-primary">Email enviado</p>
+                    <p className="text-sm text-body">
+                      Se envió un email de confirmación a <strong>{emailInput}</strong>. Revisá tu bandeja para completar el cambio.
                     </p>
                   </div>
                   <Button variant="outline" size="sm" onClick={cancelEditEmail}>Cerrar</Button>
@@ -207,8 +213,8 @@ export default function ProfileView({ profile, email, business }: Props) {
                     autoFocus
                     onKeyDown={e => { if (e.key === 'Escape') cancelEditEmail() }}
                   />
-                  <div className="rounded-xl border border-blue-200 bg-blue-50 dark:bg-blue-950/30 dark:border-blue-800/50 px-3 py-2">
-                    <p className="text-xs text-blue-700 dark:text-blue-400">
+                  <div className="rounded-xl border border-edge bg-secondary px-3 py-2">
+                    <p className="text-sm text-body">
                       Se enviará un email de confirmación. El cambio no tendrá efecto hasta que lo confirmes.
                     </p>
                   </div>
@@ -237,8 +243,8 @@ export default function ProfileView({ profile, email, business }: Props) {
             {editingPassword ? (
               pwSuccess ? (
                 <div className="space-y-3">
-                  <div className="rounded-xl border border-emerald-200 bg-emerald-50 dark:bg-emerald-950/30 dark:border-emerald-800/50 px-4 py-3">
-                    <p className="text-sm font-medium text-emerald-700 dark:text-emerald-400">
+                  <div className="rounded-xl border border-primary/20 bg-primary/8 px-4 py-3">
+                    <p className="text-sm font-medium text-primary">
                       Contraseña actualizada correctamente
                     </p>
                   </div>
@@ -254,6 +260,7 @@ export default function ProfileView({ profile, email, business }: Props) {
                       onChange={e => { setCurrentPw(e.target.value); setPwError(null) }}
                       placeholder="Contraseña actual"
                       autoFocus
+                      onKeyDown={e => { if (e.key === 'Escape') cancelEditPassword() }}
                     />
                   </div>
                   <div className="space-y-1.5">
@@ -263,6 +270,7 @@ export default function ProfileView({ profile, email, business }: Props) {
                       value={newPw}
                       onChange={e => { setNewPw(e.target.value); setPwError(null) }}
                       placeholder="Mínimo 8 caracteres"
+                      onKeyDown={e => { if (e.key === 'Escape') cancelEditPassword() }}
                     />
                   </div>
                   <div className="space-y-1.5">
@@ -272,6 +280,7 @@ export default function ProfileView({ profile, email, business }: Props) {
                       value={confirmPw}
                       onChange={e => { setConfirmPw(e.target.value); setPwError(null) }}
                       placeholder="Repetí la nueva contraseña"
+                      onKeyDown={e => { if (e.key === 'Enter') savePassword(); if (e.key === 'Escape') cancelEditPassword() }}
                     />
                   </div>
                   {pwError && <p className="text-sm text-destructive">{pwError}</p>}
@@ -294,20 +303,14 @@ export default function ProfileView({ profile, email, business }: Props) {
           </div>
         </div>
 
-        {/* Business info */}
+        {/* Plan */}
         <div className="surface-elevated rounded-2xl divide-y divide-edge/40">
           <div className="px-5 py-4">
-            <p className="text-xs text-hint mb-1.5 uppercase tracking-wide">Negocio</p>
-            <span className="text-sm font-medium text-heading">{business.name}</span>
-          </div>
-          <div className="px-5 py-4">
-            <p className="text-xs text-hint mb-1.5 uppercase tracking-wide">Plan</p>
+            <p className="text-xs text-hint mb-1.5 uppercase tracking-wide">Plan actual</p>
             <span className="text-sm font-medium text-heading capitalize">{business.plan}</span>
           </div>
           <div className="px-5 py-4">
-            <Link href="/settings" className="text-sm text-hint hover:text-body transition-colors">
-              Ir a configuración
-            </Link>
+            <p className="text-sm text-hint">La gestión de facturación y cambios de plan estará disponible próximamente.</p>
           </div>
         </div>
       </div>

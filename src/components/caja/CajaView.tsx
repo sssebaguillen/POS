@@ -1,15 +1,15 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useCallback } from 'react'
 import { Vault } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useFormatMoney } from '@/lib/context/CurrencyContext'
 import { Button } from '@/components/ui/button'
 import PageHeader from '@/components/shared/PageHeader'
 import OpenSessionModal from '@/components/pos/OpenSessionModal'
+import CloseSessionModal from '@/components/pos/CloseSessionModal'
 import SessionDetailPanel from '@/components/caja/SessionDetailPanel'
 import type { ActiveSessionRow, SessionRow } from '@/app/(app)/caja/page'
-import { useRouter } from 'next/navigation'
 
 interface Props {
   businessId: string
@@ -35,16 +35,15 @@ function formatDuration(seconds: number) {
   return `${m}m`
 }
 
-function DiffBadge({ diff }: { diff: number | null }) {
+function DiffBadge({ diff, formatMoney }: { diff: number | null; formatMoney: (n: number) => string }) {
   if (diff === null) return <span className="text-muted-foreground text-xs">—</span>
   if (diff === 0) return <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400">Cuadra</span>
-  if (diff > 0) return <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400">+{diff.toFixed(2)}</span>
-  return <span className="text-xs font-medium text-destructive">{diff.toFixed(2)}</span>
+  if (diff > 0) return <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400">+{formatMoney(diff)}</span>
+  return <span className="text-xs font-medium text-destructive">{formatMoney(diff)}</span>
 }
 
 export default function CajaView({ businessId, activeSession: initialActiveSession, initialSessions, initialTotal, operatorId }: Props) {
   const formatMoney = useFormatMoney()
-  const router = useRouter()
   const supabase = useMemo(() => createClient(), [])
 
   const [activeSession, setActiveSession] = useState<ActiveSessionRow | null>(initialActiveSession)
@@ -54,7 +53,22 @@ export default function CajaView({ businessId, activeSession: initialActiveSessi
   const [loadingMore, setLoadingMore] = useState(false)
 
   const [showOpenModal, setShowOpenModal] = useState(false)
+  const [showCloseModal, setShowCloseModal] = useState(false)
   const [selectedSession, setSelectedSession] = useState<SessionRow | null>(null)
+
+  const refetchSessions = useCallback(async () => {
+    const [activeResult, listResult] = await Promise.all([
+      supabase.rpc('get_active_session'),
+      supabase.rpc('get_sessions_list', { p_limit: PAGE_SIZE, p_offset: 0 }),
+    ])
+    if (activeResult.data !== undefined) setActiveSession(activeResult.data as ActiveSessionRow | null)
+    const listData = listResult.data as { success: boolean; data: SessionRow[]; total: number } | null
+    if (listData?.success) {
+      setSessions(listData.data ?? [])
+      setTotal(listData.total)
+      setOffset(0)
+    }
+  }, [supabase])
 
   async function loadMore() {
     const newOffset = offset + PAGE_SIZE
@@ -68,9 +82,22 @@ export default function CajaView({ businessId, activeSession: initialActiveSessi
     setLoadingMore(false)
   }
 
-  function handleOpened(sessionId: string) {
+  async function handleOpened(sessionId: string) {
     setShowOpenModal(false)
-    router.refresh()
+    await refetchSessions()
+  }
+
+  async function handleClosed() {
+    setShowCloseModal(false)
+    setSelectedSession(null)
+    setActiveSession(null)
+    await refetchSessions()
+  }
+
+  function openActiveSessionDetail() {
+    if (!activeSession) return
+    const match = sessions.find(s => s.id === activeSession.id)
+    if (match) setSelectedSession(match)
   }
 
   return (
@@ -81,7 +108,10 @@ export default function CajaView({ businessId, activeSession: initialActiveSessi
         <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-5">
           {/* Active session card */}
           {activeSession ? (
-            <div className="border border-emerald-500/30 bg-emerald-500/5 rounded-xl p-4">
+            <div
+              className="border border-emerald-500/30 bg-emerald-500/5 rounded-xl p-4 cursor-pointer hover:bg-emerald-500/10 transition-colors"
+              onClick={openActiveSessionDetail}
+            >
               <div className="flex items-start justify-between gap-4">
                 <div className="flex items-center gap-2">
                   <Vault size={18} className="text-emerald-600 dark:text-emerald-400 shrink-0" />
@@ -97,6 +127,14 @@ export default function CajaView({ businessId, activeSession: initialActiveSessi
                   <p className="text-xs text-muted-foreground">
                     {activeSession.sales_count} {activeSession.sales_count === 1 ? 'venta' : 'ventas'}
                   </p>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="mt-2 h-7 text-xs"
+                    onClick={e => { e.stopPropagation(); setShowCloseModal(true) }}
+                  >
+                    Cerrar caja
+                  </Button>
                 </div>
               </div>
             </div>
@@ -104,7 +142,7 @@ export default function CajaView({ businessId, activeSession: initialActiveSessi
             <div className="border border-border rounded-xl p-4 flex items-center justify-between gap-4">
               <div className="flex items-center gap-2 text-muted-foreground">
                 <Vault size={16} className="shrink-0" />
-                <span className="text-sm">No hay una sesión de caja abierta</span>
+                <span className="text-sm">La caja está cerrada</span>
               </div>
               <Button size="sm" onClick={() => setShowOpenModal(true)}>
                 Abrir caja
@@ -115,7 +153,7 @@ export default function CajaView({ businessId, activeSession: initialActiveSessi
           {/* Sessions history table */}
           <div>
             <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-3">
-              Historial ({total})
+              Historial{total > 0 ? ` (${total})` : ''}
             </p>
 
             {sessions.length === 0 ? (
@@ -134,9 +172,9 @@ export default function CajaView({ businessId, activeSession: initialActiveSessi
                         <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground hidden md:table-cell">Duración</th>
                         <th className="text-right px-4 py-2.5 text-xs font-medium text-muted-foreground">Ventas</th>
                         <th className="text-right px-4 py-2.5 text-xs font-medium text-muted-foreground">Total</th>
-                        <th className="text-right px-4 py-2.5 text-xs font-medium text-muted-foreground hidden lg:table-cell">Esp.</th>
+                        <th className="text-right px-4 py-2.5 text-xs font-medium text-muted-foreground hidden lg:table-cell">Esperado</th>
                         <th className="text-right px-4 py-2.5 text-xs font-medium text-muted-foreground hidden lg:table-cell">Contado</th>
-                        <th className="text-right px-4 py-2.5 text-xs font-medium text-muted-foreground">Dif.</th>
+                        <th className="text-right px-4 py-2.5 text-xs font-medium text-muted-foreground" title="Diferencia">Dif.</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-border">
@@ -172,7 +210,7 @@ export default function CajaView({ businessId, activeSession: initialActiveSessi
                           <td className="px-4 py-3 text-right">
                             {s.status === 'open'
                               ? <span className="text-xs text-muted-foreground">—</span>
-                              : <DiffBadge diff={s.difference} />
+                              : <DiffBadge diff={s.difference} formatMoney={formatMoney} />
                             }
                           </td>
                         </tr>
@@ -210,7 +248,21 @@ export default function CajaView({ businessId, activeSession: initialActiveSessi
       {selectedSession && (
         <SessionDetailPanel
           session={selectedSession}
+          operatorId={operatorId}
           onClose={() => setSelectedSession(null)}
+          onCloseSession={selectedSession.status === 'open' ? () => {
+            setSelectedSession(null)
+            setShowCloseModal(true)
+          } : undefined}
+        />
+      )}
+
+      {showCloseModal && activeSession && (
+        <CloseSessionModal
+          sessionId={activeSession.id}
+          operatorId={operatorId}
+          onClosed={handleClosed}
+          onClose={() => setShowCloseModal(false)}
         />
       )}
     </>

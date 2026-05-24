@@ -585,6 +585,7 @@ export default function POSView({ products, businessId, businessName, freeLineEn
             sessionId={activeSession?.id ?? null}
             confirmingClear={confirmingNewSale}
             onVaciar={handleNewSale}
+            onSaleCompleted={fetchActiveSession}
           />
         </div>
       </div>
@@ -605,6 +606,7 @@ export default function POSView({ products, businessId, businessName, freeLineEn
           sessionId={activeSession?.id ?? null}
           confirmingClear={confirmingNewSale}
           onVaciar={handleNewSale}
+          onSaleCompleted={fetchActiveSession}
         />
       </div>
 

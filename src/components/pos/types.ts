@@ -33,6 +33,7 @@ export interface SaleItem {
   variant_id: string | null
   product_name: string
   product_icon: string | null
+  product_icon_color: string | null
   quantity: number
   unit_price: number
   free_line_description: string | null

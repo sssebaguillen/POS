@@ -77,7 +77,6 @@ export default function CategoryModal({
       .from('categories')
       .select('id, name, icon, icon_color')
       .eq('business_id', businessId)
-      .eq('is_active', true)
       .order('position')
 
     if (fetchError || !data) {

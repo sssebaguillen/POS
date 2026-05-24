@@ -16,7 +16,7 @@ interface NewPriceListModalProps {
   businessId: string
   operatorId: string | null
   hasDefault: boolean
-  products: { id: string; name: string; price: number; cost: number }[]
+  products: { id: string; name: string; price: number; cost: number; has_variants?: boolean }[]
   onCreated: (list: PriceList, newOverrides: { price_list_id: string; product_id: string; brand_id: null; multiplier: number }[]) => void
 }
 
@@ -86,13 +86,19 @@ export default function NewPriceListModal({
 
     const newMultiplier = 1 + parsedPercentage / 100
 
-    const overridesPayload =
-      overwriteManual === false && affectedProducts.length > 0
-        ? affectedProducts.map(p => ({
-            product_id: p.id,
-            multiplier: p.price / p.cost,
-          }))
-        : null
+    // Non-variant "Respetar" → create override that locks the current price ratio (price / cost).
+    // Non-variant "Sobrescribir" → no override; list multiplier applies via calculateProductPrice.
+    // Variants always use their explicit prices in the cart; overrides are not created for them.
+    let overridesPayload: { product_id: string; multiplier: number }[] | null = null
+    if (affectedProducts.length > 0) {
+      const entries: { product_id: string; multiplier: number }[] = []
+      for (const p of affectedProducts) {
+        if (overwriteManual === false && !p.has_variants) {
+          entries.push({ product_id: p.id, multiplier: p.price / p.cost })
+        }
+      }
+      if (entries.length > 0) overridesPayload = entries
+    }
 
     try {
       const { data: rpcResult, error: rpcError } = await supabase.rpc('create_price_list', {

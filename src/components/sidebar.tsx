@@ -2,7 +2,7 @@
 
 import { usePathname } from 'next/navigation'
 import Link from 'next/link'
-import { X, ShoppingCart, Package, ClipboardList, BarChart2, LineChart, Settings, Sun, Moon, LogOut, PanelLeftClose, PanelLeftOpen, Receipt, Building2, Sparkles, Globe, ExternalLink, History, Users, Vault } from 'lucide-react'
+import { X, ShoppingCart, Package, ClipboardList, BarChart2, LineChart, Settings, Sun, Moon, LogOut, PanelLeftClose, PanelLeftOpen, Receipt, UserCircle, Sparkles, Globe, ExternalLink, History, Users, Vault } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useState, useEffect, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
@@ -322,7 +322,7 @@ export default function Sidebar({
         {showBusinessSessionActions && (
           <>
             <button
-              title={collapsed && !isMobileDrawer ? businessName : undefined}
+              title={collapsed && !isMobileDrawer ? 'Cuenta' : undefined}
               className={cn(
                 'rounded-lg text-sm text-body hover:bg-hover-bg transition-colors',
                 collapsed && !isMobileDrawer
@@ -331,8 +331,8 @@ export default function Sidebar({
               )}
               onClick={e => { router.push('/profile'); if (isMobileDrawer) onClose(); e.currentTarget.blur() }}
             >
-              <Building2 size={18} />
-              {(!collapsed || isMobileDrawer) && businessName}
+              <UserCircle size={18} />
+              {(!collapsed || isMobileDrawer) && 'Cuenta'}
             </button>
 
             <button

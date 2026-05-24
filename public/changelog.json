@@ -1,6 +1,23 @@
 {
-  "current": "0.0.4.1",
+  "current": "0.0.4.2",
   "releases": [
+    {
+      "version": "0.0.4.2",
+      "date": "2026-05-25",
+      "label": "Conciliación de cuentas digitales y correcciones",
+      "changes": [
+        { "type": "new", "text": "En el detalle de cada sesión de caja podés registrar el saldo inicial y final de MercadoPago y Transferencia. El sistema calcula automáticamente cuánto debería haber entrado en cada cuenta y te muestra si cuadra o hay diferencia." },
+        { "type": "improvement", "text": "La tarjeta de sesión activa en la sección Caja ahora es clickeable: hacé clic para ver el detalle sin tener que ir al punto de venta. También aparece el botón de cerrar caja directo desde ahí." },
+        { "type": "improvement", "text": "Al abrir o cerrar una sesión desde la sección Caja, el historial se actualiza en el momento sin recargar la página." },
+        { "type": "improvement", "text": "Las diferencias de arqueo en el historial ahora muestran el monto formateado con el símbolo de moneda, igual que el resto de la app." },
+        { "type": "improvement", "text": "Presionando ESC en los modales de apertura y cierre de caja los cerrás, igual que el resto de los modales de la app." },
+        { "type": "new", "text": "Nuevo atajo de teclado en el modal de cobro: la tecla + activa el modo de pago mixto directamente desde el teclado." },
+        { "type": "improvement", "text": "En el modal de cobro, Enter y P ahora funcionan para ventas en efectivo aunque no hayas escrito un monto: el sistema usa el total exacto de la venta." },
+        { "type": "improvement", "text": "Los precios de variantes ya no son sobreescritos por las listas de precios. Si una variante tiene un precio de venta cargado, ese precio siempre se usa en el carrito, sin importar el multiplicador de la lista activa." },
+        { "type": "improvement", "text": "Los mensajes de error en la sección Perfil ahora están en español y son más claros. ESC cierra los formularios de edición y Enter en el campo de confirmación de contraseña guarda el cambio." },
+        { "type": "improvement", "text": "El acceso al perfil en el menú lateral ahora se llama 'Cuenta' y tiene un ícono de usuario en lugar del nombre del negocio." }
+      ]
+    },
     {
       "version": "0.0.4.1",
       "date": "2026-05-23",

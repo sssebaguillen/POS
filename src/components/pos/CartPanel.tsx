@@ -11,6 +11,7 @@ import { getCartItemId } from '@/lib/types'
 import PaymentModal from '@/components/pos/PaymentModal'
 import ReceiptPreviewModal from '@/components/pos/ReceiptPreviewModal'
 import EditSalePanel from '@/components/pos/EditSalePanel'
+import { DynamicIcon } from '@/components/inventory/CategoryIconPreview'
 import type { ProductWithCategory, SaleRow, SaleDetail } from '@/components/pos/types'
 import { buildReceiptData } from '@/lib/printer/receipt'
 import type { ReceiptData, ReceiptItemInput } from '@/lib/printer/types'
@@ -45,6 +46,7 @@ interface SaleItemQueryRow {
   variant_id: string | null
   product_name: string
   product_icon: string | null
+  product_icon_color: string | null
   quantity: number
   unit_price: number
   free_line_description: string | null
@@ -72,9 +74,10 @@ interface Props {
   sessionId?: string | null
   confirmingClear?: boolean
   onVaciar?: () => void
+  onSaleCompleted?: () => void
 }
 
-const CartPanel = forwardRef<CartPanelHandle, Props>(function CartPanel({ businessId, businessName, freeLineEnabled, activePriceList, priceListOverrides, operatorId, permissions, sessionId = null, confirmingClear: externalConfirming, onVaciar }: Props, ref) {
+const CartPanel = forwardRef<CartPanelHandle, Props>(function CartPanel({ businessId, businessName, freeLineEnabled, activePriceList, priceListOverrides, operatorId, permissions, sessionId = null, confirmingClear: externalConfirming, onVaciar, onSaleCompleted }: Props, ref) {
   const currency = useCurrency()
   const formatMoney = useFormatMoney()
   const router = useRouter()
@@ -128,16 +131,20 @@ const CartPanel = forwardRef<CartPanelHandle, Props>(function CartPanel({ busine
       }
       const effectiveCost = item.variant_id ? (item.variant_cost ?? 0) : item.product.cost
       const effectivePrice = item.variant_id ? (item.variant_base_price ?? item.unit_price) : item.product.price
-      const unitPrice = item.priceIsManual || !activePriceList
-        ? item.unit_price
-        : calculateProductPrice(
-            effectiveCost,
-            effectivePrice,
-            item.product.id,
-            item.product.brand_id,
-            activePriceList,
-            priceListOverrides
-          )
+      const unitPrice = (() => {
+        if (item.priceIsManual || !activePriceList) return item.unit_price
+        // Variant items with an explicit price always use that price.
+        // Price lists only apply to unpriced variants (price = 0), where cost × multiplier is used.
+        if (item.variant_id && effectivePrice > 0) return effectivePrice
+        return calculateProductPrice(
+          effectiveCost,
+          effectivePrice,
+          item.product.id,
+          item.product.brand_id,
+          activePriceList,
+          priceListOverrides
+        )
+      })()
       return {
         product_id: item.product.id,
         variant_id: item.variant_id ?? null,
@@ -304,6 +311,7 @@ const CartPanel = forwardRef<CartPanelHandle, Props>(function CartPanel({ busine
         variant_id: row.variant_id ?? null,
         product_name: row.product_name,
         product_icon: row.product_icon ?? null,
+        product_icon_color: row.product_icon_color ?? null,
         quantity: row.quantity,
         unit_price: Number(row.unit_price),
         free_line_description: row.free_line_description ?? null,
@@ -382,6 +390,7 @@ const CartPanel = forwardRef<CartPanelHandle, Props>(function CartPanel({ busine
       if (expandedSaleId === saleId) setExpandedSaleId(null)
       showToast({ message: 'Venta eliminada' })
       void queryClient.invalidateQueries({ queryKey: ['expenses'] })
+      onSaleCompleted?.()
     } else {
       showToast({ message: error?.message ?? data?.error ?? 'No se pudo eliminar la venta.' })
     }
@@ -429,6 +438,7 @@ const CartPanel = forwardRef<CartPanelHandle, Props>(function CartPanel({ busine
                 variant_id: i.variant_id,
                 product_name: found?.product_name ?? '',
                 product_icon: found?.product_icon ?? null,
+                product_icon_color: found?.product_icon_color ?? null,
                 quantity: i.quantity,
                 unit_price: i.unit_price,
                 free_line_description: found?.free_line_description ?? null,
@@ -651,16 +661,19 @@ const CartPanel = forwardRef<CartPanelHandle, Props>(function CartPanel({ busine
                     const canOverridePrice = !isFreeLine && permissions?.price_override === true
 
                     const originalPrice = !isFreeLine && item.priceIsManual
-                      ? !activePriceList
-                        ? (item.variant_id ? (item.variant_base_price ?? item.unit_price) : item.product!.price)
-                        : calculateProductPrice(
+                      ? (() => {
+                          const vPrice = item.variant_id ? (item.variant_base_price ?? item.unit_price) : item.product!.price
+                          if (item.variant_id && vPrice > 0) return vPrice
+                          if (!activePriceList) return vPrice
+                          return calculateProductPrice(
                             item.variant_id ? (item.variant_cost ?? 0) : item.product!.cost,
-                            item.variant_id ? (item.variant_base_price ?? item.unit_price) : item.product!.price,
+                            vPrice,
                             item.product!.id,
                             item.product!.brand_id,
                             activePriceList,
                             priceListOverrides
                           )
+                        })()
                       : null
 
                     return (
@@ -1121,7 +1134,7 @@ const CartPanel = forwardRef<CartPanelHandle, Props>(function CartPanel({ busine
                                 </span>
                                 {detail.items.slice(0, 4).map(item =>
                                   item.product_icon ? (
-                                    <span key={item.id} className="text-xs leading-none">{item.product_icon}</span>
+                                    <DynamicIcon key={item.id} name={item.product_icon} size={13} color={item.product_icon_color ?? undefined} />
                                   ) : null
                                 )}
                               </>
@@ -1137,7 +1150,7 @@ const CartPanel = forwardRef<CartPanelHandle, Props>(function CartPanel({ busine
                                 <li key={item.id} className="flex items-center justify-between text-sm">
                                   <span className="flex items-center gap-1.5 text-body min-w-0">
                                     {item.product_icon && (
-                                      <span className="text-sm leading-none shrink-0">{item.product_icon}</span>
+                                      <DynamicIcon name={item.product_icon} size={14} color={item.product_icon_color ?? undefined} className="shrink-0" />
                                     )}
                                     <span className="truncate text-xs">{item.product_name}</span>
                                     <span className="text-hint shrink-0 text-xs">×{item.quantity}</span>
@@ -1261,9 +1274,9 @@ const CartPanel = forwardRef<CartPanelHandle, Props>(function CartPanel({ busine
           onSaleCompleted={(message) => {
             showToast({ message })
             setSelectedCustomer(null)
-            // Re-run server components to refresh stock after sale
             router.refresh()
             void queryClient.invalidateQueries({ queryKey: ['pos-daily-history'] })
+            onSaleCompleted?.()
           }}
           onClose={() => setShowPayment(false)}
         />

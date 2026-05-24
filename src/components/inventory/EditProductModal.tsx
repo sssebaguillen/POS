@@ -420,13 +420,17 @@ export default function EditProductModal({
       p_options: variantPayload.options,
       p_variants: variantPayload.variants,
     })
-    setIsSaving(false)
 
     const result = rpcResult as { success: boolean; error?: string } | null
     if (rpcError || !result?.success) {
+      setIsSaving(false)
       setErrors({ _global: result?.error ?? translateDbError(rpcError?.message ?? '', 'No se pudo guardar el producto con variantes. Revisa los datos e inténtalo de nuevo.') })
       return
     }
+
+    const nextOverrides = existingOverrides
+
+    setIsSaving(false)
 
     onSaved(
       {
@@ -445,7 +449,7 @@ export default function EditProductModal({
         image_source: imageSource,
         has_variants: true,
       },
-      existingOverrides
+      nextOverrides
     )
   }
 

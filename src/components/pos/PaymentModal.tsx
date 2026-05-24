@@ -262,6 +262,13 @@ export default function PaymentModal({
         return
       }
 
+      // + entra al modo de pago mixto (antes del guard isMixed)
+      if (e.key === '+' && !isMixed && !loading && !receipt && !isInputFocused) {
+        e.preventDefault()
+        enterMixedMode()
+        return
+      }
+
       if (loading || !!receipt || isMixed) return
 
       // Input enfocado: solo Enter confirma el monto escrito; el resto no interrumpe
@@ -274,12 +281,13 @@ export default function PaymentModal({
       }
 
       // Sin input enfocado — shortcuts completos
+      // Para efectivo, Enter y P disparan aunque el campo esté vacío (monto exacto, sin vuelto)
+      const cashAmt = primaryMethod === 'cash' ? (validCash >= total ? validCash : total) : undefined
+      const canProceed = canConfirm || (primaryMethod === 'cash' && !isMixed)
+
       if (e.key === 'Enter') {
         e.preventDefault()
-        if (canConfirm) {
-          const cashAmt = primaryMethod === 'cash' ? (validCash >= total ? validCash : total) : undefined
-          void handleConfirm(false, cashAmt)
-        }
+        if (canProceed) void handleConfirm(false, cashAmt)
         return
       }
 
@@ -291,10 +299,7 @@ export default function PaymentModal({
 
       if (e.key === 'p' || e.key === 'P') {
         e.preventDefault()
-        if (canConfirm) {
-          const cashAmt = primaryMethod === 'cash' ? (validCash >= total ? validCash : total) : undefined
-          void handleConfirm(true, cashAmt)
-        }
+        if (canProceed) void handleConfirm(true, cashAmt)
         return
       }
 
@@ -308,7 +313,7 @@ export default function PaymentModal({
     document.addEventListener('keydown', onKeyDown)
     return () => document.removeEventListener('keydown', onKeyDown)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loading, receipt, isMixed, primaryMethod, validCash, total, canConfirm, availableMethods, onClose])
+  }, [loading, receipt, isMixed, primaryMethod, validCash, total, canConfirm, availableMethods, onClose, enterMixedMode])
 
   return (
     <>
@@ -414,6 +419,7 @@ export default function PaymentModal({
                       >
                         <Plus size={15} />
                         Agregar método
+                        <kbd className="text-[10px] font-mono leading-none px-1 py-px rounded border opacity-50 border-current text-current">+</kbd>
                       </button>
                     )}
                   </>

@@ -45,6 +45,14 @@ export default function CloseSessionModal({ sessionId, operatorId, onClosed, onC
     void fetchSummary()
   }, [sessionId, supabase])
 
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') onClose()
+    }
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [onClose])
+
   const cashFromSales = useMemo(() => {
     if (!summary) return 0
     return summary.payments_by_method.find(p => p.method === 'cash')?.total ?? 0
@@ -86,7 +94,7 @@ export default function CloseSessionModal({ sessionId, operatorId, onClosed, onC
   const diffDisplay = formatDiff(difference)
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/40 dark:bg-black/60 backdrop-blur-sm">
       <div className="bg-background border border-border rounded-xl w-full max-w-md mx-4 shadow-xl">
         <div className="flex items-center justify-between p-5 border-b border-border">
           <h2 className="text-base font-semibold">Cerrar caja</h2>
