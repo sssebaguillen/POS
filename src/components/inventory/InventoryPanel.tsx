@@ -1162,9 +1162,14 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
           existingOverrides={productOverrides.filter(o => o.product_id === editingProduct.id)}
           onSaved={(values, nextOverrides) => {
             void (async () => {
-              await updateProduct(editingProduct.id, values)
+              // values puede venir vacío desde handleSubmitWithVariants si el usuario
+              // sólo editó variantes — en ese caso saltamos update_product para no
+              // duplicar audit events.
+              if (Object.keys(values).length > 0) {
+                await updateProduct(editingProduct.id, values)
+              }
 
-              if (values.has_variants) {
+              if (values.has_variants || editingProduct.has_variants) {
                 await reloadInventoryProducts()
               }
 

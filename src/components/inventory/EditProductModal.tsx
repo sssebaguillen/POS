@@ -436,25 +436,26 @@ export default function EditProductModal({
 
     setIsSaving(false)
 
-    onSaved(
-      {
-        name: toTitleCase(form.name.trim()),
-        price: 0,
-        cost: 0,
-        stock: 0,
-        min_stock: 0,
-        sku: null,
-        brand_id: form.brand_id || null,
-        barcode: null,
-        category_id: form.category_id || null,
-        show_in_catalog: form.show_in_catalog,
-        is_active: form.is_active,
-        image_url: imageUrl,
-        image_source: imageSource,
-        has_variants: true,
-      },
-      nextOverrides
-    )
+    // Solo persistir campos del padre que efectivamente cambiaron.
+    // Stock/price/cost/min_stock/sku/barcode son irrelevantes para productos con
+    // variantes (la data real vive en product_variants) y no deben generar audit
+    // events ruido cuando el usuario edita solo una variante.
+    const parentChanges: Partial<InventoryProduct> = {}
+    const newName = toTitleCase(form.name.trim())
+    if (newName !== product.name) parentChanges.name = newName
+    const newBrandId = form.brand_id || null
+    if (newBrandId !== (product.brand_id ?? null)) parentChanges.brand_id = newBrandId
+    const newCategoryId = form.category_id || null
+    if (newCategoryId !== (product.category_id ?? null)) parentChanges.category_id = newCategoryId
+    if (form.show_in_catalog !== product.show_in_catalog) parentChanges.show_in_catalog = form.show_in_catalog
+    if (form.is_active !== product.is_active) parentChanges.is_active = form.is_active
+    if (imageUrl !== (product.image_url ?? null)) parentChanges.image_url = imageUrl
+    const oldImageSource = (product.image_source as 'upload' | 'url' | null) ?? null
+    if (imageSource !== oldImageSource) parentChanges.image_source = imageSource
+    // has_variants solo se incluye en el caso de transición simple → variants
+    if (!product.has_variants) parentChanges.has_variants = true
+
+    onSaved(parentChanges, nextOverrides)
   }
 
   function handleClose() {

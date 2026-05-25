@@ -1,6 +1,16 @@
 {
-  "current": "0.0.4.2",
+  "current": "0.0.4.3",
   "releases": [
+    {
+      "version": "0.0.4.3",
+      "date": "2026-05-26",
+      "label": "Variantes más confiables en precios y actividad",
+      "changes": [
+        { "type": "improvement", "text": "Los precios de las variantes ahora se ven igual en todos lados: carrito, listas de precios y catálogo público. Antes las Listas de precios y el catálogo online podían mostrar un precio distinto al del Punto de venta y el Inventario." },
+        { "type": "new", "text": "El registro de actividad ahora muestra los cambios en variantes: cuáles se crearon, agregaron, desactivaron o reactivaron, y las modificaciones de precio, costo, stock, SKU o código de barras de cada una. Antes estas operaciones pasaban sin dejar rastro." },
+        { "type": "improvement", "text": "En el detalle de venta del historial, las ventas de variantes ahora muestran cuál variante se vendió (talle, color, etc.) y el ícono de categoría del producto, igual que el resto de la app." }
+      ]
+    },
     {
       "version": "0.0.4.2",
       "date": "2026-05-25",
