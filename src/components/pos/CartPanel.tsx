@@ -44,6 +44,7 @@ interface SaleItemQueryRow {
   id: string
   product_id: string | null
   variant_id: string | null
+  variant_label: string | null
   product_name: string
   product_icon: string | null
   product_icon_color: string | null
@@ -309,6 +310,7 @@ const CartPanel = forwardRef<CartPanelHandle, Props>(function CartPanel({ busine
         id: row.id,
         product_id: row.product_id,
         variant_id: row.variant_id ?? null,
+        variant_label: row.variant_label ?? null,
         product_name: row.product_name,
         product_icon: row.product_icon ?? null,
         product_icon_color: row.product_icon_color ?? null,
@@ -436,6 +438,7 @@ const CartPanel = forwardRef<CartPanelHandle, Props>(function CartPanel({ busine
                 id: found?.id ?? '',
                 product_id: i.product_id,
                 variant_id: i.variant_id,
+                variant_label: found?.variant_label ?? null,
                 product_name: found?.product_name ?? '',
                 product_icon: found?.product_icon ?? null,
                 product_icon_color: found?.product_icon_color ?? null,
@@ -1152,7 +1155,12 @@ const CartPanel = forwardRef<CartPanelHandle, Props>(function CartPanel({ busine
                                     {item.product_icon && (
                                       <DynamicIcon name={item.product_icon} size={14} color={item.product_icon_color ?? undefined} className="shrink-0" />
                                     )}
-                                    <span className="truncate text-xs">{item.product_name}</span>
+                                    <span className="truncate text-xs">
+                                      {item.product_name}
+                                      {item.variant_label && (
+                                        <span className="text-hint"> · {item.variant_label}</span>
+                                      )}
+                                    </span>
                                     <span className="text-hint shrink-0 text-xs">×{item.quantity}</span>
                                   </span>
                                   <span className="text-xs font-semibold text-heading tabular-nums shrink-0 ml-3">

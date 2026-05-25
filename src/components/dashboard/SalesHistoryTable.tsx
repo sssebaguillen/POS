@@ -17,12 +17,15 @@ import { isPaymentMethod, normalizePayment, PAYMENT_OPTIONS } from '@/lib/paymen
 import { useToast } from '@/hooks/useToast'
 import Toast from '@/components/shared/Toast'
 import SelectDropdown from '@/components/ui/SelectDropdown'
+import { DynamicIcon } from '@/components/inventory/CategoryIconPreview'
 
 interface SaleItem {
   id: string
   product_id: string
+  variant_label: string | null
   product_name: string
   product_icon: string | null
+  product_icon_color: string | null
   quantity: number
   unit_price: number
 }
@@ -46,8 +49,10 @@ interface SaleDetail extends SaleRow {
 interface SaleItemQueryRow {
   id: string
   product_id: string
+  variant_label: string | null
   product_name: string
   product_icon: string | null
+  product_icon_color: string | null
   quantity: number
   unit_price: number
 }
@@ -180,8 +185,10 @@ function SalesHistoryTable({ rows, businessId, businessName, operatorId, onSaleD
       items: (data.items ?? []).map((item: SaleItemQueryRow) => ({
         id: item.id,
         product_id: item.product_id,
+        variant_label: item.variant_label ?? null,
         product_name: item.product_name,
         product_icon: item.product_icon ?? null,
+        product_icon_color: item.product_icon_color ?? null,
         quantity: item.quantity,
         unit_price: Number(item.unit_price),
       })),
@@ -270,8 +277,10 @@ function SalesHistoryTable({ rows, businessId, businessName, operatorId, onSaleD
               return {
                 id: found?.id ?? '',
                 product_id: i.product_id,
+                variant_label: found?.variant_label ?? null,
                 product_name: found?.product_name ?? '',
                 product_icon: found?.product_icon ?? null,
+                product_icon_color: found?.product_icon_color ?? null,
                 quantity: i.quantity,
                 unit_price: i.unit_price,
               }
@@ -539,7 +548,7 @@ function SalesHistoryTable({ rows, businessId, businessName, operatorId, onSaleD
                         </span>
                         {detail.items.slice(0, 4).map(item =>
                           item.product_icon ? (
-                            <span key={item.product_id} className="text-xs leading-none" aria-hidden="true">{item.product_icon}</span>
+                            <DynamicIcon key={item.id} name={item.product_icon} size={13} color={item.product_icon_color ?? undefined} />
                           ) : null
                         )}
                       </>
@@ -554,9 +563,14 @@ function SalesHistoryTable({ rows, businessId, businessName, operatorId, onSaleD
                         <li key={item.id} className="flex items-center justify-between text-sm">
                           <span className="flex items-center gap-1.5 text-body min-w-0">
                             {item.product_icon && (
-                              <span className="text-sm leading-none shrink-0" aria-hidden="true">{item.product_icon}</span>
+                              <DynamicIcon name={item.product_icon} size={14} color={item.product_icon_color ?? undefined} className="shrink-0" />
                             )}
-                            <span className="truncate text-xs">{item.product_name}</span>
+                            <span className="truncate text-xs">
+                              {item.product_name}
+                              {item.variant_label && (
+                                <span className="text-hint"> · {item.variant_label}</span>
+                              )}
+                            </span>
                             <span className="text-hint shrink-0 text-xs">×{item.quantity}</span>
                           </span>
                           <span className="text-xs font-semibold text-heading tabular-nums shrink-0 ml-3">
