@@ -1,109 +1,76 @@
 # Pulsar POS — Backlog & Known Issues
 
-> Pending work across the P-phases (audit log, cash sessions, accounting, etc.), known bugs, CONTEXT.md discrepancies, and post-beta tech debt.
+> Trabajo pendiente, bugs conocidos, errores de CONTEXT.md y deuda técnica post-beta.
 
 ---
 
-## DB Audit — Pending (non-critical for beta)
+## DB Audit — Pendiente
 
-| ID | Issue | Status |
-|----|-------|--------|
-| G-3 | `cash_sessions.opened_by` and `closed_by` → FK to `profiles` but should FK to `operators`. Both fixed in migration `fix_cash_sessions_fk_to_operators` with `ON DELETE SET NULL`. | ✅ |
-| M-3 | `inventory_movements.created_by` has no active FK and trigger doesn't populate it. Deferred. | ⏳ |
-
----
-
-## P7h Audit Log — Remaining Phases
-
-| Phase | Scope | Status |
-|-------|-------|--------|
-| Fase 1 | Sales + inventory (products, categories, brands, bulk) audit logging; `/activity` UI; `RecentActivityWidget` on dashboard | ✅ shipped 2026-05-15 |
-| Fase 2 | Audit logging for expenses, suppliers, price lists, settings, operators; `audit_log.entity_type` expanded to `expense \| supplier \| price_list \| setting \| operator`; `/activity` entity filter switched from chips to dropdown (9 options) | ✅ shipped 2026-05-16 |
-| Fase 3 | Revert mutation from audit log entry (undo from any entry) | ⏳ |
-
-**Fase 2 RPC signature changes (callers updated in same PR):**
-- `swap_default_price_list(p_operator_id, p_business_id, p_price_list_id)` — was `(p_price_list_id, p_business_id)`
-- `update_business_slug(p_operator_id, p_business_id, p_slug)` — was `(p_slug)`
-- `create_operator(p_actor_operator_id, p_business_id, ...)` — actor param added at the front
-- `update_operator(p_actor_operator_id, p_business_id, p_target_operator_id, ...)` — actor + business added; target renamed
-- `update_expense(..., p_operator_id)` — appended trailing actor param (DEFAULT NULL)
-- `delete_expense(p_business_id, p_expense_id, p_operator_id)` — appended trailing actor param (DEFAULT NULL)
-- `update_mercaderia_expense(..., p_operator_id)` — appended trailing actor param (DEFAULT NULL)
-
-`create_expense` and `create_mercaderia_expense` already accepted `p_operator_id` (used to stamp `expenses.operator_id`); the same value is now reused as the audit actor.
-
-Helper `getActorOperatorId(operator)` in `lib/operator.ts` returns `null` for owner, `profile_id` otherwise — use it whenever you need to pass `p_operator_id` to an audit-logged RPC.
-
-**Scope cut in Fase 1:** `ImportProductsModal.handleCreate` still performs a direct `.update({ icon_color })` on `categories` instead of going through `create_category_guarded` / `update_category`. Move to RPC path in Fase 2.
-
-**Audit log de variantes (shipped 2026-05-26):**
-
-- `update_product_variants(p_operator_id, p_business_id, p_product_id, p_options, p_variants)` ahora valida actor + business + `stock_write` y emite `audit_log.action = 'product_variants_updated'`.
-- `create_product_with_variants(p_operator_id, p_business_id, p_product, p_options, p_variants)` ahora emite `'product_variants_created'`.
-- Helper SQL `product_variants_snapshot(p_business_id, p_product_id)` genera el payload `{product, options, variants}`.
-- `/activity` renderiza con `ProductVariantsCreated` y `ProductVariantsDiff` — diff por variante (agregada / desactivada / reactivada / campos modificados) + cambios en atributos.
+| ID | Issue |
+|----|-------|
+| M-3 | `inventory_movements.created_by` no tiene FK activa y el trigger no lo popula. |
 
 ---
 
-## Other P-Phases
+## P7h Audit Log — Pendiente
 
-- **P8a** — cash sessions UI ✅ shipped. G-3 FK migration also done (`fix_cash_sessions_fk_to_operators`).
-- **P8b** — `undo_import` RPC (planned but never created)
-- **P9** — expenses module (mercadería partial: `expense_items`, `create_mercaderia_expense`, `update_mercaderia_expense` already shipped)
-- **P10** — billing / facturación electrónica (paid plans). `invoices` table currently unused.
-- **P11**, **P12** — TBD
+- **Fase 3:** revertir una mutación desde su entrada en `/activity` (undo desde cualquier evento).
+- **Scope cut Fase 1:** `ImportProductsModal.handleCreate` aún hace `.update({ icon_color })` directo sobre `categories` en vez de pasar por `update_category`. Mover a RPC.
 
 ---
 
-## Dead Code in proxy.ts
+## Otras P-Phases
 
-The CONTEXT.md mentions a dead `/stock` guard in `proxy.ts`. This does NOT appear in the current `proxy.ts` source — it was already removed or never added. No action needed.
+- **P8b** — `undo_import` RPC (planeada, nunca creada).
+- **P10** — facturación electrónica (planes pagos). Tabla `invoices` existe pero sin uso.
+- **P11**, **P12** — TBD.
 
 ---
 
-## CONTEXT.md Errors (not yet corrected in that file)
+## Límites del flujo de creación (a tener en cuenta)
 
-| Area | Documented | Reality |
-|------|-----------|---------|
+- **`NewProductModal` con variantes** exige que cada variante activa tenga `price > 0`. La regla de pricing (`compute_effective_price` / `calculateProductPrice`) soporta `price = 0 && cost > 0` → `cost × multiplicador`, pero ese estado **no es alcanzable por UI normal**. Sólo llegaría por importación masiva (P8b) o inserción manual en DB.
+
+---
+
+## CONTEXT.md — Discrepancias con la DB en vivo
+
+| Área | CONTEXT.md dice | Realidad |
+|------|-----------------|----------|
 | Project ID | `zrnthycznbrplzpmxmkwk` | `zrnthcznbrplzpmxmkwk` |
-| `businesses.accounting_enabled` | Listed as existing | Does not exist in live DB |
-| `businesses.settings` keys | Only `primary_color` mentioned | Also supports `currency` and `logo_upload_path` |
-| `profiles.onboarding_state` | Not documented | Exists with onboarding wizard state |
-| `sales.status` CHECK | `('pending','completed','cancelled')` | `('completed','cancelled','refunded')` — no `pending`, has `refunded` |
-| `cash_sessions` columns | Lists `status`, `difference` | Neither exists in live DB; `notes` exists instead |
-| `payments.method` CHECK | Lists `credit`, `otro` | Not in live DB — only `cash,card,transfer,mercadopago` |
-| `payments.status` CHECK | `('pending','completed','failed')` | `('completed','pending','refunded','cancelled')` — no `failed` |
-| `expense_items` table | Not documented | Exists — full line-item system for mercadería |
-| `inventory_movements` | No `reason`, `reference_id` | Both exist in live DB |
-| `undo_import` RPC | Documented as existing | Does NOT exist in live DB |
-| `update_expense` RPC | Not documented | Exists — for editing non-mercadería expenses |
-| `create_mercaderia_expense` RPC | Not documented | Exists |
-| `update_mercaderia_expense` RPC | Not documented | Exists |
-| Permissions count | "9 campos" | 11 fields — `price_override` is the 10th, `free_line` is the 11th |
-| `stats` permission | Documented as `stats` | Renamed to `analysis` on 2026-05-16 (covers dashboard, stats, /activity) |
-| `audit_log` table | Not documented | Exists — P7h Phase 1, append-only audit trail |
-| Inventory mutation RPCs | Direct table writes documented | All mutations now go through SECURITY DEFINER RPCs (`create_product`, `update_product`, `delete_product`, etc.) with audit logging |
+| `businesses.accounting_enabled` | Listado como existente | No existe |
+| `businesses.settings` keys | Sólo `primary_color` | También `currency` y `logo_upload_path` |
+| `profiles.onboarding_state` | No documentado | Existe, lo usa el wizard de onboarding |
+| `sales.status` CHECK | `('pending','completed','cancelled')` | `('completed','cancelled','refunded')` — sin `pending`, con `refunded` |
+| `cash_sessions` columnas | Listadas `status`, `difference` | Ninguna existe; sí existe `notes` |
+| `payments.method` CHECK | Lista `credit`, `otro` | No están — sólo `cash,card,transfer,mercadopago` |
+| `payments.status` CHECK | `('pending','completed','failed')` | `('completed','pending','refunded','cancelled')` — sin `failed` |
+| `expense_items` table | No documentada | Existe — sistema completo de line-items para mercadería |
+| `inventory_movements` | Sin `reason`, `reference_id` | Ambos existen |
+| `undo_import` RPC | Documentada como existente | No existe |
+| `update_expense` RPC | No documentada | Existe — edita gastos no-mercadería |
+| `create_mercaderia_expense` RPC | No documentada | Existe |
+| `update_mercaderia_expense` RPC | No documentada | Existe |
+| `update_product_variants` RPC | No documentada | Existe — firma: `(p_operator_id, p_business_id, p_product_id, p_options, p_variants)` |
+| `create_product_with_variants` RPC | No documentada | Existe — firma: `(p_operator_id, p_business_id, p_product, p_options, p_variants)` |
+| `compute_effective_price` SQL function | No documentada | Existe — espejo SQL de `calculateProductPrice` para las RPCs del catálogo |
+| Permissions count | "9 campos" | 11 campos — `price_override` (10º) y `free_line` (11º) |
+| `stats` permission | Listada como `stats` | Renombrada a `analysis` el 2026-05-16 (cubre dashboard, stats, /activity) |
+| `audit_log` table | No documentada | Existe — append-only, P7h Fase 1+2 |
+| Inventory mutation RPCs | Documentadas con escritura directa a tabla | Todas pasan por RPCs `SECURITY DEFINER` con audit log |
 
 ---
 
-## Technical Debt — Pending Post-Beta
+## Deuda técnica — Post-beta
 
-| Item | Notes |
+| Item | Notas |
 |------|-------|
-| `InventoryPanel.tsx` (~1291 lines) | Extract 5 embedded sub-components |
-| `CartPanel.tsx` (~920 lines) | `EditSalePanel` is embedded — separate it |
-| `ProductsPanel.tsx` (294L) | Deleted — file did not exist. ✅ |
-| `components/sales/` | Deleted — directory did not exist. ✅ |
-| `formatMoney` duplicated | All three files already use `useFormatMoney()` from `CurrencyContext`. ✅ |
-| `validateImageUrl` duplicated | Both modals already import from `@/lib/validation`. ✅ |
-| `FieldGroup` duplicated | Both modals already import from a shared file. ✅ |
-| `DateRangeFilter.tsx` | `QUARTER_RANGES` recalculates inside component on each render — not frozen at module load. Non-issue in practice. |
-| Radix `DialogTitle` warnings | Add `<VisuallyHidden><DialogTitle>` to all modals |
-| `useEffect` for sale history in `CartPanel` | Pre-React Query pattern, not migrated |
-| `theme.tsx` FOUC | `localStorage` post-hydration causes flash — should use cookie like sidebar |
-| `settings/page.tsx` auth | Already uses `requireAuthenticatedBusinessId`. ✅ |
-| `operator-select/page.tsx` | Already typed as `Exclude<UserRole, 'owner'>`. ✅ |
-| `!` assertions in env vars | In `client.ts` and `server.ts` |
-| `CartItem` in `lib/types/index.ts` | Client-only type mixed with server types |
-| `categories.public_read_categories` policy | Allows anon SELECT — fine for catalog but broad |
-| Vestigial `categories.is_active` | Dropped in migration `drop_categories_is_active`. RPCs (`create_category_guarded`, `get_catalog_categories`) and `CategoryModal.refreshCategories` updated. `brands` had no `is_active` column. | ✅ |
+| `InventoryPanel.tsx` (~1291L) | Extraer 5 sub-componentes embebidos |
+| `CartPanel.tsx` (~920L) | `EditSalePanel` embebido — separarlo |
+| Radix `DialogTitle` warnings | Agregar `<VisuallyHidden><DialogTitle>` a todos los modales |
+| `useEffect` para sales history en `CartPanel` | Patrón pre-React Query, no migrado |
+| `theme.tsx` FOUC | `localStorage` post-hydration causa flash — debería usar cookie como el sidebar |
+| `!` assertions en env vars | En `client.ts` y `server.ts` |
+| `CartItem` en `lib/types/index.ts` | Tipo client-only mezclado con tipos del server |
+| `categories.public_read_categories` policy | Permite SELECT anon — OK para catálogo pero amplio |
+| `DateRangeFilter.tsx` | `QUARTER_RANGES` recalcula en cada render. No-issue en práctica. |

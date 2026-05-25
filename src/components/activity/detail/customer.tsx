@@ -68,6 +68,7 @@ export function CustomerDiff({ oldData, newData }: CustomerDiffProps) {
   const rows: { label: string; before: string; after: string }[] = []
 
   for (const key of CUSTOMER_FIELD_ORDER) {
+    if (!(key in newData)) continue
     const before = oldData[key]
     const after = newData[key]
     if (before === after) continue

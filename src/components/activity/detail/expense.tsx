@@ -148,6 +148,7 @@ export function SupplierDiff({ oldData, newData }: SupplierDiffProps) {
 
   const rows: { label: string; before: string; after: string }[] = []
   for (const key of Object.keys(SUPPLIER_FIELD_LABELS) as (keyof SupplierData)[]) {
+    if (!(key in newData)) continue
     const before = oldData[key]
     const after = newData[key]
     if (before === after) continue

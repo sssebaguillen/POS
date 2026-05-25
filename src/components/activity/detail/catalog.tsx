@@ -58,6 +58,7 @@ export function CategoryDiff({ oldData, newData }: CategoryDiffProps) {
   const changes: { label: string; before: ReactNode; after: ReactNode }[] = []
 
   for (const key of Object.keys(CATEGORY_FIELD_LABELS) as (keyof CategoryData)[]) {
+    if (!(key in newData)) continue
     const before = oldData[key]
     const after = newData[key]
     if (before === after) continue
