@@ -7,6 +7,8 @@ export const AUDIT_ACTION_LABELS: Record<string, string> = {
   product_created:            'Producto creado',
   product_updated:            'Producto editado',
   product_deleted:            'Producto eliminado',
+  product_variants_created:   'Producto con variantes creado',
+  product_variants_updated:   'Variantes editadas',
   product_bulk_deleted:       'Productos eliminados (masivo)',
   product_bulk_status:        'Estado de productos (masivo)',
   product_bulk_category:      'Categoría de productos (masivo)',

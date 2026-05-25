@@ -24,6 +24,7 @@ interface EditProductModalProps {
   onClose: () => void
   product: InventoryProduct
   businessId: string | null
+  operatorId: string | null
   categories: InventoryCategory[]
   brands: InventoryBrand[]
   priceLists: PriceList[]
@@ -66,6 +67,7 @@ export default function EditProductModal({
   onClose,
   product,
   businessId,
+  operatorId,
   categories,
   brands,
   priceLists,
@@ -416,6 +418,8 @@ export default function EditProductModal({
 
     setIsSaving(true)
     const { data: rpcResult, error: rpcError } = await supabase.rpc('update_product_variants', {
+      p_operator_id: operatorId,
+      p_business_id: businessId,
       p_product_id: product.id,
       p_options: variantPayload.options,
       p_variants: variantPayload.variants,

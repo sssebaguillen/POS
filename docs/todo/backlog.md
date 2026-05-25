@@ -36,20 +36,12 @@ Helper `getActorOperatorId(operator)` in `lib/operator.ts` returns `null` for ow
 
 **Scope cut in Fase 1:** `ImportProductsModal.handleCreate` still performs a direct `.update({ icon_color })` on `categories` instead of going through `create_category_guarded` / `update_category`. Move to RPC path in Fase 2.
 
-**Pendiente — `update_product_variants` audit log (próxima prioridad post-feature de pricing de variantes 2026-05-26):**
+**Audit log de variantes (shipped 2026-05-26):**
 
-La RPC `update_product_variants(p_product_id, p_options, p_variants)` viola la **regla 32** de CLAUDE.md: no tiene `p_operator_id`, no valida business explícitamente, y no llama `log_audit_event`. Toda edición de variantes (crear/renombrar opciones, agregar/editar/desactivar variantes, cambiar precio/costo/stock) hoy es **invisible** en `/activity`. Eso rompe la promesa del módulo de Actividad y bloquea cualquier futuro feature de undo (Fase 3).
-
-Cambios requeridos en una PR independiente:
-1. Cambiar firma a `update_product_variants(p_operator_id uuid, p_business_id uuid, p_product_id uuid, p_options jsonb, p_variants jsonb)`. Mantener `SECURITY DEFINER` + `search_path = public, extensions`.
-2. Validar `business_id` contra `get_business_id()` (defense-in-depth, patrón de `create_product`).
-3. Verificar permiso `stock_write` (el editor de variantes vive bajo `/inventory`).
-4. Antes de aplicar cambios, snapshot del estado actual (opciones + variantes) para `old_data`. Después aplicar mutaciones, recoger nuevo estado para `new_data`.
-5. Llamar `log_audit_event(p_business_id, p_operator_id, 'product_updated', 'product', p_product_id, <product_name>, old_data, new_data)` — **una sola entrada por edición de producto con el diff completo de variantes en `new_data`** (no una entrada por variante; ya es el patrón establecido para bulk ops).
-6. Callers a actualizar en el mismo commit: `EditProductModal.tsx:418` y donde sea que `NewProductModal` invoque la RPC. Pasar `getActorOperatorId(operator)` desde el front.
-7. Extender `ActivityDetail.tsx` / `payloads.ts` para renderizar el diff de variantes en `/activity` (variantes agregadas, removidas, renombradas, cambios de price/cost/stock).
-
-Pre-requisito: el front necesita conocer el `operator` activo en `EditProductModal` y `NewProductModal` para pasar `p_operator_id`. Hoy esos modales no reciben `activeOperator` por props — verificar el path y agregar el prop drilling necesario, o leer la cookie via context si ya hay uno.
+- `update_product_variants(p_operator_id, p_business_id, p_product_id, p_options, p_variants)` ahora valida actor + business + `stock_write` y emite `audit_log.action = 'product_variants_updated'`.
+- `create_product_with_variants(p_operator_id, p_business_id, p_product, p_options, p_variants)` ahora emite `'product_variants_created'`.
+- Helper SQL `product_variants_snapshot(p_business_id, p_product_id)` genera el payload `{product, options, variants}`.
+- `/activity` renderiza con `ProductVariantsCreated` y `ProductVariantsDiff` — diff por variante (agregada / desactivada / reactivada / campos modificados) + cambios en atributos.
 
 ---
 

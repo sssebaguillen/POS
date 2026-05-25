@@ -7,6 +7,8 @@ export type ActivityAction =
   | 'product_created'
   | 'product_updated'
   | 'product_deleted'
+  | 'product_variants_created'
+  | 'product_variants_updated'
   | 'product_bulk_deleted'
   | 'product_bulk_status'
   | 'product_bulk_category'
@@ -69,6 +71,53 @@ export interface ProductData {
   is_active?: boolean
   category_id?: string | null
   brand_id?: string | null
+}
+
+// Snapshot generado por product_variants_snapshot(...) en Postgres.
+// Usado en payloads de product_variants_created y product_variants_updated.
+
+export interface ProductVariantOptionValueSnapshot {
+  option_id?: string
+  option_name?: string | null
+  option_value_id?: string
+  value?: string | null
+}
+
+export interface ProductVariantSnapshot {
+  id?: string
+  sku?: string | null
+  barcode?: string | null
+  price?: number | string
+  cost?: number | string
+  stock?: number | string
+  min_stock?: number | string
+  is_active?: boolean
+  option_values?: ProductVariantOptionValueSnapshot[]
+}
+
+export interface ProductOptionValueSnapshot {
+  id?: string
+  value?: string
+  position?: number
+}
+
+export interface ProductOptionSnapshot {
+  id?: string
+  attribute_type_id?: string
+  name?: string
+  position?: number
+  values?: ProductOptionValueSnapshot[]
+}
+
+export interface ProductVariantsData {
+  product?: {
+    id?: string
+    name?: string
+    has_variants?: boolean
+    default_variant_id?: string | null
+  } | null
+  options?: ProductOptionSnapshot[]
+  variants?: ProductVariantSnapshot[]
 }
 
 export interface CategoryData {
@@ -184,6 +233,8 @@ export interface ActivityPayloadMap {
   product_created: { entityType: 'product'; oldData: null; newData: ProductData | null }
   product_updated: { entityType: 'product'; oldData: ProductData | null; newData: ProductData | null }
   product_deleted: { entityType: 'product'; oldData: ProductData | null; newData: null }
+  product_variants_created: { entityType: 'product'; oldData: null; newData: ProductVariantsData | null }
+  product_variants_updated: { entityType: 'product'; oldData: ProductVariantsData | null; newData: ProductVariantsData | null }
   product_bulk_deleted: { entityType: 'product'; oldData: BulkData | null; newData: null }
   product_bulk_status: { entityType: 'product'; oldData: BulkData | null; newData: BulkData | null }
   product_bulk_category: { entityType: 'product'; oldData: BulkData | null; newData: BulkData | null }
@@ -231,6 +282,8 @@ export const ACTIVITY_ACTIONS: ActivityAction[] = [
   'product_created',
   'product_updated',
   'product_deleted',
+  'product_variants_created',
+  'product_variants_updated',
   'product_bulk_deleted',
   'product_bulk_status',
   'product_bulk_category',
@@ -268,6 +321,8 @@ export const ACTION_ENTITY_TYPES: Record<ActivityAction, ActivityEntityType> = {
   product_created: 'product',
   product_updated: 'product',
   product_deleted: 'product',
+  product_variants_created: 'product',
+  product_variants_updated: 'product',
   product_bulk_deleted: 'product',
   product_bulk_status: 'product',
   product_bulk_category: 'product',

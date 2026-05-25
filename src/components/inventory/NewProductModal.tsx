@@ -317,6 +317,8 @@ export default function NewProductModal({
       }
 
       const { data: rpcResult, error: rpcError } = await supabase.rpc('create_product_with_variants', {
+        p_operator_id: operatorId,
+        p_business_id: businessId,
         p_product: productPayload,
         p_options: variantPayload.options,
         p_variants: variantPayload.variants,

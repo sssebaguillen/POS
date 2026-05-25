@@ -19,6 +19,7 @@ import type {
   SettingsData,
   SupplierData,
   ProductData,
+  ProductVariantsData,
 } from '@/components/activity/payloads'
 import { isActivityAction, readAuditPayload } from '@/components/activity/payloads'
 import type { ActivityLogRow, ActivityLookups } from '@/components/activity/types'
@@ -57,6 +58,8 @@ import {
   BulkProductStatus,
   ProductDiff,
   ProductSummary,
+  ProductVariantsCreated,
+  ProductVariantsDiff,
 } from '@/components/activity/detail/product'
 import {
   SaleDiff,
@@ -95,6 +98,15 @@ const ACTIVITY_DETAIL_RENDERERS: Record<ActivityAction, ActivityRenderer> = {
       oldData={readAuditPayload<ProductData>(row.old_data)}
       newData={readAuditPayload<ProductData>(row.new_data)}
       lookups={lookups}
+    />
+  ),
+  product_variants_created: ({ row }) => (
+    <ProductVariantsCreated data={readAuditPayload<ProductVariantsData>(row.new_data)} />
+  ),
+  product_variants_updated: ({ row }) => (
+    <ProductVariantsDiff
+      oldData={readAuditPayload<ProductVariantsData>(row.old_data)}
+      newData={readAuditPayload<ProductVariantsData>(row.new_data)}
     />
   ),
   product_bulk_deleted: ({ row }) => (
