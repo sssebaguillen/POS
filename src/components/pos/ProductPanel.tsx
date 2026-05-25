@@ -215,12 +215,16 @@ function CategorySwatch({ categoryId, brandName }: { categoryId: string | null; 
 
 function VariantSelectorContent({
   product,
+  activePriceList,
+  priceListOverrides,
   onAdd,
   onClose,
   onVariantImageChange,
   formatMoney,
 }: {
   product: ProductWithCategory
+  activePriceList: PriceList | null
+  priceListOverrides: PriceListOverride[]
   onAdd: (variant: ProductVariant, label: string) => void
   onClose: () => void
   onVariantImageChange: (imageUrl: string | null) => void
@@ -260,9 +264,26 @@ function VariantSelectorContent({
 
   const minVariantPrice = useMemo(() => {
     if (!data) return null
-    const prices = data.variants.filter(v => v.is_active).map(v => Number(v.price)).filter(p => Number.isFinite(p) && p > 0)
+    const prices = data.variants
+      .filter(v => v.is_active)
+      .map(v => {
+        const variantPrice = Number(v.price)
+        const variantCost = Number(v.cost)
+        return activePriceList
+          ? calculateProductPrice(
+              variantCost,
+              variantPrice,
+              product.id,
+              product.brand_id,
+              activePriceList,
+              priceListOverrides,
+              variantPrice,
+            )
+          : variantPrice
+      })
+      .filter(p => Number.isFinite(p) && p > 0)
     return prices.length > 0 ? Math.min(...prices) : null
-  }, [data])
+  }, [data, activePriceList, priceListOverrides, product.id, product.brand_id])
 
   const displayImage = useMemo(() => {
     if (!data) return null
@@ -341,7 +362,19 @@ function VariantSelectorContent({
 
       <p className="text-sm font-semibold text-heading tabular-nums">
         {matchedVariant
-          ? formatMoney(Number(matchedVariant.price))
+          ? formatMoney(
+              activePriceList
+                ? calculateProductPrice(
+                    Number(matchedVariant.cost),
+                    Number(matchedVariant.price),
+                    product.id,
+                    product.brand_id,
+                    activePriceList,
+                    priceListOverrides,
+                    Number(matchedVariant.price),
+                  )
+                : Number(matchedVariant.price)
+            )
           : minVariantPrice != null
             ? `Desde ${formatMoney(minVariantPrice)}`
             : ''}
@@ -508,6 +541,8 @@ const ProductCard = memo(function ProductCard({
       >
         <VariantSelectorContent
           product={product}
+          activePriceList={activePriceList}
+          priceListOverrides={priceListOverrides}
           onAdd={(variant, label) => onAddVariant(product, variant, label)}
           onClose={() => setPopoverOpen(false)}
           onVariantImageChange={setHoveredVariantImage}

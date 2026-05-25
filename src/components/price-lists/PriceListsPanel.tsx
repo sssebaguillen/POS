@@ -580,6 +580,7 @@ export default function PriceListsPanel({
             activeMultiplier={row.activeMultiplier}
             productOverride={row.productOverride}
             brandOverride={row.brandOverride}
+            overrides={overrides}
           />
         )
       })()}

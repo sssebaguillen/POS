@@ -111,12 +111,15 @@ Applied in: `sidebar.tsx`, `theme.tsx` (ThemeToggle), `CatalogThemeProvider.tsx`
 
 ### Price Calculation
 
-`calculateProductPrice` in `lib/price-lists.ts` is the **only** source of truth for prices — never calculate inline in components.
+`calculateProductPrice` in `lib/price-lists.ts` is the **only** source of truth for prices on the client. Its SQL mirror is `compute_effective_price(...)` in Postgres, used by the catalog RPCs (`get_catalog_products`, `get_catalog_product_with_variants`). **Both implement the same rule** — change them together.
 
-Resolution order:
-1. `cost > 0` → `cost × (product_override ?? brand_override ?? list.multiplier)`
-2. `cost = 0, price > 0` → use `price` directly
-3. Both 0 → return 0
+Resolution order (variant-aware):
+1. `variantPrice > 0` → `variantPrice` (precio explícito de variante manda; la lista NO lo modifica)
+2. `cost > 0` → `cost × (product_override ?? brand_override ?? list.multiplier)`
+3. `cost = 0` → use `price` directly
+4. Both 0 → return 0
+
+For variants: pass the variant's own `cost` and `price`; the override lookup uses the **parent's** `product_id` and `brand_id` (no per-variant overrides today). The `variantPrice` parameter is what makes paridad POS↔catálogo cumplir — sin él, las listas de precios romperían variantes con precio manual.
 
 When `unit_price_override` exists in a sale item, it takes precedence over everything.
 
@@ -343,7 +346,7 @@ Full route map with permission gates: `docs/conventions.md`.
 8. Owner identified in proxy by `operator?.role === 'owner'` or absent cookie — never DB lookup.
 9. `OWNER_PERMISSIONS` from `lib/operator.ts` — imported everywhere, never duplicated.
 10. `UserRole = 'owner' | 'manager' | 'cashier' | 'custom'` — from `lib/types/index.ts`, re-exported by `lib/operator.ts`.
-11. Price calculation via `calculateProductPrice` in `lib/price-lists.ts` — never inline.
+11. Price calculation via `calculateProductPrice` in `lib/price-lists.ts` (client) o `compute_effective_price(...)` (Postgres) — never inline. Mantener ambas implementaciones en sync. **Para variantes, `variant.price > 0` siempre gana sobre la lista de precios** (precio explícito de variante manda); pasar el precio de la variante como último parámetro a la función.
 12. `normalizePayment`, `PAYMENT_LABELS`, `PAYMENT_COLORS` from `lib/payments.ts` — never duplicated.
 13. `createClient()` always inside `useMemo(() => createClient(), [])` in Client Components.
 14. Independent queries in Server Components: always `Promise.all`.

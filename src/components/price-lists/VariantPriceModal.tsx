@@ -7,6 +7,7 @@ import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { VisuallyHidden } from '@radix-ui/react-visually-hidden'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { useFormatMoney } from '@/lib/context/CurrencyContext'
+import { calculateProductPrice } from '@/lib/price-lists'
 import type { PriceList, PriceListOverride, ProductVariant, ProductWithVariants } from '@/lib/types'
 import type { PriceListProduct } from '@/components/price-lists/types'
 
@@ -18,6 +19,7 @@ interface VariantPriceModalProps {
   activeMultiplier: number
   productOverride: PriceListOverride | null
   brandOverride: PriceListOverride | null
+  overrides: PriceListOverride[]
 }
 
 function getMarginPercent(multiplier: number): number {
@@ -39,6 +41,7 @@ export default function VariantPriceModal({
   activeMultiplier,
   productOverride,
   brandOverride,
+  overrides,
 }: VariantPriceModalProps) {
   const supabase = useMemo(() => createClient(), [])
   const formatMoney = useFormatMoney()
@@ -142,8 +145,25 @@ export default function VariantPriceModal({
                       const label = data ? getVariantLabel(variant, data) : variant.id
                       const cost = Number(variant.cost)
                       const price = Number(variant.price)
-                      const listPrice = cost > 0 ? cost * activeMultiplier : price
-                      const margin = cost > 0 ? getMarginPercent(activeMultiplier) : null
+                      const listPrice = calculateProductPrice(
+                        cost,
+                        price,
+                        product.id,
+                        product.brand_id,
+                        activeList,
+                        overrides,
+                        price,
+                      )
+                      // Margen real por variante: si tiene precio explícito (price > 0), el
+                      // margen se infiere de price/cost; si depende de la lista, usa el multiplicador
+                      // efectivo (productOverride > brandOverride > activeList.multiplier).
+                      const margin =
+                        cost > 0
+                          ? price > 0
+                            ? getMarginPercent(price / cost)
+                            : getMarginPercent(activeMultiplier)
+                          : null
+                      const isManual = price > 0 && cost > 0 && Math.abs(price / cost - activeMultiplier) > 0.0001
 
                       return (
                         <TableRow key={variant.id}>
@@ -157,7 +177,17 @@ export default function VariantPriceModal({
                             {formatMoney(cost)}
                           </TableCell>
                           <TableCell className="text-right tabular-nums">
-                            {formatMoney(listPrice)}
+                            <span className="inline-flex items-center gap-1.5 justify-end">
+                              {formatMoney(listPrice)}
+                              {isManual && (
+                                <span
+                                  className="inline-flex rounded-full px-1.5 py-0.5 text-[9px] font-medium bg-primary/10 dark:bg-primary/20 text-primary border border-primary/20 dark:border-primary/40"
+                                  title="Precio manual de la variante — la lista no lo modifica"
+                                >
+                                  Manual
+                                </span>
+                              )}
+                            </span>
                           </TableCell>
                           <TableCell className="text-right tabular-nums">
                             {margin === null ? (

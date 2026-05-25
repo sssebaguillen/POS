@@ -134,16 +134,14 @@ const CartPanel = forwardRef<CartPanelHandle, Props>(function CartPanel({ busine
       const effectivePrice = item.variant_id ? (item.variant_base_price ?? item.unit_price) : item.product.price
       const unitPrice = (() => {
         if (item.priceIsManual || !activePriceList) return item.unit_price
-        // Variant items with an explicit price always use that price.
-        // Price lists only apply to unpriced variants (price = 0), where cost × multiplier is used.
-        if (item.variant_id && effectivePrice > 0) return effectivePrice
         return calculateProductPrice(
           effectiveCost,
           effectivePrice,
           item.product.id,
           item.product.brand_id,
           activePriceList,
-          priceListOverrides
+          priceListOverrides,
+          item.variant_id ? effectivePrice : null,
         )
       })()
       return {
@@ -666,7 +664,6 @@ const CartPanel = forwardRef<CartPanelHandle, Props>(function CartPanel({ busine
                     const originalPrice = !isFreeLine && item.priceIsManual
                       ? (() => {
                           const vPrice = item.variant_id ? (item.variant_base_price ?? item.unit_price) : item.product!.price
-                          if (item.variant_id && vPrice > 0) return vPrice
                           if (!activePriceList) return vPrice
                           return calculateProductPrice(
                             item.variant_id ? (item.variant_cost ?? 0) : item.product!.cost,
@@ -674,7 +671,8 @@ const CartPanel = forwardRef<CartPanelHandle, Props>(function CartPanel({ busine
                             item.product!.id,
                             item.product!.brand_id,
                             activePriceList,
-                            priceListOverrides
+                            priceListOverrides,
+                            item.variant_id ? vPrice : null,
                           )
                         })()
                       : null
