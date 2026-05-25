@@ -75,6 +75,10 @@ export function ProductDiff({ oldData, newData, lookups }: ProductDiffProps) {
   const changes: { label: string; before: string; after: string }[] = []
 
   for (const key of PRODUCT_FIELD_ORDER) {
+    // new_data es parcial (= p_changes de update_product, solo los campos enviados),
+    // mientras que old_data es el snapshot completo del producto. Sin este guard,
+    // todos los campos del snapshot pre-cambio aparecerían como "→ —".
+    if (!(key in newData)) continue
     const before = oldData[key]
     const after = newData[key]
     if (before === after) continue
