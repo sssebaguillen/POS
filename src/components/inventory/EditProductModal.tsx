@@ -4,15 +4,16 @@ import { startTransition, useCallback, useEffect, useMemo, useRef, useState } fr
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { ChevronDown, ChevronRight, Upload, X } from 'lucide-react'
+import { ChevronDown, ChevronRight, X } from 'lucide-react'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import type { PriceList, PriceListOverride, ProductOption, ProductVariant, ProductWithVariants } from '@/lib/types'
 import type { InventoryBrand, InventoryCategory, InventoryProduct } from '@/components/inventory/types'
-import { validateImageUrl } from '@/lib/validation'
 import { translateDbError } from '@/lib/errors'
 import FieldGroup from '@/components/inventory/FieldGroup'
 import VariantEditor from '@/components/inventory/VariantEditor'
 import type { VariantPayloadEdit, VariantPayloadNew } from '@/components/inventory/VariantEditor'
+import ImageUploadField from '@/components/inventory/shared/ImageUploadField'
+import { useImageUpload } from '@/hooks/useImageUpload'
 import { useCurrency } from '@/lib/context/CurrencyContext'
 import { getCurrencySymbol, toTitleCase } from '@/lib/format'
 import CategoryIconPreview from '@/components/inventory/CategoryIconPreview'
@@ -91,19 +92,11 @@ export default function EditProductModal({
   })
   const [showCategoryOptions, setShowCategoryOptions] = useState(false)
   const [showAdvanced, setShowAdvanced] = useState(false)
-  const [imageUrl, setImageUrl] = useState<string | null>(product.image_url ?? null)
-  const [imageSource, setImageSource] = useState<'upload' | 'url' | null>(
-    (product.image_source as 'upload' | 'url' | null) ?? null
-  )
-  const [imageTab, setImageTab] = useState<'upload' | 'url'>(
-    product.image_source === 'url' ? 'url' : 'upload'
-  )
-  const [externalUrlInput, setExternalUrlInput] = useState(
-    product.image_source === 'url' ? (product.image_url ?? '') : ''
-  )
-  const [urlError, setUrlError] = useState('')
-  const [imageUploading, setImageUploading] = useState(false)
-  const [imgError, setImgError] = useState(false)
+  const image = useImageUpload({
+    businessId,
+    initialUrl: product.image_url ?? null,
+    initialSource: (product.image_source as 'upload' | 'url' | null) ?? null,
+  })
   const categoryAnchorRef = useRef<HTMLDivElement>(null)
   const brandAnchorRef = useRef<HTMLDivElement>(null)
 
@@ -204,28 +197,6 @@ export default function EditProductModal({
   function setField<K extends keyof FormState>(field: K, value: FormState[K]) {
     setForm(prev => ({ ...prev, [field]: value }))
     setErrors(prev => ({ ...prev, [field]: '' }))
-  }
-
-  async function handleFileUpload(file: File) {
-    if (!businessId) return
-    setImageUploading(true)
-    setErrors(prev => ({ ...prev, image: '' }))
-    const ext = file.name.split('.').pop() ?? 'jpg'
-    const filename = `${businessId}/${crypto.randomUUID()}.${ext}`
-    const { error: uploadError } = await supabase.storage
-      .from('product-images')
-      .upload(filename, file, { upsert: true })
-    if (uploadError) {
-      setErrors(prev => ({ ...prev, image: translateDbError(uploadError.message, 'No se pudo subir la imagen. Intenta con otra foto.') }))
-      setImageUploading(false)
-      return
-    }
-    const { data: urlData } = supabase.storage
-      .from('product-images')
-      .getPublicUrl(filename)
-    setImageUrl(urlData.publicUrl)
-    setImageSource('upload')
-    setImageUploading(false)
   }
 
   function handlePriceChange(value: string) {
@@ -387,8 +358,8 @@ export default function EditProductModal({
         category_id: form.category_id || null,
         show_in_catalog: form.show_in_catalog,
         is_active: form.is_active,
-        image_url: imageUrl,
-        image_source: imageSource,
+        image_url: image.url,
+        image_source: image.source,
       },
       nextOverrides
     )
@@ -449,9 +420,9 @@ export default function EditProductModal({
     if (newCategoryId !== (product.category_id ?? null)) parentChanges.category_id = newCategoryId
     if (form.show_in_catalog !== product.show_in_catalog) parentChanges.show_in_catalog = form.show_in_catalog
     if (form.is_active !== product.is_active) parentChanges.is_active = form.is_active
-    if (imageUrl !== (product.image_url ?? null)) parentChanges.image_url = imageUrl
+    if (image.url !== (product.image_url ?? null)) parentChanges.image_url = image.url
     const oldImageSource = (product.image_source as 'upload' | 'url' | null) ?? null
-    if (imageSource !== oldImageSource) parentChanges.image_source = imageSource
+    if (image.source !== oldImageSource) parentChanges.image_source = image.source
     // has_variants solo se incluye en el caso de transición simple → variants
     if (!product.has_variants) parentChanges.has_variants = true
 
@@ -468,13 +439,10 @@ export default function EditProductModal({
     setErrors({})
     setIsPriceEdited(existingOverrides.length > 0)
     setSelectedListIds(new Set(existingOverrides.map(o => o.price_list_id)))
-    setImageUrl(product.image_url ?? null)
-    setImageSource((product.image_source as 'upload' | 'url' | null) ?? null)
-    setImageTab(product.image_source === 'url' ? 'url' : 'upload')
-    setExternalUrlInput(product.image_source === 'url' ? (product.image_url ?? '') : '')
-    setUrlError('')
-    setImageUploading(false)
-    setImgError(false)
+    image.reset({
+      url: product.image_url ?? null,
+      source: (product.image_source as 'upload' | 'url' | null) ?? null,
+    })
     setShowAdvanced(false)
     onClose()
   }
@@ -892,144 +860,7 @@ export default function EditProductModal({
 
                   <div className="sm:col-span-2">
                     <p className="text-label text-subtle mb-2">Imagen del producto</p>
-                    {imageUrl && imageSource === 'upload' ? (
-                      <div className="flex items-start gap-3 rounded-lg border border-edge bg-surface px-3 py-3">
-                        <img
-                          src={imageUrl}
-                          alt="Vista previa"
-                          className="h-20 w-20 rounded-lg object-cover border border-edge shrink-0"
-                        />
-                        <div className="flex flex-col gap-1.5 pt-1 min-w-0">
-                          <p className="text-xs text-hint">Imagen subida</p>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setImageUrl(null)
-                              setImageSource(null)
-                            }}
-                            className="text-xs text-destructive hover:text-destructive/80 text-left"
-                          >
-                            Quitar imagen
-                          </button>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="rounded-lg border border-edge overflow-hidden">
-                        <div className="flex border-b border-edge">
-                          <button
-                            type="button"
-                            onClick={() => setImageTab('upload')}
-                            className={`flex-1 px-4 py-2 text-xs font-medium transition-colors ${
-                              imageTab === 'upload'
-                                ? 'bg-surface text-body border-b-2 border-primary'
-                                : 'bg-surface-alt text-hint hover:text-subtle'
-                            }`}
-                          >
-                            Subir archivo
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setImageTab('url')}
-                            className={`flex-1 px-4 py-2 text-xs font-medium transition-colors ${
-                              imageTab === 'url'
-                                ? 'bg-surface text-body border-b-2 border-primary'
-                                : 'bg-surface-alt text-hint hover:text-subtle'
-                            }`}
-                          >
-                            URL externa
-                          </button>
-                        </div>
-                        <div className="p-3">
-                          {imageTab === 'upload' && (
-                            <label className="flex flex-col items-center gap-2 cursor-pointer rounded-lg border border-dashed border-edge bg-surface px-4 py-5 hover:border-primary/40 transition-colors">
-                              <Upload className="h-5 w-5 text-hint" />
-                              <span className="text-xs text-hint">
-                                {imageUploading ? 'Subiendo...' : 'Arrastra o haz clic para seleccionar'}
-                              </span>
-                              <span className="text-[10px] text-hint">PNG, JPG, WebP · máx. 2 MB</span>
-                              <input
-                                type="file"
-                                accept="image/*"
-                                className="sr-only"
-                                disabled={imageUploading}
-                                onChange={e => {
-                                  const file = e.target.files?.[0]
-                                  if (file) void handleFileUpload(file)
-                                }}
-                              />
-                            </label>
-                          )}
-                          {imageTab === 'upload' && errors.image && (
-                            <p className="text-caption text-destructive mt-1">{errors.image}</p>
-                          )}
-                          {imageTab === 'url' && (
-                            <div className="flex flex-col gap-2">
-                              <div className="flex gap-2">
-                                <Input
-                                  value={externalUrlInput}
-                                  onChange={e => {
-                                    setExternalUrlInput(e.target.value)
-                                    setUrlError('')
-                                    if (imageSource === 'url') {
-                                      setImageUrl(null)
-                                      setImageSource(null)
-                                    }
-                                  }}
-                                  placeholder="https://..."
-                                  aria-invalid={!!urlError}
-                                />
-                                <Button
-                                  type="button"
-                                  onClick={() => {
-                                    const error = validateImageUrl(externalUrlInput)
-                                    setUrlError(error)
-                                    if (!error && externalUrlInput) {
-                                      setImgError(false)
-                                      setImageUrl(externalUrlInput)
-                                      setImageSource('url')
-                                    }
-                                  }}
-                                  className="shrink-0"
-                                >
-                                  Confirmar
-                                </Button>
-                              </div>
-                              {urlError && <p className="text-caption text-destructive">{urlError}</p>}
-                              {imageUrl && imageSource === 'url' && (
-                                <div className="flex items-start gap-3">
-                                  {imgError ? (
-                                    <div className="h-20 w-20 rounded-lg border border-destructive/40 bg-destructive/10 shrink-0 flex items-center justify-center p-1">
-                                      <p className="text-caption text-destructive text-center leading-tight">No se pudo cargar. Verifica que la URL sea pública y directa.</p>
-                                    </div>
-                                  ) : (
-                                    <img
-                                      src={imageUrl}
-                                      alt="Vista previa"
-                                      className="h-20 w-20 rounded-lg object-cover border border-edge shrink-0"
-                                      onLoad={() => setImgError(false)}
-                                      onError={() => setImgError(true)}
-                                    />
-                                  )}
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      setImageUrl(null)
-                                      setImageSource(null)
-                                      setExternalUrlInput('')
-                                      setUrlError('')
-                                      setImgError(false)
-                                    }}
-                                    className="text-xs text-destructive hover:text-destructive/80 mt-1"
-                                  >
-                                    Quitar imagen
-                                  </button>
-                                </div>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    )}
+                    <ImageUploadField controller={image} />
                   </div>
 
                   {/* Visible en catálogo — moved out of footer so is_active can take its place */}
