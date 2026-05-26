@@ -1,6 +1,23 @@
 {
-  "current": "0.0.4.3",
+  "current": "0.0.4.4",
   "releases": [
+    {
+      "version": "0.0.4.4",
+      "date": "2026-05-27",
+      "label": "Calidad: atribución correcta y mejor exportación del historial",
+      "changes": [
+        { "type": "fix", "text": "Al editar un gasto y agregarle una foto, PDF o planilla, el guardado fallaba con un error genérico. Ahora se guarda correctamente." },
+        { "type": "fix", "text": "Cuando un operador editaba una venta desde el historial del Punto de venta, el registro de actividad atribuía el cambio al dueño. Ahora queda correctamente atribuido al operador que hizo la edición." },
+        { "type": "fix", "text": "Validación reforzada al registrar una venta con precio cambiado a mano: el servidor verifica que el operador tenga el permiso de cambio de precio, no solo el cliente. Cierra un hueco por si alguien manipulaba la app desde el navegador." },
+        { "type": "fix", "text": "Ventas a cuenta corriente: el saldo del cliente ahora se actualiza atómicamente junto con la venta. Antes existía un caso muy raro (timeout entre pasos) donde la venta quedaba registrada pero el saldo del cliente sin actualizar." },
+        { "type": "improvement", "text": "En el detalle de venta del historial, las ventas registradas por el dueño ahora muestran 'Por: Dueño'. Antes la línea simplemente no aparecía y parecía que faltaba información." },
+        { "type": "improvement", "text": "Las tarjetas del historial muestran el ID corto de cada venta (#a4f2b8) en lugar del contador local 'Venta #N', así coincide con el que aparece en el registro de actividad y en el CSV exportado." },
+        { "type": "improvement", "text": "El export CSV del historial de ventas del POS ahora incluye una fila por cada producto vendido: producto, variante, cantidad, precio unitario y subtotal de línea, además del vendedor. Antes solo se exportaba el total de cada venta." },
+        { "type": "improvement", "text": "El registro de actividad muestra el ID corto de cada venta en la vista resumida, así podés referenciar la venta sin abrir el detalle." },
+        { "type": "improvement", "text": "Las notificaciones de advertencia (por ejemplo, al intentar acceder a una sección sin permisos) ahora aparecen en la parte superior centrada, igual que las de éxito. Antes aparecían abajo a la derecha." },
+        { "type": "improvement", "text": "Efecto de desenfoque aplicado de manera consistente en todos los modales de la app (vista previa de ticket, archivos adjuntos de gastos, confirmaciones)." }
+      ]
+    },
     {
       "version": "0.0.4.3",
       "date": "2026-05-26",
