@@ -6,16 +6,7 @@ import { Plus } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog'
+import ConfirmModal from '@/components/shared/ConfirmModal'
 import PageHeader from '@/components/shared/PageHeader'
 import { formatMoney } from '@/lib/format'
 import { cn } from '@/lib/utils'
@@ -247,34 +238,16 @@ export default function CustomerView({ businessId, operatorId, initialCustomers 
         />
       )}
 
-      <AlertDialog
+      <ConfirmModal
         open={deletingCustomer !== null}
-        onOpenChange={open => { if (!open && !deleting) { setDeletingCustomer(null); setDeleteError(null) } }}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>¿Eliminar cliente?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Esta acción no se puede deshacer. Si el cliente tiene ventas o deuda registrada, será archivado pero no eliminado permanentemente.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          {deleteError && (
-            <p className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
-              {deleteError}
-            </p>
-          )}
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={deleting}>Cancelar</AlertDialogCancel>
-            <AlertDialogAction
-              disabled={deleting}
-              onClick={(e) => { e.preventDefault(); void handleDeleteConfirm() }}
-              className="bg-destructive text-white hover:bg-destructive/90"
-            >
-              {deleting ? 'Eliminando...' : 'Eliminar'}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+        title="¿Eliminar cliente?"
+        message="Esta acción no se puede deshacer. Si el cliente tiene ventas o deuda registrada, será archivado pero no eliminado permanentemente."
+        loading={deleting}
+        loadingLabel="Eliminando..."
+        error={deleteError}
+        onConfirm={() => { void handleDeleteConfirm() }}
+        onCancel={() => { setDeletingCustomer(null); setDeleteError(null) }}
+      />
     </div>
   )
 }

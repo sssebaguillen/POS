@@ -6,16 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { X, Pencil, Check } from 'lucide-react'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog'
+import ConfirmModal from '@/components/shared/ConfirmModal'
 import type { InventoryCategory } from '@/components/inventory/types'
 import { translateDbError, ERR } from '@/lib/errors'
 import CategoryIconPreview from '@/components/inventory/CategoryIconPreview'
@@ -451,35 +442,29 @@ export default function CategoryModal({
         </DialogContent>
       </Dialog>
 
-      <AlertDialog open={confirmDeleteId !== null} onOpenChange={open => { if (!open) { setConfirmDeleteId(null); setConfirmDeleteCount(null) } }}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>¿Eliminar categoría?</AlertDialogTitle>
-            <AlertDialogDescription asChild>
-              <div className="space-y-1.5">
-                <p>Esta acción es permanente y no se puede deshacer.</p>
-                {confirmDeleteCount === null ? (
-                  <p className="text-hint">Calculando productos afectados…</p>
-                ) : confirmDeleteCount > 0 ? (
-                  <p>
-                    {confirmDeleteCount === 1
-                      ? '1 producto quedará sin categoría.'
-                      : `${confirmDeleteCount} productos quedarán sin categoría.`}
-                  </p>
-                ) : (
-                  <p className="text-hint">No hay productos asignados a esta categoría.</p>
-                )}
-              </div>
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={() => { if (confirmDeleteId) void handleDelete(confirmDeleteId) }}>
-              Eliminar categoría
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <ConfirmModal
+        open={confirmDeleteId !== null}
+        title="¿Eliminar categoría?"
+        confirmLabel="Eliminar categoría"
+        message={
+          <div className="space-y-1.5">
+            <p>Esta acción es permanente y no se puede deshacer.</p>
+            {confirmDeleteCount === null ? (
+              <p className="text-hint">Calculando productos afectados…</p>
+            ) : confirmDeleteCount > 0 ? (
+              <p>
+                {confirmDeleteCount === 1
+                  ? '1 producto quedará sin categoría.'
+                  : `${confirmDeleteCount} productos quedarán sin categoría.`}
+              </p>
+            ) : (
+              <p className="text-hint">No hay productos asignados a esta categoría.</p>
+            )}
+          </div>
+        }
+        onConfirm={() => { if (confirmDeleteId) void handleDelete(confirmDeleteId) }}
+        onCancel={() => { setConfirmDeleteId(null); setConfirmDeleteCount(null) }}
+      />
     </>
   )
 }
