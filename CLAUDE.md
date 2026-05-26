@@ -363,7 +363,7 @@ Full route map with permission gates: `docs/conventions.md`.
 25. Components reading `localStorage` for UI: use the `mounted` pattern to prevent hydration mismatch.
 26. Slug validation: `BUSINESS_SLUG_REGEX = /^[a-z0-9][a-z0-9-]{1,48}[a-z0-9]$/` client-side before calling RPC.
 27. `backdrop-blur-sm` is reserved for modal overlays — applied centrally via `ui/dialog.tsx` and matched on bespoke modals (e.g. `ReceiptPreviewModal`, `ExpenseAttachmentModal`). Never use blur/glass on cards, panels, sidebars, or page-level backgrounds.
-28. No `<form>` HTML — use `onClick`/`onChange` handlers.
+28. `<form>` is fine for login/PIN/settings/multi-field input flows where Enter-to-submit and password-manager integration are useful. Always call `e.preventDefault()` in `onSubmit` to avoid page reload. For one-off button actions (modals with a single action, etc.) prefer plain `onClick`.
 29. Public catalog: **NEVER** direct queries to `products`/`categories` from anon client — use `get_catalog_products`/`get_catalog_categories` RPCs.
 30. `mercadería` expenses: use `create_mercaderia_expense` / `update_mercaderia_expense` RPCs — not `create_expense` / `update_expense`.
 31. **Audit log: `operator_id = NULL` means owner ("Dueño") everywhere** — in `audit_log` rows, in `get_audit_log` filtering (sentinel UUID `'00000000-0000-0000-0000-000000000000'` maps to `IS NULL`), and in the UI ("Dueño" label). Never insert a synthetic owner row in `operators`.

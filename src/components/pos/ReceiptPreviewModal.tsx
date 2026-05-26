@@ -130,7 +130,7 @@ export default function ReceiptPreviewModal({ receipt, onClose, autoPrintOnOpen 
   }
 
   return (
-    <div className="fixed inset-0 bg-foreground/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+    <div className="fixed inset-0 bg-foreground/40 g-black/40 dark:bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
       <div className="surface-elevated rounded-2xl w-full max-w-sm max-h-[calc(100vh-2rem)] flex flex-col overflow-hidden">
         <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain">
           <div className="p-5 space-y-4">
