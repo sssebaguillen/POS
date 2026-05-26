@@ -65,6 +65,39 @@ Canonical Spanish verbs for in-flight async buttons. Pick the one that matches t
 
 `Actualizando...` is also valid in two narrower cases: (1) background React Query refetch indicators (small text label, not a button), (2) buttons whose idle label is "Actualizar X" — verb match wins (e.g. "Actualizar contraseña" → "Actualizando...").
 
+### Form Validation Timing
+
+Standard policy across the codebase:
+
+- **Validate on submit only.** The submit handler calls `validate()` (or `validateBaseFields()` from `useProductForm`) and shows errors. Don't validate on every keystroke.
+- **Clear field error on change.** When the user starts editing a field with an error, clear that field's error immediately. `useProductForm.setField()` does this automatically; ad-hoc setters should follow the same pattern: `setErrors(prev => ({ ...prev, [field]: '' }))`.
+- **`onBlur` is reserved for narrow domain-specific validation** where blur-time feedback is meaningfully better than submit-time. Examples in use: slug regex in `SettingsForm`, PIN match in `OperatorMeView`, price-edit commit in `CartPanel`. Not for general field validation.
+
+Server-side validation errors (RPC failures, RLS denials) surface via `translateDbError` into `errors._global`, displayed as a banner at the top of the form.
+
+### Modal Headers
+
+Most modals build a bespoke top bar (title + close button) instead of using shadcn's `<DialogHeader>`. The canonical structure:
+
+```tsx
+<DialogContent className="...">
+  <div className="flex items-center justify-between px-5 py-4 border-b border-edge shrink-0">
+    <DialogTitle className="text-base font-semibold text-heading">Título del modal</DialogTitle>
+    <button
+      type="button"
+      onClick={handleClose}
+      className="p-1.5 rounded-lg hover:bg-hover-bg transition-colors text-hint"
+      aria-label="Cerrar modal"
+    >
+      <X className="w-4 h-4" />
+    </button>
+  </div>
+  {/* ...content... */}
+</DialogContent>
+```
+
+shadcn's `<DialogHeader>` lacks a close-button slot and applies text-center alignment on mobile — neither is what we want. Reserve `<DialogHeader>` for content modals that don't need a custom close affordance (currently: `FeedbackModal`, `ChangelogModal`).
+
 ### Breadcrumbs
 
 `PageHeader` accepts `breadcrumbs?: { label: string; href: string }[]`. Required on sub-routes, not on top-level routes.
