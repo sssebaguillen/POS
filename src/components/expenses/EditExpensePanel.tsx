@@ -143,6 +143,7 @@ export default function EditExpensePanel({
           } else if (errKey === 'cost_conflict') {
             setError(ERR.EXP5)
           } else {
+            if (rpcError) console.error('update_mercaderia_expense failed:', rpcError)
             setError(ERR.EXP1)
           }
           return
@@ -185,6 +186,7 @@ export default function EditExpensePanel({
         } else if (errKey === 'not_found') {
           setError(ERR.EXP3)
         } else {
+          if (rpcError) console.error('update_expense failed:', rpcError)
           setError(ERR.EXP1)
         }
         return
