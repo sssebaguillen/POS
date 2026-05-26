@@ -306,7 +306,7 @@ export default function OnboardingTour({ open, profileId, onboardingState }: Onb
 
   if (!isDesktop) {
     return (
-      <div className="fixed inset-0 z-[80] flex items-end justify-center bg-black/55 p-4">
+      <div className="fixed inset-0 z-[80] flex items-end justify-center bg-black/55 backdrop-blur-sm p-4">
         <div className="surface-elevated w-full max-w-md rounded-xl border border-edge bg-card p-4">
           <p className="text-xs uppercase tracking-widest text-subtle font-semibold">Recorrido</p>
           <h3 className="mt-1 text-base font-semibold text-heading">Tour guiado disponible en desktop</h3>

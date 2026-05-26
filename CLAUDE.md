@@ -49,7 +49,7 @@ No `typecheck` script — `tsc --noEmit` runs implicitly during `next build`.
 
 - **ALWAYS use `src/proxy.ts`, NEVER `middleware.ts`.** Next.js 16+ resolves `src/proxy.ts` as the middleware entry point in this project. The file exports `proxy(request: NextRequest)` and `config.matcher`.
 - CSP headers are set in `proxy.ts`. Static security headers (`X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy`) are set via `next.config.ts`.
-- No `backdrop-filter`, `backdrop-blur`, or glass effects anywhere.
+- `backdrop-blur-sm` is the standard for modal overlays — applied via `ui/dialog.tsx` and matched in any bespoke modal. Do **not** use blur/glass effects elsewhere (cards, panels, sidebars, page backgrounds).
 
 ### Multi-tenancy
 
@@ -362,7 +362,7 @@ Full route map with permission gates: `docs/conventions.md`.
 24. PKCE recovery: `redirectTo` must be `/auth/callback?type=recovery`, not `/auth/update-password`.
 25. Components reading `localStorage` for UI: use the `mounted` pattern to prevent hydration mismatch.
 26. Slug validation: `BUSINESS_SLUG_REGEX = /^[a-z0-9][a-z0-9-]{1,48}[a-z0-9]$/` client-side before calling RPC.
-27. No `backdrop-filter`, `backdrop-blur`, or glass effects.
+27. `backdrop-blur-sm` is reserved for modal overlays — applied centrally via `ui/dialog.tsx` and matched on bespoke modals (e.g. `ReceiptPreviewModal`, `ExpenseAttachmentModal`). Never use blur/glass on cards, panels, sidebars, or page-level backgrounds.
 28. No `<form>` HTML — use `onClick`/`onChange` handlers.
 29. Public catalog: **NEVER** direct queries to `products`/`categories` from anon client — use `get_catalog_products`/`get_catalog_categories` RPCs.
 30. `mercadería` expenses: use `create_mercaderia_expense` / `update_mercaderia_expense` RPCs — not `create_expense` / `update_expense`.
