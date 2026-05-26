@@ -3,7 +3,7 @@
 import Image from 'next/image'
 import { memo, startTransition, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useCartStore } from '@/lib/store/cart.store'
-import { calculateProductPrice } from '@/lib/price-lists'
+import { resolveDisplayPrice } from '@/lib/price-lists'
 import type { Product, ProductWithVariants, ProductVariant } from '@/lib/types'
 import type { ProductWithCategory, ActiveFilter } from '@/components/pos/types'
 import type { PriceList, PriceListOverride } from '@/lib/types'
@@ -269,17 +269,15 @@ function VariantSelectorContent({
       .map(v => {
         const variantPrice = Number(v.price)
         const variantCost = Number(v.cost)
-        return activePriceList
-          ? calculateProductPrice(
-              variantCost,
-              variantPrice,
-              product.id,
-              product.brand_id,
-              activePriceList,
-              priceListOverrides,
-              variantPrice,
-            )
-          : variantPrice
+        return resolveDisplayPrice({
+          cost: variantCost,
+          price: variantPrice,
+          productId: product.id,
+          brandId: product.brand_id,
+          priceList: activePriceList,
+          overrides: priceListOverrides,
+          variantPrice,
+        })
       })
       .filter(p => Number.isFinite(p) && p > 0)
     return prices.length > 0 ? Math.min(...prices) : null
@@ -363,17 +361,15 @@ function VariantSelectorContent({
       <p className="text-sm font-semibold text-heading tabular-nums">
         {matchedVariant
           ? formatMoney(
-              activePriceList
-                ? calculateProductPrice(
-                    Number(matchedVariant.cost),
-                    Number(matchedVariant.price),
-                    product.id,
-                    product.brand_id,
-                    activePriceList,
-                    priceListOverrides,
-                    Number(matchedVariant.price),
-                  )
-                : Number(matchedVariant.price)
+              resolveDisplayPrice({
+                cost: Number(matchedVariant.cost),
+                price: Number(matchedVariant.price),
+                productId: product.id,
+                brandId: product.brand_id,
+                priceList: activePriceList,
+                overrides: priceListOverrides,
+                variantPrice: Number(matchedVariant.price),
+              })
             )
           : minVariantPrice != null
             ? `Desde ${formatMoney(minVariantPrice)}`
@@ -414,9 +410,14 @@ const ProductCard = memo(function ProductCard({
   const [popoverOpen, setPopoverOpen] = useState(false)
   const [hoveredVariantImage, setHoveredVariantImage] = useState<string | null>(null)
 
-  const rawPrice = activePriceList
-    ? calculateProductPrice(product.cost, product.price, product.id, product.brand_id, activePriceList, priceListOverrides)
-    : product.price
+  const rawPrice = resolveDisplayPrice({
+    cost: product.cost,
+    price: product.price,
+    productId: product.id,
+    brandId: product.brand_id,
+    priceList: activePriceList,
+    overrides: priceListOverrides,
+  })
   const displayPrice = Number.isFinite(rawPrice) ? rawPrice : (product.price ?? 0)
 
   const displayName = product.name || 'Sin nombre'

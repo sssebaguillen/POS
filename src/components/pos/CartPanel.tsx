@@ -12,7 +12,7 @@ import SalesHistoryPanel from '@/components/pos/SalesHistoryPanel'
 import type { ProductWithCategory } from '@/components/pos/types'
 import type { ReceiptItemInput } from '@/lib/printer/types'
 import { createClient } from '@/lib/supabase/client'
-import { calculateProductPrice } from '@/lib/price-lists'
+import { resolveCartItemPrice, resolveDisplayPrice } from '@/lib/price-lists'
 import type { PriceList, PriceListOverride } from '@/lib/types'
 import type { CustomerSelection } from '@/lib/types/pos'
 import type { Permissions } from '@/lib/operator'
@@ -100,20 +100,7 @@ const CartPanel = forwardRef<CartPanelHandle, Props>(function CartPanel({ busine
           free_line_description: item.free_line_description,
         }
       }
-      const effectiveCost = item.variant_id ? (item.variant_cost ?? 0) : item.product.cost
-      const effectivePrice = item.variant_id ? (item.variant_base_price ?? item.unit_price) : item.product.price
-      const unitPrice = (() => {
-        if (item.priceIsManual || !activePriceList) return item.unit_price
-        return calculateProductPrice(
-          effectiveCost,
-          effectivePrice,
-          item.product.id,
-          item.product.brand_id,
-          activePriceList,
-          priceListOverrides,
-          item.variant_id ? effectivePrice : null,
-        )
-      })()
+      const unitPrice = resolveCartItemPrice({ item, priceList: activePriceList, overrides: priceListOverrides })
       return {
         product_id: item.product.id,
         variant_id: item.variant_id ?? null,
@@ -355,19 +342,15 @@ const CartPanel = forwardRef<CartPanelHandle, Props>(function CartPanel({ busine
                     const canOverridePrice = !isFreeLine && permissions?.price_override === true
 
                     const originalPrice = !isFreeLine && item.priceIsManual
-                      ? (() => {
-                          const vPrice = item.variant_id ? (item.variant_base_price ?? item.unit_price) : item.product!.price
-                          if (!activePriceList) return vPrice
-                          return calculateProductPrice(
-                            item.variant_id ? (item.variant_cost ?? 0) : item.product!.cost,
-                            vPrice,
-                            item.product!.id,
-                            item.product!.brand_id,
-                            activePriceList,
-                            priceListOverrides,
-                            item.variant_id ? vPrice : null,
-                          )
-                        })()
+                      ? resolveDisplayPrice({
+                          cost: item.variant_id ? (item.variant_cost ?? 0) : item.product!.cost,
+                          price: item.variant_id ? (item.variant_base_price ?? item.unit_price) : item.product!.price,
+                          productId: item.product!.id,
+                          brandId: item.product!.brand_id,
+                          priceList: activePriceList,
+                          overrides: priceListOverrides,
+                          variantPrice: item.variant_id ? (item.variant_base_price ?? item.unit_price) : null,
+                        })
                       : null
 
                     return (
