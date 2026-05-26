@@ -15,6 +15,7 @@ import type { VariantPayloadEdit, VariantPayloadNew } from '@/components/invento
 import ImageUploadField from '@/components/inventory/shared/ImageUploadField'
 import { useImageUpload } from '@/hooks/useImageUpload'
 import { useComboboxNav } from '@/hooks/useComboboxNav'
+import { useProductForm, type ProductFormBase } from '@/hooks/useProductForm'
 import { useCurrency } from '@/lib/context/CurrencyContext'
 import { getCurrencySymbol, toTitleCase } from '@/lib/format'
 import CategoryIconPreview from '@/components/inventory/CategoryIconPreview'
@@ -34,18 +35,8 @@ interface EditProductModalProps {
   onSaved: (updated: Partial<InventoryProduct>, nextOverrides: PriceListOverride[]) => void
 }
 
-interface FormState {
-  name: string
-  price: string
-  cost: string
-  stock: string
-  min_stock: string
-  sku: string
-  brand_id: string
-  barcode: string
-  category_id: string
+interface FormState extends ProductFormBase {
   show_in_catalog: boolean
-  is_active: boolean
 }
 
 function toFormState(product: InventoryProduct): FormState {
@@ -77,14 +68,31 @@ export default function EditProductModal({
   onSaved,
 }: EditProductModalProps) {
   const defaultPriceList = priceLists.find(pl => pl.is_default) ?? null
+  const defaultSelectedIds = (): Set<string> =>
+    new Set(existingOverrides.map(o => o.price_list_id))
 
-  const [form, setForm] = useState<FormState>(() => toFormState(product))
-  const [errors, setErrors] = useState<Record<string, string>>({})
+  const {
+    form,
+    setField,
+    errors,
+    setErrors,
+    isPriceEdited,
+    selectedListIds,
+    setSelectedListIds,
+    margin,
+    handleCostChange,
+    handlePriceChange,
+    validateBaseFields,
+    reset: resetProductForm,
+  } = useProductForm<FormState>({
+    initial: toFormState(product),
+    defaultPriceList,
+    defaultSelectedListIds: defaultSelectedIds,
+    initialIsPriceEdited: existingOverrides.length > 0,
+    preserveManualPriceOnCostChange: true,
+    requireStock: true,
+  })
   const [isSaving, setIsSaving] = useState(false)
-  const [isPriceEdited, setIsPriceEdited] = useState<boolean>(() => existingOverrides.length > 0)
-  const [selectedListIds, setSelectedListIds] = useState<Set<string>>(
-    () => new Set(existingOverrides.map(o => o.price_list_id))
-  )
   const [brandInput, setBrandInput] = useState(product.brand?.name ?? '')
   const [showBrandOptions, setShowBrandOptions] = useState(false)
   const [categoryInput, setCategoryInput] = useState(() => {
@@ -131,12 +139,6 @@ export default function EditProductModal({
       if (result?.variants) setVariantVariants(result.variants)
     })
   }, [product.has_variants, product.id, supabase])
-
-  const suggestedPrice = useMemo(() => {
-    const cost = Number(form.cost)
-    if (!defaultPriceList || !Number.isFinite(cost) || cost <= 0) return null
-    return cost * defaultPriceList.multiplier
-  }, [form.cost, defaultPriceList])
 
   const filteredBrands = useMemo(() => {
     const query = brandInput.trim().toLowerCase()
@@ -196,96 +198,8 @@ export default function EditProductModal({
     onClose: closeBrandOptions,
   })
 
-  const margin = useMemo(() => {
-    const price = Number(form.price)
-    const cost = Number(form.cost)
-    if (!Number.isFinite(price) || !Number.isFinite(cost) || price <= 0) return null
-    return Math.round(((price - cost) / price) * 100)
-  }, [form.price, form.cost])
-
-  function setField<K extends keyof FormState>(field: K, value: FormState[K]) {
-    setForm(prev => ({ ...prev, [field]: value }))
-    setErrors(prev => ({ ...prev, [field]: '' }))
-  }
-
-  function handlePriceChange(value: string) {
-    setForm(prev => ({ ...prev, price: value }))
-    setErrors(prev => ({ ...prev, price: '' }))
-
-    if (suggestedPrice === null) {
-      setIsPriceEdited(true)
-      setSelectedListIds(new Set(existingOverrides.map(o => o.price_list_id)))
-      return
-    }
-
-    const parsedPrice = Number(value)
-    if (!value.trim() || !Number.isFinite(parsedPrice)) {
-      setIsPriceEdited(false)
-      setSelectedListIds(new Set(existingOverrides.map(o => o.price_list_id)))
-      return
-    }
-
-    const edited = Math.abs(parsedPrice - suggestedPrice) > 0.01
-    setIsPriceEdited(edited)
-    if (!edited) setSelectedListIds(new Set(existingOverrides.map(o => o.price_list_id)))
-  }
-
-  function handleCostChange(value: string) {
-    setErrors(prev => ({ ...prev, cost: '' }))
-
-    const parsedCost = Number(value)
-    const shouldApplySuggested =
-      defaultPriceList !== null &&
-      Number.isFinite(parsedCost) &&
-      parsedCost > 0 &&
-      !isPriceEdited
-
-    if (shouldApplySuggested) {
-      setForm(prev => ({
-        ...prev,
-        cost: value,
-        price: (parsedCost * defaultPriceList.multiplier).toFixed(2),
-      }))
-      return
-    }
-
-    setForm(prev => ({ ...prev, cost: value }))
-  }
-
   function validate() {
-    const nextErrors: Record<string, string> = {}
-
-    if (!form.name.trim()) {
-      nextErrors.name = 'El nombre es obligatorio'
-    }
-
-    if (!hasVariants) {
-      const parsedPrice = Number(form.price)
-      if (!form.price || !Number.isFinite(parsedPrice) || parsedPrice < 0) {
-        nextErrors.price = 'Precio inválido'
-      }
-
-      if (form.cost) {
-        const parsedCost = Number(form.cost)
-        if (!Number.isFinite(parsedCost) || parsedCost < 0) {
-          nextErrors.cost = 'Costo inválido'
-        }
-      }
-
-      const parsedStock = Number(form.stock)
-      if (!form.stock || !Number.isFinite(parsedStock) || parsedStock < 0) {
-        nextErrors.stock = 'Stock inválido'
-      }
-
-      if (form.min_stock) {
-        const parsedMinStock = Number(form.min_stock)
-        if (!Number.isFinite(parsedMinStock) || parsedMinStock < 0) {
-          nextErrors.min_stock = 'Stock mínimo inválido'
-        }
-      }
-    }
-
-    return nextErrors
+    return validateBaseFields(hasVariants)
   }
 
   async function handleSubmit() {
@@ -440,14 +354,15 @@ export default function EditProductModal({
 
   function handleClose() {
     const matchedCategory = categories.find(category => category.id === (product.category_id ?? ''))
-    setForm(toFormState(product))
+    resetProductForm({
+      initial: toFormState(product),
+      selectedListIds: new Set(existingOverrides.map(o => o.price_list_id)),
+      isPriceEdited: existingOverrides.length > 0,
+    })
     setBrandInput(product.brand?.name ?? '')
     setShowBrandOptions(false)
     setCategoryInput(matchedCategory?.name ?? product.categories?.name ?? '')
     setShowCategoryOptions(false)
-    setErrors({})
-    setIsPriceEdited(existingOverrides.length > 0)
-    setSelectedListIds(new Set(existingOverrides.map(o => o.price_list_id)))
     image.reset({
       url: product.image_url ?? null,
       source: (product.image_source as 'upload' | 'url' | null) ?? null,

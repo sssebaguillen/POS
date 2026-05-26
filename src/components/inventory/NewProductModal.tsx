@@ -25,6 +25,7 @@ import PriceOverrideIndicator from '@/components/inventory/PriceOverrideIndicato
 import FloatingDropdown from '@/components/ui/FloatingDropdown'
 import { trackProductCreated } from '@/lib/analytics'
 import { useComboboxNav } from '@/hooks/useComboboxNav'
+import { useProductForm, type ProductFormBase } from '@/hooks/useProductForm'
 
 interface Props {
   /** When true, renders only the form (no Dialog). Used by onboarding wizard. */
@@ -43,7 +44,7 @@ interface Props {
   initialName?: string
 }
 
-const EMPTY_FORM = {
+const EMPTY_FORM: ProductFormBase = {
   name: '',
   sku: '',
   brand_id: '',
@@ -69,18 +70,38 @@ export default function NewProductModal({
   onSuccess,
   initialName,
 }: Props) {
-  const [form, setForm] = useState(() => initialName ? { ...EMPTY_FORM, name: initialName } : EMPTY_FORM)
+  const defaultPriceList = priceLists.find(pl => pl.is_default) ?? null
+  const defaultSelectedIds = (): Set<string> =>
+    new Set(defaultPriceList ? [defaultPriceList.id] : [])
+
+  const {
+    form,
+    setField,
+    errors,
+    setErrors,
+    isPriceEdited,
+    selectedListIds,
+    setSelectedListIds,
+    margin,
+    handleCostChange,
+    handlePriceChange,
+    validateBaseFields,
+    reset: resetProductForm,
+  } = useProductForm<ProductFormBase>({
+    initial: initialName ? { ...EMPTY_FORM, name: initialName } : EMPTY_FORM,
+    defaultPriceList,
+    defaultSelectedListIds: defaultSelectedIds,
+  })
 
   useEffect(() => {
     if (open && initialName) {
       startTransition(() => {
-        setForm(prev => ({ ...prev, name: initialName }))
+        setField('name', initialName)
       })
     }
-  }, [open, initialName])
+  }, [open, initialName, setField])
+
   const [loading, setLoading] = useState(false)
-  const [errors, setErrors] = useState<Record<string, string>>({})
-  const [isPriceEdited, setIsPriceEdited] = useState(false)
   const [hasVariants, setHasVariants] = useState(false)
   const [variantPayload, setVariantPayload] = useState<VariantPayloadNew | null>(null)
   const [brandInput, setBrandInput] = useState('')
@@ -94,13 +115,6 @@ export default function NewProductModal({
   const supabase = useMemo(() => createClient(), [])
   const currency = useCurrency()
   const currencySymbol = getCurrencySymbol(currency)
-
-  const defaultPriceList = priceLists.find(pl => pl.is_default) ?? null
-
-  const defaultSelectedIds = (): Set<string> =>
-    new Set(defaultPriceList ? [defaultPriceList.id] : [])
-
-  const [selectedListIds, setSelectedListIds] = useState<Set<string>>(defaultSelectedIds)
 
   const filteredBrands = useMemo(() => {
     const query = brandInput.trim().toLowerCase()
@@ -117,12 +131,12 @@ export default function NewProductModal({
   function selectCategoryByIndex(index: number) {
     // index 0 = "Sin categoría", 1+ = filteredCategories[index - 1]
     if (index === 0) {
-      set('category_id', '')
+      setField('category_id', '')
       setCategoryInput('')
     } else {
       const category = filteredCategories[index - 1]
       if (!category) return
-      set('category_id', category.id)
+      setField('category_id', category.id)
       setCategoryInput(category.name)
     }
     setShowCategoryOptions(false)
@@ -136,7 +150,7 @@ export default function NewProductModal({
   function selectBrandByIndex(index: number) {
     const brand = filteredBrands[index]
     if (!brand) return
-    set('brand_id', brand.id)
+    setField('brand_id', brand.id)
     setBrandInput(brand.name)
     setShowBrandOptions(false)
   }
@@ -161,22 +175,12 @@ export default function NewProductModal({
     onClose: closeBrandOptions,
   })
 
-  const suggestedPrice = (() => {
-    if (!defaultPriceList) return null
-    const parsedCost = Number(form.cost)
-    if (!Number.isFinite(parsedCost) || parsedCost <= 0) return null
-    return parsedCost * defaultPriceList.multiplier
-  })()
-
   function resetFormState() {
-    setForm(EMPTY_FORM)
+    resetProductForm()
     setBrandInput('')
     setShowBrandOptions(false)
     setCategoryInput('')
     setShowCategoryOptions(false)
-    setErrors({})
-    setIsPriceEdited(false)
-    setSelectedListIds(defaultSelectedIds())
     image.reset()
     setShowAdvanced(false)
     setHasVariants(false)
@@ -187,65 +191,10 @@ export default function NewProductModal({
     setVariantPayload(payload as VariantPayloadNew | null)
   }, [])
 
-  function set(field: string, value: string | boolean) {
-    setForm(prev => ({ ...prev, [field]: value }))
-    setErrors(prev => ({ ...prev, [field]: '' }))
-  }
-
-  function handleCostChange(value: string) {
-    setErrors(prev => ({ ...prev, cost: '' }))
-
-    if (!defaultPriceList) {
-      setForm(prev => ({ ...prev, cost: value }))
-      return
-    }
-
-    const parsedCost = Number(value)
-    if (!value.trim() || !Number.isFinite(parsedCost) || parsedCost <= 0) {
-      setForm(prev => ({ ...prev, cost: value, price: '' }))
-      setIsPriceEdited(false)
-      setSelectedListIds(defaultSelectedIds())
-      return
-    }
-
-    const nextSuggestedPrice = (parsedCost * defaultPriceList.multiplier).toFixed(2)
-    setForm(prev => ({ ...prev, cost: value, price: nextSuggestedPrice }))
-    setIsPriceEdited(false)
-    setSelectedListIds(defaultSelectedIds())
-  }
-
-  function handlePriceChange(value: string) {
-    setErrors(prev => ({ ...prev, price: '' }))
-    setForm(prev => ({ ...prev, price: value }))
-
-    if (suggestedPrice === null) {
-      setIsPriceEdited(true)
-      setSelectedListIds(defaultSelectedIds())
-      return
-    }
-
-    const parsedPrice = Number(value)
-    if (!value.trim() || !Number.isFinite(parsedPrice)) {
-      setIsPriceEdited(false)
-      setSelectedListIds(defaultSelectedIds())
-      return
-    }
-
-    const edited = Math.abs(parsedPrice - suggestedPrice) > 0.01
-    setIsPriceEdited(edited)
-    if (!edited) setSelectedListIds(defaultSelectedIds())
-  }
-
   function validate() {
-    const e: Record<string, string> = {}
-    if (!form.name.trim()) e.name = 'El nombre es obligatorio'
+    const e: Record<string, string> = validateBaseFields(hasVariants)
 
-    if (!hasVariants) {
-      if (!form.price || isNaN(Number(form.price)) || Number(form.price) < 0) e.price = 'Precio inválido'
-      if (form.cost && (isNaN(Number(form.cost)) || Number(form.cost) < 0)) e.cost = 'Costo inválido'
-      if (form.stock && (isNaN(Number(form.stock)) || Number(form.stock) < 0)) e.stock = 'Stock inválido'
-      if (form.min_stock && (isNaN(Number(form.min_stock)) || Number(form.min_stock) < 0)) e.min_stock = 'Mínimo inválido'
-    } else {
+    if (hasVariants) {
       if (!variantPayload || variantPayload.options.length === 0) {
         e._global = 'Define al menos un atributo con valores para las variantes'
       } else {
@@ -447,10 +396,6 @@ export default function NewProductModal({
     onClose()
   }
 
-  const margin = form.price && form.cost && Number(form.price) > 0
-    ? Math.round(((Number(form.price) - Number(form.cost)) / Number(form.price)) * 100)
-    : null
-
   if (!embedded && !open) {
     return null
   }
@@ -472,7 +417,7 @@ export default function NewProductModal({
                 <FieldGroup label="Nombre" required error={errors.name}>
                   <Input
                     value={form.name}
-                    onChange={e => set('name', e.target.value)}
+                    onChange={e => setField('name', e.target.value)}
                     placeholder="Ej: Pan sin TACC x500g"
                     aria-invalid={!!errors.name}
                     autoFocus
@@ -514,7 +459,7 @@ export default function NewProductModal({
                           setShowCategoryOptions(true)
                           categoryNav.setHighlight(0)
                           const exactCategory = categories.find(category => category.name.toLowerCase() === nextValue.trim().toLowerCase())
-                          set('category_id', exactCategory ? exactCategory.id : '')
+                          setField('category_id', exactCategory ? exactCategory.id : '')
                         }}
                         onKeyDown={categoryNav.handleKeyDown}
                         placeholder="Seleccionar categoría"
@@ -605,7 +550,7 @@ export default function NewProductModal({
                           setShowBrandOptions(true)
                           brandNav.setHighlight(0)
                           const exactBrand = brands.find(brand => brand.name.toLowerCase() === nextValue.trim().toLowerCase())
-                          set('brand_id', exactBrand ? exactBrand.id : '')
+                          setField('brand_id', exactBrand ? exactBrand.id : '')
                         }}
                         onKeyDown={brandNav.handleKeyDown}
                         placeholder="Seleccionar marca"
@@ -734,7 +679,7 @@ export default function NewProductModal({
                       min="0"
                       step="1"
                       value={form.stock}
-                      onChange={e => set('stock', e.target.value)}
+                      onChange={e => setField('stock', e.target.value)}
                       placeholder="0"
                       aria-invalid={!!errors.stock}
                     />
@@ -745,7 +690,7 @@ export default function NewProductModal({
                       min="0"
                       step="1"
                       value={form.min_stock}
-                      onChange={e => set('min_stock', e.target.value)}
+                      onChange={e => setField('min_stock', e.target.value)}
                       placeholder="0"
                       aria-invalid={!!errors.min_stock}
                     />
@@ -754,7 +699,7 @@ export default function NewProductModal({
                     <FieldGroup label="Código de barras">
                       <Input
                         value={form.barcode}
-                        onChange={e => set('barcode', e.target.value)}
+                        onChange={e => setField('barcode', e.target.value)}
                         placeholder="Ej: 7790001234567"
                       />
                     </FieldGroup>
@@ -794,7 +739,7 @@ export default function NewProductModal({
                       <FieldGroup label="SKU">
                         <Input
                           value={form.sku}
-                          onChange={e => set('sku', e.target.value)}
+                          onChange={e => setField('sku', e.target.value)}
                           placeholder="Ej: PSTACC-500"
                         />
                       </FieldGroup>
@@ -820,7 +765,7 @@ export default function NewProductModal({
                   type="button"
                   role="switch"
                   aria-checked={form.is_active}
-                  onClick={() => set('is_active', !form.is_active)}
+                  onClick={() => setField('is_active', !form.is_active)}
                   className={`relative w-9 h-5 rounded-full transition-colors cursor-pointer shrink-0 ${form.is_active ? 'bg-primary' : 'bg-input'}`}
                   aria-label="Cambiar estado activo"
                 >
