@@ -178,6 +178,7 @@ export function SaleSummaryInline({ row, customerMap }: SaleSummaryInlineProps) 
   const oldData = row.old_data as SaleData | null
   const newData = row.new_data as SaleData | null
   const pieces: string[] = []
+  const shortId = `#${row.entity_id.slice(0, 8)}`
 
   if (row.action === 'sale_updated') {
     const oldTotal = toNumber(oldData?.total)
@@ -217,12 +218,16 @@ export function SaleSummaryInline({ row, customerMap }: SaleSummaryInlineProps) 
     }
   }
 
-  if (pieces.length === 0) return null
-
   return (
     <>
       <span className="text-hint mx-1.5">·</span>
-      <span className="text-heading font-medium">{pieces.join(' · ')}</span>
+      <span className="text-hint">{shortId}</span>
+      {pieces.length > 0 && (
+        <>
+          <span className="text-hint mx-1.5">·</span>
+          <span className="text-heading font-medium">{pieces.join(' · ')}</span>
+        </>
+      )}
     </>
   )
 }

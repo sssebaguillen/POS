@@ -63,6 +63,7 @@ export default function SalesHistoryPanel({ businessId, businessName, operatorId
   const confirmDeleteTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [receiptPreview, setReceiptPreview] = useState<ReceiptData | null>(null)
   const [receiptError, setReceiptError] = useState('')
+  const [exporting, setExporting] = useState(false)
 
   const dailyHistoryQuery = useQuery<SaleRow[]>({
     queryKey: ['pos-daily-history', businessId],
@@ -296,21 +297,74 @@ export default function SalesHistoryPanel({ businessId, businessName, operatorId
     }
   }
 
-  function exportHistoryCsv() {
-    const headers = ['id', 'fecha', 'hora', 'total', 'metodo_pago', 'estado']
-    const rows = filteredHistory.map(sale => {
-      const date = new Date(sale.created_at)
-      return [
-        sale.id,
-        date.toLocaleDateString('es-AR'),
-        formatTime(sale.created_at),
-        sale.total.toFixed(2),
-        normalizePayment(sale.payment_method),
-        sale.status ?? '',
-      ]
-    })
+  async function exportHistoryCsv() {
+    if (!businessId || filteredHistory.length === 0 || exporting) return
+    setExporting(true)
 
-    const csv = [headers, ...rows]
+    // Fetch details for any sale not yet cached. One row per item in the CSV.
+    const detailMap: Record<string, SaleDetail> = {}
+    await Promise.all(filteredHistory.map(async (sale) => {
+      const cached = saleDetails[sale.id]
+      if (cached) {
+        detailMap[sale.id] = cached
+        return
+      }
+      const result = await getSaleDetail(supabase, { saleId: sale.id, businessId })
+      if (!result.ok) return
+      detailMap[sale.id] = {
+        ...sale,
+        payment_method: isPaymentMethod(result.data.payment_method) ? result.data.payment_method : null,
+        operator_name: result.data.operator_name ?? null,
+        items: (result.data.items ?? []).map((row: SaleItemQueryRow) => ({
+          id: row.id,
+          product_id: row.product_id,
+          variant_id: row.variant_id ?? null,
+          variant_label: row.variant_label ?? null,
+          product_name: row.product_name,
+          product_icon: row.product_icon ?? null,
+          product_icon_color: row.product_icon_color ?? null,
+          quantity: row.quantity,
+          unit_price: Number(row.unit_price),
+          free_line_description: row.free_line_description ?? null,
+        })),
+      }
+    }))
+
+    const headers = [
+      'id', 'fecha', 'hora', 'vendedor', 'estado',
+      'producto', 'variante', 'cantidad', 'precio_unitario', 'subtotal_linea',
+      'metodo_pago', 'total_venta',
+    ]
+    const rows: string[][] = []
+    for (const sale of filteredHistory) {
+      const detail = detailMap[sale.id]
+      const dateStr = new Date(sale.created_at).toLocaleDateString('es-AR')
+      const timeStr = formatTime(sale.created_at)
+      const actor = detail?.operator_name ?? 'Dueño'
+      const method = normalizePayment(sale.payment_method)
+      const total = sale.total.toFixed(2)
+      const items = detail?.items ?? []
+
+      if (items.length === 0) {
+        rows.push([sale.id, dateStr, timeStr, actor, sale.status ?? '', '', '', '', '', '', method, total])
+        continue
+      }
+
+      for (const item of items) {
+        const productLabel = item.free_line_description ?? item.product_name
+        const variantLabel = item.variant_label ?? ''
+        const lineTotal = (item.quantity * item.unit_price).toFixed(2)
+        rows.push([
+          sale.id, dateStr, timeStr, actor, sale.status ?? '',
+          productLabel, variantLabel,
+          String(item.quantity), item.unit_price.toFixed(2), lineTotal,
+          method, total,
+        ])
+      }
+    }
+
+    // UTF-8 BOM so Excel opens the file with proper accents.
+    const csv = '﻿' + [headers, ...rows]
       .map(row => row.map(value => `"${String(value).replace(/"/g, '""')}"`).join(','))
       .join('\n')
 
@@ -323,6 +377,8 @@ export default function SalesHistoryPanel({ businessId, businessName, operatorId
     link.click()
     document.body.removeChild(link)
     URL.revokeObjectURL(url)
+
+    setExporting(false)
   }
 
   return (
@@ -331,8 +387,8 @@ export default function SalesHistoryPanel({ businessId, businessName, operatorId
         <div className="p-4 border-b border-edge-soft space-y-3">
           <div className="flex items-center justify-between gap-2">
             <h3 className="text-base font-semibold text-body">Ventas del día</h3>
-            <Button size="sm" variant="outline" className="rounded-lg text-xs" onClick={exportHistoryCsv} disabled={filteredHistory.length === 0}>
-              Exportar CSV
+            <Button size="sm" variant="outline" className="rounded-lg text-xs" onClick={exportHistoryCsv} disabled={filteredHistory.length === 0 || exporting}>
+              {exporting ? 'Exportando...' : 'Exportar CSV'}
             </Button>
           </div>
           <Input
@@ -360,12 +416,11 @@ export default function SalesHistoryPanel({ businessId, businessName, operatorId
             </div>
           ) : (
             <ul className="p-3 space-y-1.5">
-              {filteredHistory.map((sale, index) => {
+              {filteredHistory.map((sale) => {
                 const isExpanded = expandedSaleId === sale.id
                 const detail = saleDetails[sale.id]
                 const isLoadingDetail = loadingDetailId === sale.id
                 const isDeleting = deletingId === sale.id
-                const saleNumber = filteredHistory.length - index
 
                 return (
                   <li
@@ -386,7 +441,7 @@ export default function SalesHistoryPanel({ businessId, businessName, operatorId
                           <span className="text-sm font-semibold text-heading tabular-nums shrink-0">
                             {formatTime(sale.created_at)}
                           </span>
-                          <span className="text-xs text-hint shrink-0">· Venta #{saleNumber}</span>
+                          <span className="text-xs text-hint shrink-0">· #{sale.id.slice(0, 8)}</span>
                         </div>
                         <div className="flex items-center gap-2 shrink-0">
                           <span className={`text-sm font-bold tabular-nums ${isExpanded ? 'text-[var(--primary-active-text)]' : 'text-heading'}`}>
@@ -457,9 +512,7 @@ export default function SalesHistoryPanel({ businessId, businessName, operatorId
                           </span>
                         </div>
 
-                        {detail.operator_name && (
-                          <p className="text-[11px] text-hint mb-2.5">Por: {detail.operator_name}</p>
-                        )}
+                        <p className="text-[11px] text-hint mb-2.5">Por: {detail.operator_name ?? 'Dueño'}</p>
 
                         <div className="flex items-center justify-between gap-2 mt-2.5">
                           <div className="flex gap-1.5">
