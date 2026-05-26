@@ -1,16 +1,19 @@
 'use client'
 
 import { useState, useCallback } from 'react'
+import type { ToastVariant } from '@/components/shared/Toast'
 
 export interface ToastOptions {
   message: string
   duration?: number
+  variant?: ToastVariant
   onUndo?: () => void
 }
 
 export interface ToastState {
   message: string
   duration: number
+  variant: ToastVariant
   onUndo?: () => void
 }
 
@@ -21,6 +24,7 @@ export function useToast() {
     setToast({
       message: opts.message,
       duration: opts.duration ?? 5500,
+      variant: opts.variant ?? 'success',
       onUndo: opts.onUndo,
     })
   }, [])

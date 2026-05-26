@@ -597,7 +597,7 @@ export default function SalesHistoryPanel({ businessId, businessName, operatorId
         </div>
       )}
 
-      {toast && <Toast message={toast.message} duration={toast.duration} onUndo={toast.onUndo} onDismiss={dismissToast} />}
+      {toast && <Toast message={toast.message} duration={toast.duration} variant={toast.variant} onUndo={toast.onUndo} onDismiss={dismissToast} />}
 
       {receiptPreview && (
         <ReceiptPreviewModal

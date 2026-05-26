@@ -753,7 +753,7 @@ const CartPanel = forwardRef<CartPanelHandle, Props>(function CartPanel({ busine
         />
       )}
 
-      {toast && <Toast message={toast.message} duration={toast.duration} onUndo={toast.onUndo} onDismiss={dismissToast} />}
+      {toast && <Toast message={toast.message} duration={toast.duration} variant={toast.variant} onUndo={toast.onUndo} onDismiss={dismissToast} />}
     </>
   )
 })

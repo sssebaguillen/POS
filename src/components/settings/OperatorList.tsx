@@ -183,7 +183,7 @@ export default function OperatorList({
         onCancel={() => setPendingConfirm(null)}
       />
 
-      {toast && <Toast message={toast.message} duration={toast.duration} onUndo={toast.onUndo} onDismiss={dismissToast} />}
+      {toast && <Toast message={toast.message} duration={toast.duration} variant={toast.variant} onUndo={toast.onUndo} onDismiss={dismissToast} />}
     </div>
   )
 }

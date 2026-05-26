@@ -1365,7 +1365,7 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
         document.body
       )}
 
-      {toast && <Toast message={toast.message} duration={toast.duration} onUndo={toast.onUndo} onDismiss={dismissToast} />}
+      {toast && <Toast message={toast.message} duration={toast.duration} variant={toast.variant} onUndo={toast.onUndo} onDismiss={dismissToast} />}
 
       {!readOnly && selectedIds.size > 0 && (
         <BulkActionBar
