@@ -13,6 +13,7 @@ import { PAYMENT_METHOD_LABELS, PAYMENT_METHODS } from '@/lib/constants/domain'
 import { useCurrency, useFormatMoney } from '@/lib/context/CurrencyContext'
 import { useCartStore } from '@/lib/store/cart.store'
 import { createClient } from '@/lib/supabase/client'
+import { createSaleTransaction } from '@/lib/api/sales'
 import { trackSale } from '@/lib/analytics'
 import { ERR } from '@/lib/errors'
 
@@ -171,41 +172,43 @@ export default function PaymentModal({
       : [{ method: effectiveMethod, amount: effectiveMethod === 'cash' ? effectiveCash : total }]
 
     try {
-      const { data: rpcResult, error: rpcError } = await supabase.rpc('create_sale_transaction', {
-        p_business_id: businessId,
-        p_subtotal: subtotal,
-        p_discount: discount,
-        p_total: total,
-        p_status: 'completed',
-        p_price_list_id: priceListId,
-        p_operator_id: operatorId ?? null,
-        p_items: saleItems.map(item => ({
-          product_id: item.product_id,
-          variant_id: item.variant_id ?? null,
-          quantity: item.quantity,
-          unit_price: item.unit_price,
-          total: item.total,
-          unit_price_override: item.unit_price_override,
-          override_reason: item.override_reason,
-          free_line_description: item.free_line_description,
-        })),
-        p_payments: payments,
-        p_customer_id: customer?.id ?? null,
-        p_session_id: sessionId ?? null,
-      })
+      const result = await createSaleTransaction(
+        supabase,
+        {
+          businessId,
+          subtotal,
+          discount,
+          total,
+          status: 'completed',
+          priceListId,
+          operatorId: operatorId ?? null,
+          items: saleItems.map(item => ({
+            product_id: item.product_id,
+            variant_id: item.variant_id ?? null,
+            quantity: item.quantity,
+            unit_price: item.unit_price,
+            total: item.total,
+            unit_price_override: item.unit_price_override,
+            override_reason: item.override_reason,
+            free_line_description: item.free_line_description,
+          })),
+          payments,
+          customerId: customer?.id ?? null,
+          sessionId: sessionId ?? null,
+        },
+        ERR.POS1
+      )
 
-      const result = rpcResult as { success: boolean; sale_id?: string; created_at?: string; error?: string } | null
-
-      if (rpcError || !result?.success) {
-        setError(result?.error ?? ERR.POS1)
+      if (!result.ok) {
+        setError(result.error)
         return
       }
 
       const change = isMixed ? mixedChange : (effectiveMethod === 'cash' ? Math.max(0, effectiveCash - total) : 0)
       const nextReceipt: ReceiptData = {
-        saleId: result.sale_id ?? '',
+        saleId: result.data.sale_id ?? '',
         businessName,
-        createdAt: result.created_at ?? new Date().toISOString(),
+        createdAt: result.data.created_at ?? new Date().toISOString(),
         items: receiptItems,
         subtotal,
         discount,

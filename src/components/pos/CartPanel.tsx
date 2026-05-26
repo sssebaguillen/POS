@@ -16,6 +16,7 @@ import type { ProductWithCategory, SaleRow, SaleDetail } from '@/components/pos/
 import { buildReceiptData } from '@/lib/printer/receipt'
 import type { ReceiptData, ReceiptItemInput } from '@/lib/printer/types'
 import { createClient } from '@/lib/supabase/client'
+import { getSaleDetail, updateSale, deleteSale } from '@/lib/api/sales'
 import { calculateProductPrice } from '@/lib/price-lists'
 import type { PaymentMethod } from '@/lib/constants/domain'
 import { isPaymentMethod, normalizePayment } from '@/lib/payments'
@@ -283,15 +284,13 @@ const CartPanel = forwardRef<CartPanelHandle, Props>(function CartPanel({ busine
     if (saleDetails[saleId]) {
       return saleDetails[saleId]
     }
+    if (!businessId) return null
 
     setLoadingDetailId(saleId)
-    const { data, error } = await supabase.rpc('get_sale_detail', {
-      p_sale_id: saleId,
-      p_business_id: businessId,
-    })
-    if (error || !data?.success) {
+    const result = await getSaleDetail(supabase, { saleId, businessId })
+    if (!result.ok) {
       setLoadingDetailId(null)
-      setReceiptError(error?.message ?? 'No se pudo cargar el detalle de la venta.')
+      setReceiptError(result.error)
       return null
     }
     const sale = history.find(s => s.id === saleId)
@@ -302,9 +301,9 @@ const CartPanel = forwardRef<CartPanelHandle, Props>(function CartPanel({ busine
 
     const detail: SaleDetail = {
       ...sale,
-      payment_method: isPaymentMethod(data.payment_method) ? data.payment_method : null,
-      operator_name: data.operator_name ?? null,
-      items: (data.items ?? []).map((row: SaleItemQueryRow) => ({
+      payment_method: isPaymentMethod(result.data.payment_method) ? result.data.payment_method : null,
+      operator_name: result.data.operator_name ?? null,
+      items: (result.data.items ?? []).map((row: SaleItemQueryRow) => ({
         id: row.id,
         product_id: row.product_id,
         variant_id: row.variant_id ?? null,
@@ -377,12 +376,8 @@ const CartPanel = forwardRef<CartPanelHandle, Props>(function CartPanel({ busine
   async function handleDeleteSale(saleId: string) {
     if (!businessId) return
     setDeletingId(saleId)
-    const { data, error } = await supabase.rpc('delete_sale', {
-      p_sale_id: saleId,
-      p_business_id: businessId,
-      p_operator_id: operatorId,
-    })
-    if (!error && data?.success) {
+    const result = await deleteSale(supabase, { saleId, businessId, operatorId })
+    if (result.ok) {
       queryClient.setQueryData<SaleRow[]>(['pos-daily-history', businessId], (prev) =>
         prev ? prev.filter(s => s.id !== saleId) : prev
       )
@@ -392,7 +387,7 @@ const CartPanel = forwardRef<CartPanelHandle, Props>(function CartPanel({ busine
       void queryClient.invalidateQueries({ queryKey: ['expenses'] })
       onSaleCompleted?.()
     } else {
-      showToast({ message: error?.message ?? data?.error ?? 'No se pudo eliminar la venta.' })
+      showToast({ message: result.error })
     }
     setDeletingId(null)
   }
@@ -403,14 +398,15 @@ const CartPanel = forwardRef<CartPanelHandle, Props>(function CartPanel({ busine
     paymentMethod: PaymentMethod
   ) {
     if (!businessId) return
-    const { data, error } = await supabase.rpc('update_sale', {
-      p_sale_id: saleId,
-      p_business_id: businessId,
-      p_items: items,
-      p_payment_method: paymentMethod,
+    const result = await updateSale(supabase, {
+      saleId,
+      businessId,
+      items,
+      paymentMethod,
+      operatorId,
     })
-    if (!error && data?.success) {
-      const newTotal = Number(data.total)
+    if (result.ok) {
+      const newTotal = Number(result.data.total)
       queryClient.setQueryData<SaleRow[]>(['pos-daily-history', businessId], (prev) =>
         prev ? prev.map(s =>
           s.id === saleId
@@ -452,7 +448,7 @@ const CartPanel = forwardRef<CartPanelHandle, Props>(function CartPanel({ busine
       showToast({ message: 'Venta actualizada' })
       void queryClient.invalidateQueries({ queryKey: ['expenses'] })
     } else {
-      showToast({ message: error?.message ?? data?.error ?? 'No se pudo actualizar la venta.' })
+      showToast({ message: result.error })
     }
   }
 

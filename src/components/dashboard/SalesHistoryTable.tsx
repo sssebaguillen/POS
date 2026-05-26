@@ -12,6 +12,7 @@ import { buildReceiptData } from '@/lib/printer/receipt'
 import { useCurrency, useFormatMoney } from '@/lib/context/CurrencyContext'
 import type { ReceiptData } from '@/lib/printer/types'
 import { createClient } from '@/lib/supabase/client'
+import { getSaleDetail, updateSale, deleteSale } from '@/lib/api/sales'
 import type { PaymentMethod } from '@/lib/constants/domain'
 import { isPaymentMethod, normalizePayment, PAYMENT_OPTIONS } from '@/lib/payments'
 import { useToast } from '@/hooks/useToast'
@@ -44,25 +45,6 @@ interface SaleRow {
 
 interface SaleDetail extends SaleRow {
   items: SaleItem[]
-}
-
-interface SaleItemQueryRow {
-  id: string
-  product_id: string
-  variant_label: string | null
-  product_name: string
-  product_icon: string | null
-  product_icon_color: string | null
-  quantity: number
-  unit_price: number
-}
-
-interface SaleDetailRpcResult {
-  success: boolean
-  status: string | null
-  payment_method: string | null
-  operator_name: string | null
-  items: SaleItemQueryRow[] | null
 }
 
 interface Props {
@@ -161,15 +143,12 @@ function SalesHistoryTable({ rows, businessId, businessName, operatorId, onSaleD
       return saleDetails[saleId]
     }
 
+    if (!businessId) return null
     setLoadingDetailId(saleId)
-    const { data: detailResult, error } = await supabase.rpc('get_sale_detail', {
-      p_sale_id: saleId,
-      p_business_id: businessId,
-    })
-    const data = detailResult as SaleDetailRpcResult | null
-    if (error || !data?.success) {
+    const result = await getSaleDetail(supabase, { saleId, businessId })
+    if (!result.ok) {
       setLoadingDetailId(null)
-      setLocalError(error?.message ?? 'No se pudo cargar el detalle de la venta.')
+      setLocalError(result.error)
       return null
     }
     const row = rows.find(s => s.id === saleId)
@@ -179,12 +158,12 @@ function SalesHistoryTable({ rows, businessId, businessName, operatorId, onSaleD
     }
     const detail: SaleDetail = {
       ...row,
-      status: data.status ?? row.status,
-      method: isPaymentMethod(data.payment_method) ? data.payment_method : row.method,
-      operator_name: data.operator_name ?? null,
-      items: (data.items ?? []).map((item: SaleItemQueryRow) => ({
+      status: result.data.status ?? row.status,
+      method: isPaymentMethod(result.data.payment_method) ? result.data.payment_method : row.method,
+      operator_name: result.data.operator_name ?? null,
+      items: (result.data.items ?? []).map((item) => ({
         id: item.id,
-        product_id: item.product_id,
+        product_id: item.product_id ?? '',
         variant_label: item.variant_label ?? null,
         product_name: item.product_name,
         product_icon: item.product_icon ?? null,
@@ -246,18 +225,23 @@ function SalesHistoryTable({ rows, businessId, businessName, operatorId, onSaleD
       status: string
     }) => {
       if (!businessId) throw new Error('businessId requerido')
-      const { data, error } = await supabase.rpc('update_sale', {
-        p_sale_id: vars.saleId,
-        p_business_id: businessId,
-        p_items: vars.items,
-        p_payment_method: vars.paymentMethod,
-        p_operator_id: operatorId,
-        p_status: vars.status,
+      const result = await updateSale(supabase, {
+        saleId: vars.saleId,
+        businessId,
+        items: vars.items.map(i => ({
+          product_id: i.product_id,
+          variant_id: null,
+          quantity: i.quantity,
+          unit_price: i.unit_price,
+        })),
+        paymentMethod: vars.paymentMethod,
+        operatorId,
+        status: vars.status,
       })
-      if (error || !data?.success) {
-        throw new Error(error?.message ?? 'No se pudo actualizar la venta')
+      if (!result.ok) {
+        throw new Error(result.error)
       }
-      return { ...vars, total: Number(data.total) }
+      return { ...vars, total: Number(result.data.total) }
     },
     onSuccess: (result) => {
       // Update saleDetails for immediate UI feedback; main data updates via parent revalidation
@@ -337,18 +321,14 @@ function SalesHistoryTable({ rows, businessId, businessName, operatorId, onSaleD
 
     const timer = setTimeout(async () => {
       deleteTimersRef.current.delete(saleId)
-      const { data, error } = await supabase.rpc('delete_sale', {
-        p_sale_id: saleId,
-        p_business_id: businessId,
-        p_operator_id: operatorId,
-      })
-      if (error || !data?.success) {
+      const result = await deleteSale(supabase, { saleId, businessId, operatorId })
+      if (!result.ok) {
         setDeletedIds(prev => {
           const next = new Set(prev)
           next.delete(saleId)
           return next
         })
-        setLocalError(error?.message ?? 'No se pudo eliminar la venta')
+        setLocalError(result.error)
         return
       }
       onSaleDeleted?.(saleId)
