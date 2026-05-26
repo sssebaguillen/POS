@@ -24,6 +24,7 @@ import CategoryIconPreview from '@/components/inventory/CategoryIconPreview'
 import PriceOverrideIndicator from '@/components/inventory/PriceOverrideIndicator'
 import FloatingDropdown from '@/components/ui/FloatingDropdown'
 import { trackProductCreated } from '@/lib/analytics'
+import { useComboboxNav } from '@/hooks/useComboboxNav'
 
 interface Props {
   /** When true, renders only the form (no Dialog). Used by onboarding wizard. */
@@ -113,11 +114,6 @@ export default function NewProductModal({
     return categories.filter(category => category.name.toLowerCase().includes(query))
   }, [categories, categoryInput])
 
-  // Combobox keyboard nav: highlightedIndex covers [Sin categoría, ...filteredCategories] for the
-  // category dropdown and [...filteredBrands] for the brand dropdown. -1 means nothing highlighted.
-  const [categoryHighlight, setCategoryHighlight] = useState(-1)
-  const [brandHighlight, setBrandHighlight] = useState(-1)
-
   function selectCategoryByIndex(index: number) {
     // index 0 = "Sin categoría", 1+ = filteredCategories[index - 1]
     if (index === 0) {
@@ -130,12 +126,10 @@ export default function NewProductModal({
       setCategoryInput(category.name)
     }
     setShowCategoryOptions(false)
-    setCategoryHighlight(-1)
   }
 
   function closeCategoryOptions() {
     setShowCategoryOptions(false)
-    setCategoryHighlight(-1)
     if (!form.category_id) setCategoryInput('')
   }
 
@@ -145,14 +139,27 @@ export default function NewProductModal({
     set('brand_id', brand.id)
     setBrandInput(brand.name)
     setShowBrandOptions(false)
-    setBrandHighlight(-1)
   }
 
   function closeBrandOptions() {
     setShowBrandOptions(false)
-    setBrandHighlight(-1)
     if (!form.brand_id) setBrandInput('')
   }
+
+  const categoryNav = useComboboxNav({
+    optionCount: filteredCategories.length + 1,
+    isOpen: showCategoryOptions,
+    setIsOpen: setShowCategoryOptions,
+    onSelect: selectCategoryByIndex,
+    onClose: closeCategoryOptions,
+  })
+  const brandNav = useComboboxNav({
+    optionCount: filteredBrands.length,
+    isOpen: showBrandOptions,
+    setIsOpen: setShowBrandOptions,
+    onSelect: selectBrandByIndex,
+    onClose: closeBrandOptions,
+  })
 
   const suggestedPrice = (() => {
     if (!defaultPriceList) return null
@@ -499,36 +506,17 @@ export default function NewProductModal({
                         aria-expanded={showCategoryOptions}
                         aria-controls="category-listbox"
                         aria-autocomplete="list"
-                        aria-activedescendant={showCategoryOptions && categoryHighlight >= 0 ? `category-option-${categoryHighlight}` : undefined}
-                        onFocus={() => {
-                          setShowCategoryOptions(true)
-                          setCategoryHighlight(0)
-                        }}
+                        aria-activedescendant={showCategoryOptions && categoryNav.highlight >= 0 ? `category-option-${categoryNav.highlight}` : undefined}
+                        onFocus={categoryNav.openFromFocus}
                         onChange={event => {
                           const nextValue = event.target.value
                           setCategoryInput(nextValue)
                           setShowCategoryOptions(true)
-                          setCategoryHighlight(0)
+                          categoryNav.setHighlight(0)
                           const exactCategory = categories.find(category => category.name.toLowerCase() === nextValue.trim().toLowerCase())
                           set('category_id', exactCategory ? exactCategory.id : '')
                         }}
-                        onKeyDown={event => {
-                          const max = filteredCategories.length // index of last (Sin categoría at 0, items at 1..max)
-                          if (event.key === 'ArrowDown') {
-                            event.preventDefault()
-                            setShowCategoryOptions(true)
-                            setCategoryHighlight(prev => Math.min(prev + 1, max))
-                          } else if (event.key === 'ArrowUp') {
-                            event.preventDefault()
-                            setCategoryHighlight(prev => Math.max(prev - 1, 0))
-                          } else if (event.key === 'Enter' && showCategoryOptions) {
-                            event.preventDefault()
-                            selectCategoryByIndex(categoryHighlight)
-                          } else if (event.key === 'Escape' && showCategoryOptions) {
-                            event.preventDefault()
-                            closeCategoryOptions()
-                          }
-                        }}
+                        onKeyDown={categoryNav.handleKeyDown}
                         placeholder="Seleccionar categoría"
                         className="pr-8"
                       />
@@ -538,11 +526,8 @@ export default function NewProductModal({
                         aria-label={showCategoryOptions ? 'Cerrar categorías' : 'Abrir categorías'}
                         onMouseDown={event => {
                           event.preventDefault()
-                          setShowCategoryOptions(prev => {
-                            const nextOpen = !prev
-                            setCategoryHighlight(nextOpen ? 0 : -1)
-                            if (!nextOpen && !form.category_id) setCategoryInput('')
-                            return nextOpen
+                          categoryNav.toggle(showCategoryOptions, () => {
+                            if (!form.category_id) setCategoryInput('')
                           })
                         }}
                         className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 text-hint hover:text-body transition-colors"
@@ -564,9 +549,9 @@ export default function NewProductModal({
                             type="button"
                             role="option"
                             id="category-option-0"
-                            aria-selected={categoryHighlight === 0}
-                            className={`w-full px-3 py-2 text-left text-sm transition-colors ${categoryHighlight === 0 ? 'bg-surface-alt text-body' : 'text-body hover:bg-hover-bg'}`}
-                            onMouseEnter={() => setCategoryHighlight(0)}
+                            aria-selected={categoryNav.highlight === 0}
+                            className={`w-full px-3 py-2 text-left text-sm transition-colors ${categoryNav.highlight === 0 ? 'bg-surface-alt text-body' : 'text-body hover:bg-hover-bg'}`}
+                            onMouseEnter={() => categoryNav.setHighlight(0)}
                             onMouseDown={event => {
                               event.preventDefault()
                               selectCategoryByIndex(0)
@@ -576,7 +561,7 @@ export default function NewProductModal({
                           </button>
                           {filteredCategories.map((category, idx) => {
                             const index = idx + 1
-                            const isHighlighted = categoryHighlight === index
+                            const isHighlighted = categoryNav.highlight === index
                             return (
                               <button
                                 key={category.id}
@@ -585,7 +570,7 @@ export default function NewProductModal({
                                 id={`category-option-${index}`}
                                 aria-selected={isHighlighted}
                                 className={`w-full px-3 py-2 text-left text-sm transition-colors ${isHighlighted ? 'bg-surface-alt text-body' : 'text-body hover:bg-hover-bg'}`}
-                                onMouseEnter={() => setCategoryHighlight(index)}
+                                onMouseEnter={() => categoryNav.setHighlight(index)}
                                 onMouseDown={event => {
                                   event.preventDefault()
                                   selectCategoryByIndex(index)
@@ -612,36 +597,17 @@ export default function NewProductModal({
                         aria-expanded={showBrandOptions}
                         aria-controls="brand-listbox"
                         aria-autocomplete="list"
-                        aria-activedescendant={showBrandOptions && brandHighlight >= 0 ? `brand-option-${brandHighlight}` : undefined}
-                        onFocus={() => {
-                          setShowBrandOptions(true)
-                          setBrandHighlight(0)
-                        }}
+                        aria-activedescendant={showBrandOptions && brandNav.highlight >= 0 ? `brand-option-${brandNav.highlight}` : undefined}
+                        onFocus={brandNav.openFromFocus}
                         onChange={event => {
                           const nextValue = event.target.value
                           setBrandInput(nextValue)
                           setShowBrandOptions(true)
-                          setBrandHighlight(0)
+                          brandNav.setHighlight(0)
                           const exactBrand = brands.find(brand => brand.name.toLowerCase() === nextValue.trim().toLowerCase())
                           set('brand_id', exactBrand ? exactBrand.id : '')
                         }}
-                        onKeyDown={event => {
-                          const lastIndex = filteredBrands.length - 1
-                          if (event.key === 'ArrowDown' && lastIndex >= 0) {
-                            event.preventDefault()
-                            setShowBrandOptions(true)
-                            setBrandHighlight(prev => Math.min(prev + 1, lastIndex))
-                          } else if (event.key === 'ArrowUp' && lastIndex >= 0) {
-                            event.preventDefault()
-                            setBrandHighlight(prev => Math.max(prev - 1, 0))
-                          } else if (event.key === 'Enter' && showBrandOptions && lastIndex >= 0) {
-                            event.preventDefault()
-                            selectBrandByIndex(brandHighlight)
-                          } else if (event.key === 'Escape' && showBrandOptions) {
-                            event.preventDefault()
-                            closeBrandOptions()
-                          }
-                        }}
+                        onKeyDown={brandNav.handleKeyDown}
                         placeholder="Seleccionar marca"
                         className="pr-8"
                       />
@@ -651,11 +617,8 @@ export default function NewProductModal({
                         aria-label={showBrandOptions ? 'Cerrar marcas' : 'Abrir marcas'}
                         onMouseDown={event => {
                           event.preventDefault()
-                          setShowBrandOptions(prev => {
-                            const nextOpen = !prev
-                            setBrandHighlight(nextOpen ? 0 : -1)
-                            if (!nextOpen && !form.brand_id) setBrandInput('')
-                            return nextOpen
+                          brandNav.toggle(showBrandOptions, () => {
+                            if (!form.brand_id) setBrandInput('')
                           })
                         }}
                         className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 text-hint hover:text-body transition-colors"
@@ -679,7 +642,7 @@ export default function NewProductModal({
                             </div>
                           ) : (
                             filteredBrands.map((brand, idx) => {
-                              const isHighlighted = brandHighlight === idx
+                              const isHighlighted = brandNav.highlight === idx
                               return (
                                 <button
                                   key={brand.id}
@@ -688,7 +651,7 @@ export default function NewProductModal({
                                   id={`brand-option-${idx}`}
                                   aria-selected={isHighlighted}
                                   className={`w-full px-3 py-2 text-left text-sm transition-colors ${isHighlighted ? 'bg-surface-alt text-body' : 'text-body hover:bg-hover-bg'}`}
-                                  onMouseEnter={() => setBrandHighlight(idx)}
+                                  onMouseEnter={() => brandNav.setHighlight(idx)}
                                   onMouseDown={event => {
                                     event.preventDefault()
                                     selectBrandByIndex(idx)
