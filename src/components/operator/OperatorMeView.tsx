@@ -271,7 +271,7 @@ export default function OperatorMeView({
       return
     }
 
-    const { error: updateError } = await supabase.rpc('update_operator', {
+    const { data: updateResult, error: updateError } = await supabase.rpc('update_operator', {
       p_actor_operator_id: operatorId,
       p_business_id: _businessId,
       p_target_operator_id: operatorId,
@@ -282,8 +282,10 @@ export default function OperatorMeView({
 
     setSavingPin(false)
 
-    if (updateError) {
-      showToast({ message: 'No se pudo actualizar el PIN. Intenta de nuevo.' })
+    const result = updateResult as { success: boolean; error?: string } | null
+
+    if (updateError || !result?.success) {
+      showToast({ message: result?.error ?? 'No se pudo actualizar el PIN. Intenta de nuevo.' })
       return
     }
 

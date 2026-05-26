@@ -201,19 +201,6 @@ export default function PaymentModal({
         return
       }
 
-      if (!isMixed && effectiveMethod === 'credit' && customer && result.sale_id) {
-        const { error: creditError } = await supabase.rpc('apply_customer_credit', {
-          p_sale_id: result.sale_id,
-          p_customer_id: customer.id,
-          p_amount: total,
-        })
-        if (creditError) {
-          console.error(creditError)
-          setError('Venta registrada pero error al aplicar crédito. Contactar soporte.')
-          return
-        }
-      }
-
       const change = isMixed ? mixedChange : (effectiveMethod === 'cash' ? Math.max(0, effectiveCash - total) : 0)
       const nextReceipt: ReceiptData = {
         saleId: result.sale_id ?? '',

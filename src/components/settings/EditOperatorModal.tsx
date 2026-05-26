@@ -219,7 +219,7 @@ export default function EditOperatorModal({
     const permissionsToSend = shouldSendPermissions ? permissions : null
     const nextName = shouldSendName ? trimmedName : operator.name
 
-    const { error: updateError } = await supabase.rpc('update_operator', {
+    const { data: updateResult, error: updateError } = await supabase.rpc('update_operator', {
       p_actor_operator_id: actorOperatorId,
       p_business_id: businessId,
       p_target_operator_id: operator.id,
@@ -228,9 +228,11 @@ export default function EditOperatorModal({
       p_permissions: permissionsToSend,
     })
 
-    if (updateError) {
+    const result = updateResult as { success: boolean; error?: string } | null
+
+    if (updateError || !result?.success) {
       setLoading(false)
-      onError(translateDbError(updateError.message, ERR.OPR1))
+      onError(translateDbError(result?.error ?? updateError?.message ?? '', ERR.OPR1))
       return
     }
 
