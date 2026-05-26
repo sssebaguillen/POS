@@ -325,7 +325,7 @@ export default function EditCustomerModal({ open, onClose, customer, operatorId,
                         disabled={settling || creditBalance <= 0}
                         className="h-8 rounded-lg text-sm bg-primary hover:bg-primary/90 text-primary-foreground"
                       >
-                        {settling ? 'Procesando...' : 'Confirmar pago'}
+                        {settling ? 'Confirmando...' : 'Confirmar pago'}
                       </Button>
                     </div>
                   </div>

@@ -29,8 +29,8 @@ All routes are in English: `/stats/payment-methods`, `/stats/operators`, `/stats
 - Sidebar: class `surface-sidebar`
 - Filter chips: `pill-tabs` (container) / `pill-tab` (inactive) / `pill-tab-active` (active) — use everywhere **except** POS ProductPanel (intentional own style with `rounded-full`, `bg-primary` active)
 - Icons: lucide-react | Charts: recharts
-- No `backdrop-filter` or `backdrop-blur` anywhere
-- No `<form>` HTML — use onClick/onChange handlers
+- `backdrop-blur-sm` reserved for modal overlays (applied via `ui/dialog.tsx`, matched on bespoke modals). Never on cards/panels/sidebars/page backgrounds.
+- `<form>` is fine for login/PIN/settings/multi-field input flows where Enter-to-submit and password-manager integration are useful — always call `e.preventDefault()` in `onSubmit`. For single-action modals prefer plain `onClick`.
 
 ### Pill Tabs vs Chips
 
@@ -40,6 +40,30 @@ Two distinct filter patterns — never mix:
 - **Chips** (flat `pill-tab` buttons with the active class `bg-primary/10 text-primary border border-primary/20 dark:bg-primary/15 dark:border-primary/30`): used for data filters (entity type in `/activity`, category in `/expenses`, status filters in `SalesHistoryTable`). No sliding indicator. Imply data-shape filtering, often with a "Limpiar" button when a non-default value is selected.
 
 The reference implementation for the chip pattern is `SalesHistoryTable.tsx`.
+
+### Loading Button Text
+
+Canonical Spanish verbs for in-flight async buttons. Pick the one that matches the action — don't use "Procesando..." as a catch-all.
+
+| Action | Loading label |
+|--------|---------------|
+| Create a new entity | `Creando...` |
+| Save edits to an existing entity | `Guardando...` |
+| Delete an entity | `Eliminando...` |
+| Upload a file | `Subiendo...` |
+| Download / export to CSV | `Exportando...` |
+| Import from CSV | `Importando...` |
+| Register a sale | `Registrando...` |
+| Validate (server-side check before commit) | `Validando...` |
+| Send email / message | `Enviando...` |
+| Confirm a payment / action | `Confirmando...` |
+| Print directly via ESC/POS | `Imprimiendo directo...` |
+| Open browser print dialog | `Abriendo impresión...` |
+| Open native share sheet | `Abriendo compartir...` |
+| Close a cash session | `Cerrando sesión...` |
+| Generic catch-all (avoid unless nothing else fits) | `Procesando...` |
+
+`Actualizando...` is also valid in two narrower cases: (1) background React Query refetch indicators (small text label, not a button), (2) buttons whose idle label is "Actualizar X" — verb match wins (e.g. "Actualizar contraseña" → "Actualizando...").
 
 ### Breadcrumbs
 
