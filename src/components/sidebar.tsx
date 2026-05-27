@@ -2,7 +2,7 @@
 
 import { usePathname } from 'next/navigation'
 import Link from 'next/link'
-import { X, ShoppingCart, Package, ClipboardList, BarChart2, LineChart, Settings, Sun, Moon, LogOut, PanelLeftClose, PanelLeftOpen, Receipt, UserCircle, Sparkles, Globe, ExternalLink, History, Users, Vault } from 'lucide-react'
+import { X, ShoppingCart, Package, ClipboardList, BarChart2, LineChart, Settings, Sun, Moon, LogOut, PanelLeftClose, PanelLeftOpen, Receipt, UserCircle, Sparkles, Globe, ExternalLink, History, Users, Vault, Inbox } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useState, useEffect, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
@@ -14,6 +14,7 @@ import ChangelogBanner from '@/components/shared/ChangelogBanner'
 import FeedbackButton from '@/components/shared/FeedbackButton'
 import { parsePermissions, type Permissions, type UserRole } from '@/lib/operator'
 import { resetTracking } from '@/lib/analytics'
+import UnreadBadge, { useUnreadOrdersCount } from '@/components/orders/UnreadBadge'
 
 interface NavLink {
   href: string
@@ -24,13 +25,14 @@ interface NavLink {
 
 // price_override is intentionally absent — it controls per-line price editing in the POS, not route access.
 const NAV_LINKS: NavLink[] = [
-  { href: '/pos',         label: 'Vender',            icon: ShoppingCart,  check: () => true },
-  { href: '/clientes',    label: 'Clientes',          icon: Users,         check: () => true },
-  { href: '/dashboard',   label: 'Dashboard',         icon: BarChart2,     check: (p) => p.analysis === true },
-  { href: '/stats',       label: 'Estadísticas',      icon: LineChart,     check: (p) => p.analysis === true },
-  { href: '/activity',    label: 'Actividad',         icon: History,       check: (p) => p.analysis === true },
-  { href: '/expenses',    label: 'Gastos',            icon: Receipt,       check: (p) => p.expenses === true },
-  { href: '/caja',       label: 'Caja',              icon: Vault,         check: (p) => p.analysis === true },
+  { href: '/pos',           label: 'Vender',            icon: ShoppingCart,  check: () => true },
+  { href: '/customers',     label: 'Clientes',          icon: Users,         check: () => true },
+  { href: '/orders',        label: 'Pedidos online',    icon: Inbox,         check: (p) => p.sales === true },
+  { href: '/dashboard',     label: 'Dashboard',         icon: BarChart2,     check: (p) => p.analysis === true },
+  { href: '/stats',         label: 'Estadísticas',      icon: LineChart,     check: (p) => p.analysis === true },
+  { href: '/activity',      label: 'Actividad',         icon: History,       check: (p) => p.analysis === true },
+  { href: '/expenses',      label: 'Gastos',            icon: Receipt,       check: (p) => p.expenses === true },
+  { href: '/cash-sessions', label: 'Caja',              icon: Vault,         check: (p) => p.analysis === true },
   { href: '/inventory',   label: 'Inventario',        icon: Package,       check: (p) => p.stock === true },
   { href: '/price-lists', label: 'Listas de precios', icon: ClipboardList, check: (p) => p.price_lists === true },
   { href: '/settings',    label: 'Configuración',     icon: Settings,      check: (p) => p.settings === true },
@@ -39,7 +41,7 @@ const NAV_LINKS: NavLink[] = [
 const NAV_SECTIONS = [
   {
     label: 'Ventas',
-    hrefs: ['/pos', '/clientes'],
+    hrefs: ['/pos', '/customers', '/orders'],
   },
   {
     label: 'Gestión',
@@ -47,7 +49,7 @@ const NAV_SECTIONS = [
   },
   {
     label: 'Finanzas',
-    hrefs: ['/expenses', '/caja'],
+    hrefs: ['/expenses', '/cash-sessions'],
   },
   {
     label: 'Análisis',
@@ -156,6 +158,9 @@ export default function Sidebar({
   const isRestricted = (check: (p: Permissions) => boolean): boolean =>
     mounted && permissions !== null && !check(permissions)
 
+  const canSeeOrders = mounted && (permissions === null || permissions.sales === true)
+  const { data: unreadOrdersCount = 0 } = useUnreadOrdersCount(canSeeOrders)
+
   function handleRestrictedClick(label: string) {
     setToast(`No tienes permisos para acceder a ${label}`)
     onClose()
@@ -252,6 +257,8 @@ export default function Sidebar({
                     )
                   }
 
+                  const isOrdersLink = href === '/orders'
+                  const showBadge = isOrdersLink && unreadOrdersCount > 0
                   return (
                     <Link
                       key={href}
@@ -260,7 +267,7 @@ export default function Sidebar({
                       onClick={isMobileDrawer ? onClose : undefined}
                       title={collapsed && !isMobileDrawer ? label : undefined}
                       className={cn(
-                        'flex items-center rounded-xl text-sm font-medium transition-colors',
+                        'relative flex items-center rounded-xl text-sm font-medium transition-colors',
                         collapsed && !isMobileDrawer
                           ? 'justify-center p-2.5'
                           : 'gap-3 px-3 py-2.5',
@@ -271,6 +278,12 @@ export default function Sidebar({
                     >
                       <Icon size={18} />
                       {(!collapsed || isMobileDrawer) && label}
+                      {showBadge && (
+                        <UnreadBadge
+                          count={unreadOrdersCount}
+                          collapsed={collapsed && !isMobileDrawer}
+                        />
+                      )}
                     </Link>
                   )
                 })}

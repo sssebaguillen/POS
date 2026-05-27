@@ -48,7 +48,7 @@ const ProductCard = memo(function ProductCard({
 
   return (
     <article
-      className={`rounded-[20px] border-2 ${isSelected ? 'border-primary' : 'border-edge/30'} ${config.hoverBorder} bg-surface p-4 flex flex-col relative transition-all hover:shadow-md overflow-hidden group/card`}
+      className={`rounded-xl border ${isSelected ? 'border-primary' : 'border-edge/30'} ${config.hoverBorder} bg-surface p-4 flex flex-col relative transition-all hover:shadow-md overflow-hidden group/card`}
     >
       {!readOnly && (
         <div className={`absolute top-3 left-3 z-10 ${selectionMode ? 'opacity-100' : 'opacity-0 [@media(hover:none)]:opacity-40 group-hover/card:opacity-100'} transition-opacity`}>

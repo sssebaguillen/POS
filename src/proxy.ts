@@ -194,6 +194,11 @@ export async function proxy(request: NextRequest) {
     return flashRedirect(new URL('/pos', request.url), cspHeader)
   }
 
+  const isOrdersRoute = pathname === '/orders' || pathname.startsWith('/orders/')
+  if (isOrdersRoute && !hasPermission(operator, 'sales')) {
+    return flashRedirect(new URL('/pos', request.url), cspHeader)
+  }
+
   const normalizedPerms = normalizePermissions(operator.permissions)
 
   supabaseResponse.cookies.set('op_perms', JSON.stringify(normalizedPerms), {

@@ -20,6 +20,7 @@ export const ENTITY_FILTER_VALUES: ActivityEntityFilter[] = [
   'setting',
   'operator',
   'customer',
+  'catalog_order',
 ]
 
 export const ENTITY_PRIMARY_OPTIONS: ActivityEntityOption[] = [
@@ -37,6 +38,7 @@ export const ENTITY_OVERFLOW_OPTIONS: ActivityEntityOption[] = [
   { value: 'price_list', label: 'Listas de precios' },
   { value: 'setting', label: 'Configuración' },
   { value: 'operator', label: 'Operarios' },
+  { value: 'catalog_order', label: 'Pedidos online' },
 ]
 
 export const ENTITY_TYPE_LABELS: Record<ActivityEntityType, string> = {
@@ -50,4 +52,5 @@ export const ENTITY_TYPE_LABELS: Record<ActivityEntityType, string> = {
   setting: 'Configuración',
   operator: 'Operario',
   customer: 'Cliente',
+  catalog_order: 'Pedido online',
 }

@@ -1,6 +1,13 @@
 import type { ActivityEntityType } from '@/components/activity/types'
 
 export type ActivityAction =
+  | 'catalog_order_creado'
+  | 'catalog_order_aceptado'
+  | 'catalog_order_rechazado'
+  | 'catalog_order_cancelado'
+  | 'catalog_order_en_camino'
+  | 'catalog_order_listo_retiro'
+  | 'catalog_order_completado'
   | 'sale_created'
   | 'sale_updated'
   | 'sale_deleted'
@@ -226,7 +233,33 @@ export interface CustomerSettlementNew {
   method?: string | null
 }
 
+export interface CatalogOrderData {
+  id?: string
+  order_number?: number | string
+  status?: string
+  delivery_type?: string
+  customer_name?: string
+  customer_phone?: string
+  address?: string | null
+  notes?: string | null
+  subtotal?: number | string
+  total?: number | string
+  sale_id?: string | null
+  created_at?: string
+  accepted_at?: string | null
+  completed_at?: string | null
+  rejected_at?: string | null
+  cancelled_at?: string | null
+}
+
 export interface ActivityPayloadMap {
+  catalog_order_creado:       { entityType: 'catalog_order'; oldData: null;                   newData: CatalogOrderData | null }
+  catalog_order_aceptado:     { entityType: 'catalog_order'; oldData: CatalogOrderData | null; newData: CatalogOrderData | null }
+  catalog_order_rechazado:    { entityType: 'catalog_order'; oldData: CatalogOrderData | null; newData: CatalogOrderData | null }
+  catalog_order_cancelado:    { entityType: 'catalog_order'; oldData: CatalogOrderData | null; newData: CatalogOrderData | null }
+  catalog_order_en_camino:    { entityType: 'catalog_order'; oldData: CatalogOrderData | null; newData: CatalogOrderData | null }
+  catalog_order_listo_retiro: { entityType: 'catalog_order'; oldData: CatalogOrderData | null; newData: CatalogOrderData | null }
+  catalog_order_completado:   { entityType: 'catalog_order'; oldData: CatalogOrderData | null; newData: CatalogOrderData | null }
   sale_created: { entityType: 'sale'; oldData: null; newData: SaleData | null }
   sale_updated: { entityType: 'sale'; oldData: SaleData | null; newData: SaleData | null }
   sale_deleted: { entityType: 'sale'; oldData: SaleData | null; newData: null }
@@ -276,6 +309,13 @@ export function isActivityAction(value: string): value is ActivityAction {
 }
 
 export const ACTIVITY_ACTIONS: ActivityAction[] = [
+  'catalog_order_creado',
+  'catalog_order_aceptado',
+  'catalog_order_rechazado',
+  'catalog_order_cancelado',
+  'catalog_order_en_camino',
+  'catalog_order_listo_retiro',
+  'catalog_order_completado',
   'sale_created',
   'sale_updated',
   'sale_deleted',
@@ -315,6 +355,13 @@ export const ACTIVITY_ACTIONS: ActivityAction[] = [
 ]
 
 export const ACTION_ENTITY_TYPES: Record<ActivityAction, ActivityEntityType> = {
+  catalog_order_creado:       'catalog_order',
+  catalog_order_aceptado:     'catalog_order',
+  catalog_order_rechazado:    'catalog_order',
+  catalog_order_cancelado:    'catalog_order',
+  catalog_order_en_camino:    'catalog_order',
+  catalog_order_listo_retiro: 'catalog_order',
+  catalog_order_completado:   'catalog_order',
   sale_created: 'sale',
   sale_updated: 'sale',
   sale_deleted: 'sale',

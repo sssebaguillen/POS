@@ -1,6 +1,7 @@
 import type { ComponentType } from 'react'
 import {
   Folder,
+  Inbox,
   Layers,
   Package,
   Receipt,
@@ -25,6 +26,7 @@ const ENTITY_GLYPH: Record<ActivityLogRow['entity_type'], ComponentType<{ size?:
   setting: SettingsIcon,
   operator: UserCog,
   customer: UserRound,
+  catalog_order: Inbox,
 }
 
 interface EntityGlyphProps {

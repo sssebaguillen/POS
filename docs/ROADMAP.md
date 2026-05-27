@@ -82,7 +82,7 @@ precio_final = unit_price_override ?? calculateProductPrice(product, activePrice
 > Las fases siguientes están documentadas para orientación arquitectónica. No implementes nada de aquí a menos que se solicite explícitamente.
 
 ### P8 — Cuentas corrientes de clientes
-Activar `customers.credit_balance`. Agregar `credit_limit` + `is_credit_enabled`. RPCs `apply_customer_credit` y `settle_customer_credit`. Método de pago `credit` en `PaymentModal`. Nueva ruta `/clientes`.
+Activar `customers.credit_balance`. Agregar `credit_limit` + `is_credit_enabled`. RPCs `apply_customer_credit` y `settle_customer_credit`. Método de pago `credit` en `PaymentModal`. Nueva ruta `/customers`.
 
 ### P9 — Órdenes de compra
 Tablas `purchase_orders` + `purchase_order_items`. RPC `receive_purchase_order` (actualiza stock + registra en `inventory_movements` con `type = 'purchase'`). Nueva ruta `/compras`.

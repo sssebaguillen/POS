@@ -9,6 +9,7 @@ export type ActivityEntityType =
   | 'setting'
   | 'operator'
   | 'customer'
+  | 'catalog_order'
 
 export type ActivityEntityFilter = 'all' | ActivityEntityType
 
@@ -27,7 +28,7 @@ export interface ActivityLookups {
 export interface ActivityLogRow {
   id: string
   operator_id: string | null
-  actor_role: 'owner' | 'manager' | 'cashier' | 'custom'
+  actor_role: 'owner' | 'manager' | 'cashier' | 'custom' | 'customer'
   action: string
   entity_type: ActivityEntityType
   entity_id: string

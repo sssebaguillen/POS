@@ -230,7 +230,12 @@ src/
 │   │   ├── profile/page.tsx              # Owner only
 │   │   ├── operator/me/page.tsx          # Active operator personal profile
 │   │   ├── activity/page.tsx             # edge — audit log with chip+DateRangeFilter+operator filters; defense-in-depth `analysis` perm check
+│   │   ├── orders/page.tsx               # Pedidos Online — list of catalog orders
+│   │   ├── customers/page.tsx            # Customers list
+│   │   ├── cash-sessions/page.tsx        # Cash sessions history + active session
 │   │   └── pos/page.tsx                  # edge
+│   ├── api/catalog/
+│   │   └── orders/route.ts               # POST: anon catalog checkout → create_catalog_order; per-IP rate limit
 │   ├── api/operator/
 │   │   ├── switch/route.ts               # Writes operator_session + op_perms (11 permissions)
 │   │   └── logout/route.ts               # Only deletes cookies — NEVER restores owner session
@@ -309,6 +314,13 @@ src/
     │   ├── ExpenseAttachmentModal.tsx
     │   ├── SupplierSelectDropdown.tsx
     │   └── SuppliersPanel.tsx
+    ├── orders/
+    │   ├── OrdersView.tsx                 # List + chip status filters; polls every 30s
+    │   ├── OrderDetailPanel.tsx           # Right-side drawer with state machine actions
+    │   ├── StatusBadge.tsx
+    │   ├── UnreadBadge.tsx                # exports useUnreadOrdersCount hook
+    │   ├── NewOrderNotifier.tsx           # Mounted in (app)/layout.tsx; sound+toast on /pos, /dashboard
+    │   └── types.ts
     ├── settings/
     │   ├── SettingsForm.tsx              # Slug input with puls.ar/{slug} preview + client-side validation
     │   ├── OperatorList.tsx
@@ -368,3 +380,4 @@ Full route map with permission gates: `docs/conventions.md`.
 30. `mercadería` expenses: use `create_mercaderia_expense` / `update_mercaderia_expense` RPCs — not `create_expense` / `update_expense`.
 31. **Audit log: `operator_id = NULL` means owner ("Dueño") everywhere** — in `audit_log` rows, in `get_audit_log` filtering (sentinel UUID `'00000000-0000-0000-0000-000000000000'` maps to `IS NULL`), and in the UI ("Dueño" label). Never insert a synthetic owner row in `operators`.
 32. Inventory mutations: use the RPCs (`create_product`, `update_product`, `delete_product`, `create_category_guarded`, `update_category`, `delete_category`, `create_brand_guarded`, `delete_brand`, `bulk_*`) — they verify `stock_write` and log to `audit_log`. Do **not** call `supabase.from('products' | 'categories' | 'brands').insert/update/delete` directly. (One known exception pending: `ImportProductsModal.handleCreate` — see `docs/backlog.md`.)
+33. **Pedidos Online (`/orders`)**: anon catalog checkouts POST through `/api/catalog/orders` (Node runtime, per-IP rate limit, IP forwarded to RPC for forensics) → `create_catalog_order` RPC re-precia items server-side. Status flow lives in `update_catalog_order_status`; **sale conversion (and stock decrement) happens only on the `completado` transition** — it reuses `create_sale_transaction` with payment method `'other'`. Permission key reused: `sales`. Audit `entity_type = 'catalog_order'`. UI: `/orders` page + `<NewOrderNotifier />` mounted in `(app)/layout.tsx` (sound+toast on `/pos` and `/dashboard`). Sidebar unread badge via `get_catalog_orders_unread_count` polled every 30s.

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo, useRef } from 'react'
-import { Paperclip, Pencil, Trash2, Loader2 } from 'lucide-react'
+import { Paperclip, Loader2 } from 'lucide-react'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { EXPENSE_CATEGORY_LABELS, type Expense, type ExpenseAttachmentType } from './types'
 import ExpenseAttachmentModal from './ExpenseAttachmentModal'
@@ -143,11 +143,6 @@ export default function ExpensesTable({ expenses, businessId, operatorId, supaba
                 <td className="px-4 py-3 text-hint text-xs whitespace-nowrap">
                   {new Date(expense.date).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' })}
                 </td>
-                <td className="px-4 py-3">
-                  <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-primary/10 dark:bg-primary/20 text-primary">
-                    {EXPENSE_CATEGORY_LABELS[expense.category]}
-                  </span>
-                </td>
                 <td className="px-4 py-3 max-w-[200px]">
                   <span className="text-body truncate block">{expense.description}</span>
                   {expense.category === 'mercaderia' && (expense.item_count ?? 0) > 0 && (
@@ -155,6 +150,11 @@ export default function ExpensesTable({ expenses, businessId, operatorId, supaba
                       {expense.item_count} producto{expense.item_count !== 1 ? 's' : ''}
                     </span>
                   )}
+                </td>
+                <td className="px-4 py-3">
+                  <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-primary/10 dark:bg-primary/20 text-primary">
+                    {EXPENSE_CATEGORY_LABELS[expense.category]}
+                  </span>
                 </td>
                 <td className="px-4 py-3 text-hint hidden md:table-cell">
                   {expense.supplier?.name ?? '—'}
@@ -181,27 +181,24 @@ export default function ExpensesTable({ expenses, businessId, operatorId, supaba
                   )}
                 </td>
                 <td className="px-4 py-3 text-right">
-                  <div className="flex items-center justify-end gap-1">
-                    <button
+                  <div className="flex items-center justify-end gap-2">
+                    <Button
                       type="button"
+                      variant="outline"
+                      className="h-8 px-3 text-xs"
                       onClick={() => onEdit(expense)}
-                      className="p-1.5 rounded-lg text-hint hover:text-primary hover:bg-primary/10 transition-colors"
-                      title="Editar gasto"
                     >
-                      <Pencil size={14} />
-                    </button>
-                    <button
+                      Editar
+                    </Button>
+                    <Button
                       type="button"
+                      variant="destructive"
+                      className="h-8 px-3 text-xs"
                       onClick={() => handleTrashClick(expense)}
                       disabled={deletingId === expense.id || loadingItemsId === expense.id}
-                      className="p-1.5 rounded-lg text-hint hover:text-destructive hover:bg-destructive/10 transition-colors disabled:opacity-40"
-                      title="Eliminar gasto"
                     >
-                      {(deletingId === expense.id || loadingItemsId === expense.id)
-                        ? <Loader2 size={15} className="animate-spin" />
-                        : <Trash2 size={15} />
-                      }
-                    </button>
+                      {(deletingId === expense.id || loadingItemsId === expense.id) ? 'Eliminando...' : 'Eliminar'}
+                    </Button>
                   </div>
                 </td>
               </tr>

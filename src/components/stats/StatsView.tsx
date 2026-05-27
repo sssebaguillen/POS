@@ -8,7 +8,7 @@ import Link from 'next/link'
 import PageHeader from '@/components/shared/PageHeader'
 import DateRangeFilter from '@/components/shared/DateRangeFilter'
 import { buildDateParams, periodNeedsCustomDates, resolveDateRange, type DateRangePeriod } from '@/lib/date-utils'
-import { isPaymentMethod, normalizePayment } from '@/lib/payments'
+import { isPaymentMethod, normalizePayment, PAYMENT_BAR_COLORS } from '@/lib/payments'
 import { useFormatMoney } from '@/lib/context/CurrencyContext'
 import { cn } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
@@ -24,14 +24,6 @@ type EvolutionMode = 'revenue' | 'units'
 type RankingMode = 'amount' | 'units'
 type BreakdownMode = 'category' | 'brand'
 type OperatorMode = 'amount' | 'transactions'
-
-const PAYMENT_BAR_COLORS = {
-  cash: 'bg-emerald-300 dark:bg-emerald-400/35',
-  card: 'bg-primary/35 dark:bg-primary/30',
-  transfer: 'bg-amber-300 dark:bg-amber-400/35',
-  mercadopago: 'bg-sky-300 dark:bg-sky-400/35',
-  credit: 'bg-orange-300 dark:bg-orange-400/35',
-} as const
 
 function getWidgetToggleClass(isActive: boolean): string {
   return cn(

@@ -3,17 +3,17 @@ import { createClient } from '@/lib/supabase/server'
 import { requireAuthenticatedBusinessId } from '@/lib/business'
 import { getActiveOperator } from '@/lib/operator'
 import { redirect } from 'next/navigation'
-import CajaView from '@/components/caja/CajaView'
+import CashSessionsView from '@/components/cash-sessions/CashSessionsView'
 
 export const dynamic = 'force-dynamic'
 
-export default async function CajaPage() {
+export default async function CashSessionsPage() {
   const supabase = await createClient()
   const cookieStore = await cookies()
   const activeOperator = getActiveOperator(cookieStore)
   const businessId = await requireAuthenticatedBusinessId(supabase)
 
-  // Only owner and operators with analysis permission can access /caja
+  // Only owner and operators with analysis permission can access /cash-sessions
   if (activeOperator && activeOperator.role !== 'owner' && !activeOperator.permissions.analysis) {
     redirect('/pos')
   }
@@ -31,7 +31,7 @@ export default async function CajaPage() {
   const operatorId = activeOperator?.role === 'owner' || !activeOperator ? null : activeOperator.profile_id
 
   return (
-    <CajaView
+    <CashSessionsView
       businessId={businessId}
       activeSession={activeSession}
       initialSessions={sessions}

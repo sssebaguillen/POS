@@ -8,8 +8,8 @@ import { Button } from '@/components/ui/button'
 import PageHeader from '@/components/shared/PageHeader'
 import OpenSessionModal from '@/components/pos/OpenSessionModal'
 import CloseSessionModal from '@/components/pos/CloseSessionModal'
-import SessionDetailPanel from '@/components/caja/SessionDetailPanel'
-import type { ActiveSessionRow, SessionRow } from '@/app/(app)/caja/page'
+import SessionDetailPanel from '@/components/cash-sessions/SessionDetailPanel'
+import type { ActiveSessionRow, SessionRow } from '@/app/(app)/cash-sessions/page'
 
 interface Props {
   businessId: string
@@ -42,7 +42,7 @@ function DiffBadge({ diff, formatMoney }: { diff: number | null; formatMoney: (n
   return <span className="text-xs font-medium text-destructive">{formatMoney(diff)}</span>
 }
 
-export default function CajaView({ businessId, activeSession: initialActiveSession, initialSessions, initialTotal, operatorId }: Props) {
+export default function CashSessionsView({ businessId, activeSession: initialActiveSession, initialSessions, initialTotal, operatorId }: Props) {
   const formatMoney = useFormatMoney()
   const supabase = useMemo(() => createClient(), [])
 
@@ -161,28 +161,28 @@ export default function CajaView({ businessId, activeSession: initialActiveSessi
                 No hay sesiones registradas aún
               </div>
             ) : (
-              <div className="border border-border rounded-xl overflow-hidden">
+              <div className="surface-card overflow-hidden">
                 <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b border-border bg-muted/30">
-                        <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground">Apertura</th>
-                        <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground">Abrió</th>
-                        <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground hidden md:table-cell">Cerró</th>
-                        <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground hidden md:table-cell">Duración</th>
-                        <th className="text-right px-4 py-2.5 text-xs font-medium text-muted-foreground">Ventas</th>
-                        <th className="text-right px-4 py-2.5 text-xs font-medium text-muted-foreground">Total</th>
-                        <th className="text-right px-4 py-2.5 text-xs font-medium text-muted-foreground hidden lg:table-cell">Esperado</th>
-                        <th className="text-right px-4 py-2.5 text-xs font-medium text-muted-foreground hidden lg:table-cell">Contado</th>
-                        <th className="text-right px-4 py-2.5 text-xs font-medium text-muted-foreground" title="Diferencia">Dif.</th>
+                  <table className="w-full text-sm min-w-[640px]">
+                    <thead className="border-b border-edge/60 text-left text-hint">
+                      <tr>
+                        <th className="px-4 py-3">Apertura</th>
+                        <th className="px-4 py-3">Abrió</th>
+                        <th className="px-4 py-3 hidden md:table-cell">Cerró</th>
+                        <th className="px-4 py-3 hidden md:table-cell">Duración</th>
+                        <th className="px-4 py-3 text-right">Ventas</th>
+                        <th className="px-4 py-3 text-right">Total</th>
+                        <th className="px-4 py-3 text-right hidden lg:table-cell">Esperado</th>
+                        <th className="px-4 py-3 text-right hidden lg:table-cell">Contado</th>
+                        <th className="px-4 py-3 text-right" title="Diferencia">Dif.</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-border">
+                    <tbody>
                       {sessions.map(s => (
                         <tr
                           key={s.id}
                           onClick={() => setSelectedSession(s)}
-                          className="hover:bg-muted/30 cursor-pointer transition-colors"
+                          className="border-b border-edge/40 last:border-0 hover:bg-muted/30 cursor-pointer transition-colors"
                         >
                           <td className="px-4 py-3 whitespace-nowrap">
                             <div>{formatDateTime(s.opened_at)}</div>
@@ -220,7 +220,7 @@ export default function CajaView({ businessId, activeSession: initialActiveSessi
                 </div>
 
                 {sessions.length < total && (
-                  <div className="border-t border-border px-4 py-3 text-center">
+                  <div className="border-t border-edge/60 px-4 py-3 text-center">
                     <Button
                       variant="ghost"
                       size="sm"

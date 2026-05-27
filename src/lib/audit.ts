@@ -37,6 +37,13 @@ export const AUDIT_ACTION_LABELS: Record<string, string> = {
   customer_created:           'Cliente creado',
   customer_updated:           'Cliente editado',
   customer_credit_settled:    'Pago de cuenta corriente',
+  catalog_order_creado:       'Pedido online recibido',
+  catalog_order_aceptado:     'Pedido aceptado',
+  catalog_order_rechazado:    'Pedido rechazado',
+  catalog_order_cancelado:    'Pedido cancelado',
+  catalog_order_en_camino:    'Pedido en camino',
+  catalog_order_listo_retiro: 'Pedido listo para retirar',
+  catalog_order_completado:   'Pedido completado',
 }
 
 export const AUDIT_TONE_CLASSES: Record<ActivityActionTone, string> = {
@@ -48,6 +55,9 @@ export const AUDIT_TONE_CLASSES: Record<ActivityActionTone, string> = {
 
 export function getAuditActionTone(action: string): ActivityActionTone {
   if (action.includes('bulk')) return 'bulk'
+  if (action === 'catalog_order_creado') return 'created'
+  if (action === 'catalog_order_rechazado' || action === 'catalog_order_cancelado') return 'deleted'
+  if (action.startsWith('catalog_order_')) return 'updated'
   if (action.endsWith('_created')) return 'created'
   if (action.endsWith('_updated')) return 'updated'
   if (action.endsWith('_deleted')) return 'deleted'

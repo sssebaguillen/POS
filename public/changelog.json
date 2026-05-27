@@ -1,6 +1,20 @@
 {
-  "current": "0.0.4.4",
+  "current": "0.0.5",
   "releases": [
+    {
+      "version": "0.0.5",
+      "date": "2026-05-27",
+      "label": "Pedidos Online y mejoras de UI",
+      "changes": [
+        { "type": "new", "text": "Pedidos Online: nueva sección donde recibís los pedidos que llegan desde tu catálogo público. Cambiás el estado (pendiente, en preparación, listo, completado, rechazado, cancelado), y al marcar como completado el pedido se convierte automáticamente en venta y descuenta el stock. Notificación sonora y aviso emergente cuando llega un pedido nuevo mientras estás en Vender o Dashboard, y un contador rojo en el menú lateral con los pedidos sin atender." },
+        { "type": "new", "text": "En la sección Proveedores ahora se ven todas las columnas: Teléfono, Email, Dirección y Notas. Antes sólo se mostraban Nombre, Contacto y Email — los demás campos quedaban escondidos aunque los hubieras cargado." },
+        { "type": "fix", "text": "En el listado de Gastos las columnas Descripción y Categoría estaban cruzadas: el chip de categoría aparecía bajo Descripción y el texto descriptivo bajo Categoría. Ahora cada dato está en su columna correcta." },
+        { "type": "fix", "text": "Al editar un proveedor con el formulario inline anterior, los campos Dirección y Notas no eran editables aunque estuvieran cargados. Ahora la edición se hace en un modal con todos los campos disponibles." },
+        { "type": "improvement", "text": "Todas las listas y tablas de la app ahora siguen dos patrones visuales consistentes: tablas densas para escanear datos (Actividad, Inventario, Caja, Clientes, Estadísticas, Listas de precios, Proveedores, Gastos) y tarjetas verticales para items con acción (Pedidos online, historial de ventas del Dashboard, Operarios). Antes había mezcla de estilos, bordes y padding distintos entre secciones." },
+        { "type": "improvement", "text": "En Gastos y Proveedores los botones de acción ahora dicen 'Editar' y 'Eliminar' en lugar de íconos sin texto. Mismo criterio que en Clientes y Operarios. La confirmación de borrar también se unificó: ahora siempre abre un modal de confirmación en vez del '¿Borrar?' inline con tildes." },
+        { "type": "improvement", "text": "Las URLs internas de la app pasaron a inglés para mantener una convención única: /caja → /cash-sessions, /clientes → /customers, /pedidos → /orders. El catálogo público (/catalogo/tu-negocio) sigue en español. Si tenías favoritos de las rutas viejas vas a tener que actualizarlos." }
+      ]
+    },
     {
       "version": "0.0.4.4",
       "date": "2026-05-27",

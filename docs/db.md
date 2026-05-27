@@ -312,7 +312,7 @@ Append-only audit trail of business mutations. Indefinite retention. RLS enabled
 | operator_id | uuid nullable | FK → operators(id). **NULL = owner ("Dueño")** — owner has no row in `operators` |
 | actor_role | text | snapshot of role at action time (`'owner'`, `'manager'`, `'cashier'`, `'custom'`) |
 | action | text | e.g. `sale_created`, `sale_updated`, `sale_deleted`, `product_created`, `product_updated`, `product_deleted`, `product_bulk_deleted`, `product_bulk_status`, `product_bulk_category`, `product_bulk_brand`, `category_*`, `brand_*` |
-| entity_type | text | `'sale' \| 'product' \| 'category' \| 'brand' \| 'expense' \| 'supplier' \| 'price_list' \| 'setting' \| 'operator'` |
+| entity_type | text | `'sale' \| 'product' \| 'category' \| 'brand' \| 'expense' \| 'supplier' \| 'price_list' \| 'setting' \| 'operator' \| 'customer' \| 'catalog_order'` |
 | entity_id | uuid nullable | id of affected entity (null for bulk) |
 | entity_label | text nullable | snapshot label for display (sales have no label — show total from `new_data`/`old_data`) |
 | old_data | jsonb nullable | full pre-state snapshot for `*_updated` / `*_deleted` |
@@ -322,6 +322,66 @@ Append-only audit trail of business mutations. Indefinite retention. RLS enabled
 Helper: `log_audit_event(p_business_id, p_operator_id, p_actor_role, p_action, p_entity_type, p_entity_id, p_entity_label, p_old_data, p_new_data)` — called by all mutation RPCs. Convention: **`operator_id` is NULL when the owner performed the action**; the read RPC `get_audit_log` and UI both render that as "Dueño". Migrations: `20260515_06_audit_log_table.sql`, `20260515_07_audit_log_instrumentation.sql`, `20260515_08_audit_log_operator_id_nullable.sql`, `20260515_12_audit_sale_data.sql` (sale snapshots).
 
 ---
+
+### `catalog_orders` ⭐ new (Pedidos Online, 2026-05-27)
+
+Capturing the public catalog's WhatsApp-checkout intent as structured rows. Anon callers insert via `create_catalog_order` (SECURITY DEFINER, GRANT EXECUTE TO anon) — the table itself has no anon policy. Owner/operators mutate via `update_catalog_order_status`. Stock-negativo allowed (no stock validation at order time).
+
+| column | type | notes |
+|--------|------|-------|
+| id | uuid PK | gen_random_uuid() |
+| business_id | uuid | FK → businesses(id) ON DELETE CASCADE |
+| order_number | int | per-business counter (`catalog_order_counters.last_number + 1`), unique with business_id |
+| customer_name | text | trimmed at insert |
+| customer_phone | text | digits-only normalized, indexed |
+| delivery_type | text | `'takeaway' \| 'delivery'` |
+| address | text nullable | required iff `delivery_type = 'delivery'` (CHECK constraint) |
+| notes | text nullable | |
+| subtotal, total | numeric(12,2) | re-priced server-side via `compute_effective_price` |
+| status | text | `'recibido' \| 'aceptado' \| 'en_camino' \| 'listo_retiro' \| 'completado' \| 'rechazado' \| 'cancelado'` |
+| sale_id | uuid nullable | FK → sales(id). Populated when status → `completado` |
+| client_ip | inet nullable | captured by the API route for forensics |
+| accepted_at, completed_at, rejected_at, cancelled_at | timestamptz nullable | set on each transition |
+| created_at, updated_at | timestamptz | |
+
+State machine (enforced in `update_catalog_order_status`):
+- `recibido → aceptado | rechazado | cancelado`
+- `aceptado → en_camino` (delivery only) `| listo_retiro` (takeaway only) `| cancelado`
+- `en_camino | listo_retiro → completado | cancelado`
+- `completado`, `rechazado`, `cancelado` terminal.
+
+### `catalog_order_items` ⭐ new
+Items snapshotted at order time (product/variant may be deleted later → FK SET NULL on those columns).
+
+| column | type | notes |
+|--------|------|-------|
+| id | uuid PK | |
+| order_id | uuid | FK → catalog_orders(id) ON DELETE CASCADE |
+| product_id | uuid nullable | FK → products(id) ON DELETE SET NULL |
+| product_name | text | snapshot |
+| variant_id | uuid nullable | FK → product_variants(id) ON DELETE SET NULL |
+| variant_label | text nullable | snapshot ("Rojo / M") |
+| quantity | int CHECK > 0 | |
+| unit_price | numeric(12,2) | server-re-priced |
+| line_total | numeric(12,2) | unit_price × quantity |
+| image_url | text nullable | snapshot |
+
+### `catalog_phone_blacklist` ⭐ new
+| column | type | notes |
+|--------|------|-------|
+| business_id, phone | composite PK | |
+| reason | text nullable | |
+| created_at | timestamptz | |
+
+Populated when owner rechaza un pedido con la opción "bloquear este número" marcada. Checked by `create_catalog_order` before insert.
+
+### `catalog_order_counters` ⭐ new
+Per-business order-number counter; atomic increment via `INSERT … ON CONFLICT DO UPDATE`.
+
+| column | type | notes |
+|--------|------|-------|
+| business_id | uuid PK | |
+| last_number | int | |
 
 ### `invoices`
 | column | type | notes |
@@ -422,6 +482,11 @@ All SECURITY DEFINER, all with `set search_path = public, extensions`.
 | `bulk_update_product_brand(p_business_id, p_ids uuid[], p_brand_id uuid)` | Bulk brand change |
 | `get_catalog_products(p_slug)` | Public catalog products (SECURITY DEFINER, GRANT EXECUTE TO anon) |
 | `get_catalog_categories(p_slug)` | Public catalog categories (SECURITY DEFINER, GRANT EXECUTE TO anon) |
+| `create_catalog_order(p_slug, p_customer_name, p_phone, p_delivery_type, p_address, p_notes, p_items, p_client_ip)` | Anon-callable (GRANT EXECUTE TO anon). Validates phone/blacklist/anti-spam (3 pending per phone/hour), re-precia items con `compute_effective_price`, reserva `order_number` per-business, inserta `catalog_orders` + `catalog_order_items`. Returns `{success, order_id, order_number, total}`. |
+| `get_catalog_orders(p_status?, p_from?, p_to?)` | Lista de pedidos del negocio (autenticado). |
+| `get_catalog_order(p_order_id)` | Detalle + items. Returns `{success, order, items}`. |
+| `get_catalog_orders_unread_count()` | Conteo de pedidos en estado `recibido` (autenticado). Usado por badge del sidebar y `NewOrderNotifier`. |
+| `update_catalog_order_status(p_operator_id, p_order_id, p_new_status, p_blacklist?)` | Valida transición; en `completado` llama a `create_sale_transaction` (payment_method `'other'`) y guarda `sale_id`. En `rechazado` con `p_blacklist=true` agrega el teléfono a `catalog_phone_blacklist`. Audit: `catalog_order_<status>` / entity_type `catalog_order`. Reusa permiso `sales`. |
 | `set_updated_at()` | Trigger function: sets `updated_at = now()` on UPDATE |
 | `rls_auto_enable` | Admin utility — enables RLS on all tables automatically |
 

@@ -11,6 +11,7 @@ import { CURRENCIES } from '@/lib/constants/currencies'
 import { CurrencyProvider } from '@/lib/context/CurrencyContext'
 import { parseOnboardingState } from '@/components/onboarding/onboarding-types'
 import OnboardingTour from '@/components/onboarding/OnboardingTour'
+import NewOrderNotifier from '@/components/orders/NewOrderNotifier'
 
 function luminance(hex: string): number {
   const r = parseInt(hex.slice(1, 3), 16) / 255
@@ -160,27 +161,28 @@ export default async function AppLayout({
           --primary-foreground: #1a0800;
         }
       `}</style>
-      <AppShell
-        activeOperatorName={activeOperator?.name ?? null}
-        activeOperatorRole={activeOperator?.role ?? null}
-        businessId={businessId}
-        businessName={businessName}
-        businessSlug={businessSlug}
-        initialCollapsed={sidebarCollapsed}
-        initialLastSeenChangelogVersion={lastSeenChangelogVersion}
-        showChangelog={isOwner}
-        showOnboardingResume={(() => {
-          if (!onboardingStateRaw) return false
-          const s = parseOnboardingState(onboardingStateRaw)
-          return !s.completed && s.wizard_suppressed === true
-        })()}
-      >
-        <QueryProvider>
+      <QueryProvider>
+        <AppShell
+          activeOperatorName={activeOperator?.name ?? null}
+          activeOperatorRole={activeOperator?.role ?? null}
+          businessId={businessId}
+          businessName={businessName}
+          businessSlug={businessSlug}
+          initialCollapsed={sidebarCollapsed}
+          initialLastSeenChangelogVersion={lastSeenChangelogVersion}
+          showChangelog={isOwner}
+          showOnboardingResume={(() => {
+            if (!onboardingStateRaw) return false
+            const s = parseOnboardingState(onboardingStateRaw)
+            return !s.completed && s.wizard_suppressed === true
+          })()}
+        >
           <CurrencyProvider currency={currencyCode}>
             {children}
+            <NewOrderNotifier />
           </CurrencyProvider>
-        </QueryProvider>
-      </AppShell>
+        </AppShell>
+      </QueryProvider>
       {businessId && (
         <PostHogIdentify userId={user.id} businessId={businessId} />
       )}

@@ -18,7 +18,7 @@
 
 - [ ] Con sesión abierta, hacer 5 ventas
 - [ ] Verificar que el widget actualiza el contador de ventas y el total acumulado
-- [ ] Ir a /caja y verificar que la sesión activa muestra los mismos números
+- [ ] Ir a /cash-sessions y verificar que la sesión activa muestra los mismos números
 
 ---
 
@@ -42,7 +42,7 @@
 - [ ] Al cerrar, ingresar $4.800 como contado
 - [ ] Verificar que la diferencia muestra "-$200 faltante" en rojo
 - [ ] Ingresar notas: "faltaron $200"
-- [ ] Confirmar y verificar en /caja que la sesión cerrada muestra la diferencia correcta
+- [ ] Confirmar y verificar en /cash-sessions que la sesión cerrada muestra la diferencia correcta
 
 ---
 
@@ -64,9 +64,9 @@
 
 ---
 
-## 4.7 Historial en /caja
+## 4.7 Historial en /cash-sessions
 
-- [ ] Ir a /caja
+- [ ] Ir a /cash-sessions
 - [ ] Verificar que el historial muestra todas las sesiones anteriores
 - [ ] Verificar columnas: fecha, quién abrió, quién cerró, duración, ventas, total, diferencia
 - [ ] La diferencia debe ser verde si ≥ 0, roja si < 0

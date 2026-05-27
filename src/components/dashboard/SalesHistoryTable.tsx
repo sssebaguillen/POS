@@ -14,7 +14,8 @@ import type { ReceiptData } from '@/lib/printer/types'
 import { createClient } from '@/lib/supabase/client'
 import { getSaleDetail, updateSale, deleteSale } from '@/lib/api/sales'
 import type { PaymentMethod } from '@/lib/constants/domain'
-import { isPaymentMethod, normalizePayment, PAYMENT_OPTIONS } from '@/lib/payments'
+import { isPaymentMethod, normalizePayment, PAYMENT_OPTIONS, PAYMENT_TONE } from '@/lib/payments'
+import { ACCENT_CHIP } from '@/lib/accent-colors'
 import { useToast } from '@/hooks/useToast'
 import Toast from '@/components/shared/Toast'
 import SelectDropdown from '@/components/ui/SelectDropdown'
@@ -67,7 +68,6 @@ function SalesHistoryTable({ rows, businessId, businessName, operatorId, onSaleD
   const [confirmingDeleteId, setConfirmingDeleteId] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [filterMethod, setFilterMethod] = useState<PaymentMethod | null>(null)
-  const [filterStatus, setFilterStatus] = useState<string | null>(null)
   const [filterOperatorName, setFilterOperatorName] = useState('')
   const [receiptPreview, setReceiptPreview] = useState<ReceiptData | null>(null)
   const [localError, setLocalError] = useState<string | null>(null)
@@ -100,7 +100,6 @@ function SalesHistoryTable({ rows, businessId, businessName, operatorId, onSaleD
       }
       // chip filters — AND with text search and each other
       if (filterMethod !== null && row.method !== filterMethod) return false
-      if (filterStatus !== null && row.status !== filterStatus) return false
       if (filterOperatorName !== '') {
         if (filterOperatorName === '__owner__') {
           if (row.operator_name !== null) return false
@@ -110,7 +109,7 @@ function SalesHistoryTable({ rows, businessId, businessName, operatorId, onSaleD
       }
       return true
     })
-  }, [visibleRows, searchQuery, filterMethod, filterStatus, filterOperatorName, saleDetails])
+  }, [visibleRows, searchQuery, filterMethod, filterOperatorName, saleDetails])
 
   const operatorOptions = useMemo(() => {
     const names = [...new Set(visibleRows.map(r => r.operator_name).filter(Boolean))] as string[]
@@ -122,7 +121,7 @@ function SalesHistoryTable({ rows, businessId, businessName, operatorId, onSaleD
     ]
   }, [visibleRows])
 
-  const hasActiveFilters = !!searchQuery || filterMethod !== null || filterStatus !== null || filterOperatorName !== ''
+  const hasActiveFilters = !!searchQuery || filterMethod !== null || filterOperatorName !== ''
 
   const summaryTotal = useMemo(
     () => filteredRows.reduce((acc, r) => acc + r.total, 0),
@@ -288,7 +287,6 @@ function SalesHistoryTable({ rows, businessId, businessName, operatorId, onSaleD
   function clearAllFilters() {
     setSearchQuery('')
     setFilterMethod(null)
-    setFilterStatus(null)
     setFilterOperatorName('')
   }
 
@@ -362,7 +360,7 @@ function SalesHistoryTable({ rows, businessId, businessName, operatorId, onSaleD
       <div className="p-4 border-b border-edge-soft space-y-3">
         <p className="font-semibold text-heading font-display">Historial detallado</p>
 
-        {/* Row 1: search + method chips + clear */}
+        {/* Search + method chips + operator + clear */}
         <div className="flex flex-wrap items-center gap-2">
           <Input
             value={searchQuery}
@@ -375,12 +373,21 @@ function SalesHistoryTable({ rows, businessId, businessName, operatorId, onSaleD
               <button
                 key={opt.value}
                 onClick={() => setFilterMethod(prev => prev === opt.value ? null : opt.value)}
-                className={`pill-tab ${filterMethod === opt.value ? 'bg-primary/10 text-primary border border-primary/20 dark:bg-primary/15 dark:border-primary/30' : ''}`}
+                className={`pill-tab ${filterMethod === opt.value ? `${ACCENT_CHIP[PAYMENT_TONE[opt.value]]} border` : ''}`}
               >
                 {opt.label}
               </button>
             ))}
           </div>
+          {operatorOptions.length >= 3 && (
+            <SelectDropdown
+              value={filterOperatorName}
+              onChange={setFilterOperatorName}
+              options={operatorOptions}
+              className="w-[160px] shrink-0"
+              usePortal
+            />
+          )}
           {hasActiveFilters && (
             <button
               onClick={clearAllFilters}
@@ -388,31 +395,6 @@ function SalesHistoryTable({ rows, businessId, businessName, operatorId, onSaleD
             >
               Limpiar todo
             </button>
-          )}
-        </div>
-
-        {/* Row 2: status chips + operator dropdown */}
-        <div className="flex flex-wrap items-center gap-2">
-          <button
-            onClick={() => setFilterStatus(prev => prev === 'cancelled' ? null : 'cancelled')}
-            className={`pill-tab ${filterStatus === 'cancelled' ? 'bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-500/15 dark:text-amber-300 dark:border-amber-500/30' : ''}`}
-          >
-            Canceladas
-          </button>
-          <button
-            onClick={() => setFilterStatus(prev => prev === 'refunded' ? null : 'refunded')}
-            className={`pill-tab ${filterStatus === 'refunded' ? 'bg-red-50 text-red-600 border border-red-200 dark:bg-red-500/15 dark:text-red-400 dark:border-red-500/30' : ''}`}
-          >
-            Reembolsadas
-          </button>
-          {operatorOptions.length >= 3 && (
-            <SelectDropdown
-              value={filterOperatorName}
-              onChange={setFilterOperatorName}
-              options={operatorOptions}
-              className="w-[160px]"
-              usePortal
-            />
           )}
         </div>
         <div className="flex flex-wrap items-stretch gap-x-5 gap-y-2 px-4 py-2.5 bg-muted/50 rounded-xl">
@@ -481,7 +463,7 @@ function SalesHistoryTable({ rows, businessId, businessName, operatorId, onSaleD
                 }`}
               >
                 <button
-                  className="w-full px-3.5 py-2.5 text-left"
+                  className="w-full px-4 py-3 text-left"
                   onClick={() => fetchSaleDetail(sale.id)}
                   aria-expanded={isExpanded}
                   aria-label={`${isExpanded ? 'Contraer' : 'Ver'} detalle, Venta #${saleNumber}, ${fmt(sale.total)}`}
@@ -508,7 +490,11 @@ function SalesHistoryTable({ rows, businessId, businessName, operatorId, onSaleD
                   </div>
 
                   <div className="flex items-center gap-1.5 mt-1 flex-wrap">
-                    <span className="inline-flex items-center text-[11px] px-2 py-0.5 rounded-full border font-medium bg-surface-alt border-edge text-body">
+                    <span className={`inline-flex items-center text-[11px] px-2 py-0.5 rounded-full border font-medium ${
+                      isPaymentMethod(sale.method)
+                        ? ACCENT_CHIP[PAYMENT_TONE[sale.method]]
+                        : 'bg-surface-alt border-edge text-body'
+                    }`}>
                       {normalizePayment(sale.method)}
                     </span>
                     {sale.status === 'cancelled' && (
@@ -537,7 +523,7 @@ function SalesHistoryTable({ rows, businessId, businessName, operatorId, onSaleD
                 </button>
 
                 {isExpanded && detail && (
-                  <div className="px-3.5 pb-3 border-t border-dashed border-primary/20 dark:border-primary/15">
+                  <div className="px-4 pb-3 border-t border-dashed border-primary/20 dark:border-primary/15">
                     <ul className="space-y-1 pt-2.5 mb-2.5">
                       {detail.items.map(item => (
                         <li key={item.id} className="flex items-center justify-between text-sm">

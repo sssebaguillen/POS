@@ -5,6 +5,7 @@ import type {
   ActivityAction,
   BrandData,
   BulkData,
+  CatalogOrderData,
   CategoryData,
   CustomerData,
   CustomerSettlementNew,
@@ -65,6 +66,10 @@ import {
   SaleDiff,
   SaleSummary,
 } from '@/components/activity/detail/sale'
+import {
+  CatalogOrderCreated,
+  CatalogOrderTransition,
+} from '@/components/activity/detail/catalog-order'
 
 export interface ActivityDetailRenderProps {
   row: ActivityLogRow
@@ -232,6 +237,45 @@ const ACTIVITY_DETAIL_RENDERERS: Record<ActivityAction, ActivityRenderer> = {
     <CustomerSettlement
       oldData={readAuditPayload<CustomerSettlementOld>(row.old_data)}
       newData={readAuditPayload<CustomerSettlementNew>(row.new_data)}
+    />
+  ),
+  catalog_order_creado: ({ row }) => (
+    <CatalogOrderCreated data={readAuditPayload<CatalogOrderData>(row.new_data)} />
+  ),
+  catalog_order_aceptado: ({ row }) => (
+    <CatalogOrderTransition
+      oldData={readAuditPayload<CatalogOrderData>(row.old_data)}
+      newData={readAuditPayload<CatalogOrderData>(row.new_data)}
+    />
+  ),
+  catalog_order_rechazado: ({ row }) => (
+    <CatalogOrderTransition
+      oldData={readAuditPayload<CatalogOrderData>(row.old_data)}
+      newData={readAuditPayload<CatalogOrderData>(row.new_data)}
+    />
+  ),
+  catalog_order_cancelado: ({ row }) => (
+    <CatalogOrderTransition
+      oldData={readAuditPayload<CatalogOrderData>(row.old_data)}
+      newData={readAuditPayload<CatalogOrderData>(row.new_data)}
+    />
+  ),
+  catalog_order_en_camino: ({ row }) => (
+    <CatalogOrderTransition
+      oldData={readAuditPayload<CatalogOrderData>(row.old_data)}
+      newData={readAuditPayload<CatalogOrderData>(row.new_data)}
+    />
+  ),
+  catalog_order_listo_retiro: ({ row }) => (
+    <CatalogOrderTransition
+      oldData={readAuditPayload<CatalogOrderData>(row.old_data)}
+      newData={readAuditPayload<CatalogOrderData>(row.new_data)}
+    />
+  ),
+  catalog_order_completado: ({ row }) => (
+    <CatalogOrderTransition
+      oldData={readAuditPayload<CatalogOrderData>(row.old_data)}
+      newData={readAuditPayload<CatalogOrderData>(row.new_data)}
     />
   ),
 }

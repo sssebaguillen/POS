@@ -310,6 +310,7 @@ export default function CatalogView({
 
         <div className={`${isMobileCartOpen ? 'block' : 'hidden'} lg:sticky lg:top-0 lg:block lg:h-screen lg:overflow-hidden`}>
           <CartPanel
+            businessSlug={slug}
             businessName={business.name}
             businessWhatsapp={business.whatsapp}
             cartItems={cartItems}

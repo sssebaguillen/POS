@@ -15,7 +15,9 @@
 
 ### Routes
 
-All routes are in English: `/stats/payment-methods`, `/stats/operators`, `/stats/breakdown`, `/stats/top-products`.
+All app routes are in English (`/customers`, `/orders`, `/cash-sessions`, `/stats/payment-methods`, etc.). **Sole exception:** `/catalogo/[slug]` — the public storefront for LATAM customers stays in Spanish. Sidebar labels and all user-facing UI copy remain in Spanish; only the URL path is English.
+
+When renaming a route, update: the folder under `src/app/(app)/`, the matching component folder under `src/components/`, the component name itself, sidebar `NAV_LINKS` + `NAV_SECTIONS` `hrefs`, any route checks in `src/proxy.ts`, and any `localStorage` keys that referenced the old slug.
 
 ---
 
@@ -40,6 +42,86 @@ Two distinct filter patterns — never mix:
 - **Chips** (flat `pill-tab` buttons with the active class `bg-primary/10 text-primary border border-primary/20 dark:bg-primary/15 dark:border-primary/30`): used for data filters (entity type in `/activity`, category in `/expenses`, status filters in `SalesHistoryTable`). No sliding indicator. Imply data-shape filtering, often with a "Limpiar" button when a non-default value is selected.
 
 The reference implementation for the chip pattern is `SalesHistoryTable.tsx`.
+
+### List Patterns
+
+Two — and only two — canonical patterns for any list/table view. Pick by *intent*, not by data shape.
+
+**A. Tabular Browse** — scan many rows by attribute, sort/paginate, low per-row action density.
+**B. Card Stack** — act on individual items, click → detail/expand, few attributes visible per row.
+
+If a view needs *both* (scan + expand), use A and put the detail in an expanded row (see `/activity`).
+
+#### A. Tabular Browse — reference: `ActivityResults.tsx`
+
+```tsx
+<div className="surface-card overflow-x-auto">
+  <table className="w-full text-sm min-w-[640px]">
+    <thead className="border-b border-edge/60 text-left text-hint">
+      <tr>
+        <th className="px-4 py-3">Columna</th>
+        ...
+      </tr>
+    </thead>
+    <tbody>
+      {rows.map(row => <tr key={row.id} className="border-b border-edge/40 last:border-0">...</tr>)}
+    </tbody>
+  </table>
+</div>
+```
+
+Rules:
+- Container: **`surface-card overflow-x-auto`** (never raw `border border-border`).
+- Header: **`border-b border-edge/60 text-left text-hint`**, cell padding **`px-4 py-3`** (header and body identical).
+- Row separator: **`border-b border-edge/40 last:border-0`**.
+- Min-width for horizontal scroll on mobile: **`min-w-[640px]`** (adjust per column count).
+- Sortable headers: button inside `<th>` with `ChevronUp/ChevronDown` icon.
+- Pagination: footer below the card, right-aligned `Anterior` / `Siguiente` buttons as in `ActivityResults.tsx:104-128`.
+- Empty state: render *inside* the card (replaces `<table>`), centered with icon + title + body + optional CTA — see `EmptyFilteredState` / `EmptyActivityState`.
+
+Used by: `/activity`, `/inventory` (list mode), `/customers`, `/stats/*`, `/price-lists`, `/cash-sessions`.
+
+#### B. Card Stack — reference: `OrdersView.tsx`
+
+```tsx
+<div className="surface-card overflow-hidden">
+  <div className="p-4 border-b border-edge-soft space-y-3">{/* filters/header */}</div>
+  <ul className="p-3 space-y-1.5">
+    {items.map(item => (
+      <li key={item.id}>
+        <button
+          type="button"
+          className="w-full text-left rounded-xl border border-edge/60 px-4 py-3 transition-colors hover:border-primary/30 hover:bg-surface-alt/40"
+          onClick={() => onSelect(item)}
+        >
+          {/* row content */}
+        </button>
+      </li>
+    ))}
+  </ul>
+</div>
+```
+
+Rules:
+- Container: **`surface-card overflow-hidden`**, filter header **`p-4 border-b border-edge-soft`**.
+- List: **`<ul className="p-3 space-y-1.5">`** with **`<li>`** wrappers (semantic, not bare divs).
+- Row: **`rounded-xl border px-4 py-3`** (never `rounded-[20px]`, never `py-2.5`).
+- Hover: **`hover:border-primary/30 hover:bg-surface-alt/40`**.
+- Click target: `<button>` inside `<li>` — keeps the row keyboard-accessible without nesting interactive elements.
+- Expandable variant (e.g. `SalesHistoryTable`): same row container, expanded state adds `border-primary/40 bg-surface-alt/30` and renders detail in a sibling div below the button inside the same `<li>`.
+
+Used by: `/orders`, `/dashboard` (SalesHistoryTable, RecentActivityWidget).
+
+#### Convergence status
+
+All known outliers converged as of 2026-05-27:
+- `CashSessionsView.tsx` — migrated to `surface-card` with canonical thead.
+- `ProductCard.tsx` — `rounded-xl border` (was `rounded-[20px] border-2`).
+- `SalesHistoryTable.tsx` — row card padding aligned to `px-4 py-3`.
+- `OperatorList.tsx` — `<ul>` semantic wrapper with Card Stack row styling.
+- `SuppliersPanel.tsx` — edit migrated from inline-edit-replaces-row to `EditSupplierModal` (matches OperatorList / NewProductModal / etc.).
+
+CRUD edit pattern is now uniform: always a modal, never inline-replace-row.
 
 ### Loading Button Text
 
@@ -207,6 +289,9 @@ DB enum (`payments.method`): `'cash' | 'card' | 'transfer' | 'mercadopago'` — 
 | `/activity` | Audit log | `permissions.analysis` |
 | `/expenses` | Expenses module | `permissions.expenses` |
 | `/expenses/providers` | Supplier management | `permissions.expenses` |
+| `/orders` | Pedidos Online (catalog orders) | `permissions.sales` |
+| `/customers` | Customers | always (read), `permissions.sales` to mutate |
+| `/cash-sessions` | Cash sessions history | `permissions.analysis` |
 | `/profile` | Owner profile | owner only (non-owners get flash → /pos) |
 | `/operator/me` | Active operator profile | any operator (owner included) |
 | `/settings` | Business settings + operators | `permissions.settings` |

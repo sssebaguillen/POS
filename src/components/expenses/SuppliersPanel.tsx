@@ -1,11 +1,13 @@
 'use client'
 
 import { useState, useMemo } from 'react'
-import { Plus, Pencil, Trash2, X, Check } from 'lucide-react'
+import { Plus } from 'lucide-react'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import ConfirmModal from '@/components/shared/ConfirmModal'
 import type { Supplier } from './types'
+import EditSupplierModal from './EditSupplierModal'
 import posthog from 'posthog-js'
 
 interface Props {
@@ -33,13 +35,11 @@ export default function SuppliersPanel({ suppliers, businessId, operatorId, supa
   const supabase = useMemo(() => supabaseClient, [supabaseClient])
   const setShowForm = (v: boolean) => onShowFormChange?.(v)
   const [form, setForm] = useState<SupplierForm>(emptyForm)
-  const [editingId, setEditingId] = useState<string | null>(null)
-  const [editForm, setEditForm] = useState<SupplierForm>(emptyForm)
+  const [editingSupplier, setEditingSupplier] = useState<Supplier | null>(null)
   const [saving, setSaving] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
-  const [confirmingDeleteId, setConfirmingDeleteId] = useState<string | null>(null)
+  const [confirmingDelete, setConfirmingDelete] = useState<Supplier | null>(null)
   const [formError, setFormError] = useState<string | null>(null)
-  const [editError, setEditError] = useState<string | null>(null)
   const [highlightId, setHighlightId] = useState<string | null>(null)
   const [search, setSearch] = useState('')
 
@@ -49,7 +49,10 @@ export default function SuppliersPanel({ suppliers, businessId, operatorId, supa
     return suppliers.filter(s =>
       s.name.toLowerCase().includes(q) ||
       (s.contact_name?.toLowerCase().includes(q) ?? false) ||
-      (s.phone?.toLowerCase().includes(q) ?? false)
+      (s.phone?.toLowerCase().includes(q) ?? false) ||
+      (s.email?.toLowerCase().includes(q) ?? false) ||
+      (s.address?.toLowerCase().includes(q) ?? false) ||
+      (s.notes?.toLowerCase().includes(q) ?? false)
     )
   }, [suppliers, search])
 
@@ -90,40 +93,10 @@ export default function SuppliersPanel({ suppliers, businessId, operatorId, supa
     flash(newSupplier.id)
   }
 
-  async function handleSaveEdit(id: string) {
-    if (!editForm.name.trim()) return
-    setSaving(true)
-    setEditError(null)
-    const { data: rpcResult, error } = await supabase.rpc('update_supplier', {
-      p_operator_id: operatorId,
-      p_business_id: businessId,
-      p_supplier_id: id,
-      p_name: editForm.name.trim(),
-      p_contact_name: editForm.contact_name.trim() || null,
-      p_phone: editForm.phone.trim() || null,
-      p_email: editForm.email.trim() || null,
-      p_address: editForm.address.trim() || null,
-      p_notes: editForm.notes.trim() || null,
-    })
-    setSaving(false)
-    const result = rpcResult as { success: boolean; error?: string } | null
-    if (error || !result?.success) {
-      setEditError(result?.error ?? error?.message ?? 'No se pudo guardar')
-      return
-    }
-    onSuppliersChange(
-      suppliers
-        .map(s => s.id === id ? { ...s, ...editForm } : s)
-        .sort((a, b) => a.name.localeCompare(b.name))
-    )
-    setEditingId(null)
-    flash(id)
-  }
-
   async function handleDeactivate(id: string) {
     if (deletingId) return
     setDeletingId(id)
-    setConfirmingDeleteId(null)
+    setConfirmingDelete(null)
     const { data: rpcResult, error } = await supabase.rpc('deactivate_supplier', {
       p_operator_id: operatorId,
       p_business_id: businessId,
@@ -136,22 +109,8 @@ export default function SuppliersPanel({ suppliers, businessId, operatorId, supa
   }
 
   function startEdit(supplier: Supplier) {
-    setEditingId(supplier.id)
-    setEditError(null)
-    setConfirmingDeleteId(null)
-    setEditForm({
-      name: supplier.name,
-      contact_name: supplier.contact_name ?? '',
-      phone: supplier.phone ?? '',
-      email: supplier.email ?? '',
-      address: supplier.address ?? '',
-      notes: supplier.notes ?? '',
-    })
-  }
-
-  function cancelEdit() {
-    setEditingId(null)
-    setEditError(null)
+    setConfirmingDelete(null)
+    setEditingSupplier(supplier)
   }
 
   return (
@@ -216,12 +175,15 @@ export default function SuppliersPanel({ suppliers, businessId, operatorId, supa
         </div>
       ) : (
         <div className="surface-card overflow-hidden">
-          <table className="w-full text-sm">
+          <table className="w-full text-sm min-w-[640px]">
             <thead className="border-b border-edge/60">
               <tr className="text-xs text-hint font-medium">
                 <th className="text-foreground text-left px-4 py-3">Nombre</th>
                 <th className="text-foreground text-left px-4 py-3 hidden md:table-cell">Contacto</th>
+                <th className="text-foreground text-left px-4 py-3 hidden md:table-cell">Teléfono</th>
                 <th className="text-foreground text-left px-4 py-3 hidden lg:table-cell">Email</th>
+                <th className="text-foreground text-left px-4 py-3 hidden xl:table-cell">Dirección</th>
+                <th className="text-foreground text-left px-4 py-3 hidden xl:table-cell">Notas</th>
                 <th className="text-foreground text-right px-4 py-3">Acciones</th>
               </tr>
             </thead>
@@ -229,115 +191,74 @@ export default function SuppliersPanel({ suppliers, businessId, operatorId, supa
               {filteredSuppliers.map(supplier => (
                 <tr
                   key={supplier.id}
-                  className={`border-b border-edge/40 transition-colors duration-300 ${
+                  className={`border-b border-edge/40 last:border-0 transition-colors duration-300 ${
                     highlightId === supplier.id ? 'bg-primary/5' : 'hover:bg-hover-bg'
                   }`}
                 >
-                  {editingId === supplier.id ? (
-                    <td className="px-4 py-3" colSpan={4}>
-                      <div className="space-y-2">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <Input
-                            className="h-8 text-sm w-36 min-w-0"
-                            value={editForm.name}
-                            onChange={e => setEditForm(prev => ({ ...prev, name: e.target.value }))}
-                            placeholder="Nombre"
-                            maxLength={100}
-                          />
-                          <Input
-                            className="h-8 text-sm w-36 min-w-0"
-                            value={editForm.contact_name}
-                            onChange={e => setEditForm(prev => ({ ...prev, contact_name: e.target.value }))}
-                            placeholder="Contacto"
-                            maxLength={100}
-                          />
-                          <Input
-                            className="h-8 text-sm w-32 min-w-0"
-                            value={editForm.phone}
-                            onChange={e => setEditForm(prev => ({ ...prev, phone: e.target.value }))}
-                            placeholder="Teléfono"
-                            maxLength={30}
-                          />
-                          <Input
-                            className="h-8 text-sm w-44 min-w-0"
-                            value={editForm.email}
-                            onChange={e => setEditForm(prev => ({ ...prev, email: e.target.value }))}
-                            placeholder="Email"
-                            maxLength={100}
-                          />
-                          <button
-                            type="button"
-                            onClick={() => handleSaveEdit(supplier.id)}
-                            disabled={saving}
-                            className="p-1.5 rounded-lg text-primary hover:bg-primary/5 transition-colors disabled:opacity-40"
-                          >
-                            <Check size={15} />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={cancelEdit}
-                            className="p-1.5 rounded-lg text-hint hover:bg-hover-bg transition-colors"
-                          >
-                            <X size={15} />
-                          </button>
-                        </div>
-                        {editError && <p className="text-xs text-destructive">{editError}</p>}
-                      </div>
-                    </td>
-                  ) : (
-                    <>
-                      <td className="px-4 py-3 font-medium text-heading max-w-[180px]">
-                        <span className="truncate block">{supplier.name}</span>
-                      </td>
-                      <td className="px-4 py-3 text-body hidden md:table-cell">{supplier.contact_name ?? '—'}</td>
-                      <td className="px-4 py-3 text-hint hidden lg:table-cell">{supplier.email ?? '—'}</td>
-                      <td className="px-4 py-3 text-right">
-                        {confirmingDeleteId === supplier.id ? (
-                          <div className="flex items-center justify-end gap-1">
-                            <span className="text-xs text-destructive mr-1">¿Borrar?</span>
-                            <button
-                              type="button"
-                              onClick={() => handleDeactivate(supplier.id)}
-                              disabled={deletingId === supplier.id}
-                              className="p-1.5 rounded-lg text-destructive hover:bg-destructive/10 transition-colors disabled:opacity-40"
-                            >
-                              {deletingId === supplier.id ? <span className="text-xs">...</span> : <Trash2 size={14} />}
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => setConfirmingDeleteId(null)}
-                              className="p-1.5 rounded-lg text-hint hover:bg-hover-bg transition-colors"
-                            >
-                              <X size={14} />
-                            </button>
-                          </div>
-                        ) : (
-                          <div className="flex items-center justify-end gap-1">
-                            <button
-                              type="button"
-                              onClick={() => startEdit(supplier)}
-                              className="p-1.5 rounded-lg text-hint hover:text-heading hover:bg-hover-bg transition-colors"
-                            >
-                              <Pencil size={14} />
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => setConfirmingDeleteId(supplier.id)}
-                              disabled={deletingId === supplier.id}
-                              className="p-1.5 rounded-lg text-hint hover:text-destructive hover:bg-destructive/10 transition-colors disabled:opacity-40"
-                            >
-                              <Trash2 size={14} />
-                            </button>
-                          </div>
-                        )}
-                      </td>
-                    </>
-                  )}
+                  <td className="px-4 py-3 font-medium text-heading max-w-[200px]">
+                    <span className="truncate block">{supplier.name}</span>
+                  </td>
+                  <td className="px-4 py-3 text-body hidden md:table-cell">{supplier.contact_name ?? '—'}</td>
+                  <td className="px-4 py-3 text-body hidden md:table-cell tabular-nums">{supplier.phone ?? '—'}</td>
+                  <td className="px-4 py-3 text-hint hidden lg:table-cell">{supplier.email ?? '—'}</td>
+                  <td className="px-4 py-3 text-hint hidden xl:table-cell max-w-[200px]">
+                    <span className="truncate block">{supplier.address ?? '—'}</span>
+                  </td>
+                  <td className="px-4 py-3 text-hint hidden xl:table-cell max-w-[200px]">
+                    <span className="truncate block">{supplier.notes ?? '—'}</span>
+                  </td>
+                  <td className="px-4 py-3 text-right">
+                    <div className="flex items-center justify-end gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="h-8 px-3 text-xs"
+                        onClick={() => startEdit(supplier)}
+                      >
+                        Editar
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        className="h-8 px-3 text-xs"
+                        onClick={() => setConfirmingDelete(supplier)}
+                        disabled={deletingId === supplier.id}
+                      >
+                        {deletingId === supplier.id ? 'Eliminando...' : 'Eliminar'}
+                      </Button>
+                    </div>
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
+      )}
+
+      <ConfirmModal
+        open={confirmingDelete !== null}
+        title={confirmingDelete ? `Eliminar proveedor "${confirmingDelete.name}"` : ''}
+        message="El proveedor será eliminado. Esta acción no se puede deshacer."
+        onConfirm={() => { if (confirmingDelete) handleDeactivate(confirmingDelete.id) }}
+        onCancel={() => setConfirmingDelete(null)}
+      />
+
+      {editingSupplier && (
+        <EditSupplierModal
+          supplier={editingSupplier}
+          businessId={businessId}
+          operatorId={operatorId}
+          supabaseClient={supabase}
+          onClose={() => setEditingSupplier(null)}
+          onUpdated={updated => {
+            onSuppliersChange(
+              suppliers
+                .map(s => s.id === updated.id ? updated : s)
+                .sort((a, b) => a.name.localeCompare(b.name))
+            )
+            flash(updated.id)
+          }}
+        />
       )}
     </div>
   )

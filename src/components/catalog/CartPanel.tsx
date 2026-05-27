@@ -31,6 +31,7 @@ function cartItemKey(item: CatalogCartItem): string {
 }
 
 interface CartPanelProps {
+  businessSlug: string
   businessName: string
   businessWhatsapp: string | null
   cartItems: CatalogCartItem[]
@@ -40,11 +41,27 @@ interface CartPanelProps {
   onClearCart: () => void
 }
 
+const ORDER_ERROR_MESSAGES: Record<string, string> = {
+  rate_limited: 'Demasiados pedidos desde este dispositivo. Esperá un momento e intentá de nuevo.',
+  too_many_pending: 'Ya tenés varios pedidos pendientes. Esperá a que el negocio los confirme.',
+  blacklisted: 'No es posible enviar pedidos a este negocio desde este número.',
+  invalid_phone: 'Revisá el formato del teléfono.',
+  invalid_name: 'Ingresá tu nombre.',
+  address_required: 'La dirección es obligatoria para envíos a domicilio.',
+  empty_cart: 'Tu carrito está vacío.',
+  product_not_available: 'Uno de los productos ya no está disponible. Refrescá el catálogo.',
+  variant_not_available: 'Una de las variantes ya no está disponible. Refrescá el catálogo.',
+  business_not_found: 'Este catálogo no está disponible.',
+  server_error: 'No pudimos registrar tu pedido. Intentá de nuevo en un momento.',
+  invalid_payload: 'Hay un problema con tu pedido. Recargá la página e intentá de nuevo.',
+}
+
 type DeliveryType = 'take-away' | 'delivery'
 
 const currencyFormatter = new Intl.NumberFormat('es-AR')
 
 export default function CartPanel({
+  businessSlug,
   businessName,
   businessWhatsapp,
   cartItems,
@@ -55,10 +72,13 @@ export default function CartPanel({
 }: CartPanelProps) {
   const [customerName, setCustomerName] = useState('')
   const [orderSent, setOrderSent] = useState(false)
+  const [orderNumber, setOrderNumber] = useState<number | null>(null)
   const [customerPhone, setCustomerPhone] = useState('')
   const [deliveryType, setDeliveryType] = useState<DeliveryType>('take-away')
   const [address, setAddress] = useState('')
   const [notes, setNotes] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+  const [submitError, setSubmitError] = useState<string | null>(null)
 
   const subtotal = useMemo(
     () => cartItems.reduce((acc, item) => acc + item.product.salePrice * item.quantity, 0),
@@ -83,7 +103,7 @@ export default function CartPanel({
     hasRequiredFormData &&
     normalizedWhatsapp.length > 0
 
-  function buildMessage(): string {
+  function buildMessage(orderNumberValue: number): string {
     const itemsText = cartItems
       .map(item => {
         const lineTotal = item.product.salePrice * item.quantity
@@ -93,7 +113,7 @@ export default function CartPanel({
       .join('\n')
 
     const lines: string[] = [
-      'Hola! Quisiera hacer un pedido:',
+      `Hola! Quisiera hacer un pedido (#${orderNumberValue}):`,
       '',
       itemsText,
       '',
@@ -114,22 +134,66 @@ export default function CartPanel({
     return lines.join('\n')
   }
 
-  function handleSendWhatsapp() {
-    if (!canSendWhatsapp) return
+  async function handleSendWhatsapp() {
+    if (!canSendWhatsapp || submitting) return
 
-    const message = buildMessage()
-    const encodedMessage = encodeURIComponent(message)
-    const url = `https://wa.me/${normalizedWhatsapp}?text=${encodedMessage}`
+    setSubmitting(true)
+    setSubmitError(null)
 
-    posthog.capture('catalog_order_sent', {
-      total,
-      item_count: cartItems.length,
-      delivery_type: deliveryType,
-      business_name: businessName,
-    })
+    try {
+      const response = await fetch('/api/catalog/orders', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          slug: businessSlug,
+          customer_name: trimmedName,
+          phone: trimmedPhone,
+          delivery_type: deliveryType === 'delivery' ? 'delivery' : 'takeaway',
+          address: deliveryType === 'delivery' ? trimmedAddress : null,
+          notes: trimmedNotes || null,
+          items: cartItems.map(item => ({
+            product_id: item.product.id,
+            variant_id: item.variantId ?? null,
+            quantity: item.quantity,
+          })),
+        }),
+      })
 
-    window.open(url, '_blank', 'noopener,noreferrer')
-    setOrderSent(true)
+      const json = (await response.json().catch(() => null)) as { order_number?: number; error?: string } | null
+
+      if (!response.ok || !json?.order_number) {
+        const code = json?.error ?? 'server_error'
+        setSubmitError(ORDER_ERROR_MESSAGES[code] ?? ORDER_ERROR_MESSAGES.server_error)
+        posthog.capture('catalog_order_failed', {
+          error: code,
+          status: response.status,
+          business_name: businessName,
+        })
+        return
+      }
+
+      const number = json.order_number
+      const message = buildMessage(number)
+      const encodedMessage = encodeURIComponent(message)
+      const url = `https://wa.me/${normalizedWhatsapp}?text=${encodedMessage}`
+
+      posthog.capture('catalog_order_sent', {
+        total,
+        item_count: cartItems.length,
+        delivery_type: deliveryType,
+        business_name: businessName,
+        order_number: number,
+      })
+
+      window.open(url, '_blank', 'noopener,noreferrer')
+      setOrderNumber(number)
+      setOrderSent(true)
+    } catch (error) {
+      console.error('[catalog cart] submit failed', error)
+      setSubmitError(ORDER_ERROR_MESSAGES.server_error)
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   function handleNewOrder() {
@@ -139,6 +203,8 @@ export default function CartPanel({
     setAddress('')
     setNotes('')
     setOrderSent(false)
+    setOrderNumber(null)
+    setSubmitError(null)
     onClearCart()
   }
 
@@ -148,7 +214,9 @@ export default function CartPanel({
         <div className="flex flex-col items-center gap-4 py-6 text-center">
           <CheckCircle2 className="h-12 w-12 text-green-500" />
           <div>
-            <p className="text-base font-semibold text-foreground">Pedido enviado</p>
+            <p className="text-base font-semibold text-foreground">
+              Pedido enviado{orderNumber != null ? ` #${orderNumber}` : ''}
+            </p>
             <p className="mt-1 text-sm text-muted-foreground">Revisa tu WhatsApp para continuar con el pedido.</p>
           </div>
           <Button type="button" className="w-full" onClick={handleNewOrder}>
@@ -352,13 +420,20 @@ export default function CartPanel({
         </div>
       )}
 
+      {submitError && (
+        <div className="mt-3 flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2.5">
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
+          <p className="text-xs text-destructive">{submitError}</p>
+        </div>
+      )}
+
       <Button
         type="button"
         className="mt-4 h-10 w-full"
         onClick={handleSendWhatsapp}
-        disabled={!canSendWhatsapp}
+        disabled={!canSendWhatsapp || submitting}
       >
-        Enviar pedido por WhatsApp
+        {submitting ? 'Enviando...' : 'Enviar pedido por WhatsApp'}
       </Button>
     </aside>
   )
