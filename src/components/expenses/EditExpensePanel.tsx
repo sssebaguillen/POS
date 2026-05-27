@@ -81,6 +81,7 @@ export default function EditExpensePanel({
               quantity: number
               unit_cost: number
               update_cost: boolean
+              stock: number
             }>).map(item => ({
               product_id: item.product_id,
               product_name: item.product_name,
@@ -90,6 +91,8 @@ export default function EditExpensePanel({
               unit_cost: item.unit_cost,
               update_cost: item.update_cost,
               _original_cost: item.unit_cost,
+              stock: item.stock ?? 0,
+              _original_quantity: item.quantity,
             }))
           )
         }

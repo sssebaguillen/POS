@@ -37,6 +37,11 @@ export interface MercaderiaItem {
   unit_cost: number
   update_cost: boolean
   _original_cost: number
+  /** Current stock at the time the row was added/loaded. Used to compute the after-save preview. */
+  stock: number
+  /** Saved quantity for items loaded from an existing expense; 0 for newly added lines. The
+   *  preview math is: stock_after = stock + (quantity - _original_quantity). */
+  _original_quantity: number
 }
 
 export interface Supplier {

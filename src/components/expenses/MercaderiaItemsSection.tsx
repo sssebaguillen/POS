@@ -114,6 +114,8 @@ export default function MercaderiaItemsSection({
           unit_cost: product.cost,
           update_cost: false,
           _original_cost: product.cost,
+          stock: product.stock,
+          _original_quantity: 0,
         },
       ])
     }
@@ -184,6 +186,23 @@ export default function MercaderiaItemsSection({
                     className="w-16 h-8 rounded-lg border border-input bg-card px-2 text-sm text-center text-body focus:outline-none focus:ring-2 focus:ring-primary/40 dark:bg-input/30"
                   />
                 </div>
+
+                {(() => {
+                  const delta = item.quantity - item._original_quantity
+                  const stockAfter = item.stock + delta
+                  return (
+                    <span className="text-xs text-hint whitespace-nowrap">
+                      Stock: <span className="tabular-nums">{item.stock}</span>
+                      {' → '}
+                      <span className={cn(
+                        'tabular-nums font-medium',
+                        delta > 0 ? 'text-emerald-600 dark:text-emerald-400'
+                          : delta < 0 ? 'text-amber-600 dark:text-amber-400'
+                          : 'text-body'
+                      )}>{stockAfter}</span>
+                    </span>
+                  )
+                })()}
 
                 <div className="flex items-center gap-1.5 flex-1">
                   <label className="text-xs text-hint whitespace-nowrap">Costo unit.</label>
