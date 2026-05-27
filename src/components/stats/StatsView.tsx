@@ -14,7 +14,7 @@ import { cn } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
 import { normalizeOperatorSalesStatsRows } from '@/lib/mappers'
 import type {
-  OperatorSalesStatsRow, StatsKpis, StatsEvolution, StatsBreakdown,
+  DailySnapshotRow, OperatorSalesStatsRow, StatsKpis, StatsEvolution, StatsBreakdown,
 } from '@/lib/types'
 import {
   LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -45,6 +45,7 @@ interface StatsQueryData {
   breakdown: StatsBreakdown | null
   topProducts: TopProductRow[]
   operators: OperatorSalesStatsRow[]
+  dailySnapshots: DailySnapshotRow[]
 }
 
 interface Props {
@@ -54,9 +55,16 @@ interface Props {
   breakdown: StatsBreakdown | null
   topProducts: TopProductRow[]
   operators: OperatorSalesStatsRow[]
+  dailySnapshots: DailySnapshotRow[]
   period: string
   from?: string
   to?: string
+}
+
+function formatSnapshotLabel(snapshotDate: string): string {
+  const [year, month, day] = snapshotDate.split('-')
+  if (!year || !month || !day) return snapshotDate
+  return `${day}/${month}`
 }
 
 const DeltaBadge = memo(function DeltaBadge({ current, previous }: { current: number; previous: number }) {
@@ -84,6 +92,7 @@ export default function StatsView({
   breakdown: initialBreakdown,
   topProducts: initialTopProducts,
   operators: initialOperators,
+  dailySnapshots: initialDailySnapshots,
   period: initialPeriod,
   from: initialFrom,
   to: initialTo,
@@ -108,7 +117,7 @@ export default function StatsView({
     queryKey: ['stats', businessId, period, from, to],
     queryFn: async () => {
       const resolvedRange = resolveDateRange(period, from, to)
-      const [kpisResult, evolutionResult, breakdownResult, topProductsResult, operatorsResult] = await Promise.all([
+      const [kpisResult, evolutionResult, breakdownResult, topProductsResult, operatorsResult, dailySnapshotsResult] = await Promise.all([
         supabase.rpc('get_stats_kpis', {
           p_business_id: businessId,
           p_from: resolvedRange.from,
@@ -136,6 +145,11 @@ export default function StatsView({
           p_from: resolvedRange.from,
           p_to: resolvedRange.to,
         }),
+        supabase.rpc('get_daily_snapshots', {
+          p_business_id: businessId,
+          p_from: resolvedRange.from,
+          p_to: resolvedRange.to,
+        }),
       ])
 
       return {
@@ -146,6 +160,7 @@ export default function StatsView({
         operators: normalizeOperatorSalesStatsRows(
           (operatorsResult.data as unknown as { data: unknown[] } | null)?.data ?? []
         ),
+        dailySnapshots: (dailySnapshotsResult.data as unknown as { data: DailySnapshotRow[] } | null)?.data ?? [],
       }
     },
     initialData: isInitialPeriod
@@ -155,6 +170,7 @@ export default function StatsView({
           breakdown: initialBreakdown,
           topProducts: initialTopProducts,
           operators: initialOperators,
+          dailySnapshots: initialDailySnapshots,
         }
       : undefined,
     initialDataUpdatedAt: isInitialPeriod ? mountedAt : undefined,
@@ -166,6 +182,7 @@ export default function StatsView({
   const breakdown = data?.breakdown ?? null
   const topProducts = data?.topProducts ?? []
   const operators = data?.operators ?? []
+  const dailySnapshots = data?.dailySnapshots ?? []
 
   function syncDateUrl(nextPeriod: DateRangePeriod, nextFrom?: string, nextTo?: string) {
     if (typeof window === 'undefined') return
@@ -236,6 +253,31 @@ export default function StatsView({
         : (b.transactions ?? 0) - (a.transactions ?? 0)
     )
     .slice(0, 5)
+
+  const snapshotTrendData = dailySnapshots.map(snapshot => ({
+    label: formatSnapshotLabel(snapshot.snapshot_date),
+    snapshotDate: snapshot.snapshot_date,
+    netRevenue: snapshot.net_revenue ?? 0,
+    expenses: snapshot.expenses_total ?? 0,
+    salesCount: snapshot.sales_count ?? 0,
+  }))
+
+  const snapshotTotals = snapshotTrendData.reduce(
+    (acc, row) => ({
+      netRevenue: acc.netRevenue + row.netRevenue,
+      expenses: acc.expenses + row.expenses,
+      salesCount: acc.salesCount + row.salesCount,
+    }),
+    { netRevenue: 0, expenses: 0, salesCount: 0 }
+  )
+
+  const bestRevenueDay = snapshotTrendData.reduce<null | typeof snapshotTrendData[number]>(
+    (best, row) => {
+      if (!best || row.netRevenue > best.netRevenue) return row
+      return best
+    },
+    null
+  )
 
   return (
     <div className="flex flex-col h-screen overflow-hidden">
@@ -435,6 +477,105 @@ export default function StatsView({
                   ))
                 )}
               </div>
+            </div>
+
+            {/* Daily snapshot trend */}
+            <div className="surface-card p-6 space-y-4">
+              <div className="flex items-start justify-between gap-4">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-3">
+                    <p className="font-semibold text-heading font-display">Ingresos vs gastos diarios</p>
+                    <Link
+                      href={`/stats/trends?period=${period}${from ? `&from=${from}` : ''}${to ? `&to=${to}` : ''}`}
+                      className="text-xs text-primary font-medium hover:underline"
+                    >
+                      Ver detalle →
+                    </Link>
+                  </div>
+                  <p className="text-sm text-hint">
+                    Basado en snapshots diarios del negocio. Esta capa servirá también como base para insights automáticos.
+                  </p>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 shrink-0">
+                  <div className="rounded-xl border border-edge px-3 py-2 min-w-[132px]">
+                    <p className="text-[11px] uppercase tracking-wide text-hint">Ingresos netos</p>
+                    <p className="text-sm font-semibold text-heading">{formatMoney(snapshotTotals.netRevenue)}</p>
+                  </div>
+                  <div className="rounded-xl border border-edge px-3 py-2 min-w-[132px]">
+                    <p className="text-[11px] uppercase tracking-wide text-hint">Gastos</p>
+                    <p className="text-sm font-semibold text-heading">{formatMoney(snapshotTotals.expenses)}</p>
+                  </div>
+                  <div className="rounded-xl border border-edge px-3 py-2 min-w-[132px]">
+                    <p className="text-[11px] uppercase tracking-wide text-hint">Mejor día</p>
+                    <p className="text-sm font-semibold text-heading">
+                      {bestRevenueDay ? `${bestRevenueDay.label} · ${formatMoney(bestRevenueDay.netRevenue)}` : 'Sin datos'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {snapshotTrendData.length === 0 ? (
+                <p className="text-sm text-hint h-48 flex items-center justify-center">Sin snapshots para el período</p>
+              ) : (
+                <ResponsiveContainer width="100%" height={240}>
+                  <LineChart
+                    data={snapshotTrendData}
+                    margin={{ top: 5, right: 10, left: 0, bottom: 5 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" stroke="var(--color-edge)" />
+                    <XAxis
+                      dataKey="label"
+                      tick={{ fontSize: 10, fill: 'var(--color-hint)' }}
+                      interval={snapshotTrendData.length > 14 ? Math.floor(snapshotTrendData.length / 7) : 0}
+                    />
+                    <YAxis
+                      tick={{ fontSize: 10, fill: 'var(--color-hint)' }}
+                      tickFormatter={v => (v >= 1000 ? `${formatMoney(v / 1000)}k` : formatMoney(v))}
+                      width={52}
+                      tickCount={5}
+                    />
+                    <Tooltip
+                      content={({ active, payload, label }) => {
+                        if (!active || !payload?.length) return null
+                        const netRevenuePayload = payload.find(item => item.dataKey === 'netRevenue')
+                        const expensesPayload = payload.find(item => item.dataKey === 'expenses')
+                        const salesCountPayload = payload.find(item => item.dataKey === 'salesCount')
+
+                        return (
+                          <div className="surface-elevated rounded-xl p-3 text-xs space-y-1 shadow-sm">
+                            <p className="font-semibold text-heading">{label}</p>
+                            <p className="text-body">
+                              Ingresos: <span className="font-medium">{formatMoney(Number(netRevenuePayload?.value ?? 0))}</span>
+                            </p>
+                            <p className="text-body">
+                              Gastos: <span className="font-medium">{formatMoney(Number(expensesPayload?.value ?? 0))}</span>
+                            </p>
+                            <p className="text-hint">
+                              Ventas: {Number(salesCountPayload?.payload?.salesCount ?? 0)}
+                            </p>
+                          </div>
+                        )
+                      }}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="netRevenue"
+                      stroke="var(--primary)"
+                      strokeWidth={2}
+                      dot={false}
+                      name="Ingresos netos"
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="expenses"
+                      stroke="#C66A2B"
+                      strokeWidth={2}
+                      dot={false}
+                      name="Gastos"
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              )}
             </div>
 
             {/* Bottom row */}

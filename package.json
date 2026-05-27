@@ -6,7 +6,9 @@
     "dev": "next dev --webpack",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "supabase:db:push": "supabase db push",
+    "supabase:function:deploy:refresh-daily-snapshots": "supabase functions deploy refresh-daily-snapshots --project-ref zrnthcznbrplzpmxmkwk"
   },
   "dependencies": {
     "@e965/xlsx": "^0.20.3",

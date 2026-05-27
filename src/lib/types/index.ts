@@ -178,6 +178,59 @@ export interface StatsEvolutionPoint {
   prev_count: number
 }
 
+export interface DailySnapshotRow {
+  snapshot_date: string
+  sales_count: number
+  items_sold: number
+  gross_revenue: number
+  discounts_total: number
+  net_revenue: number
+  avg_ticket: number
+  customers_count: number
+  expenses_total: number
+  operating_expenses_total: number
+  inventory_expenses_total: number
+  top_product_id: string | null
+  top_product_name: string | null
+  top_product_units: number
+  top_product_revenue: number
+}
+
+export interface StatsTrendsPeriodTotals {
+  from: string
+  to: string
+  net_revenue: number
+  gross_revenue: number
+  discounts_total: number
+  expenses_total: number
+  operating_expenses_total: number
+  inventory_expenses_total: number
+  sales_count: number
+  items_sold: number
+  customers_count: number
+  avg_ticket: number
+}
+
+export interface StatsTrendsDayRow {
+  day_offset: number
+  current_date: string
+  previous_date: string
+  current_net_revenue: number
+  current_expenses: number
+  current_sales_count: number
+  current_avg_ticket: number
+  previous_net_revenue: number
+  previous_expenses: number
+  previous_sales_count: number
+  previous_avg_ticket: number
+}
+
+export interface StatsTrendsComparison {
+  current: StatsTrendsPeriodTotals
+  previous: StatsTrendsPeriodTotals
+  days: StatsTrendsDayRow[]
+}
+
 export interface StatsBreakdown {
   by_category: StatsBreakdownCategory[]
   by_brand: StatsBreakdownBrand[]

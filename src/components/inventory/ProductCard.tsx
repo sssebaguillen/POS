@@ -5,21 +5,26 @@ import type { ProductCardProps } from '@/components/inventory/types'
 import { getStatus, statusConfig } from '@/components/inventory/types'
 import { useFormatMoney } from '@/lib/context/CurrencyContext'
 
-export function SelectionCheckbox({ checked, onClick }: { checked: boolean; onClick: (e: React.MouseEvent) => void }) {
+export function SelectionCheckbox({ checked, indeterminate = false, onClick }: { checked: boolean; indeterminate?: boolean; onClick: (e: React.MouseEvent) => void }) {
+  const filled = checked || indeterminate
   return (
     <button
       type="button"
       onClick={onClick}
       className="p-1.5 -m-1 touch-manipulation"
+      role="checkbox"
+      aria-checked={indeterminate ? 'mixed' : checked}
     >
       <span className={`w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 transition-colors ${
-        checked ? 'bg-primary border-primary' : 'border-edge bg-surface'
+        filled ? 'bg-primary border-primary' : 'border-edge bg-surface'
       }`}>
-        {checked && (
+        {indeterminate ? (
+          <span className="block w-2.5 h-0.5 bg-white rounded-full" />
+        ) : checked ? (
           <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
             <path d="M1 4L3.5 6.5L9 1" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
-        )}
+        ) : null}
       </span>
     </button>
   )

@@ -227,6 +227,7 @@ src/
 │   │   ├── stats/breakdown/page.tsx
 │   │   ├── stats/payment-methods/page.tsx
 │   │   ├── stats/operators/page.tsx
+│   │   ├── stats/trends/page.tsx           # edge — period comparison via get_period_comparison RPC
 │   │   ├── profile/page.tsx              # Owner only
 │   │   ├── operator/me/page.tsx          # Active operator personal profile
 │   │   ├── activity/page.tsx             # edge — audit log with chip+DateRangeFilter+operator filters; defense-in-depth `analysis` perm check
@@ -283,7 +284,8 @@ src/
     │   ├── TopProductsDetailView.tsx
     │   ├── BreakdownDetailView.tsx
     │   ├── PaymentMethodDetailView.tsx
-    │   └── OperatorSalesDetailView.tsx
+    │   ├── OperatorSalesDetailView.tsx
+    │   └── TrendsDetailView.tsx           # P11.2 — daily trends + period-over-period comparison
     ├── inventory/
     │   ├── InventoryPanel.tsx            # ~1291 lines — refactor pending post-beta
     │   ├── NewProductModal.tsx
@@ -340,7 +342,7 @@ src/
         └── types.ts
 ```
 
-**Edge Runtime** (`export const runtime = 'edge'`): `/pos`, `/dashboard`, `/stats`, `/operator-select`, `/activity`
+**Edge Runtime** (`export const runtime = 'edge'`): `/pos`, `/dashboard`, `/stats`, `/stats/trends`, `/operator-select`, `/activity`
 
 Full route map with permission gates: `docs/conventions.md`.
 

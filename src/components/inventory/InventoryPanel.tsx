@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { LayoutGrid, LayoutList, X, CheckSquare, Plus, SlidersHorizontal as FilterIcon, Search, Tag, ArrowDownToLine } from 'lucide-react'
+import { LayoutGrid, LayoutList, X, Plus, SlidersHorizontal as FilterIcon, Search, Tag, ArrowDownToLine } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -23,7 +23,7 @@ import ConfirmModal from '@/components/shared/ConfirmModal'
 import BulkActionBar from '@/components/inventory/BulkActionBar'
 import QuickEditCategoryModal from '@/components/inventory/QuickEditCategoryModal'
 import QuickEditBrandModal from '@/components/inventory/QuickEditBrandModal'
-import ProductCard from '@/components/inventory/ProductCard'
+import ProductCard, { SelectionCheckbox } from '@/components/inventory/ProductCard'
 import ProductListRow from '@/components/inventory/ProductListRow'
 import ProductStockModal from '@/components/inventory/ProductStockModal'
 import type { PriceList, PriceListOverride } from '@/lib/types'
@@ -500,6 +500,17 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
     setSelectionMode(false)
   }, [])
 
+  const allFilteredSelected = filtered.length > 0 && selectedIds.size === filtered.length
+  const someFilteredSelected = selectedIds.size > 0 && !allFilteredSelected
+  const handleMasterToggle = useCallback(() => {
+    if (filtered.length === 0) return
+    if (selectedIds.size === filtered.length) {
+      handleDeselectAll()
+    } else {
+      handleSelectAll()
+    }
+  }, [filtered.length, selectedIds.size, handleDeselectAll, handleSelectAll])
+
   const handleBulkDelete = useCallback(async () => {
     if (!businessId) return
     trackFeatureUsed('bulk_action')
@@ -917,48 +928,8 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
           </div>
           </div>
 
-          <div className="hidden inv:flex items-center gap-2 ml-auto shrink-0">
-            <span className="text-xs text-subtle shrink-0 whitespace-nowrap">
-              {filtered.length} productos
-              {selectionMode && selectedIds.size > 0 && (
-                <span className="text-primary font-medium"> ({selectedIds.size} sel.)</span>
-              )}
-            </span>
 
-            {!readOnly && !selectionMode && (
-              <button
-                type="button"
-                onClick={() => setSelectionMode(true)}
-                className="inline-flex items-center gap-1 rounded-md border border-edge px-2.5 py-1.5 text-xs font-medium text-subtle hover:text-body hover:bg-surface-alt transition-colors touch-manipulation"
-              >
-                <CheckSquare size={13} />
-                Seleccionar
-              </button>
-            )}
-
-            {!readOnly && selectionMode && (
-              <>
-                <button
-                  type="button"
-                  onClick={selectedIds.size === filtered.length ? handleDeselectAll : handleSelectAll}
-                  className="inline-flex items-center gap-1 rounded-md border border-primary/30 dark:border-primary/50 bg-primary/5 dark:bg-primary/15 px-2.5 py-1.5 text-xs font-medium text-primary hover:bg-primary/10 transition-colors touch-manipulation"
-                >
-                  <CheckSquare size={12} />
-                  {selectedIds.size === filtered.length ? 'Deseleccionar todo' : 'Seleccionar todo'}
-                </button>
-                <button
-                  type="button"
-                  onClick={handleCloseSelection}
-                  className="inline-flex items-center gap-1 rounded-md border border-edge px-2.5 py-1.5 text-xs font-medium text-subtle hover:text-body hover:bg-surface-alt transition-colors touch-manipulation"
-                >
-                  <X size={12} />
-                  Cancelar selección
-                </button>
-              </>
-            )}
-          </div>
-
-          <div className="relative flex items-center gap-1 shrink-0 border border-edge rounded-lg p-1 inv:ml-0 ml-auto">
+          <div className="relative flex items-center gap-1 shrink-0 border border-edge rounded-lg p-1 ml-auto">
             {viewIndicator && (
               <span
                 className="absolute inset-y-1 bg-primary rounded-md pointer-events-none"
@@ -1058,7 +1029,43 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
           <div className="surface-card p-12 text-center text-hint">
             Sin resultados. Prueba ajustando los filtros.
           </div>
-        ) : viewMode === 'grid' ? (
+        ) : (
+          <>
+            <div className="flex items-center gap-3 mb-3 pl-1">
+              {viewMode === 'grid' && !readOnly && (
+                <>
+                  <SelectionCheckbox
+                    checked={allFilteredSelected}
+                    indeterminate={someFilteredSelected}
+                    onClick={(e) => { e.stopPropagation(); handleMasterToggle() }}
+                  />
+                  <button
+                    type="button"
+                    onClick={handleMasterToggle}
+                    className="text-xs font-medium text-subtle hover:text-body transition-colors touch-manipulation"
+                  >
+                    {allFilteredSelected ? 'Deseleccionar todos' : 'Seleccionar todos'}
+                  </button>
+                </>
+              )}
+              <span className="text-xs text-subtle whitespace-nowrap">
+                {filtered.length} productos
+                {selectedIds.size > 0 && (
+                  <span className="text-primary font-medium"> ({selectedIds.size} sel.)</span>
+                )}
+              </span>
+              {!readOnly && selectedIds.size > 0 && (
+                <button
+                  type="button"
+                  onClick={handleCloseSelection}
+                  className="inline-flex items-center gap-1 rounded-md border border-edge px-2 py-1 text-xs font-medium text-subtle hover:text-body hover:bg-surface-alt transition-colors touch-manipulation"
+                >
+                  <X size={12} />
+                  Cancelar selección
+                </button>
+              )}
+            </div>
+            {viewMode === 'grid' ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4">
             {visibleProducts.map(product => (
               <ProductCard
@@ -1083,7 +1090,15 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-10" />
+                  <TableHead className="w-10">
+                    {!readOnly && (
+                      <SelectionCheckbox
+                        checked={allFilteredSelected}
+                        indeterminate={someFilteredSelected}
+                        onClick={(e) => { e.stopPropagation(); handleMasterToggle() }}
+                      />
+                    )}
+                  </TableHead>
                   <TableHead>Estado</TableHead>
                   <TableHead>Producto</TableHead>
                   <TableHead className="hidden xl:table-cell">Categoría</TableHead>
@@ -1116,6 +1131,8 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
               </TableBody>
             </Table>
           </div>
+        )}
+          </>
         )}
         {visibleCount < filtered.length && (
           <div className="py-4 text-center text-xs text-subtle">

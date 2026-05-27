@@ -190,6 +190,7 @@ shadcn's `<DialogHeader>` lacks a close-button slot and applies text-center alig
 | `/stats/breakdown` | `[{ label: 'Estadísticas', href: '/stats' }]` |
 | `/stats/payment-methods` | `[{ label: 'Estadísticas', href: '/stats' }]` |
 | `/stats/operators` | `[{ label: 'Estadísticas', href: '/stats' }]` |
+| `/stats/trends` | `[{ label: 'Estadísticas', href: '/stats' }]` |
 
 ---
 
@@ -286,6 +287,7 @@ DB enum (`payments.method`): `'cash' | 'card' | 'transfer' | 'mercadopago'` — 
 | `/stats/breakdown` | Category/brand breakdown | `permissions.analysis` |
 | `/stats/payment-methods` | Payment methods detail | `permissions.analysis` |
 | `/stats/operators` | Operator sales detail | `permissions.analysis` |
+| `/stats/trends` | Daily trends + period comparison | `permissions.analysis` |
 | `/activity` | Audit log | `permissions.analysis` |
 | `/expenses` | Expenses module | `permissions.expenses` |
 | `/expenses/providers` | Supplier management | `permissions.expenses` |

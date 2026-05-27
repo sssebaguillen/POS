@@ -4,9 +4,25 @@
 
 ---
 
-## Estado actual: Beta launch
+## Estado actual: Closed beta / validación
 
-Las fases P0–P7b están completas. El sistema está en preparación para beta con dos clientes iniciales.
+Las fases P0–P7b están completas. El sistema está en validación temprana con un negocio activo en closed beta.
+
+### Prioridad estratégica inmediata
+
+Con una closed beta todavía muy chica, la prioridad no es construir infraestructura contable pesada por anticipado, sino maximizar aprendizaje y valor visible para nuevos negocios.
+
+Por eso, el foco inmediato queda así:
+
+- **Ahora:** P11.1 + P11.2 (snapshots diarios, tendencias y comparativas)
+- **En paralelo, scope mínimo:** fundación comercial/fiscal liviana de P10 (`subscriptions`, metadata fiscal en `businesses`, helper `get_plan_limits`)
+- **Después de validación real:** libro diario, asientos automáticos, balance de saldos y billing completo
+
+Gate para activar P10 contable completo:
+
+- 3–5 negocios activos usando Pulsar semanalmente
+- 2 negocios pidiendo explícitamente contabilidad o facturación electrónica
+- 1 negocio dispuesto a pagar por esas capacidades
 
 ### Beta blockers activos (alta prioridad)
 
@@ -87,11 +103,26 @@ Activar `customers.credit_balance`. Agregar `credit_limit` + `is_credit_enabled`
 ### P9 — Órdenes de compra
 Tablas `purchase_orders` + `purchase_order_items`. RPC `receive_purchase_order` (actualiza stock + registra en `inventory_movements` con `type = 'purchase'`). Nueva ruta `/compras`.
 
-### P10 — Módulo contable + facturación electrónica
-Infraestructura contable invisible (tablas `chart_of_accounts`, `journal_entries`, `journal_lines`). Campo `accounting_enabled` en `businesses` (pendiente de agregar a DB). Tabla `invoices` (pendiente). Integración Facturama para Argentina (AFIP). Tabla `subscriptions` para billing. Planes `free | pro | enterprise`.
+### P10 — Base comercial/fiscal + contabilidad
+Dividir P10 en dos capas para no sobrediseñar antes de validar demanda real.
+
+- **P10.a — Base mínima ahora**
+  - tabla `subscriptions`
+  - `businesses.country_code`
+  - `businesses.tax_id`
+  - helper `get_plan_limits`
+- **P10.b — Facturación electrónica después**
+  - tabla `invoices`
+  - integración Facturama / proveedor fiscal por país
+- **P10.c — Contabilidad completa solo con señales reales**
+  - `chart_of_accounts`, `journal_entries`, `journal_lines`
+  - asientos automáticos
+  - libro diario / balance de saldos
 
 ### P11 — Analytics avanzado
-Tabla `daily_snapshots` con cron job. Comparación temporal (semana vs semana anterior). Heatmap por hora. Reporte mensual exportable en PDF.
+- **P11.1 — Snapshots diarios ✅ (hecho 2026-05-27)** — Tabla `daily_snapshots` con upsert RPC + cron pg_cron nocturno (`refresh-daily-snapshots-nightly`, 03:10 ART) llamando a la Edge Function `refresh-daily-snapshots`. Widget en `/stats` con totales + chart.
+- **P11.2 — Comparativas temporales ✅ (hecho 2026-05-27)** — RPC `get_period_comparison` (alinea período actual vs anterior por offset) + página dedicada `/stats/trends` con KPIs delta% y chart current-vs-previous.
+- **P11.3 — Pendiente** — Heatmap de ventas por hora del día (requiere nueva agregación sobre `sales.created_at`, no sale de `daily_snapshots`). Reporte mensual exportable en PDF.
 
 ### P12 — IA proactiva opt-in
 Edge Function `generate-insights` con cron nocturno. Anthropic API: Haiku para análisis rutinario, Sonnet para anomalías. Tabla `ai_insights`. Canales: in-app, email (Resend), WhatsApp Business (fase madura).
@@ -107,13 +138,14 @@ React Native + Expo. Reutiliza `lib/payments.ts`, `lib/price-lists.ts`, `lib/ope
 |------|-------------------|----------------------|-------------|
 | P8 Cuentas corrientes | Muy alto | Medio | Media |
 | P9 Órdenes de compra | Alto | Bajo | Media |
-| P10.1 Infraestructura contable (invisible) | Bajo ahora, crítico para P10.4 | Muy alto | Alta |
+| P10.a Base comercial/fiscal mínima | Medio | Alto | Baja |
+| P10.c Contabilidad completa | Bajo ahora | Muy alto | Alta |
 | P10.3–10.4 Facturación electrónica | Medio | Muy alto — desbloquea plan Pro | Alta |
 | P10.5 Billing | Bajo (usuario) | Crítico (negocio) | Media |
 | P11 Analytics avanzado | Alto | Medio | Media |
 | P12 IA proactiva | Alto — diferenciador | Alto — justifica Pro | Media |
 | P13 App móvil | Muy alto | Muy alto | Muy alta |
 
-Secuencia: **P8 → P10.1 (infraestructura invisible, ya) → P9 → P10.2–10.5 → P11 → P12 → P13**
+Secuencia recomendada ahora: **P11.1 → P11.2 → P10.a → P11.3 → P10.b → P12 → P13**
 
-P10.1 conviene aplicarlo antes de que haya miles de ventas sin asientos contables, aunque la UI llegue mucho después.
+La hipótesis actual es que analytics visible y exportable aporta más valor a demos, retención temprana y validación que un ledger contable aún no pedido. La contabilidad completa se retoma cuando haya señales concretas de demanda.

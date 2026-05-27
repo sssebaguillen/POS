@@ -1,6 +1,18 @@
 {
-  "current": "0.0.5",
+  "current": "0.0.6",
   "releases": [
+    {
+      "version": "0.0.6",
+      "date": "2026-05-27",
+      "label": "Tendencias diarias y comparativas",
+      "changes": [
+        { "type": "new", "text": "Nueva sección Tendencias diarias dentro de Estadísticas (entrás desde el widget 'Ingresos vs gastos diarios' → Ver detalle). Te muestra el período actual comparado contra el período inmediatamente anterior (semana vs semana, mes vs mes, etc.) con cuatro KPIs lado a lado: Ingresos netos, Gastos, Resultado y Ventas, cada uno con su variación porcentual. Verde si subió, rojo si bajó — y en Gastos el color se invierte porque subir gastos es lo malo." },
+        { "type": "new", "text": "En la misma página, gráfico día a día comparando dos líneas: la del período actual (sólida) y la del período anterior (punteada). Podés alternar entre Ingresos netos, Gastos, Ventas o Ticket promedio sin recargar." },
+        { "type": "new", "text": "En Estadísticas, nuevo widget 'Ingresos vs gastos diarios' con los totales del período y el mejor día de ingresos. Sirve como vista rápida antes de entrar al detalle completo." },
+        { "type": "improvement", "text": "Detrás de escena ahora se generan snapshots diarios automáticamente todas las noches (3:10 AM hora Argentina). Cada snapshot guarda los totales del día anterior: ventas, ingresos, gastos, ticket promedio, producto más vendido. Esto hace que las próximas funciones de análisis y la IA proactiva sean mucho más rápidas — no tienen que recalcular ventas viejas cada vez." },
+        { "type": "improvement", "text": "Los cambios de filtro de fecha en Tendencias diarias son instantáneos: las pestañas (Hoy / Esta semana / Este mes / etc.) responden al toque y los datos se actualizan sobre el fondo sin recargar la página ni mostrar pantalla en blanco." }
+      ]
+    },
     {
       "version": "0.0.5",
       "date": "2026-05-27",
