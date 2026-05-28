@@ -8,6 +8,9 @@ import { getActiveOperator, type UserRole } from '@/lib/operator'
 import { BUSINESS_TIMEZONE_OFFSET, type OperatorRole } from '@/lib/constants/domain'
 import { formatMemberSince } from '@/lib/format'
 import { requireAuthenticatedBusinessId } from '@/lib/business'
+import type { SalesHeatmapCell } from '@/lib/types'
+
+const OWNER_OPERATOR_SENTINEL = '00000000-0000-0000-0000-000000000000'
 
 interface SearchParams {
   period?: string
@@ -110,10 +113,16 @@ export default async function OperatorMePage({
     items_count: number
   }[] = []
 
+  const heatmapOperatorId =
+    activeOperator.role === 'owner' ? OWNER_OPERATOR_SENTINEL : activeOperator.profile_id
+
+  let heatmapCells: SalesHeatmapCell[] = []
+
   if (activeOperator.role === 'owner') {
     const [
       { data: ownerProfile, error: profileError },
       { data: statsRaw, error: statsError },
+      { data: heatmapRaw },
     ] = await Promise.all([
       supabase
         .from('profiles')
@@ -124,7 +133,15 @@ export default async function OperatorMePage({
         p_date_from: statsRange.from,
         p_date_to: statsRange.to,
       }),
+      supabase.rpc('get_sales_heatmap', {
+        p_business_id: businessId,
+        p_from: from,
+        p_to: to,
+        p_operator_id: heatmapOperatorId,
+      }),
     ])
+
+    heatmapCells = (heatmapRaw as unknown as { data: SalesHeatmapCell[] } | null)?.data ?? []
 
     if (profileError || !ownerProfile) {
       throw new Error(profileError?.message ?? 'No se pudo cargar el perfil del owner.')
@@ -155,20 +172,31 @@ export default async function OperatorMePage({
       items_count: Number(s.items_count ?? 0),
     }))
   } else {
-    const [{ data: operator, error: operatorError }, { data: statsRaw, error: statsError }] =
-      await Promise.all([
-        supabase
-          .from('operators')
-          .select('id, name, role, created_at')
-          .eq('business_id', businessId)
-          .eq('id', activeOperator.profile_id)
-          .single<OperatorProfileRow>(),
-        supabase.rpc('get_operator_stats', {
-          p_operator_id: activeOperator.profile_id,
-          p_date_from: statsRange.from,
-          p_date_to: statsRange.to,
-        }),
-      ])
+    const [
+      { data: operator, error: operatorError },
+      { data: statsRaw, error: statsError },
+      { data: heatmapRaw },
+    ] = await Promise.all([
+      supabase
+        .from('operators')
+        .select('id, name, role, created_at')
+        .eq('business_id', businessId)
+        .eq('id', activeOperator.profile_id)
+        .single<OperatorProfileRow>(),
+      supabase.rpc('get_operator_stats', {
+        p_operator_id: activeOperator.profile_id,
+        p_date_from: statsRange.from,
+        p_date_to: statsRange.to,
+      }),
+      supabase.rpc('get_sales_heatmap', {
+        p_business_id: businessId,
+        p_from: from,
+        p_to: to,
+        p_operator_id: heatmapOperatorId,
+      }),
+    ])
+
+    heatmapCells = (heatmapRaw as unknown as { data: SalesHeatmapCell[] } | null)?.data ?? []
 
     if (operatorError || !operator) {
       throw new Error(operatorError?.message ?? 'No se pudo cargar el perfil del operario.')
@@ -220,6 +248,7 @@ export default async function OperatorMePage({
         totalRevenue={totalRevenue}
         topProducts={topProducts}
         saleHistory={saleHistory}
+        heatmapCells={heatmapCells}
       />
     </div>
   )

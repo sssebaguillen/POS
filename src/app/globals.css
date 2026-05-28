@@ -56,6 +56,7 @@
 
   /* Brand primary — warm brown ink */
   --primary: #7a3e10;
+  --primary-rgb: 122 62 16;
   --primary-foreground: #ffffff;
 
   /* Neutral surfaces — warm sand tones */
@@ -132,6 +133,7 @@
 
   /* Brand primary — warm amber, sole carrier of brand warmth */
   --primary: #e08535;
+  --primary-rgb: 224 133 53;
   --primary-foreground: #1a0800;
 
   /* Surfaces — near-neutral, barely warm undertone */
@@ -359,7 +361,7 @@
     @apply inline-flex items-center bg-surface-alt rounded-full p-1 gap-0.5 relative;
   }
   .pill-tab {
-    @apply relative z-10 px-4 py-1.5 text-sm font-medium rounded-full text-body hover:text-heading;
+    @apply relative z-10 px-4 py-1.5 text-sm font-medium rounded-full text-body hover:text-heading whitespace-nowrap;
   }
   .pill-tab-active {
     @apply text-heading font-semibold;

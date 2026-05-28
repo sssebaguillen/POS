@@ -14,8 +14,9 @@ import { cn } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
 import { normalizeOperatorSalesStatsRows } from '@/lib/mappers'
 import type {
-  DailySnapshotRow, OperatorSalesStatsRow, StatsKpis, StatsEvolution, StatsBreakdown,
+  DailySnapshotRow, OperatorSalesStatsRow, StatsKpis, StatsEvolution, StatsBreakdown, SalesHeatmapCell,
 } from '@/lib/types'
+import SalesHeatmap from '@/components/stats/SalesHeatmap'
 import {
   LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts'
@@ -46,6 +47,7 @@ interface StatsQueryData {
   topProducts: TopProductRow[]
   operators: OperatorSalesStatsRow[]
   dailySnapshots: DailySnapshotRow[]
+  heatmapCells: SalesHeatmapCell[]
 }
 
 interface Props {
@@ -56,6 +58,7 @@ interface Props {
   topProducts: TopProductRow[]
   operators: OperatorSalesStatsRow[]
   dailySnapshots: DailySnapshotRow[]
+  heatmapCells: SalesHeatmapCell[]
   period: string
   from?: string
   to?: string
@@ -93,6 +96,7 @@ export default function StatsView({
   topProducts: initialTopProducts,
   operators: initialOperators,
   dailySnapshots: initialDailySnapshots,
+  heatmapCells: initialHeatmapCells,
   period: initialPeriod,
   from: initialFrom,
   to: initialTo,
@@ -117,7 +121,7 @@ export default function StatsView({
     queryKey: ['stats', businessId, period, from, to],
     queryFn: async () => {
       const resolvedRange = resolveDateRange(period, from, to)
-      const [kpisResult, evolutionResult, breakdownResult, topProductsResult, operatorsResult, dailySnapshotsResult] = await Promise.all([
+      const [kpisResult, evolutionResult, breakdownResult, topProductsResult, operatorsResult, dailySnapshotsResult, heatmapResult] = await Promise.all([
         supabase.rpc('get_stats_kpis', {
           p_business_id: businessId,
           p_from: resolvedRange.from,
@@ -150,6 +154,11 @@ export default function StatsView({
           p_from: resolvedRange.from,
           p_to: resolvedRange.to,
         }),
+        supabase.rpc('get_sales_heatmap', {
+          p_business_id: businessId,
+          p_from: resolvedRange.from,
+          p_to: resolvedRange.to,
+        }),
       ])
 
       return {
@@ -161,6 +170,7 @@ export default function StatsView({
           (operatorsResult.data as unknown as { data: unknown[] } | null)?.data ?? []
         ),
         dailySnapshots: (dailySnapshotsResult.data as unknown as { data: DailySnapshotRow[] } | null)?.data ?? [],
+        heatmapCells: (heatmapResult.data as unknown as { data: SalesHeatmapCell[] } | null)?.data ?? [],
       }
     },
     initialData: isInitialPeriod
@@ -171,6 +181,7 @@ export default function StatsView({
           topProducts: initialTopProducts,
           operators: initialOperators,
           dailySnapshots: initialDailySnapshots,
+          heatmapCells: initialHeatmapCells,
         }
       : undefined,
     initialDataUpdatedAt: isInitialPeriod ? mountedAt : undefined,
@@ -183,6 +194,7 @@ export default function StatsView({
   const topProducts = data?.topProducts ?? []
   const operators = data?.operators ?? []
   const dailySnapshots = data?.dailySnapshots ?? []
+  const heatmapCells = data?.heatmapCells ?? []
 
   function syncDateUrl(nextPeriod: DateRangePeriod, nextFrom?: string, nextTo?: string) {
     if (typeof window === 'undefined') return
@@ -454,7 +466,7 @@ export default function StatsView({
               <div className="surface-card p-6 space-y-4">
                 <div className="flex items-center gap-3">
                   <p className="font-semibold text-heading font-display">Métodos de pago</p>
-                  <Link href="/stats/payment-methods" className="text-xs text-primary font-medium hover:underline">
+                  <Link href="/stats/payment-methods" className="text-xs text-primary font-medium hover:underline whitespace-nowrap">
                     Ver más →
                   </Link>
                 </div>
@@ -487,7 +499,7 @@ export default function StatsView({
                     <p className="font-semibold text-heading font-display">Ingresos vs gastos diarios</p>
                     <Link
                       href={`/stats/trends?period=${period}${from ? `&from=${from}` : ''}${to ? `&to=${to}` : ''}`}
-                      className="text-xs text-primary font-medium hover:underline"
+                      className="text-xs text-primary font-medium hover:underline whitespace-nowrap"
                     >
                       Ver detalle →
                     </Link>
@@ -578,14 +590,116 @@ export default function StatsView({
               )}
             </div>
 
-            {/* Bottom row */}
+            {/* Sales heatmap (P11.3) + Day of week distribution */}
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+              <div className="surface-card p-6 space-y-4">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-3">
+                    <p className="font-semibold text-heading font-display">Heatmap por día y hora</p>
+                    <Link
+                      href={`/stats/heatmap?period=${period}${from ? `&from=${from}` : ''}${to ? `&to=${to}` : ''}`}
+                      className="text-xs text-primary font-medium hover:underline whitespace-nowrap"
+                    >
+                      Ver detalle →
+                    </Link>
+                  </div>
+                  <p className="text-sm text-hint">
+                    Concentración de ventas en hora local. Útil para detectar horas pico y bajones.
+                  </p>
+                </div>
+                {heatmapCells.length === 0 ? (
+                  <p className="text-sm text-hint h-32 flex items-center justify-center">
+                    Sin ventas en el período
+                  </p>
+                ) : (
+                  <SalesHeatmap cells={heatmapCells} metric="sales_count" compact />
+                )}
+              </div>
+
+              <div className="surface-card p-6 space-y-4">
+                <p className="font-semibold text-heading font-display">Distribución por día</p>
+                {dayOfWeekData.length === 0 || totalSales === 0 ? (
+                  <p className="text-sm text-hint h-24 flex items-center justify-center">Sin datos para el período</p>
+                ) : (
+                  <ResponsiveContainer width="100%" height={220}>
+                    <BarChart data={dayOfWeekData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="var(--color-edge)" vertical={false} />
+                      <XAxis dataKey="day" tick={{ fontSize: 12, fill: 'var(--color-hint)' }} />
+                      <YAxis
+                        tick={{ fontSize: 10, fill: 'var(--color-hint)' }}
+                        tickFormatter={v => v >= 1000 ? formatMoney(v / 1000) + 'k' : formatMoney(v)}
+                        width={50}
+                      />
+                      <Tooltip
+                        cursor={{ fill: 'color-mix(in srgb, var(--primary) 5%, transparent)' }}
+                        content={({ active, payload, label }) => {
+                          if (!active || !payload?.length) return null
+                          return (
+                            <div className="surface-elevated rounded-xl p-2.5 text-xs shadow-sm">
+                              <p className="font-semibold text-heading">{label}</p>
+                              <p className="text-body">{formatMoney(Number(payload[0]?.value ?? 0))}</p>
+                            </div>
+                          )
+                        }}
+                      />
+                      <Bar dataKey="revenue" fill="var(--primary)" radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                )}
+              </div>
+            </div>
+
+            {/* Operator + Ranking + Breakdown row (1/3 each) */}
+            <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
+              {/* Operator sales widget */}
+              <div className="surface-card p-6 space-y-3">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <p className="font-semibold text-heading font-display">Ventas por operador</p>
+                    <Link href="/stats/operators" className="text-xs text-primary font-medium hover:underline whitespace-nowrap">
+                      Ver más →
+                    </Link>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => setOperatorMode('amount')}
+                      className={getWidgetToggleClass(operatorMode === 'amount')}
+                    >
+                      $ Monto
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setOperatorMode('transactions')}
+                      className={getWidgetToggleClass(operatorMode === 'transactions')}
+                    >
+                      Operaciones
+                    </button>
+                  </div>
+                </div>
+                {sortedOperators.length === 0 ? (
+                  <p className="text-sm text-hint">Sin datos</p>
+                ) : (
+                  sortedOperators.map((row, idx) => (
+                    <div key={row.operator_id ?? row.operator_name} className="flex items-center gap-3">
+                      <span className="text-xs text-hint w-5 shrink-0">#{idx + 1}</span>
+                      <span className="flex-1 text-sm text-body truncate">{row.operator_name}</span>
+                      <span className="text-sm font-semibold text-body shrink-0">
+                        {operatorMode === 'amount'
+                          ? formatMoney(row.total_revenue ?? 0)
+                          : `${row.transactions ?? 0} ventas`}
+                      </span>
+                    </div>
+                  ))
+                )}
+              </div>
+
               {/* Ranking */}
               <div className="surface-card p-6 space-y-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <p className="font-semibold text-heading font-display">Ranking de productos</p>
-                    <Link href="/stats/top-products" className="text-xs text-primary font-medium hover:underline">
+                    <Link href="/stats/top-products" className="text-xs text-primary font-medium hover:underline whitespace-nowrap">
                       Ver más →
                     </Link>
                   </div>
@@ -626,7 +740,7 @@ export default function StatsView({
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <p className="font-semibold text-heading font-display">Desglose</p>
-                    <Link href="/stats/breakdown" className="text-xs text-primary font-medium hover:underline">
+                    <Link href="/stats/breakdown" className="text-xs text-primary font-medium hover:underline whitespace-nowrap">
                       Ver más →
                     </Link>
                   </div>
@@ -665,84 +779,6 @@ export default function StatsView({
               </div>
             </div>
 
-            {/* Operators + Day of week */}
-            <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-              {/* Operator sales widget */}
-              <div className="surface-card p-6 space-y-3">
-                <div className="flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-3">
-                    <p className="font-semibold text-heading font-display">Ventas por operador</p>
-                    <Link href="/stats/operators" className="text-xs text-primary font-medium hover:underline">
-                      Ver más →
-                    </Link>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <button
-                      type="button"
-                      onClick={() => setOperatorMode('amount')}
-                      className={getWidgetToggleClass(operatorMode === 'amount')}
-                    >
-                      $ Monto
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setOperatorMode('transactions')}
-                      className={getWidgetToggleClass(operatorMode === 'transactions')}
-                    >
-                      Operaciones
-                    </button>
-                  </div>
-                </div>
-                {sortedOperators.length === 0 ? (
-                  <p className="text-sm text-hint">Sin datos</p>
-                ) : (
-                  sortedOperators.map((row, idx) => (
-                    <div key={row.operator_id ?? row.operator_name} className="flex items-center gap-3">
-                      <span className="text-xs text-hint w-5 shrink-0">#{idx + 1}</span>
-                      <span className="flex-1 text-sm text-body truncate">{row.operator_name}</span>
-                      <span className="text-sm font-semibold text-body shrink-0">
-                        {operatorMode === 'amount'
-                          ? formatMoney(row.total_revenue ?? 0)
-                          : `${row.transactions ?? 0} ventas`}
-                      </span>
-                    </div>
-                  ))
-                )}
-              </div>
-
-              {/* Day of week distribution */}
-              <div className="surface-card p-6 space-y-4">
-                <p className="font-semibold text-heading font-display">Distribución por día</p>
-                {dayOfWeekData.length === 0 || totalSales === 0 ? (
-                  <p className="text-sm text-hint h-24 flex items-center justify-center">Sin datos para el período</p>
-                ) : (
-                  <ResponsiveContainer width="100%" height={130}>
-                    <BarChart data={dayOfWeekData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="var(--color-edge)" vertical={false} />
-                      <XAxis dataKey="day" tick={{ fontSize: 12, fill: 'var(--color-hint)' }} />
-                      <YAxis
-                        tick={{ fontSize: 10, fill: 'var(--color-hint)' }}
-                        tickFormatter={v => v >= 1000 ? formatMoney(v / 1000) + 'k' : formatMoney(v)}
-                        width={50}
-                      />
-                      <Tooltip
-                        cursor={{ fill: 'color-mix(in srgb, var(--primary) 5%, transparent)' }}
-                        content={({ active, payload, label }) => {
-                          if (!active || !payload?.length) return null
-                          return (
-                            <div className="surface-elevated rounded-xl p-2.5 text-xs shadow-sm">
-                              <p className="font-semibold text-heading">{label}</p>
-                              <p className="text-body">{formatMoney(Number(payload[0]?.value ?? 0))}</p>
-                            </div>
-                          )
-                        }}
-                      />
-                      <Bar dataKey="revenue" fill="var(--primary)" radius={[4, 4, 0, 0]} />
-                    </BarChart>
-                  </ResponsiveContainer>
-                )}
-              </div>
-            </div>
           </div>
         </div>
       </div>

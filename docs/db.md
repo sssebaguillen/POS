@@ -30,6 +30,9 @@
 | whatsapp | text nullable | digits + country code only |
 | logo_url | text nullable | |
 | description | text nullable | visible in public catalog |
+| country_code | text nullable | CHECK in (`AR`, `MX`, `CO`, `UY`); from P10.a |
+| tax_id | text nullable | fiscal id (CUIT/RFC/NIT/RUT); from P10.a |
+| timezone | text NOT NULL | IANA tz; default `'America/Argentina/Buenos_Aires'`. Used by P11.3 heatmap and any future time-of-day analytics. Backfilled from `country_code` on P11.3 rollout. |
 
 > **Correction vs CONTEXT.md:** `accounting_enabled` column does NOT exist in the live DB. The `settings` JSONB also supports `currency` and `logo_upload_path` keys (not just `primary_color`).
 
@@ -476,6 +479,12 @@ All SECURITY DEFINER, all with `set search_path = public, extensions`.
 | `get_sales_by_brand_detail(p_business_id, p_from?, p_to?, p_limit?, p_offset?)` | `{data: BrandRow[], total}` — `BrandRow`: `brand_id, brand_name, transaction_count, units_sold, revenue, product_count` |
 | `get_sales_by_payment_detail(p_business_id, p_from?, p_to?)` | `{data: PaymentMethodDetail[]}` |
 | `get_sales_by_operator_detail(p_business_id, p_from?, p_to?)` | `{data: OperatorSalesDetail[]}` |
+| `get_daily_snapshots(p_business_id, p_from?, p_to?)` | P11.1 — `{data: DailySnapshotRow[]}` desde `daily_snapshots`. `p_from`/`p_to` default = últimos 30 días. |
+| `upsert_daily_snapshot(p_business_id, p_snapshot_date)` | P11.1 — recomputa el snapshot diario (sales+expenses+top product) y hace UPSERT. SECURITY DEFINER. |
+| `refresh_daily_snapshot(p_business_id, p_snapshot_date?)` | P11.1 — wrapper validado por `get_business_id()`. Default = `current_date - 1`. |
+| `refresh_all_daily_snapshots(p_snapshot_date?)` | P11.1 — recorre todos los negocios. `GRANT EXECUTE TO service_role` (Edge Function nocturno). |
+| `get_period_comparison(p_business_id, p_from?, p_to?)` | P11.2 — `{current, previous, days[]}` sobre `daily_snapshots`. Alinea período anterior por offset. |
+| `get_sales_heatmap(p_business_id, p_from?, p_to?)` | P11.3 — `{data: SalesHeatmapCell[]}` agrupado por `(weekday, hour)` en `businesses.timezone`. Sólo celdas con datos; la UI completa con ceros. |
 | `bulk_delete_products(p_business_id, p_ids uuid[])` | Bulk delete with business_id guard |
 | `bulk_set_product_status(p_business_id, p_ids uuid[], p_status text)` | Bulk activate/discontinue |
 | `bulk_update_product_category(p_business_id, p_ids uuid[], p_category_id uuid)` | Bulk category change |

@@ -231,6 +231,13 @@ export interface StatsTrendsComparison {
   days: StatsTrendsDayRow[]
 }
 
+export interface SalesHeatmapCell {
+  weekday: number   // Postgres DOW: 0=Sunday … 6=Saturday
+  hour: number      // 0..23, business-local timezone
+  sales_count: number
+  net_revenue: number
+}
+
 export interface StatsBreakdown {
   by_category: StatsBreakdownCategory[]
   by_brand: StatsBreakdownBrand[]

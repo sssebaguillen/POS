@@ -6,7 +6,7 @@ import type { TopProductRow } from '@/components/stats/StatsView'
 import { requireAuthenticatedBusinessId } from '@/lib/business'
 import { resolveDateRange } from '@/lib/date-utils'
 import { normalizeOperatorSalesStatsRows } from '@/lib/mappers'
-import type { DailySnapshotRow, OperatorSalesStatsRow, StatsKpis, StatsEvolution, StatsBreakdown } from '@/lib/types'
+import type { DailySnapshotRow, OperatorSalesStatsRow, StatsKpis, StatsEvolution, StatsBreakdown, SalesHeatmapCell } from '@/lib/types'
 
 interface SearchParams {
   period?: string
@@ -33,6 +33,7 @@ export default async function StatsPage({
     { data: topProductsRaw },
     { data: operatorsRaw },
     { data: dailySnapshotsRaw },
+    { data: heatmapRaw },
   ] =
     await Promise.all([
       supabase.rpc('get_stats_kpis', {
@@ -67,6 +68,11 @@ export default async function StatsPage({
         p_from: from,
         p_to: to,
       }),
+      supabase.rpc('get_sales_heatmap', {
+        p_business_id: businessId,
+        p_from: from,
+        p_to: to,
+      }),
     ])
 
   const kpis = kpisRaw as unknown as StatsKpis | null
@@ -76,6 +82,7 @@ export default async function StatsPage({
   const operatorRows = (operatorsRaw as unknown as { data: OperatorSalesStatsRow[] } | null)?.data ?? []
   const operators = normalizeOperatorSalesStatsRows(operatorRows)
   const dailySnapshots = (dailySnapshotsRaw as unknown as { data: DailySnapshotRow[] } | null)?.data ?? []
+  const heatmapCells = (heatmapRaw as unknown as { data: SalesHeatmapCell[] } | null)?.data ?? []
 
   return (
     <StatsView
@@ -86,6 +93,7 @@ export default async function StatsPage({
       topProducts={topProducts}
       operators={operators}
       dailySnapshots={dailySnapshots}
+      heatmapCells={heatmapCells}
       period={period}
       from={params.from}
       to={params.to}

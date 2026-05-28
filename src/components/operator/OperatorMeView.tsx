@@ -11,12 +11,15 @@ import type { DateRangePeriod } from '@/components/shared/DateRangeFilter'
 import Toast from '@/components/shared/Toast'
 import { useToast } from '@/hooks/useToast'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import SalesHeatmap from '@/components/stats/SalesHeatmap'
 import type { UserRole } from '@/lib/operator'
 import { OPERATOR_ROLE_LABELS, PROFILE_ROLE_LABELS } from '@/lib/constants/domain'
 import { useFormatMoney } from '@/lib/context/CurrencyContext'
 import { resolveDateRange, buildDateParams, periodNeedsCustomDates } from '@/lib/date-utils'
+import type { SalesHeatmapCell } from '@/lib/types'
 
 const BUSINESS_TIMEZONE_OFFSET = '-03:00'
+const OWNER_OPERATOR_SENTINEL = '00000000-0000-0000-0000-000000000000'
 
 interface OperatorStatsRpcResult {
   success: boolean
@@ -55,6 +58,7 @@ interface OperatorStatsQueryData {
   totalRevenue: number
   topProducts: OperatorTopProduct[]
   saleHistory: OperatorSaleHistoryRow[]
+  heatmapCells: SalesHeatmapCell[]
 }
 
 interface OperatorMeViewProps {
@@ -71,6 +75,7 @@ interface OperatorMeViewProps {
   totalRevenue: number
   topProducts: OperatorTopProduct[]
   saleHistory: OperatorSaleHistoryRow[]
+  heatmapCells: SalesHeatmapCell[]
 }
 
 function normalizePin(value: string): string {
@@ -99,7 +104,7 @@ function statusLabel(status: string | null): string {
 }
 
 export default function OperatorMeView({
-  businessId: _businessId,
+  businessId,
   operatorId,
   operatorName,
   operatorRole,
@@ -112,7 +117,9 @@ export default function OperatorMeView({
   totalRevenue: initialTotalRevenue,
   topProducts: initialTopProducts,
   saleHistory: initialSaleHistory,
+  heatmapCells: initialHeatmapCells,
 }: OperatorMeViewProps) {
+  const heatmapOperatorId = operatorRole === 'owner' ? OWNER_OPERATOR_SENTINEL : operatorId
   const formatMoney = useFormatMoney()
   const pathname = usePathname()
   const supabase = useMemo(() => createClient(), [])
@@ -145,26 +152,31 @@ export default function OperatorMeView({
         to: resolvedRange.to ? `${resolvedRange.to}T23:59:59.999${BUSINESS_TIMEZONE_OFFSET}` : null,
       }
 
-      let statsRaw: unknown
-      if (operatorRole === 'owner') {
-        const { data: raw, error } = await supabase.rpc('get_owner_stats', {
-          p_date_from: statsRange.from,
-          p_date_to: statsRange.to,
-        })
-        if (error) throw new Error(error.message)
-        statsRaw = raw
-      } else {
-        const { data: raw, error } = await supabase.rpc('get_operator_stats', {
-          p_operator_id: operatorId,
-          p_date_from: statsRange.from,
-          p_date_to: statsRange.to,
-        })
-        if (error) throw new Error(error.message)
-        statsRaw = raw
-      }
+      const statsPromise = operatorRole === 'owner'
+        ? supabase.rpc('get_owner_stats', {
+            p_date_from: statsRange.from,
+            p_date_to: statsRange.to,
+          })
+        : supabase.rpc('get_operator_stats', {
+            p_operator_id: operatorId,
+            p_date_from: statsRange.from,
+            p_date_to: statsRange.to,
+          })
 
-      const stats = statsRaw as OperatorStatsRpcResult | null
+      const heatmapPromise = supabase.rpc('get_sales_heatmap', {
+        p_business_id: businessId,
+        p_from: resolvedRange.from,
+        p_to: resolvedRange.to,
+        p_operator_id: heatmapOperatorId,
+      })
+
+      const [statsResult, heatmapResult] = await Promise.all([statsPromise, heatmapPromise])
+      if (statsResult.error) throw new Error(statsResult.error.message)
+
+      const stats = statsResult.data as unknown as OperatorStatsRpcResult | null
       if (!stats || stats.success !== true) throw new Error('No se pudieron cargar las estadísticas.')
+
+      const heatmapCells = (heatmapResult.data as unknown as { data: SalesHeatmapCell[] } | null)?.data ?? []
 
       return {
         totalSales: Number(stats.total_sales ?? 0),
@@ -181,6 +193,7 @@ export default function OperatorMeView({
           status: s.status,
           items_count: Number(s.items_count ?? 0),
         })),
+        heatmapCells,
       }
     },
     initialData: isInitialPeriod
@@ -189,6 +202,7 @@ export default function OperatorMeView({
           totalRevenue: initialTotalRevenue,
           topProducts: initialTopProducts,
           saleHistory: initialSaleHistory,
+          heatmapCells: initialHeatmapCells,
         }
       : undefined,
     initialDataUpdatedAt: isInitialPeriod ? mountedAt : undefined,
@@ -199,6 +213,7 @@ export default function OperatorMeView({
   const totalRevenue = data?.totalRevenue ?? initialTotalRevenue
   const topProducts = data?.topProducts ?? initialTopProducts
   const saleHistory = data?.saleHistory ?? initialSaleHistory
+  const heatmapCells = data?.heatmapCells ?? initialHeatmapCells
 
   function syncDateUrl(nextPeriod: DateRangePeriod, nextFrom?: string, nextTo?: string) {
     if (typeof window === 'undefined') return
@@ -259,7 +274,7 @@ export default function OperatorMeView({
     setSavingPin(true)
 
     const { data: verifyResult, error: verifyError } = await supabase.rpc('verify_operator_pin', {
-      p_business_id: _businessId,
+      p_business_id: businessId,
       p_operator_id: operatorId,
       p_pin: currentPin,
     })
@@ -273,7 +288,7 @@ export default function OperatorMeView({
 
     const { data: updateResult, error: updateError } = await supabase.rpc('update_operator', {
       p_actor_operator_id: operatorId,
-      p_business_id: _businessId,
+      p_business_id: businessId,
       p_target_operator_id: operatorId,
       p_name: null,
       p_new_pin: newPin,
@@ -303,7 +318,7 @@ export default function OperatorMeView({
       <div className="flex-1 overflow-y-auto p-6">
         <div className="mx-auto flex max-w-6xl flex-col gap-6">
 
-          {/* Compact identity bar */}
+          {/* Identity hero */}
           <div className="surface-card px-5 py-4">
             <div className="flex items-center gap-3">
               <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary text-sm font-semibold font-display select-none" aria-hidden>
@@ -359,8 +374,23 @@ export default function OperatorMeView({
                 </div>
               </div>
 
-              <div className="grid gap-6 lg:grid-cols-[1.1fr,1.4fr]">
-                <section className="surface-card overflow-hidden">
+              {/* Personal heatmap (2/3) + Top productos (1/3) */}
+              <div className="grid gap-6 lg:grid-cols-3">
+                <section className="surface-card p-5 space-y-4 lg:col-span-2">
+                  <div>
+                    <h3 className="text-base font-semibold text-foreground font-display">Cuándo vendes</h3>
+                    <p className="text-xs text-muted-foreground">Concentración por día y hora · hora local del negocio</p>
+                  </div>
+                  {heatmapCells.length === 0 ? (
+                    <p className="text-sm text-muted-foreground h-32 flex items-center justify-center">
+                      Sin ventas en el período
+                    </p>
+                  ) : (
+                    <SalesHeatmap cells={heatmapCells} metric="sales_count" />
+                  )}
+                </section>
+
+                <section className="surface-card overflow-hidden lg:col-span-1">
                   <div className="border-b border-edge-soft px-5 py-4">
                     <h3 className="text-base font-semibold text-foreground font-display">Top productos</h3>
                   </div>
@@ -401,11 +431,12 @@ export default function OperatorMeView({
                     </Table>
                   </div>
                 </section>
+              </div>
 
-                <section className="surface-card overflow-hidden">
-                  <div className="border-b border-edge-soft px-5 py-4">
-                    <h3 className="text-base font-semibold text-foreground font-display">Historial de ventas</h3>
-                  </div>
+              <section className="surface-card overflow-hidden">
+                <div className="border-b border-edge-soft px-5 py-4">
+                  <h3 className="text-base font-semibold text-foreground font-display">Historial de ventas</h3>
+                </div>
                   <div className="overflow-x-auto p-4">
                     <Table>
                       <TableHeader>
@@ -445,7 +476,6 @@ export default function OperatorMeView({
                     </Table>
                   </div>
                 </section>
-              </div>
             </div>
           </section>
 

@@ -1,6 +1,21 @@
 {
-  "current": "0.0.6",
+  "current": "0.0.6.1",
   "releases": [
+    {
+      "version": "0.0.6.1",
+      "date": "2026-05-28",
+      "label": "Heatmap de ventas por día y hora",
+      "changes": [
+        { "type": "new", "text": "Nueva sección Heatmap de ventas dentro de Estadísticas (entras desde el widget 'Heatmap por día y hora' → Ver detalle). Muestra una grilla 7×24 con la concentración de tus ventas por día de la semana y hora del día, en hora local de tu negocio. Identifica de un vistazo cuáles son tus horas pico y tus horas flojas." },
+        { "type": "new", "text": "En la página de detalle del heatmap puedes alternar entre Ventas (cantidad) e Ingresos (monto) para que el color de cada celda represente lo que más te importa. Cuatro KPIs arriba: total de ventas, total de ingresos, día más activo y hora pico del período seleccionado." },
+        { "type": "new", "text": "Panel 'Top horarios' al lado del heatmap con las franjas más activas del período rankeadas, cada una con su barra de intensidad. Útil para planificar turnos y reforzar atención en los momentos críticos." },
+        { "type": "new", "text": "En Estadísticas, nuevo widget compacto 'Heatmap por día y hora' lado a lado con 'Distribución por día'. Da una lectura rápida del patrón semanal sin tener que entrar al detalle." },
+        { "type": "new", "text": "En tu perfil (Mi perfil), nuevo widget personal 'Cuándo vendes' con tu heatmap individual. Filtrable por período. Permite que cada operario vea su propio patrón de actividad sin mezclar con el del resto del equipo." },
+        { "type": "improvement", "text": "Reorganización del dashboard de Estadísticas: Heatmap y Distribución por día ahora están lado a lado (50/50), y abajo Ventas por operador, Ranking de productos y Desglose comparten una sola fila (33/33/33). Más información a primer golpe de vista, menos scroll." },
+        { "type": "improvement", "text": "Cada negocio ahora tiene una zona horaria configurada (Argentina/Buenos Aires por defecto, Bogotá para Colombia, Ciudad de México para México). Esto hace que el heatmap muestre las ventas a la hora correcta — antes una venta a las 22hs hubiera podido caer en otra franja por desfase horario." },
+        { "type": "improvement", "text": "Pulido visual en los widgets de Estadísticas: los chips de filtro y los links 'Ver más →' ya no se parten en dos líneas cuando los widgets quedan angostos." }
+      ]
+    },
     {
       "version": "0.0.6",
       "date": "2026-05-27",

@@ -12,6 +12,12 @@
 
 ---
 
+## Bugs conocidos
+
+- **Badge de pedidos online no persiste el "leído"**: el badge del sidebar muestra correctamente la cantidad de pedidos nuevos y desaparece tras entrar a `/orders`, pero al refrescar la página, cerrar sesión y volver, o cambiar de operador, los mismos pedidos viejos vuelven a contar como "no leídos". `get_catalog_orders_unread_count` cuenta por estado (`recibido`) y no contra un `last_read_at` per-user/per-business. Fix: agregar columna `catalog_orders_read_at` en `profiles` (o tabla aparte por sub-operador), actualizarla en el GET de `/orders`, y filtrar `created_at > last_read_at` en el conteo.
+
+---
+
 ## P7h Audit Log — Pendiente
 
 - **Fase 3:** revertir una mutación desde su entrada en `/activity` (undo desde cualquier evento).
@@ -28,7 +34,13 @@
 - **P10 docs mismatch** — `docs/db.md` documenta `invoices`, pero no aparece en `supabase/schema.sql`; validar contra la DB en vivo antes de construir sobre eso.
 - **P11.1 ✅** (2026-05-27) — tabla `daily_snapshots` + RPCs `upsert_daily_snapshot`, `refresh_daily_snapshot`, `refresh_all_daily_snapshots`, `get_daily_snapshots`. Backfill histórico de todos los días con ventas/gastos. Edge Function `refresh-daily-snapshots` desplegada con guard `CRON_SECRET`. Cron pg_cron `refresh-daily-snapshots-nightly` (`10 6 * * *` UTC = 03:10 ART) leyendo el secret desde Supabase Vault (no en plaintext en `cron.job`). Widget en `/stats` con totales + chart de ingresos vs gastos.
 - **P11.2 ✅** (2026-05-27) — RPC `get_period_comparison(business_id, from, to)` (alinea período actual vs anterior por offset, sobre `daily_snapshots`). Página `/stats/trends` (edge runtime) con 4 KPI cards delta% + pill-tabs para alternar métrica (`net_revenue | expenses | sales_count | avg_ticket`) + LineChart current/previous. UX optimista: React Query + `keepPreviousData`, URL sync con `window.history.replaceState` (no `router.push`), `isFetching` indicador discreto. Link "Ver detalle →" desde el widget de `/stats`.
-- **P11.3** — pendiente: heatmap de ventas por hora del día (requiere nueva agregación sobre `sales.created_at`, no sale de `daily_snapshots`) + reporte mensual exportable en PDF.
+- **P11.3 parte 1 ✅** (2026-05-28) — heatmap de ventas por día/hora.
+  - `businesses.timezone` (IANA, default `America/Argentina/Buenos_Aires`, backfilled desde `country_code` AR/UY→BA, CO→Bogota, MX→Mexico_City).
+  - RPC `get_sales_heatmap(business_id, from?, to?)` que agrupa sales `completed` por `(weekday, hour)` en la TZ del negocio. Devuelve sólo celdas con datos; la UI rellena con ceros.
+  - Página `/stats/heatmap` (edge runtime) con DateRangeFilter, pill-tabs `Ventas | Ingresos`, KPIs (día más activo, hora pico, mejor día+hora), export CSV (168 filas), URL sync optimista.
+  - Widget compacto en `/stats` con link `Ver detalle →`.
+  - Componente reusable `SalesHeatmap` con prop `compact`.
+- **P11.3 parte 2** — pendiente: reporte mensual exportable en PDF (consolidado mes con KPIs, top productos, gastos, comparativa vs mes anterior).
 - **P12** — IA proactiva. Después de P11.3, usando el historial acumulado en `daily_snapshots` como contexto barato para el LLM.
 
 ---
@@ -80,3 +92,4 @@
 | `CartItem` en `lib/types/index.ts` | Tipo client-only mezclado con tipos del server |
 | `categories.public_read_categories` policy | Permite SELECT anon — OK para catálogo pero amplio |
 | `DateRangeFilter.tsx` | `QUARTER_RANGES` recalcula en cada render. No-issue en práctica. |
+| `daily_snapshots` agrupa en UTC | `upsert_daily_snapshot` usa `s.created_at::date` (UTC). Una venta a las 22:00 ART cae al snapshot del día siguiente. P11.3 (heatmap) ya respeta `businesses.timezone`; el re-backfill de `daily_snapshots` con TZ correcta se difiere para evitar shift de valores ya consumidos en prod. |
