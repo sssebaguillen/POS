@@ -8,7 +8,7 @@
 
 | ID | Issue |
 |----|-------|
-| M-3 | `inventory_movements.created_by` no tiene FK activa y el trigger no lo popula. |
+| ~~M-3~~ ✅ (2026-05-28) | `inventory_movements.created_by` era columna muerta (sin FK, nunca escrita ni leída, 0/68 filas). La atribución la maneja `created_by_operator` (FK → operators, NULL = dueño). Resuelto en `drop_inventory_movements_dead_created_by`: `DROP COLUMN created_by` + quitada de `schema.sql`. |
 
 ---
 
@@ -21,7 +21,7 @@
 ## P7h Audit Log — Pendiente
 
 - **Fase 3:** revertir una mutación desde su entrada en `/activity` (undo desde cualquier evento).
-- **Scope cut Fase 1:** `ImportProductsModal.handleCreate` aún hace `.update({ icon_color })` directo sobre `categories` en vez de pasar por `update_category`. Mover a RPC.
+- **Scope cut Fase 1:** ~~`ImportProductsModal` escribía `categories.icon_color` directo~~ ✅ — marcas y categorías ya pasan por `create_brand_guarded` / `create_category_guarded` (con `stock_write` + audit). **Lo que queda** es el path de **productos** del import masivo: `.upsert` (sku/barcode), `.insert` (plain) y `.delete` (undo) van directo a `products`, sin pasar por `create_product` ni audit log. Cerrarlo requiere un RPC de import masivo (upsert por sku/barcode + `stock_write` + audit) y el RPC de undo → es efectivamente **P8b** (`undo_import`). No es quick win.
 
 ---
 
@@ -84,12 +84,12 @@
 | Item | Notas |
 |------|-------|
 | `InventoryPanel.tsx` (~1291L) | Extraer 5 sub-componentes embebidos |
-| `CartPanel.tsx` (~920L) | `EditSalePanel` embebido — separarlo |
-| Radix `DialogTitle` warnings | Agregar `<VisuallyHidden><DialogTitle>` a todos los modales |
+| ~~`CartPanel.tsx` (~920L)~~ ✅ | `EditSalePanel` ya extraído a `src/components/pos/EditSalePanel.tsx`; `CartPanel` bajó a ~761L. |
+| ~~Radix `DialogTitle` warnings~~ ✅ (2026-05-28) | Todos los `DialogContent` tienen `DialogTitle`. Faltaban 5 (`NewOperatorModal`, `EditOperatorModal`, `ExportPriceListModal`, `EditSupplierModal`, `ExpensesTable`); resueltos con `<VisuallyHidden><DialogTitle>` siguiendo la convención de `price-lists`. |
 | `useEffect` para sales history en `CartPanel` | Patrón pre-React Query, no migrado |
-| `theme.tsx` FOUC | `localStorage` post-hydration causa flash — debería usar cookie como el sidebar |
+| ~~`theme.tsx` FOUC~~ ✅ (2026-05-28) | Resuelto con script inline bloqueante en `<head>` (`ThemeScript.tsx`) que aplica la clase `dark` antes del primer paint, leyendo `localStorage` + `prefers-color-scheme`. Constante única `THEME_STORAGE_KEY` en `lib/theme.ts`. El efecto de círculo del toggle (View Transition) se extrajo a `runThemeToggleTransition` en `lib/theme.ts` y ahora lo usan tanto el sidebar como el toggle del catálogo público. |
 | `!` assertions en env vars | En `client.ts` y `server.ts` |
 | `CartItem` en `lib/types/index.ts` | Tipo client-only mezclado con tipos del server |
 | `categories.public_read_categories` policy | Permite SELECT anon — OK para catálogo pero amplio |
 | `DateRangeFilter.tsx` | `QUARTER_RANGES` recalcula en cada render. No-issue en práctica. |
-| `daily_snapshots` agrupa en UTC | `upsert_daily_snapshot` usa `s.created_at::date` (UTC). Una venta a las 22:00 ART cae al snapshot del día siguiente. P11.3 (heatmap) ya respeta `businesses.timezone`; el re-backfill de `daily_snapshots` con TZ correcta se difiere para evitar shift de valores ya consumidos en prod. |
+| ~~`daily_snapshots` agrupa en UTC~~ ✅ (2026-05-28) | Resuelto en `20260528_05_daily_snapshots_tz_fix.sql`: las agregaciones de ventas ahora castean `(s.created_at AT TIME ZONE b.timezone)::date` (mirror de `get_sales_heatmap`). `refresh_daily_snapshot` / `refresh_all_daily_snapshots` resuelven "ayer" en la TZ local de cada negocio (default param → NULL). Re-backfill completo (DELETE + rebuild, tabla derivada) para evitar filas huérfanas del bucket UTC viejo. Verificado: 2 ventas nocturnas ART reasignadas al día local correcto; snapshots == agregado local-day exacto. |

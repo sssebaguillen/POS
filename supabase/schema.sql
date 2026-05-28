@@ -258,7 +258,6 @@ CREATE TABLE public.inventory_movements (
   quantity            integer     NOT NULL,
   reason              text,
   reference_id        uuid,
-  created_by          uuid,
   created_at          timestamptz          DEFAULT now(),
   created_by_operator uuid,
   CONSTRAINT inventory_movements_pkey PRIMARY KEY (id),

@@ -4,7 +4,8 @@ import { useMemo, useState } from 'react'
 import { Check, Search, X } from 'lucide-react'
 import ExportCSVButton from '@/components/shared/ExportCSVButton'
 import { Button } from '@/components/ui/button'
-import { Dialog, DialogContent } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
+import { VisuallyHidden } from '@radix-ui/react-visually-hidden'
 import { Input } from '@/components/ui/input'
 import { usePillIndicator } from '@/hooks/usePillIndicator'
 
@@ -305,6 +306,7 @@ export default function ExportPriceListModal({
   return (
     <Dialog open={open} onOpenChange={nextOpen => !nextOpen && handleClose()}>
       <DialogContent className="sm:max-w-[760px] p-0 gap-0 rounded-2xl overflow-hidden bg-card max-h-[88vh] flex flex-col" showCloseButton={false}>
+        <VisuallyHidden><DialogTitle>Exportar lista de precios</DialogTitle></VisuallyHidden>
         <div className="flex items-center justify-between px-5 py-4 border-b border-edge">
           <div className="min-w-0">
             <h2 className="text-base font-semibold text-heading">Exportar lista de precios</h2>

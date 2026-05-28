@@ -4,7 +4,8 @@ import { useEffect, useMemo, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Dialog, DialogContent } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
+import { VisuallyHidden } from '@radix-ui/react-visually-hidden'
 import { X } from 'lucide-react'
 import { isSettingsOperator, type SettingsOperator } from '@/components/settings/types'
 import { OPERATOR_ROLES, OPERATOR_ROLE_LABELS, type OperatorRole } from '@/lib/constants/domain'
@@ -374,6 +375,7 @@ export default function NewOperatorModal({
   return (
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-sm p-0 gap-0 overflow-hidden bg-card flex flex-col" showCloseButton={false}>
+        <VisuallyHidden><DialogTitle>Nuevo operario</DialogTitle></VisuallyHidden>
         <div className="flex items-center justify-between px-5 py-4 border-b border-edge">
           <h2 className="text-base font-semibold text-heading">Nuevo operario</h2>
           <button

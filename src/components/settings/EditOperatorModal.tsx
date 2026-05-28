@@ -5,7 +5,8 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Dialog, DialogContent } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
+import { VisuallyHidden } from '@radix-ui/react-visually-hidden'
 import { X } from 'lucide-react'
 import { isSettingsOperator, type SettingsOperator } from '@/components/settings/types'
 import {
@@ -266,6 +267,7 @@ export default function EditOperatorModal({
   return (
     <Dialog open onOpenChange={nextOpen => { if (!nextOpen) onClose() }}>
       <DialogContent className="sm:max-w-lg p-0 gap-0 overflow-hidden bg-card flex flex-col" showCloseButton={false}>
+        <VisuallyHidden><DialogTitle>Editar operario</DialogTitle></VisuallyHidden>
         <div className="flex items-center justify-between px-5 py-4 border-b border-edge shrink-0">
           <h2 className="text-base font-semibold text-heading">Editar operario</h2>
           <button

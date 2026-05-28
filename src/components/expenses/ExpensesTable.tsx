@@ -5,7 +5,8 @@ import { Paperclip, Loader2 } from 'lucide-react'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { EXPENSE_CATEGORY_LABELS, type Expense, type ExpenseAttachmentType } from './types'
 import ExpenseAttachmentModal from './ExpenseAttachmentModal'
-import { Dialog, DialogContent } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
+import { VisuallyHidden } from '@radix-ui/react-visually-hidden'
 import { Button } from '@/components/ui/button'
 import { useToast } from '@/hooks/useToast'
 import Toast from '@/components/shared/Toast'
@@ -252,6 +253,7 @@ function DeleteExpenseDialog({
   return (
     <Dialog open onOpenChange={(open) => { if (!open) onCancel() }}>
       <DialogContent showCloseButton={false} className="max-w-sm gap-0 p-0 overflow-hidden rounded-2xl">
+        <VisuallyHidden><DialogTitle>{isMercaderia ? 'Eliminar compra de mercadería' : 'Eliminar gasto'}</DialogTitle></VisuallyHidden>
         <div className={`px-5 py-4 ${isMercaderia ? 'space-y-2' : 'space-y-1'}`}>
           <p className="font-semibold text-heading">
             {isMercaderia ? '¿Eliminar compra de mercadería?' : '¿Eliminar este gasto?'}
