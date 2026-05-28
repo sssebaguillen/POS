@@ -1,51 +1,29 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
 
-const SEEN_AT_KEY = 'orders-online-seen-at'
-const SEEN_AT_EVENT = 'orders-online-seen-at:changed'
-
 /**
- * Mark the catalog-order badge as cleared up to `now`. Called by `/orders`
- * on mount and on each successful list refresh — once the owner is looking
- * at the section, every order they can see is "acknowledged".
+ * Mark the catalog-order badge as read for the whole business. Called by
+ * `/orders` on mount — once anyone opens the section, every order currently
+ * visible is acknowledged for every device/operator. State lives in
+ * businesses.catalog_orders_read_at (per business), not localStorage.
  */
-export function acknowledgeOrdersSeen() {
-  if (typeof window === 'undefined') return
-  const iso = new Date().toISOString()
-  window.localStorage.setItem(SEEN_AT_KEY, iso)
-  window.dispatchEvent(new CustomEvent(SEEN_AT_EVENT, { detail: iso }))
-}
-
-function readSeenAt(): string | null {
-  if (typeof window === 'undefined') return null
-  return window.localStorage.getItem(SEEN_AT_KEY)
+export async function acknowledgeOrdersSeen() {
+  const supabase = createClient()
+  await supabase.rpc('mark_catalog_orders_read')
 }
 
 export function useUnreadOrdersCount(enabled: boolean) {
   const supabase = useMemo(() => createClient(), [])
   const queryClient = useQueryClient()
   const previousCount = useRef<number | null>(null)
-  const [seenAt, setSeenAt] = useState<string | null>(() => readSeenAt())
-
-  useEffect(() => {
-    function refresh() { setSeenAt(readSeenAt()) }
-    window.addEventListener(SEEN_AT_EVENT, refresh)
-    window.addEventListener('storage', refresh)
-    return () => {
-      window.removeEventListener(SEEN_AT_EVENT, refresh)
-      window.removeEventListener('storage', refresh)
-    }
-  }, [])
 
   const query = useQuery({
-    queryKey: ['catalog_orders_unread', seenAt],
+    queryKey: ['catalog_orders_unread'],
     queryFn: async () => {
-      const { data, error } = await supabase.rpc('get_catalog_orders_unread_count', {
-        p_since: seenAt,
-      })
+      const { data, error } = await supabase.rpc('get_catalog_orders_unread_count')
       if (error) throw error
       return Number(data ?? 0)
     },

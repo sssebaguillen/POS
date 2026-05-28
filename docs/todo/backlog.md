@@ -14,7 +14,7 @@
 
 ## Bugs conocidos
 
-- **Badge de pedidos online no persiste el "leído"**: el badge del sidebar muestra correctamente la cantidad de pedidos nuevos y desaparece tras entrar a `/orders`, pero al refrescar la página, cerrar sesión y volver, o cambiar de operador, los mismos pedidos viejos vuelven a contar como "no leídos". `get_catalog_orders_unread_count` cuenta por estado (`recibido`) y no contra un `last_read_at` per-user/per-business. Fix: agregar columna `catalog_orders_read_at` en `profiles` (o tabla aparte por sub-operador), actualizarla en el GET de `/orders`, y filtrar `created_at > last_read_at` en el conteo.
+- **Badge de pedidos online no persiste el "leído" ✅** (2026-05-28) — el estado "leído" vivía en localStorage (`orders-online-seen-at`), per-browser-per-device: no sincronizaba entre dispositivos y un browser nuevo/incógnito recontaba todos los `recibido`. Fix aplicado: columna `businesses.catalog_orders_read_at` (per-business), RPC `mark_catalog_orders_read()` llamada al abrir `/orders`, y `get_catalog_orders_unread_count()` (sin params) que cuenta `recibido AND created_at > catalog_orders_read_at`. Cliente (`UnreadBadge`/`OrdersView`) ya no usa localStorage. Migración `20260528_04_catalog_orders_read_at.sql`.
 
 ---
 

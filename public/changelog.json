@@ -1,6 +1,16 @@
 {
-  "current": "0.0.6.1",
+  "current": "0.0.6.2",
   "releases": [
+    {
+      "version": "0.0.6.2",
+      "date": "2026-05-28",
+      "label": "Correcciones y pulido",
+      "changes": [
+        { "type": "fix", "text": "El contador de pedidos online sin atender ya no vuelve a marcar como nuevos los pedidos viejos al refrescar, cerrar sesión o cambiar de operador. El estado de leído ahora se guarda por negocio, así que se mantiene en todos tus dispositivos." },
+        { "type": "fix", "text": "Eliminado el parpadeo blanco que aparecía al cargar la app en modo oscuro: el tema correcto se aplica antes de que la pantalla se dibuje." },
+        { "type": "improvement", "text": "El botón de cambiar entre modo claro y oscuro en el catálogo público ahora tiene la misma animación de círculo que el de la app." }
+      ]
+    },
     {
       "version": "0.0.6.1",
       "date": "2026-05-28",

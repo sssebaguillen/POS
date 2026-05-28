@@ -3,6 +3,7 @@ import type { Metadata } from 'next'
 import { DM_Sans, Sora } from 'next/font/google'
 import './globals.css'
 import { ThemeProvider } from '@/components/shared/theme'
+import { ThemeScript } from '@/components/shared/ThemeScript'
 import { SpeedInsights } from "@vercel/speed-insights/next"
 import { Analytics } from "@vercel/analytics/next"
 import PostHogPageView from '@/components/shared/PostHogPageView'
@@ -35,6 +36,9 @@ export default async function RootLayout({
 }) {
   return (
     <html lang="es" className={`${dmSans.variable} ${sora.variable}`} suppressHydrationWarning>
+      <head>
+        <ThemeScript />
+      </head>
       <body className="font-sans antialiased" suppressHydrationWarning>
         <ThemeProvider>
           {children}

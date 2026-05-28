@@ -120,12 +120,13 @@ export default function OrdersView({ initialOrders, operatorId }: Props) {
     staleTime: 0,
   })
 
-  // Invalidate the unread badge whenever this list refreshes (counts may have shifted)
-  // and acknowledge the current snapshot — being on /orders means everything visible
-  // is "seen", including new orders that arrive while we're here.
+  // Mark orders read for the whole business whenever this list refreshes —
+  // being on /orders means everything visible is "seen", including new orders
+  // that arrive while we're here. Persists in businesses.catalog_orders_read_at.
   useEffect(() => {
-    acknowledgeOrdersSeen()
-    queryClient.invalidateQueries({ queryKey: ['catalog_orders_unread'] })
+    acknowledgeOrdersSeen().then(() => {
+      queryClient.invalidateQueries({ queryKey: ['catalog_orders_unread'] })
+    })
   }, [orders, queryClient])
 
   const pendientesCount = useMemo(

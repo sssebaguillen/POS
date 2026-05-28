@@ -2,10 +2,9 @@
 
 import { createContext, useContext, useEffect, useState } from 'react'
 import { Sun, Moon } from 'lucide-react'
+import { THEME_STORAGE_KEY, type Theme } from '@/lib/theme'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
-
-type Theme = 'light' | 'dark'
 
 interface ThemeContextType {
   theme: Theme
@@ -16,14 +15,12 @@ interface ThemeContextType {
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined)
 
-const STORAGE_KEY = 'pos-theme'
-
 function getPreferredTheme(): Theme {
   if (typeof window === 'undefined') {
     return 'light'
   }
 
-  const stored = localStorage.getItem(STORAGE_KEY)
+  const stored = localStorage.getItem(THEME_STORAGE_KEY)
   if (stored === 'dark' || stored === 'light') {
     return stored
   }
@@ -48,7 +45,8 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
 
   useEffect(() => {
     document.documentElement.classList.toggle('dark', theme === 'dark')
-    localStorage.setItem(STORAGE_KEY, theme)
+    document.documentElement.style.colorScheme = theme
+    localStorage.setItem(THEME_STORAGE_KEY, theme)
   }, [theme])
 
   const toggle = () => setTheme((prev) => (prev === 'light' ? 'dark' : 'light'))

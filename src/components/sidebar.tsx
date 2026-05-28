@@ -8,6 +8,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
 import { useTheme } from '@/components/shared/theme'
+import { runThemeToggleTransition } from '@/lib/theme'
 import OperatorSwitcher from '@/components/operator/OperatorSwitcher'
 import OnboardingChecklist from '@/components/onboarding/OnboardingChecklist'
 import ChangelogBanner from '@/components/shared/ChangelogBanner'
@@ -136,23 +137,7 @@ export default function Sidebar({
   const themeForUi = themeToggleMounted ? theme : 'light'
 
   function handleThemeToggle(e: React.MouseEvent<HTMLButtonElement>) {
-    const x = e.clientX
-    const y = e.clientY
-    const endRadius = Math.hypot(
-      Math.max(x, window.innerWidth - x),
-      Math.max(y, window.innerHeight - y)
-    )
-    document.documentElement.style.setProperty('--vt-x', `${x}px`)
-    document.documentElement.style.setProperty('--vt-y', `${y}px`)
-    document.documentElement.style.setProperty('--vt-r', `${endRadius}px`)
-
-    if (!document.startViewTransition) {
-      toggle()
-      return
-    }
-    document.startViewTransition(() => {
-      toggle()
-    })
+    runThemeToggleTransition(e, toggle)
   }
 
   const isRestricted = (check: (p: Permissions) => boolean): boolean =>
