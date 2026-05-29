@@ -253,12 +253,7 @@ function VariantSelectorContent({
     if (!data || !allSelected) return null
     return data.variants.find(v =>
       v.is_active &&
-      v.option_values.every(ov => {
-        if (ov.option_value_id == null) {
-          console.warn('[VariantSelectorContent] option_value_id is null/undefined', { variant_id: v.id, option_id: ov.option_id })
-        }
-        return selectedValues[ov.option_id] === ov.option_value_id
-      })
+      v.option_values.every(ov => selectedValues[ov.option_id] === ov.option_value_id)
     ) ?? null
   }, [data, allSelected, selectedValues])
 

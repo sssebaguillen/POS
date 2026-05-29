@@ -38,10 +38,6 @@ export function isCompletedSale(status: string | null): boolean {
   return status === null || status === 'completed'
 }
 
-export function getDayLabel(dayIndex: number): string {
-  return ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'][dayIndex]
-}
-
 // Period → Date objects (client-side components)
 
 export function getDateRange(

@@ -6,7 +6,13 @@ export async function GET(request: Request) {
   const code = searchParams.get('code')
   const token_hash = searchParams.get('token_hash')
   const type = searchParams.get('type') ?? 'email'
-  const next = searchParams.get('next') ?? '/'
+  // `next` se concatena con el origin; solo se acepta una ruta relativa que
+  // empiece con un único '/' para evitar open redirect (ej. `.evil.com` o `//evil.com`).
+  const rawNext = searchParams.get('next') ?? '/'
+  const next =
+    rawNext.startsWith('/') && !rawNext.startsWith('//') && !rawNext.startsWith('/\\')
+      ? rawNext
+      : '/'
 
   const supabase = await createClient()
 

@@ -22,7 +22,7 @@ import VariantPriceModal from '@/components/price-lists/VariantPriceModal'
 import type { PriceList, PriceListOverride } from '@/lib/types'
 import type { PriceListProduct } from '@/components/price-lists/types'
 import type { PriceListExportItem } from '@/components/price-lists/ExportPriceListModal'
-import { calculateProductPrice } from '@/lib/price-lists'
+import { calculateProductPrice, getMarginPercent } from '@/lib/price-lists'
 import { trackFeatureUsed, trackPriceListSwitched } from '@/lib/analytics'
 import { useFormatMoney } from '@/lib/context/CurrencyContext'
 import { usePillIndicator } from '@/hooks/usePillIndicator'
@@ -52,10 +52,6 @@ interface GroupedPriceRows {
   label: string
   brandOverride: PriceListOverride | null
   rows: ProductRowData[]
-}
-
-function getMarginPercent(multiplier: number): number {
-  return Math.round((multiplier - 1) * 100)
 }
 
 export default function PriceListsPanel({

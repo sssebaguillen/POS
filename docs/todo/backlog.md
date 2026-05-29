@@ -177,13 +177,60 @@ El owner sube un PDF o foto de la factura de una compra recién hecha y el siste
 
 | Item | Notas |
 |------|-------|
-| `InventoryPanel.tsx` (~1291L) | Extraer 5 sub-componentes embebidos |
+| `InventoryPanel.tsx` (~1400L) | Aún grande pese a extracciones. Pendiente: extraer el **dropdown responsive del header** (Import/Export + Categorías/Marcas, ~140L casi idénticas, L683-826) a un `<HeaderActionDropdown>`; memoizar las stats del footer (L229-240). Diferido 2026-05-29 porque la extracción del dropdown (portales + getBoundingClientRect + outside-click) necesita smoke-test en viewport mobile. Ver `docs/tests/09-auditoria-calidad.md` §2.3. |
 | ~~`CartPanel.tsx` (~920L)~~ ✅ | `EditSalePanel` ya extraído a `src/components/pos/EditSalePanel.tsx`; `CartPanel` bajó a ~761L. |
 | ~~Radix `DialogTitle` warnings~~ ✅ (2026-05-28) | Todos los `DialogContent` tienen `DialogTitle`. Faltaban 5 (`NewOperatorModal`, `EditOperatorModal`, `ExportPriceListModal`, `EditSupplierModal`, `ExpensesTable`); resueltos con `<VisuallyHidden><DialogTitle>` siguiendo la convención de `price-lists`. |
 | `useEffect` para sales history en `CartPanel` | Patrón pre-React Query, no migrado |
 | ~~`theme.tsx` FOUC~~ ✅ (2026-05-28) | Resuelto con script inline bloqueante en `<head>` (`ThemeScript.tsx`) que aplica la clase `dark` antes del primer paint, leyendo `localStorage` + `prefers-color-scheme`. Constante única `THEME_STORAGE_KEY` en `lib/theme.ts`. El efecto de círculo del toggle (View Transition) se extrajo a `runThemeToggleTransition` en `lib/theme.ts` y ahora lo usan tanto el sidebar como el toggle del catálogo público. |
 | `!` assertions en env vars | En `client.ts` y `server.ts` |
+| `protobufjs <=7.5.7` (npm audit, HIGH) | Transitiva vía `@sentry/nextjs` → `@opentelemetry/otlp-transformer`. **Riesgo real bajo**: es el transporte OTel de Sentry (serializa telemetría propia, no input de atacante), así que los CVE de DoS/inyección por protobuf malicioso no aplican. `npm audit fix` NO es quirúrgico (cambia 12 paquetes + warning de downgrade breaking de next). Si se ataca: `overrides` forzando solo protobufjs a 7.5.8+ y verificar con build. Decidido 2026-05-29: dejar, no urgente. |
+| `react-hooks/refs` en InventoryPanel/POSView (lint, 19 errores) | Refs leídos/mutados en render (dropdowns del header de InventoryPanel L729-804; refs de POSView). No es bug hoy; único hotspot real de lint. Limpieza post-beta. Ver `docs/tests/09-auditoria-calidad.md` §1.7. |
 | `CartItem` en `lib/types/index.ts` | Tipo client-only mezclado con tipos del server |
 | `categories.public_read_categories` policy | Permite SELECT anon — OK para catálogo pero amplio |
 | `DateRangeFilter.tsx` | `QUARTER_RANGES` recalcula en cada render. No-issue en práctica. |
 | ~~`daily_snapshots` agrupa en UTC~~ ✅ (2026-05-28) | Resuelto en `20260528_05_daily_snapshots_tz_fix.sql`: las agregaciones de ventas ahora castean `(s.created_at AT TIME ZONE b.timezone)::date` (mirror de `get_sales_heatmap`). `refresh_daily_snapshot` / `refresh_all_daily_snapshots` resuelven "ayer" en la TZ local de cada negocio (default param → NULL). Re-backfill completo (DELETE + rebuild, tabla derivada) para evitar filas huérfanas del bucket UTC viejo. Verificado: 2 ventas nocturnas ART reasignadas al día local correcto; snapshots == agregado local-day exacto. |
+
+---
+
+## Borrado completo de un negocio + huérfanos (post-beta, mantenibilidad)
+
+> Planteado 2026-05-29. Hoy sin usuarios reales el impacto es nulo (la DB se limpió a mano hace semanas; los huérfanos de Storage encontrados en la auditoría se eliminaron). Con varios negocios en producción pasa a ser un problema real.
+
+**Contexto:** la DB **no usa `ON DELETE CASCADE`** (decisión de seguridad/integridad). Al eliminar un negocio quedan huérfanos dispersos: storage (`{businessId}/` en cada bucket), `products`, `categories`, `brands`, atributos/colores (`product_options`, `attribute_types` es global), `audit_log` (**crece rápido**), `daily_snapshots`, `sales`+`sale_items`+`payments`, `expenses`+`expense_items`, `customers`, `operators`, `cash_sessions`, `catalog_orders`+items, `feedback`, `subscriptions`.
+
+**Diseño propuesto (no implementado) — dos capas:**
+
+**Capa 1 — hard delete orquestado (la *ejecución*):**
+1. RPC único `delete_business(p_business_id)` — `SECURITY DEFINER`, owner-only (`assert_tenant`), transaccional, borra en orden de dependencias FK. Audita la operación antes de borrar `audit_log`. Borra también el `auth.users` del dueño.
+2. Paso server-side (edge fn o admin con `service_role`) que liste y borre `{businessId}/` en cada bucket — **el SQL no puede borrar storage** (trigger `storage.protect_delete`); requiere la Storage API.
+3. Opcional: job de reconciliación periódico que detecte huérfanos (filas con `business_id` inexistente; objetos cuyo primer folder no es un negocio) y los reporte — defensa contra borrados parciales.
+
+**Capa 2 — soft delete + período de gracia (la *programación*, encima de la capa 1):**
+- Máquina de estados en `businesses.status`: `active → pending_deletion → deleted`, con `deletion_scheduled_at`. "Eliminar la cuenta" desde la UI (aún no existe) **solo marca** el negocio — nada se borra hasta el día 30. Un solo flag congela todo; no se tocan las ~15 tablas.
+- **Acceso durante la gracia:** si `status = pending_deletion`, el proxy / `get_business_id()` bloquea la operación normal y muestra "tu cuenta se eliminará el DD/MM — reactivar". El dueño **reactiva con solo volver a entrar** (→ `active`, se limpia `deletion_scheduled_at`).
+- **Hard delete diferido:** el cron existente (`pg_cron`, el de snapshots) corre un job diario que busca `deletion_scheduled_at < now()` y dispara la Capa 1.
+- **Salvaguardas (datos críticos de un negocio real):** (a) **export de todos los datos antes de confirmar** (ver ítem "Portabilidad" abajo) — es lo que da la seguridad real, más que la ventana; (b) confirmación con fricción (reingresar contraseña o tipear el nombre del negocio); (c) registrar el pedido de eliminación en `audit_log` (quién/cuándo) **antes** de vaciarlo.
+- **Orden de implementación:** primero la Capa 1 (sin un `delete_business` confiable el cron no tiene qué ejecutar), después la Capa 2 encima.
+
+**Legal:** en Argentina (Ley 25.326) y marcos similares, el derecho de supresión convive bien con una ventana corta anti-arrepentimiento; 30 días es defendible.
+
+**Decisión abierta:** ¿`audit_log` se borra con el negocio (sí, es business-scoped) o se retiene anonimizado para forense/legal? Hoy retención indefinida sin TTL (regla CLAUDE.md), pero eso aplica a negocios vivos.
+
+---
+
+## Portabilidad de datos — export + import completo (futuro, importante, no urgente)
+
+> Planteado 2026-05-29. Hoy solo se exportan productos (`ExportCSVButton` en tablas puntuales). La visión es exportar **e importar** **todos** los datos de un negocio.
+
+**Objetivo:** poder exportar el negocio entero —no solo productos: historial de ventas, pagos, gastos, clientes, métricas/snapshots, listas de precios, categorías/marcas, operadores, sesiones de caja, etc.— en un formato estructurado (JSON/CSV por entidad o un bundle). Y, más adelante, **importarlo** — para permitir:
+1. **Migración hacia Pulsar** desde otro software (onboarding de negocios que ya operan).
+2. **Migración desde Pulsar** hacia otro software (no retener al usuario por lock-in; genera confianza).
+3. **Export-before-delete:** es la salvaguarda que habilita el borrado de cuenta con tranquilidad (ver sección de borrado de negocio arriba).
+
+**Notas de diseño (preliminar):**
+- Export read-only es lo primero y más simple; el import es bastante más complejo (resolución de IDs, FKs, deduplicación, validación, conflictos con datos existentes).
+- Pensar un esquema/versión del formato desde el inicio para que export e import sean compatibles a futuro.
+- Scope por `business_id` (reutiliza el aislamiento ya auditado).
+- Datos sensibles: el export contiene info crítica del negocio → entregar vía descarga autenticada (no link público), idealmente con la sesión del dueño.
+
+**Prioridad:** importante para confianza/adopción y como pieza del borrado de cuenta, pero **no urgente** (sin usuarios reales). Empezar por el export completo; el import queda como fase 2.

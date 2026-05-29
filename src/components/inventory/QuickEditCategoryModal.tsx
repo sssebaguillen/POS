@@ -67,12 +67,14 @@ export default function QuickEditCategoryModal({ open, product, categories, busi
         .single()
       if (fetchError || !fetched) { setError(translateDbError(fetchError?.message ?? '', 'Error al obtener la categoría creada')); setSaving(false); return }
 
-      const { error: updateError } = await supabase
-        .from('products')
-        .update({ category_id: fetched.id })
-        .eq('id', product.id)
-        .eq('business_id', businessId)
-      if (updateError) { setError(translateDbError(updateError.message, 'No se pudo guardar el cambio.')); setSaving(false); return }
+      const { data: updRpc, error: updError } = await supabase.rpc('update_product', {
+        p_operator_id: operatorId,
+        p_business_id: businessId,
+        p_product_id: product.id,
+        p_changes: { category_id: fetched.id },
+      })
+      const updResult = updRpc as { success: boolean; error?: string } | null
+      if (updError || !updResult?.success) { setError(updResult?.error ?? translateDbError(updError?.message ?? '', 'No se pudo guardar el cambio.')); setSaving(false); return }
       onSaved(product.id, fetched.id, {
         id: fetched.id,
         name: fetched.name,
@@ -81,12 +83,14 @@ export default function QuickEditCategoryModal({ open, product, categories, busi
       })
     } else {
       const categoryId = selectedId === '' ? null : selectedId
-      const { error: updateError } = await supabase
-        .from('products')
-        .update({ category_id: categoryId })
-        .eq('id', product.id)
-        .eq('business_id', businessId)
-      if (updateError) { setError(translateDbError(updateError.message, 'No se pudo guardar el cambio.')); setSaving(false); return }
+      const { data: updRpc, error: updError } = await supabase.rpc('update_product', {
+        p_operator_id: operatorId,
+        p_business_id: businessId,
+        p_product_id: product.id,
+        p_changes: { category_id: categoryId },
+      })
+      const updResult = updRpc as { success: boolean; error?: string } | null
+      if (updError || !updResult?.success) { setError(updResult?.error ?? translateDbError(updError?.message ?? '', 'No se pudo guardar el cambio.')); setSaving(false); return }
       onSaved(product.id, categoryId)
     }
 

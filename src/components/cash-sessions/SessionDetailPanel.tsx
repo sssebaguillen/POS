@@ -14,11 +14,6 @@ import { Input } from '@/components/ui/input'
 const DIGITAL_METHODS = ['mercadopago', 'transfer'] as const
 type DigitalMethod = typeof DIGITAL_METHODS[number]
 
-const DIGITAL_METHOD_LABELS: Record<DigitalMethod, string> = {
-  mercadopago: 'MercadoPago',
-  transfer: 'Transferencia',
-}
-
 type DigitalEdits = Record<DigitalMethod, { opening: string; closing: string }>
 
 const EMPTY_EDITS: DigitalEdits = {
@@ -376,7 +371,7 @@ export default function SessionDetailPanel({ session, operatorId, onClose, onClo
                       return (
                         <div key={method} className="border border-border rounded-lg divide-y divide-border text-sm">
                           <div className="px-3 py-2 bg-muted/30">
-                            <span className="text-xs font-medium">{DIGITAL_METHOD_LABELS[method]}</span>
+                            <span className="text-xs font-medium">{PAYMENT_METHOD_LABELS[method]}</span>
                           </div>
                           <div className="flex items-center justify-between px-3 py-2.5 gap-3">
                             <span className="text-muted-foreground shrink-0">Saldo inicial</span>

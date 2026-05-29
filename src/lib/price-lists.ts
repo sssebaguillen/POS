@@ -76,3 +76,8 @@ export function resolveCartItemPrice(args: {
     variantPrice: isVariant ? basePrice : null,
   })
 }
+
+// Margen porcentual sobre costo a partir del multiplicador de una lista de precios.
+export function getMarginPercent(multiplier: number): number {
+  return Math.round((multiplier - 1) * 100)
+}

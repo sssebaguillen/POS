@@ -27,7 +27,7 @@ import ProductCard, { SelectionCheckbox } from '@/components/inventory/ProductCa
 import ProductListRow from '@/components/inventory/ProductListRow'
 import ProductStockModal from '@/components/inventory/ProductStockModal'
 import type { PriceList, PriceListOverride } from '@/lib/types'
-import type { InventoryBrand, InventoryCategory, InventoryProduct, SortOption } from '@/components/inventory/types'
+import type { InventoryBrand, InventoryCategory, InventoryProduct } from '@/components/inventory/types'
 import { getStatus } from '@/components/inventory/types'
 import { useToast } from '@/hooks/useToast'
 import { usePillIndicator } from '@/hooks/usePillIndicator'
@@ -69,7 +69,6 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
   const selectedCategories = filterValue.categoryIds
   const selectedBrands = filterValue.brandIds
   const showInCatalogOnly = filterValue.showInCatalogOnly
-  const sort: SortOption = { field: filterValue.sortField as SortOption['field'], dir: filterValue.sortDir }
   const [loadingId, setLoadingId] = useState<string | null>(null)
   const [showNewProduct, setShowNewProduct] = useState(false)
   const [showImport, setShowImport] = useState(false)
@@ -184,11 +183,13 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
 
   const visibleProducts = useMemo(() => sorted.slice(0, visibleCount), [sorted, visibleCount])
 
-  // Reset pagination when the filtered/sorted set changes
+  // Reset pagination when the filtered/sorted set changes.
+  // Depend on sortField/sortDir (primitivos) y NO en el objeto `sort` (L72), que se
+  // recrea en cada render → haría correr este efecto en cada render y resetearía
+  // visibleCount a PAGE_SIZE, rompiendo el scroll infinito con >PAGE_SIZE productos.
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setVisibleCount(PAGE_SIZE)
-  }, [query, selectedCategories, selectedBrands, showInCatalogOnly, sort, statusFilter])
+  }, [query, selectedCategories, selectedBrands, showInCatalogOnly, sortField, sortDir, statusFilter])
 
   // Infinite scroll: load more products when near the bottom of the scroll area
   useEffect(() => {

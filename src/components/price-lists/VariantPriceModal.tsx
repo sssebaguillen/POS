@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { VisuallyHidden } from '@radix-ui/react-visually-hidden'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { useFormatMoney } from '@/lib/context/CurrencyContext'
-import { calculateProductPrice } from '@/lib/price-lists'
+import { calculateProductPrice, getMarginPercent } from '@/lib/price-lists'
 import type { PriceList, PriceListOverride, ProductVariant, ProductWithVariants } from '@/lib/types'
 import type { PriceListProduct } from '@/components/price-lists/types'
 
@@ -20,10 +20,6 @@ interface VariantPriceModalProps {
   productOverride: PriceListOverride | null
   brandOverride: PriceListOverride | null
   overrides: PriceListOverride[]
-}
-
-function getMarginPercent(multiplier: number): number {
-  return Math.round((multiplier - 1) * 100)
 }
 
 function getVariantLabel(variant: ProductVariant, data: ProductWithVariants): string {

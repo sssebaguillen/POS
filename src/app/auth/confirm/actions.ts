@@ -10,7 +10,6 @@ export async function confirmEmail(
   const supabase = await createClient()
   const { error } = await supabase.auth.verifyOtp({ token_hash, type })
   if (error) {
-    console.log('[auth/confirm] verifyOtp error:', { message: error.message, status: error.status })
     return { error: 'El link de confirmación no es válido o ya expiró.' }
   }
   if (type !== 'recovery') {
