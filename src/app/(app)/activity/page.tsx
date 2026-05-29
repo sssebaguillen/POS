@@ -64,7 +64,7 @@ export default async function ActivityPage({
   const businessId = await requireAuthenticatedBusinessId(supabase)
 
   const cookieStore = await cookies()
-  const activeOperator = getActiveOperator(cookieStore)
+  const activeOperator = await getActiveOperator(cookieStore)
   if (activeOperator && !hasPermission(activeOperator, 'analysis')) {
     redirect('/pos')
   }

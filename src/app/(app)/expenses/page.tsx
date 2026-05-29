@@ -20,7 +20,7 @@ export default async function ExpensesPage({
   const params = await searchParams
   const supabase = await createClient()
   const cookieStore = await cookies()
-  const activeOperator = getActiveOperator(cookieStore)
+  const activeOperator = await getActiveOperator(cookieStore)
   const businessId = await requireAuthenticatedBusinessId(supabase)
 
   const period: DateRangePeriod =

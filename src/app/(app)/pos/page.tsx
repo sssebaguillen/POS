@@ -13,7 +13,7 @@ export default async function POSPage() {
   const businessId = await requireAuthenticatedBusinessId(supabase)
 
   const cookieStore = await cookies()
-  const activeOperator = getActiveOperator(cookieStore)
+  const activeOperator = await getActiveOperator(cookieStore)
 
   const [
     { data: business, error: businessError },

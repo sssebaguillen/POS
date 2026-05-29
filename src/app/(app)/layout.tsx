@@ -91,7 +91,7 @@ export default async function AppLayout({
 
   const cookieStore = await cookies()
   const flashMessage = cookieStore.get('flash_toast')?.value ?? null
-  const activeOperator = getActiveOperator(cookieStore)
+  const activeOperator = await getActiveOperator(cookieStore)
   const sidebarCollapsed = cookieStore.get('pos-sidebar-collapsed')?.value === 'true'
   const lastSeenChangelogVersion = cookieStore.get('pulsar-last-seen-version')?.value ?? null
   const isOwner = !activeOperator || activeOperator.role === 'owner'

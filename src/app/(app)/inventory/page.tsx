@@ -9,7 +9,7 @@ import { fetchInventoryProducts } from '@/lib/inventory-products'
 export default async function InventoryPage() {
   const supabase = await createClient()
   const cookieStore = await cookies()
-  const activeOperator = getActiveOperator(cookieStore)
+  const activeOperator = await getActiveOperator(cookieStore)
   const businessId = await requireAuthenticatedBusinessId(supabase)
 
   const viewModeCookie = cookieStore.get('inventory-view-mode')?.value

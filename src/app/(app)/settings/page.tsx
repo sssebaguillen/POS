@@ -9,7 +9,7 @@ import { getActiveOperator } from '@/lib/operator'
 export default async function SettingsPage() {
   const supabase = await createClient()
   const cookieStore = await cookies()
-  const activeOperator = getActiveOperator(cookieStore)
+  const activeOperator = await getActiveOperator(cookieStore)
 
   const businessId = await requireAuthenticatedBusinessId(supabase)
 

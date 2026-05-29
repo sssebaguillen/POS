@@ -64,7 +64,7 @@ export async function POST(request: NextRequest) {
   void userId
 
   const cookieStore = await cookies()
-  const operator = getActiveOperator(cookieStore)
+  const operator = await getActiveOperator(cookieStore)
   const operatorId = getActorOperatorId(operator)
   const operatorName = operator?.name ?? null
 

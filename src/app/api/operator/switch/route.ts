@@ -5,6 +5,7 @@ import {
   type ActiveOperator,
   isUserRole,
   normalizePermissions,
+  signOperatorSession,
 } from '@/lib/operator'
 import { getBusinessIdByUserId } from '@/lib/business'
 
@@ -174,7 +175,7 @@ export async function POST(request: Request) {
 
     const response = NextResponse.json({ success: true })
 
-    response.cookies.set('operator_session', JSON.stringify(ownerOperator), {
+    response.cookies.set('operator_session', await signOperatorSession(ownerOperator), {
       httpOnly: true,
       sameSite: 'lax',
       path: '/',
@@ -234,15 +235,18 @@ export async function POST(request: Request) {
   const operator = parseVerifyResult(verifyData)
 
   if (!operator) {
-    return NextResponse.json(
-      { success: false, error: 'Invalid operator response from verify_operator_pin.' },
-      { status: 401 }
-    )
+    // verify_operator_pin devuelve { success:false, error, locked? } ante PIN incorrecto o bloqueo.
+    const failure = (Array.isArray(verifyData) ? verifyData[0] : verifyData) as
+      | Record<string, unknown>
+      | null
+    const message =
+      failure && typeof failure.error === 'string' ? failure.error : 'PIN incorrecto'
+    return NextResponse.json({ success: false, error: message }, { status: 401 })
   }
 
   const response = NextResponse.json({ success: true, name: operator.name, role: operator.role })
 
-  response.cookies.set('operator_session', JSON.stringify(operator), {
+  response.cookies.set('operator_session', await signOperatorSession(operator), {
     httpOnly: true,
     sameSite: 'lax',
     path: '/',

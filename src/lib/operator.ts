@@ -193,18 +193,74 @@ export function parseActiveOperator(value: unknown): ActiveOperator | null {
   }
 }
 
-export function getActiveOperator(cookieStore: CookieStoreLike): ActiveOperator | null {
+// --- Firma HMAC de la cookie operator_session -------------------------------
+// Los operadores no tienen sesión Supabase propia: montan sobre la del dueño, y
+// la cookie operator_session es lo único que restringe su rol/permisos. Sin firma,
+// un sub-operador puede editarla en devtools y declararse `role: 'owner'` (httpOnly
+// solo bloquea el acceso por JS, no la manipulación por el titular). Por eso se firma
+// con HMAC-SHA256 y se verifica server-side. Web Crypto se usa para que funcione tanto
+// en edge (proxy, /pos, /dashboard…) como en Node, sin dependencias externas.
+
+function bytesToB64url(bytes: Uint8Array): string {
+  let bin = ''
+  for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i])
+  return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
+}
+
+function b64urlToBytes(value: string): Uint8Array<ArrayBuffer> {
+  const b64 = value.replace(/-/g, '+').replace(/_/g, '/') + '='.repeat((4 - (value.length % 4)) % 4)
+  const bin = atob(b64)
+  const bytes = new Uint8Array(new ArrayBuffer(bin.length))
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i)
+  return bytes
+}
+
+async function getOperatorSessionKey(): Promise<CryptoKey> {
+  const secret = process.env.OPERATOR_SESSION_SECRET
+  if (!secret) {
+    throw new Error('Missing OPERATOR_SESSION_SECRET env var (required to sign/verify operator sessions)')
+  }
+  return crypto.subtle.importKey(
+    'raw',
+    new TextEncoder().encode(secret),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign', 'verify']
+  )
+}
+
+export async function signOperatorSession(operator: ActiveOperator): Promise<string> {
+  const payload = new TextEncoder().encode(JSON.stringify(operator))
+  const key = await getOperatorSessionKey()
+  const signature = new Uint8Array(await crypto.subtle.sign('HMAC', key, payload))
+  return `${bytesToB64url(payload)}.${bytesToB64url(signature)}`
+}
+
+export async function getActiveOperator(cookieStore: CookieStoreLike): Promise<ActiveOperator | null> {
   const rawCookie = cookieStore.get('operator_session')
 
   if (!rawCookie?.value) {
     return null
   }
 
+  const separator = rawCookie.value.indexOf('.')
+  if (separator <= 0) {
+    // Cookie sin firma (legacy o manipulada): invalidar -> fuerza re-selección de operador.
+    return null
+  }
+
   try {
-    const parsed = JSON.parse(rawCookie.value) as unknown
+    const payload = b64urlToBytes(rawCookie.value.slice(0, separator))
+    const signature = b64urlToBytes(rawCookie.value.slice(separator + 1))
+    const key = await getOperatorSessionKey()
+    const valid = await crypto.subtle.verify('HMAC', key, signature, payload)
+    if (!valid) {
+      return null
+    }
+    const parsed = JSON.parse(new TextDecoder().decode(payload)) as unknown
     return parseActiveOperator(parsed)
   } catch (err) {
-    console.error('Failed to parse operator_session cookie:', err)
+    console.error('Failed to verify operator_session cookie:', err)
     return null
   }
 }

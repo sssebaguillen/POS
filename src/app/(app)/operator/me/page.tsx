@@ -76,7 +76,7 @@ export default async function OperatorMePage({
   const params = await searchParams
   const supabase = await createClient()
   const cookieStore = await cookies()
-  const activeOperator = getActiveOperator(cookieStore)
+  const activeOperator = await getActiveOperator(cookieStore)
 
   const {
     data: { user },

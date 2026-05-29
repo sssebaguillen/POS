@@ -17,7 +17,7 @@ import type { RecentActivityRow } from '@/components/dashboard/DashboardView'
 export default async function DashboardPage() {
   const supabase = await createClient()
   const cookieStore = await cookies()
-  const activeOperator = getActiveOperator(cookieStore)
+  const activeOperator = await getActiveOperator(cookieStore)
 
   const { userId, businessId } = await requireAuthenticatedBusinessContext(supabase)
 

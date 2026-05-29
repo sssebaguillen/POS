@@ -9,7 +9,7 @@ export default async function CustomersPage() {
   const supabase = await createClient()
   const businessId = await requireAuthenticatedBusinessId(supabase)
   const cookieStore = await cookies()
-  const activeOperator = getActiveOperator(cookieStore)
+  const activeOperator = await getActiveOperator(cookieStore)
 
   const { data } = await supabase
     .from('customers')

@@ -8,7 +8,7 @@ import { normalizePriceList, normalizePriceListOverride, unwrapRelation } from '
 export default async function PriceListsPage() {
   const supabase = await createClient()
   const cookieStore = await cookies()
-  const activeOperator = getActiveOperator(cookieStore)
+  const activeOperator = await getActiveOperator(cookieStore)
   const businessId = await requireAuthenticatedBusinessId(supabase)
 
   const [{ data: lists }, { data: products }, { data: variantCostRows }] = await Promise.all([

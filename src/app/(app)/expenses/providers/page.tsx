@@ -10,7 +10,7 @@ export const metadata = { title: 'Proveedores' }
 export default async function ProvidersPage() {
   const supabase = await createClient()
   const cookieStore = await cookies()
-  const activeOperator = getActiveOperator(cookieStore)
+  const activeOperator = await getActiveOperator(cookieStore)
   const businessId = await requireAuthenticatedBusinessId(supabase)
 
   const { data } = await supabase

@@ -10,7 +10,7 @@ export const dynamic = 'force-dynamic'
 export default async function CashSessionsPage() {
   const supabase = await createClient()
   const cookieStore = await cookies()
-  const activeOperator = getActiveOperator(cookieStore)
+  const activeOperator = await getActiveOperator(cookieStore)
   const businessId = await requireAuthenticatedBusinessId(supabase)
 
   // Only owner and operators with analysis permission can access /cash-sessions

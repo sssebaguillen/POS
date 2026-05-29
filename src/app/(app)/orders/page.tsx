@@ -9,7 +9,7 @@ export default async function OrdersPage() {
   const supabase = await createClient()
   const businessId = await requireAuthenticatedBusinessId(supabase)
   const cookieStore = await cookies()
-  const operator = getActiveOperator(cookieStore)
+  const operator = await getActiveOperator(cookieStore)
 
   const since = new Date()
   since.setDate(since.getDate() - 30)

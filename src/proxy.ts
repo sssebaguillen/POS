@@ -118,7 +118,7 @@ export async function proxy(request: NextRequest) {
     return withCsp(supabaseResponse)
   }
 
-  const operator = getActiveOperator(request.cookies)
+  const operator = await getActiveOperator(request.cookies)
   const isOwner = operator?.role === 'owner'
 
   if (isOwner) {

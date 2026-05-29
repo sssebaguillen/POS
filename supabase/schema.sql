@@ -82,6 +82,8 @@ CREATE TABLE public.operators (
   permissions jsonb       NOT NULL DEFAULT '{"sales": true, "stock": false, "stock_write": false, "stats": false, "price_lists": false, "price_lists_write": false, "settings": false, "operators_write": false, "expenses": false}'::jsonb,
   is_active   boolean              DEFAULT true,
   created_at  timestamptz          DEFAULT now(),
+  failed_pin_attempts integer NOT NULL DEFAULT 0,
+  pin_locked_until    timestamptz,
   CONSTRAINT operators_pkey PRIMARY KEY (id),
   CONSTRAINT operators_business_id_fkey FOREIGN KEY (business_id) REFERENCES public.businesses (id) ON DELETE CASCADE
 );
