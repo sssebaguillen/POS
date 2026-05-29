@@ -98,6 +98,7 @@ El `business_id` de cualquier negocio se obtiene de la policy pública de `busin
 > - `supabase/migrations/20260529_02_lockdown_internal_functions.sql` — revoke anon/authenticated en `log_audit_event`, `upsert_daily_snapshot`, `refresh_all_daily_snapshots` (sin guard: el cron corre como `service_role`).
 > - `supabase/migrations/20260529_03a_get_catalog_business_rpc.sql` — RPC de catálogo con columnas públicas + código migrado.
 > - `supabase/migrations/20260529_03b_lockdown_businesses_anon.sql` — aplicada tras deploy (drop policy `public_read_businesses` + revoke SELECT anon).
+> - `supabase/migrations/20260529_04_lockdown_expense_grants.sql` — revoke PUBLIC/anon en las 5 RPC de gastos (ya estaban protegidas por guard `auth.uid`; solo defensa en profundidad de grants).
 
 ### Fix propuesto (diseño original)
 
@@ -138,5 +139,5 @@ Esta auditoría cubrió RLS de tablas + RPC `SECURITY DEFINER` + GRANTs. Quedan 
 - **Auth de operadores / escalada de privilegios** — PIN bcrypt, cookies (`operator_session`, `op_perms`), flujo de logout, gates de permisos por rol, `verify_operator_pin` (brute force / rate limit).
 - **Endpoints anónimos del catálogo** — `/api/catalog/orders`: rate limit por IP, re-precio server-side, inyección vía payload anónimo, `create_catalog_order`.
 - **Concurrencia / race conditions** — transacciones simultáneas (ej. dos ventas del mismo stock a la vez), no ejercitado en el stress test (volumen fue secuencial).
-- **Confirmar la familia de gastos `auth.uid`** — `create_mercaderia_expense`, `update_expense`, `delete_expense`, `update_mercaderia_expense` (solo se verificó `create_expense`; se asume mismo patrón pero falta abrir una por una).
+- ~~**Confirmar la familia de gastos `auth.uid`**~~ — ✅ CONFIRMADO (2026-05-29). Las 5 (`create_expense`, `create_mercaderia_expense`, `update_expense`, `delete_expense`, `update_mercaderia_expense`) tienen el guard `EXISTS (profiles WHERE id = auth.uid() AND business_id = p_business_id)` como **primera sentencia** → no explotables cross-tenant (anon → `auth.uid()` NULL → `unauthorized`). Gap menor cerrado: seguían con EXECUTE para PUBLIC/anon (`create_mercaderia_expense` con anon explícito); migración `20260529_04_lockdown_expense_grants.sql` revocó PUBLIC/anon dejando solo `authenticated` + `service_role`.
 - **Mutadores de inventario guardados** — `create_product`, `bulk_*`, etc.: referencian `get_business_id()`; confirmar que comparan contra `p_business_id`.
