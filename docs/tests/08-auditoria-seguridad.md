@@ -92,12 +92,12 @@ El `business_id` de cualquier negocio se obtiene de la policy pública de `busin
 
 ## 3. Fix — APLICADO y probado (2026-05-29)
 
-> **Estado:** migraciones 1, 2 y 3a aplicadas a producción y verificadas con las pruebas de explotación de este doc (cross-tenant auth/anon → bloqueado; camino legítimo → ok; cron y logging interno → intactos). La migración 3b (cierre directo de `businesses` a anon) quedó escrita pero **se aplica recién después de desplegar** el código que usa `get_catalog_business`, para no romper el catálogo en producción.
+> **Estado:** las cuatro migraciones aplicadas a producción y verificadas con las pruebas de explotación de este doc (cross-tenant auth/anon → bloqueado; camino legítimo → ok; cron y logging interno → intactos). La 3b se aplicó después de desplegar el código que usa `get_catalog_business` (anon directo a `businesses` → permission denied; catálogo anon vía RPC → ok; owner autenticado lee su negocio vía `tenant_isolation`).
 >
 > - `supabase/migrations/20260529_01_rpc_tenant_guards.sql` — helper `assert_tenant()` + guard en las 15 funciones de datos + revoke anon / grant authenticated.
 > - `supabase/migrations/20260529_02_lockdown_internal_functions.sql` — revoke anon/authenticated en `log_audit_event`, `upsert_daily_snapshot`, `refresh_all_daily_snapshots` (sin guard: el cron corre como `service_role`).
 > - `supabase/migrations/20260529_03a_get_catalog_business_rpc.sql` — RPC de catálogo con columnas públicas + código migrado.
-> - `supabase/migrations/20260529_03b_lockdown_businesses_anon.sql` — **pendiente de aplicar tras deploy** (drop policy + revoke SELECT anon).
+> - `supabase/migrations/20260529_03b_lockdown_businesses_anon.sql` — aplicada tras deploy (drop policy `public_read_businesses` + revoke SELECT anon).
 
 ### Fix propuesto (diseño original)
 

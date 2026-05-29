@@ -74,9 +74,7 @@ export default function VariantQuickSelector({
     )
   })()
 
-  const nothingSelected = options.every(opt => !selectedValues[opt.id])
   const allSelected = options.length > 0 && options.every(opt => Boolean(selectedValues[opt.id]))
-  const partiallySelected = !allSelected && !nothingSelected
 
   const displayImage =
     selectedVariant?.image_url ??
@@ -90,9 +88,14 @@ export default function VariantQuickSelector({
 
   const displayPrice = selectedVariant?.price ?? product.salePrice
   const displayStock = selectedVariant?.stock ?? product.stock
-  const canAdd = allowOutOfStock
-    ? !partiallySelected
-    : !partiallySelected && displayStock > 0
+  const canAdd = allSelected && (allowOutOfStock || displayStock > 0)
+
+  const selectPrompt = options.length > 1 ? 'Selecciona las opciones' : 'Selecciona una opción'
+  const addLabel = !allSelected
+    ? selectPrompt
+    : !allowOutOfStock && displayStock <= 0
+      ? 'Sin stock'
+      : 'Agregar al carrito'
 
   function hasStockForValue(optionId: string, value: string): boolean {
     if (allowOutOfStock) return true
@@ -112,20 +115,11 @@ export default function VariantQuickSelector({
   function handleAdd(e: React.MouseEvent) {
     e.preventDefault()
     e.stopPropagation()
-    if (!canAdd) return
+    if (!canAdd || !selectedVariant) return
 
-    if (allSelected && selectedVariant) {
-      const label = options.map(opt => selectedValues[opt.id]).filter(Boolean).join(' / ')
-      const cartImage = selectedVariant.image_url ?? product.imageUrl ?? null
-      onAddToCart(selectedVariant.id, label, selectedVariant.price, selectedVariant.stock, cartImage)
-    } else if (nothingSelected) {
-      const fallback = variants.find(v => v.is_active && v.stock > 0) ?? variants[0]
-      if (fallback) {
-        onAddToCart(fallback.id, null, fallback.price, fallback.stock, fallback.image_url ?? product.imageUrl ?? null)
-      } else {
-        onAddToCart(null, null, product.salePrice, product.stock, product.imageUrl ?? null)
-      }
-    }
+    const label = options.map(opt => selectedValues[opt.id]).filter(Boolean).join(' / ')
+    const cartImage = selectedVariant.image_url ?? product.imageUrl ?? null
+    onAddToCart(selectedVariant.id, label, selectedVariant.price, selectedVariant.stock, cartImage)
   }
 
   return (
@@ -211,10 +205,10 @@ export default function VariantQuickSelector({
         className="w-full h-8 text-xs gap-1.5 mt-1"
         disabled={!canAdd}
         onClick={handleAdd}
-        title={partiallySelected ? 'Selecciona todas las opciones' : undefined}
+        title={!allSelected ? selectPrompt : undefined}
       >
         <ShoppingCart className="h-3 w-3" />
-        {partiallySelected ? 'Selecciona todas las opciones' : 'Agregar al carrito'}
+        {addLabel}
       </Button>
     </div>
   )
