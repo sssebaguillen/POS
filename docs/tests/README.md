@@ -11,6 +11,9 @@ Tests de regresión manual + scripts SQL automatizables para validar los flujos 
 | `03-listas-precios.md` | Listas de precios y distribución | Manual |
 | `04-caja.md` | Sesiones de caja y arqueo | Manual |
 | `05-db-automatizados.sql` | Validaciones de capa DB | SQL (Supabase) |
+| `06-reconciliacion.sql` | Integridad numérica sobre todo el dataset (cuentas que dan) | SQL (Supabase) |
+| `07-stress-volumen.md` | Stress de volumen + aislamiento multi-tenant (resultados) | Resultados |
+| `08-auditoria-seguridad.md` | Auditoría RLS + RPC SECURITY DEFINER + GRANTs (hallazgo crítico) | Resultados |
 
 ## Cómo ejecutar los tests SQL
 

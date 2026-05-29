@@ -44,11 +44,7 @@ export default async function CatalogProductDetailPage({ params }: PageProps) {
   )
 
   const [businessResult, productResult] = await Promise.all([
-    supabase
-      .from('businesses')
-      .select('id, name')
-      .eq('slug', slug)
-      .maybeSingle<BusinessRow>(),
+    supabase.rpc('get_catalog_business', { p_slug: slug }),
     supabase.rpc('get_catalog_product_with_variants', {
       p_slug: slug,
       p_product_id: productId,
@@ -56,7 +52,8 @@ export default async function CatalogProductDetailPage({ params }: PageProps) {
   ])
 
   if (businessResult.error) throw new Error(businessResult.error.message)
-  if (!businessResult.data) notFound()
+  const business = (businessResult.data as unknown as BusinessRow[] | null)?.[0]
+  if (!business) notFound()
 
   if (productResult.error) throw new Error(productResult.error.message)
 
@@ -70,8 +67,8 @@ export default async function CatalogProductDetailPage({ params }: PageProps) {
     <main className="min-h-screen bg-background px-4 py-6 md:px-6 md:py-8">
       <ProductDetailView
         slug={slug}
-        businessId={businessResult.data.id}
-        businessName={businessResult.data.name}
+        businessId={business.id}
+        businessName={business.name}
         product={rpcData.product}
         options={rpcData.options ?? []}
         variants={rpcData.variants ?? []}

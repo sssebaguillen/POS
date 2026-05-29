@@ -64,13 +64,11 @@ export default async function CatalogSlugPage({ params }: CatalogPageProps) {
     }
   )
 
-  const { data: business, error: businessError } = await supabase
-    .from('businesses')
-    .select('id, name, description, logo_url, whatsapp')
-    .eq('slug', slug)
-    .maybeSingle<BusinessRow>()
+  const { data: businessRows, error: businessError } = await supabase
+    .rpc('get_catalog_business', { p_slug: slug })
 
   if (businessError) throw new Error(businessError.message)
+  const business = (businessRows as unknown as BusinessRow[] | null)?.[0]
   if (!business) notFound()
 
   // get_catalog_products now returns has_variants + brand_id directly (SECURITY DEFINER)
