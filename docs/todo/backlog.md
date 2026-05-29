@@ -135,6 +135,7 @@ El owner sube un PDF o foto de la factura de una compra recién hecha y el siste
   - Componente reusable `SalesHeatmap` con prop `compact`.
 - **P11.3 parte 2** — pendiente: reporte mensual exportable en PDF (consolidado mes con KPIs, top productos, gastos, comparativa vs mes anterior).
 - **P12** — IA proactiva. Después de P11.3, usando el historial acumulado en `daily_snapshots` como contexto barato para el LLM.
+- **Segmentación POS vs Pedido online en stats/dashboard** (2026-05-29) — la columna `sales.source` (`'pos' | 'catalog'`) ya existe y se setea en la conversión de pedidos del catálogo, pero **no está expuesta** en la UI. Pendiente: filtros/segmentación por canal en `/stats`, `/dashboard` e historial de ventas, y en los export. El dato ya se captura desde ahora; solo falta mostrarlo. (Ventas históricas pre-columna quedan como `'pos'`; las que vinieron de pedidos siguen identificables vía `catalog_orders.sale_id`.)
 
 ---
 

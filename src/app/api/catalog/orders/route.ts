@@ -8,6 +8,14 @@ const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000 // 1 hour
 const RATE_LIMIT_MAX = 5
 const ipHits = new Map<string, number[]>()
 
+// Límites de entrada (deben coincidir con el backstop server-side en create_catalog_order).
+const MAX_NAME_LEN = 120
+const MAX_ADDRESS_LEN = 300
+const MAX_NOTES_LEN = 1000
+const MAX_ITEMS = 50
+const MAX_QTY = 1000
+const UUID_RE = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/
+
 type ItemPayload = {
   product_id: string
   variant_id?: string | null
@@ -28,27 +36,30 @@ function isPayload(v: unknown): v is Payload {
   if (!v || typeof v !== 'object') return false
   const o = v as Record<string, unknown>
   if (typeof o.slug !== 'string' || !o.slug.trim()) return false
-  if (typeof o.customer_name !== 'string' || !o.customer_name.trim()) return false
+  if (typeof o.customer_name !== 'string' || !o.customer_name.trim() || o.customer_name.length > MAX_NAME_LEN) return false
   if (typeof o.phone !== 'string' || !o.phone.trim()) return false
   if (o.delivery_type !== 'takeaway' && o.delivery_type !== 'delivery') return false
-  if (o.address != null && typeof o.address !== 'string') return false
-  if (o.notes != null && typeof o.notes !== 'string') return false
-  if (!Array.isArray(o.items) || o.items.length === 0) return false
+  if (o.address != null && (typeof o.address !== 'string' || o.address.length > MAX_ADDRESS_LEN)) return false
+  if (o.notes != null && (typeof o.notes !== 'string' || o.notes.length > MAX_NOTES_LEN)) return false
+  if (!Array.isArray(o.items) || o.items.length === 0 || o.items.length > MAX_ITEMS) return false
   for (const it of o.items) {
     if (!it || typeof it !== 'object') return false
     const i = it as Record<string, unknown>
-    if (typeof i.product_id !== 'string' || !i.product_id) return false
-    if (i.variant_id != null && typeof i.variant_id !== 'string') return false
-    if (typeof i.quantity !== 'number' || !Number.isFinite(i.quantity) || i.quantity <= 0) return false
+    if (typeof i.product_id !== 'string' || !UUID_RE.test(i.product_id)) return false
+    if (i.variant_id != null && (typeof i.variant_id !== 'string' || !UUID_RE.test(i.variant_id))) return false
+    if (typeof i.quantity !== 'number' || !Number.isFinite(i.quantity) || i.quantity <= 0 || i.quantity > MAX_QTY) return false
   }
   return true
 }
 
 function getClientIp(request: NextRequest): string | null {
+  // x-real-ip lo setea el proxy de Vercel con la IP real del cliente y no es
+  // manipulable; x-forwarded-for (leftmost) sí lo puede falsificar el cliente,
+  // por eso se usa solo como fallback (dev / hosting sin x-real-ip).
+  const real = request.headers.get('x-real-ip')
+  if (real?.trim()) return real.trim()
   const xff = request.headers.get('x-forwarded-for')
   if (xff) return xff.split(',')[0]?.trim() ?? null
-  const real = request.headers.get('x-real-ip')
-  if (real) return real.trim()
   return null
 }
 
@@ -77,6 +88,8 @@ const RPC_ERROR_TO_HTTP: Record<string, number> = {
   business_not_found: 404,
   blacklisted: 403,
   too_many_pending: 429,
+  too_many_items: 400,
+  unexpected_error: 500,
 }
 
 export async function POST(request: NextRequest) {

@@ -1,6 +1,16 @@
 {
-  "current": "0.0.6.2",
+  "current": "0.0.6.3",
   "releases": [
+    {
+      "version": "0.0.6.3",
+      "date": "2026-05-29",
+      "label": "Seguridad y confiabilidad",
+      "changes": [
+        { "type": "improvement", "text": "Reforzamos la seguridad de la aplicación en varios frentes: protección de las sesiones de los operarios, control de accesos y blindaje de las operaciones internas. Son mejoras técnicas que no cambian tu forma de trabajar, pero dejan tu información y la de tu negocio mucho más protegidas." },
+        { "type": "new", "text": "Al completar un pedido online ahora se elige con qué método se pagó (efectivo, tarjeta, transferencia o MercadoPago). La venta queda registrada con ese método real, para que tus reportes de cobros reflejen correctamente cómo entró el dinero." },
+        { "type": "fix", "text": "Evitamos que, por un doble clic o por dos personas operando al mismo tiempo, un mismo pedido se registre como dos ventas o se abra una caja duplicada." }
+      ]
+    },
     {
       "version": "0.0.6.2",
       "date": "2026-05-28",

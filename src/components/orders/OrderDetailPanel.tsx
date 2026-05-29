@@ -8,8 +8,14 @@ import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import ConfirmModal from '@/components/shared/ConfirmModal'
 import { formatMoney } from '@/lib/format'
+import { PAYMENT_OPTIONS } from '@/lib/payments'
+import type { PaymentMethod } from '@/lib/constants/domain'
 import StatusBadge from './StatusBadge'
 import { STATUS_LABEL, type CatalogOrderDetail, type CatalogOrderItemRow, type CatalogOrderStatus } from './types'
+
+// Métodos ofrecidos al completar un pedido online. 'credit' (cuenta corriente) se excluye:
+// requiere un cliente registrado y el pedido del catálogo es anónimo.
+const CATALOG_PAYMENT_OPTIONS = PAYMENT_OPTIONS.filter(o => o.value !== 'credit')
 
 function formatTimestamp(dateStr: string): string {
   const date = new Date(dateStr)
@@ -75,6 +81,7 @@ export default function OrderDetailPanel({ orderId, operatorId, onClose, onStatu
   const [updating, setUpdating] = useState(false)
   const [pendingAction, setPendingAction] = useState<Action | null>(null)
   const [blacklist, setBlacklist] = useState(false)
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cash')
   const [retryKey, setRetryKey] = useState(0)
 
   useEffect(() => {
@@ -116,6 +123,7 @@ export default function OrderDetailPanel({ orderId, operatorId, onClose, onStatu
       p_order_id: orderId,
       p_new_status: action.status,
       p_blacklist: action.status === 'rechazado' ? blacklist : false,
+      p_payment_method: action.status === 'completado' ? paymentMethod : null,
     })
     setUpdating(false)
     const result = data as { success: boolean; error?: string } | null
@@ -329,7 +337,30 @@ export default function OrderDetailPanel({ orderId, operatorId, onClose, onStatu
         open={pendingAction !== null}
         title={pendingAction?.label ?? ''}
         message={
-          pendingAction?.status === 'rechazado' && blacklist
+          pendingAction?.status === 'completado' ? (
+            <div className="space-y-3">
+              <p>Al completar el pedido se descontará stock y se registrará como venta.</p>
+              <div className="space-y-1.5">
+                <span className="text-xs font-medium text-muted-foreground">¿Cómo se pagó?</span>
+                <div className="grid grid-cols-2 gap-2">
+                  {CATALOG_PAYMENT_OPTIONS.map(opt => (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => setPaymentMethod(opt.value)}
+                      className={`h-9 rounded-lg border text-sm transition-colors ${
+                        paymentMethod === opt.value
+                          ? 'bg-primary/10 text-primary border-primary/20'
+                          : 'border-edge text-muted-foreground hover:bg-hover-bg'
+                      }`}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          ) : pendingAction?.status === 'rechazado' && blacklist
             ? '¿Rechazar este pedido y bloquear el número? El cliente no podrá enviar más pedidos.'
             : (pendingAction?.confirm ?? `¿Cambiar el estado a "${pendingAction ? STATUS_LABEL[pendingAction.status] : ''}"?`)
         }
