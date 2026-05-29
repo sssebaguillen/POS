@@ -9,6 +9,7 @@ interface Props {
   open: boolean
   onOpenChange: (open: boolean) => void
   releases: ChangelogRelease[]
+  hiddenPatchCount: number
   onClose: () => void
 }
 
@@ -36,7 +37,7 @@ function formatDate(value: string): string {
   return DATE_FORMATTER.format(parsed)
 }
 
-export default function ChangelogModal({ open, onOpenChange, releases, onClose }: Props) {
+export default function ChangelogModal({ open, onOpenChange, releases, hiddenPatchCount, onClose }: Props) {
   const latest = releases[0]
 
   function handleClose() {
@@ -79,6 +80,12 @@ export default function ChangelogModal({ open, onOpenChange, releases, onClose }
               </ul>
             </section>
           ))}
+
+          {hiddenPatchCount > 0 && (
+            <p className="border-t border-edge pt-4 text-xs text-hint">
+              + {hiddenPatchCount} {hiddenPatchCount === 1 ? 'corrección anterior' : 'correcciones anteriores'}
+            </p>
+          )}
         </div>
 
         <DialogFooter>

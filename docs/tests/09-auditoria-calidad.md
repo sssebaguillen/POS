@@ -18,7 +18,10 @@ Auditoría de calidad (solo lectura, **sin fixes aplicados**) sobre `src/`. Comp
 
 ## 1. Confirmados — accionables
 
-### 1.1 🟠 MEDIA — `QuickEdit` de categoría/marca saltean la RPC guardada (regla 32)
+### 1.1 ✅ RESUELTO (2026-05-29) — `QuickEdit` de categoría/marca saltean la RPC guardada (regla 32)
+
+> Verificado: `QuickEditCategoryModal` y `QuickEditBrandModal` ahora rutean por `update_product` (y `create_*_guarded`). Cierra el gap de auditoría y de permisos.
+
 
 `QuickEditCategoryModal.tsx` (L70-75 y L84-89) y `QuickEditBrandModal.tsx` (L56-58 y L65-67) hacen `supabase.from('products').update({category_id|brand_id}).eq('id', ...)` **directo**, en vez de pasar por `update_product`. Dos consecuencias **confirmadas**:
 
@@ -29,34 +32,42 @@ Auditoría de calidad (solo lectura, **sin fixes aplicados**) sobre `src/`. Comp
 
 **Insight de arquitectura (documentar, no es bug):** la rama `operators` de las policies `products_stock_write_*` es efectivamente inalcanzable dado el modelo de auth (operador = sesión del dueño + cookie). Por eso **las RPCs guardadas son el único enforcer server-side del permiso de operador** — RLS no es backstop para permisos de operador, solo para tenant. Esto hace que la regla 32 (todo mutador de inventario por RPC) sea *load-bearing de seguridad*, no solo de auditoría.
 
-### 1.2 🟠 MEDIA (a verificar en runtime) — scroll infinito de `InventoryPanel` posiblemente roto
+### 1.2 ✅ RESUELTO (2026-05-29) — scroll infinito de `InventoryPanel` posiblemente roto
+
+> Verificado: el `useEffect` de reset de paginación ahora depende de `sortField`/`sortDir` (primitivos), no del objeto `sort`. El comentario en el código lo documenta. Ya no se auto-resetea cada render.
+
 
 `InventoryPanel.tsx:188-191` — el `useEffect` que resetea `setVisibleCount(PAGE_SIZE)` depende de `sort`, que es un **objeto recreado en cada render** (L72: `const sort = { field, dir }`). Como React compara deps por identidad, el efecto corre en **cada render** y resetea `visibleCount` a 60. El scroll infinito (L194-208) sube `visibleCount`, dispara re-render, y el reset lo vuelve a 60 → con **>60 productos filtrados el "cargar más" se desharía solo**.
 
 - Corroborado por ESLint (`react-hooks/exhaustive-deps`: `sort` cambia deps cada render) + el `eslint-disable react-hooks/set-state-in-effect` en L189 que tapa parte del olor.
 - **Confianza alta en el mecanismo, pero marcado como a-verificar** porque probablemente no se detectó por bajo volumen en las pruebas. **Verificación: cargar un negocio con >60 productos en una vista y scrollear.** Si se confirma, el fix es depender de `sortField`/`sortDir` (primitivos) en vez de `sort`.
 
-### 1.3 🟡 BAJA — `protobufjs` vulnerable en runtime de producción
+### 1.3 ✅ RESUELTO (2026-05-29) — `protobufjs` vulnerable en runtime de producción
 
-Única vuln de `npm audit` que (a) llega al runtime del POS desplegado y (b) tiene fix no-breaking. Entra como transitiva: `@sentry/nextjs` → `@opentelemetry/otlp-transformer` → `protobufjs <=7.5.7` (varios CVE: code injection, prototype pollution, DoS). Fix: `npm audit fix`. **El resto de vulns** (`postcss`, `qs`, `fast-uri`, `express-rate-limit`, `axios`, etc.) viven en build-tooling / `@modelcontextprotocol/sdk` / `@posthog/cli` y **no se ejecutan en el runtime del POS**. `postcss` no tiene fix no-breaking (rompería Next) → descartar.
+Única vuln de `npm audit` que (a) llega al runtime del POS desplegado y (b) tiene fix no-breaking. **Corregido con `npm audit fix`: `protobufjs 7.5.5 → 7.6.1`** (fuera del rango vulnerable `<=7.5.7`). Build de producción OK tras el bump. Nota: en este punto entraba por `posthog-js` → `@opentelemetry/otlp-transformer` (no por `@sentry/nextjs` como decía el audit original — cambió la ruta de dependencia, misma conclusión).
 
-### 1.4 🟡 BAJA — dead code
+**High restantes descartados (no runtime del POS):** `axios` y `minimatch` viven dentro de `@posthog/cli/node_modules/` (herramienta CLI/dev) y su fix exige `--force`/breaking → se dejan. El resto (`postcss`, `qs`, `fast-uri`, etc.) es build-tooling sin fix no-breaking.
 
-- `lib/date-utils.ts:41` — `getDayLabel` exportado y **nunca importado** en ningún otro archivo (verificado con `rg`).
-- `SettingsForm.tsx` — bloque muerto de subida de logo: `handleLogoFileUpload`, `logoUploading` y ~6 símbolos más sin usar (ESLint `no-unused-vars` ×8). Parece resabio de una feature de logo reemplazada.
-- `InventoryPanel.tsx:189` — directiva `eslint-disable` sin uso.
+### 1.4 ✅ RESUELTO / RECLASIFICADO (2026-05-29) — dead code
 
-### 1.5 🟡 BAJA — `console.*` de debug colados
+- `lib/date-utils.ts:41` — `getDayLabel` **eliminado** (ya no existe en el código).
+- `InventoryPanel.tsx` — directiva `eslint-disable` huérfana **eliminada**.
+- `SettingsForm.tsx` — **NO es dead code: feature futura intencional.** El bloque de logo (`handleLogoFileUpload`, `logoUploading`, `logoInputTab`…) es scaffolding deliberadamente deshabilitado; está marcado explícito en el código: `{/* Logo y Color primario — deshabilitados hasta implementación futura */}` (L471). Se deja tal cual.
+
+### 1.5 ✅ RESUELTO (2026-05-29) — `console.*` de debug colados
+
+> Verificado: los `console.log`/`console.warn` de debug (`auth/confirm/actions.ts`, `ProductPanel.tsx`) ya no están. Los `console.warn` legítimos de config faltante y los `console.error` en `catch` se conservan.
+
 
 - `app/auth/confirm/actions.ts:13` — `console.log('[auth/confirm] verifyOtp error', ...)` (parece debug; además podría loguear info de auth).
 - `components/pos/ProductPanel.tsx:258` — `console.warn('[VariantSelectorContent] option_value_id is null')` (debug).
 - Los `console.warn` de `feedback/telegram.ts:49`, `feedback/github.ts:57` son legítimos (config faltante). Los 29 `console.error` están todos en `catch`/manejo de error — aceptables.
 
-### 1.6 🟡 BAJA — duplicación puntual
+### 1.6 🟡 BAJA — duplicación puntual (parcialmente resuelto 2026-05-29)
 
-- `getMarginPercent(multiplier)` **idéntico** en `VariantPriceModal.tsx:25` y `PriceListsPanel.tsx:57` (`Math.round((multiplier - 1) * 100)`) → extraer a `lib/price-lists.ts`.
-- `SessionDetailPanel.tsx:17-20` — `DIGITAL_METHOD_LABELS` redefine labels que ya están en `PAYMENT_LABELS` (`lib/payments.ts`, regla 12) → derivar de ahí.
-- Duplicación de los 2 dropdowns responsive del header de `InventoryPanel` (L683-755 y L758-826): mismo patrón (botón-ícono mobile + botones desktop + portal), ~140 líneas → extraíble a un `<HeaderResponsiveDropdown>`.
+- ✅ `getMarginPercent(multiplier)` **centralizado** en `lib/price-lists.ts`; `VariantPriceModal` ya no existe. `PriceListsPanel` lo importa.
+- ✅ `DIGITAL_METHOD_LABELS` **eliminado** (ya no existe).
+- ⬜ Duplicación de los 2 dropdowns responsive del header de `InventoryPanel` (~140 líneas) → extraíble a `<HeaderResponsiveDropdown>`. **Pendiente, cosmético** — ligado al refactor de archivos grandes (§2.3/§4), no se encara pre-beta.
 
 ### 1.7 🟡 BAJA — lint hotspot `react-hooks/refs`
 
@@ -66,13 +77,15 @@ Auditoría de calidad (solo lectura, **sin fixes aplicados**) sobre `src/`. Comp
 
 ## 2. Ambigüedades — decidir antes de tocar (NO son claramente "bugs")
 
-### 2.1 `InventoryPanel` — doble fuente del filtro de estado
+### 2.1 `InventoryPanel` — doble fuente del filtro de estado ✅ RESUELTO (2026-05-29)
 
-Hay **dos controles** para el mismo concepto: las pill-tabs (`statusFilter`, L65) y el sidebar (`filterValue.stockStatus`), reconciliados con una regla de precedencia (`effectiveStatusFilter = statusFilter !== 'all' ? statusFilter : derivedStatusFilter`, L126-136). El propio comentario admite lo incómodo. Puede dar UX confusa (sidebar en "stock bajo" pero las pills muestran "Todos"). **No está claro si es intencional o resabio de una migración pills→sidebar.** Decidir: ¿cuál manda? ¿se unifican?
+~~Hay **dos controles** para el mismo concepto: las pill-tabs (`statusFilter`) y el sidebar (`filterValue.stockStatus`), reconciliados con una regla de precedencia.~~
 
-### 2.2 `SessionDetailPanel.tsx:253` — `['Efectivo','Tarjeta']` con `$0,00` placeholder
+**Decisión:** mantener ambos controles con la visibilidad actual (pills en desktop ≥900px, sección "Estado" del sidebar en todos los viewports — las pills no entran en mobile y el sidebar es el único acceso ahí), pero **unificar el estado**. Se eliminó el `useState statusFilter` y la regla de precedencia; ahora **`filterValue.stockStatus` es la única fuente de verdad**: las pills y el sidebar leen/escriben ese mismo campo, así que no pueden desincronizarse. `effectiveStatusFilter` es solo la vista pill-key derivada de `stockStatus`. De paso se arregló la opción **"Solo en catálogo"** del sidebar, que estaba muerta (seteaba `stockStatus='catalog-only'` pero el panel filtraba por un `showInCatalogOnly` que nadie ponía en `true`); ahora `catalogOnly` también deriva de `stockStatus === 'catalog-only'`.
 
-Strings de método hardcodeados y montos placeholder. Puede ser **UI incompleta / sección a futuro** más que un descuido. Verificar si esa sección está terminada antes de "corregir" los labels.
+### 2.2 ❌ FALSO POSITIVO (verificado 2026-05-29) — `SessionDetailPanel` `['Efectivo','Tarjeta']` con `$0,00`
+
+Los strings hardcodeados y los `$0,00` están **dentro del branch `loading ? (<Skeleton isLoading>…)`** (L219-257) — son placeholders del esqueleto de carga, no de la lógica. El render real con datos es el branch `detail ? (…)` (L258+), que usa `detail.payments_by_method` y montos reales. No hay nada que corregir.
 
 ### 2.3 `InventoryPanel.tsx` — tamaño (1402 líneas)
 

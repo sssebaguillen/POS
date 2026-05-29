@@ -14,6 +14,9 @@ interface BulkActionBarProps {
   categories: InventoryCategory[]
   brands: InventoryBrand[]
   loading: boolean
+  // Estado del primer producto seleccionado: define la acción del toggle.
+  // Activo → "Discontinuar" (desactiva todos); inactivo → "Activar" (activa todos).
+  firstSelectedActive: boolean
   onDelete: () => void
   onActivate: () => void
   onDeactivate: () => void
@@ -26,6 +29,7 @@ export default function BulkActionBar({
   categories,
   brands,
   loading,
+  firstSelectedActive,
   onDelete,
   onActivate,
   onDeactivate,
@@ -87,21 +91,10 @@ export default function BulkActionBar({
               size="sm"
               className="rounded-lg text-xs gap-1.5 hover:bg-surface-alt"
               disabled={loading}
-              onClick={onActivate}
+              onClick={firstSelectedActive ? onDeactivate : onActivate}
             >
-              <Power size={13} />
-              Activar
-            </Button>
-
-            <Button
-              variant="outline"
-              size="sm"
-              className="rounded-lg text-xs gap-1.5 hover:bg-surface-alt"
-              disabled={loading}
-              onClick={onDeactivate}
-            >
-              <PowerOff size={13} />
-              Discontinuar
+              {firstSelectedActive ? <PowerOff size={13} /> : <Power size={13} />}
+              <span className="hidden sm:inline">{firstSelectedActive ? 'Discontinuar' : 'Activar'}</span>
             </Button>
 
             <Popover open={categoryOpen} onOpenChange={setCategoryOpen}>
@@ -113,7 +106,7 @@ export default function BulkActionBar({
                   disabled={loading}
                 >
                   <Tag size={13} />
-                  Categoría
+                  <span className="hidden sm:inline">Categoría</span>
                 </Button>
               </PopoverTrigger>
               <PopoverContent side="top" align="center" className="w-64 p-3 space-y-3">
@@ -164,7 +157,7 @@ export default function BulkActionBar({
                   disabled={loading}
                 >
                   <Stamp size={13} />
-                  Marca
+                  <span className="hidden sm:inline">Marca</span>
                 </Button>
               </PopoverTrigger>
               <PopoverContent side="top" align="center" className="w-64 p-3 space-y-3">
@@ -205,7 +198,7 @@ export default function BulkActionBar({
               onClick={() => setShowDeleteConfirm(true)}
             >
               <Trash2 size={13} />
-              Eliminar
+              <span className="hidden sm:inline">Eliminar</span>
             </Button>
           </div>
         </div>

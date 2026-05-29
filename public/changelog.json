@@ -3,6 +3,7 @@
   "releases": [
     {
       "version": "0.0.6.4",
+      "kind": "patch",
       "date": "2026-05-29",
       "label": "Seguridad y correcciones",
       "changes": [
@@ -13,6 +14,7 @@
     },
     {
       "version": "0.0.6.3",
+      "kind": "patch",
       "date": "2026-05-29",
       "label": "Seguridad y confiabilidad",
       "changes": [
@@ -23,6 +25,7 @@
     },
     {
       "version": "0.0.6.2",
+      "kind": "patch",
       "date": "2026-05-28",
       "label": "Correcciones y pulido",
       "changes": [
@@ -33,6 +36,7 @@
     },
     {
       "version": "0.0.6.1",
+      "kind": "patch",
       "date": "2026-05-28",
       "label": "Heatmap de ventas por día y hora",
       "changes": [
@@ -48,6 +52,7 @@
     },
     {
       "version": "0.0.6",
+      "kind": "feature",
       "date": "2026-05-27",
       "label": "Tendencias diarias y comparativas",
       "changes": [
@@ -60,6 +65,7 @@
     },
     {
       "version": "0.0.5",
+      "kind": "feature",
       "date": "2026-05-27",
       "label": "Pedidos Online y mejoras de UI",
       "changes": [
@@ -74,6 +80,7 @@
     },
     {
       "version": "0.0.4.4",
+      "kind": "patch",
       "date": "2026-05-27",
       "label": "Calidad: atribución correcta y mejor exportación del historial",
       "changes": [
@@ -91,6 +98,7 @@
     },
     {
       "version": "0.0.4.3",
+      "kind": "patch",
       "date": "2026-05-26",
       "label": "Variantes más confiables en precios y actividad",
       "changes": [
@@ -101,6 +109,7 @@
     },
     {
       "version": "0.0.4.2",
+      "kind": "patch",
       "date": "2026-05-25",
       "label": "Conciliación de cuentas digitales y correcciones",
       "changes": [
@@ -118,6 +127,7 @@
     },
     {
       "version": "0.0.4.1",
+      "kind": "patch",
       "date": "2026-05-23",
       "label": "Atajos de teclado en el punto de venta",
       "changes": [
@@ -132,6 +142,7 @@
     },
     {
       "version": "0.0.4",
+      "kind": "feature",
       "date": "2026-05-23",
       "label": "Módulo de caja",
       "changes": [
@@ -145,6 +156,7 @@
     },
     {
       "version": "0.0.3",
+      "kind": "feature",
       "date": "2026-05-21",
       "label": "Variantes en gastos y detalles visuales",
       "changes": [
@@ -158,6 +170,7 @@
     },
     {
       "version": "0.0.2",
+      "kind": "feature",
       "date": "2026-05-16",
       "label": "Registro de actividad y mejoras generales",
       "changes": [
@@ -170,6 +183,7 @@
     },
     {
       "version": "0.0.1",
+      "kind": "feature",
       "date": "2026-05-09",
       "label": "Variantes de productos",
       "changes": [

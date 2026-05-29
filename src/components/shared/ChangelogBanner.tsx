@@ -13,7 +13,7 @@ interface Props {
 }
 
 export default function ChangelogBanner({ initialLastSeenVersion, collapsed, isMobileDrawer }: Props) {
-  const { latestRelease, unreadReleases, hasUnread, markAsSeen } = useChangelog(initialLastSeenVersion)
+  const { latestRelease, unreadReleases, hiddenPatchCount, hasUnread, markAsSeen } = useChangelog(initialLastSeenVersion)
   const [open, setOpen] = useState(false)
 
   if (!latestRelease || !hasUnread) return null
@@ -72,6 +72,7 @@ export default function ChangelogBanner({ initialLastSeenVersion, collapsed, isM
         open={open}
         onOpenChange={setOpen}
         releases={unreadReleases}
+        hiddenPatchCount={hiddenPatchCount}
         onClose={markAsSeen}
       />
     </>

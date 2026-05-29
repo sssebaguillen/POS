@@ -62,7 +62,6 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
   const [productOverrides, setProductOverrides] = useState<PriceListOverride[]>(initialProductOverrides)
   const [filterValue, setFilterValue] = useState<ProductFilterValue>(EMPTY_FILTER)
   const [filterOpen, setFilterOpen] = useState(false)
-  const [statusFilter, setStatusFilter] = useState<FilterStatus>('all')
 
   // Derived from filterValue for backward compat with existing logic
   const query = filterValue.search
@@ -102,7 +101,18 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
   const router = useRouter()
 
   const supabase = useMemo(() => createClient(), [])
-  const { setRef, indicator } = usePillIndicator(statusFilter)
+
+  // Single source of truth for the status filter: filterValue.stockStatus.
+  // Pills (desktop) and the sidebar "Estado" section both read/write this one
+  // field, so they can never desync. effectiveStatusFilter is the pill-key view
+  // of stockStatus used by the filter logic and the active-pill highlight.
+  const effectiveStatusFilter: FilterStatus =
+    filterValue.stockStatus === 'low-stock' ? 'low'
+    : filterValue.stockStatus === 'out-of-stock' ? 'out'
+    : filterValue.stockStatus === 'discontinued' ? 'discontinued'
+    : 'all'
+
+  const { setRef, indicator } = usePillIndicator(effectiveStatusFilter)
   const { setRef: setViewRef, indicator: viewIndicator } = usePillIndicator(viewMode)
 
   const activeFilterCount = countActiveFilters(filterValue)
@@ -122,21 +132,9 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
     setProducts(data)
   }, [businessId, supabase])
 
-  // Map filterValue.stockStatus to the FilterStatus enum used internally
-  const derivedStatusFilter: FilterStatus = (() => {
-    if (filterValue.stockStatus === 'low-stock') return 'low'
-    if (filterValue.stockStatus === 'out-of-stock') return 'out'
-    if (filterValue.stockStatus === 'discontinued') return 'discontinued'
-    return 'all'
-  })()
-
-  // Also keep the pill-tabs statusFilter in sync: when filterValue.stockStatus changes, sync pill
-  // The pill-tabs write back to filterValue via setStatusFilter
-  const effectiveStatusFilter = statusFilter !== 'all' ? statusFilter : derivedStatusFilter
-
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
-    const catalogOnly = filterValue.showInCatalogOnly
+    const catalogOnly = filterValue.stockStatus === 'catalog-only' || filterValue.showInCatalogOnly
     return products.filter(product => {
       const status = getStatus(product)
       const matchesQuery =
@@ -154,7 +152,7 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
       const matchesCatalog = !catalogOnly || product.show_in_catalog === true
       return matchesQuery && matchesCategory && matchesBrand && matchesStatus && matchesCatalog
     })
-  }, [products, query, selectedCategories, selectedBrands, effectiveStatusFilter, filterValue.showInCatalogOnly])
+  }, [products, query, selectedCategories, selectedBrands, effectiveStatusFilter, filterValue.stockStatus, filterValue.showInCatalogOnly])
 
   const sortField = filterValue.sortField
   const sortDir = filterValue.sortDir
@@ -189,7 +187,7 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
   // visibleCount a PAGE_SIZE, rompiendo el scroll infinito con >PAGE_SIZE productos.
   useEffect(() => {
     setVisibleCount(PAGE_SIZE)
-  }, [query, selectedCategories, selectedBrands, showInCatalogOnly, sortField, sortDir, statusFilter])
+  }, [query, selectedCategories, selectedBrands, showInCatalogOnly, sortField, sortDir, filterValue.stockStatus])
 
   // Infinite scroll: load more products when near the bottom of the scroll area
   useEffect(() => {
@@ -912,16 +910,16 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
               />
             )}
             {([
-              { key: 'all', label: 'Todos' },
-              { key: 'low', label: 'Stock bajo' },
-              { key: 'out', label: 'Sin stock' },
-              { key: 'discontinued', label: 'Discontinuados' },
+              { key: 'all', label: 'Todos', stockStatus: 'all' },
+              { key: 'low', label: 'Stock bajo', stockStatus: 'low-stock' },
+              { key: 'out', label: 'Sin stock', stockStatus: 'out-of-stock' },
+              { key: 'discontinued', label: 'Discontinuados', stockStatus: 'discontinued' },
             ] as const).map(s => (
               <button
                 key={s.key}
                 ref={setRef(s.key)}
-                onClick={() => setStatusFilter(s.key)}
-                className={`pill-tab${statusFilter === s.key ? ' pill-tab-active' : ''}`}
+                onClick={() => setFilterValue(prev => ({ ...prev, stockStatus: s.stockStatus }))}
+                className={`pill-tab${effectiveStatusFilter === s.key ? ' pill-tab-active' : ''}`}
               >
                 {s.label}
               </button>
@@ -1391,6 +1389,10 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
           categories={categories}
           brands={brands}
           loading={bulkLoading}
+          firstSelectedActive={(() => {
+            const firstId = selectedIds.values().next().value
+            return products.find(p => p.id === firstId)?.is_active ?? true
+          })()}
           onDelete={handleBulkDelete}
           onActivate={handleBulkActivate}
           onDeactivate={handleBulkDeactivate}

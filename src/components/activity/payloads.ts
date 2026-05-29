@@ -139,6 +139,9 @@ export interface BrandData {
 
 export interface BulkData {
   product_ids?: string[]
+  // Snapshot inmutable {id, name} al momento del evento (entradas nuevas).
+  // Entradas viejas no lo tienen → fallback a product_ids→productMap.
+  products?: { id: string; name: string }[]
   count?: number
   is_active?: boolean
   category_id?: string | null

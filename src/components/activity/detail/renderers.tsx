@@ -117,10 +117,11 @@ const ACTIVITY_DETAIL_RENDERERS: Record<ActivityAction, ActivityRenderer> = {
   product_bulk_deleted: ({ row }) => (
     <BulkProductDeleted data={readAuditPayload<BulkData>(row.old_data)} />
   ),
-  product_bulk_status: ({ row }) => (
+  product_bulk_status: ({ row, lookups }) => (
     <BulkProductStatus
       oldData={readAuditPayload<BulkData>(row.old_data)}
       newData={readAuditPayload<BulkData>(row.new_data)}
+      lookups={lookups}
     />
   ),
   product_bulk_category: ({ row, lookups }) => (

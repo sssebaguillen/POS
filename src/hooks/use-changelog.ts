@@ -4,6 +4,8 @@ import { useCallback, useEffect, useState } from 'react'
 
 export type ChangelogChangeType = 'new' | 'fix' | 'improvement'
 
+export type ChangelogReleaseKind = 'feature' | 'patch'
+
 export interface ChangelogChange {
   type: ChangelogChangeType
   text: string
@@ -11,10 +13,17 @@ export interface ChangelogChange {
 
 export interface ChangelogRelease {
   version: string
+  // 'feature' (saltos grandes + minor) siempre se muestran; 'patch' (hotfixes)
+  // se limitan a los más recientes. Ausente → tratado como 'feature' (no ocultar).
+  kind?: ChangelogReleaseKind
   date: string
   label: string
   changes: ChangelogChange[]
 }
+
+// Tope de parches (hotfixes) mostrados cuando hay muchos sin leer; el resto se
+// colapsa en una línea "+N anteriores". Los features no se limitan.
+const PATCH_VISIBLE_LIMIT = 3
 
 interface ChangelogPayload {
   current: string
@@ -50,9 +59,22 @@ export function useChangelog(initialLastSeenVersion: string | null) {
   const lastSeenIdx = lastSeenVersion
     ? releases.findIndex(r => r.version === lastSeenVersion)
     : -1
-  const unreadReleases = lastSeenIdx === -1 ? releases : releases.slice(0, lastSeenIdx)
+  const rawUnread = lastSeenIdx === -1 ? releases : releases.slice(0, lastSeenIdx)
 
-  const hasUnread = unreadReleases.length > 0
+  // Mostrar todos los features, pero limitar los parches a los más recientes.
+  // releases viene newest-first, así que el filtro toma los primeros N parches.
+  let patchesShown = 0
+  const unreadReleases = rawUnread.filter(r => {
+    if (r.kind !== 'patch') return true
+    if (patchesShown < PATCH_VISIBLE_LIMIT) {
+      patchesShown += 1
+      return true
+    }
+    return false
+  })
+  const hiddenPatchCount = rawUnread.length - unreadReleases.length
+
+  const hasUnread = rawUnread.length > 0
 
   const markAsSeen = useCallback(() => {
     if (!latestRelease) return
@@ -61,5 +83,5 @@ export function useChangelog(initialLastSeenVersion: string | null) {
     setLastSeenVersion(version)
   }, [latestRelease])
 
-  return { latestRelease, releases, unreadReleases, hasUnread, markAsSeen }
+  return { latestRelease, releases, unreadReleases, hiddenPatchCount, hasUnread, markAsSeen }
 }

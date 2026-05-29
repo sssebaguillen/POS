@@ -133,21 +133,49 @@ export function BulkProductDeleted({ data }: BulkProductDeletedProps) {
   )
 }
 
+interface BulkProductListProps {
+  data: BulkData | null
+}
+
+// Lista solo desde el snapshot inmutable `products` (nombre al momento del evento).
+// Entradas viejas sin snapshot NO muestran lista: no guardaron el set real de
+// productos modificados, así que product_ids puede no coincidir con `count`
+// (incoherencia UI). Preferimos omitir antes que mostrar datos no confiables.
+function BulkProductList({ data }: BulkProductListProps) {
+  const snapshot = data?.products
+  if (!snapshot || snapshot.length === 0) return null
+  return (
+    <details className="text-xs text-hint">
+      <summary className="cursor-pointer select-none hover:text-body">Ver productos</summary>
+      <ul className="mt-1.5 space-y-0.5">
+        {snapshot.map(p => (
+          <li key={p.id} className="text-body">{p.name}</li>
+        ))}
+      </ul>
+    </details>
+  )
+}
+
 interface BulkProductStatusProps {
   oldData: BulkData | null
   newData: BulkData | null
+  lookups: ActivityLookups
 }
 
-export function BulkProductStatus({ oldData, newData }: BulkProductStatusProps) {
-  const count = oldData?.count ?? oldData?.product_ids?.length ?? 0
+export function BulkProductStatus({ oldData, newData, lookups }: BulkProductStatusProps) {
+  const data = oldData ?? newData
+  const count = data?.count ?? data?.products?.length ?? data?.product_ids?.length ?? 0
   const isActive = newData?.is_active === true
 
   return (
-    <p className="text-body">
-      <span className="font-semibold text-heading">{count}</span>{' '}
-      {count === 1 ? 'producto marcado como' : 'productos marcados como'}{' '}
-      <span className="font-semibold text-heading">{isActive ? 'Activo' : 'Inactivo'}</span>
-    </p>
+    <div className="space-y-2">
+      <p className="text-body">
+        <span className="font-semibold text-heading">{count}</span>{' '}
+        {count === 1 ? 'producto marcado como' : 'productos marcados como'}{' '}
+        <span className="font-semibold text-heading">{isActive ? 'Activo' : 'Inactivo'}</span>
+      </p>
+      <BulkProductList data={data} />
+    </div>
   )
 }
 
@@ -158,17 +186,21 @@ interface BulkProductCategoryProps {
 }
 
 export function BulkProductCategory({ oldData, newData, lookups }: BulkProductCategoryProps) {
-  const count = oldData?.count ?? oldData?.product_ids?.length ?? 0
+  const data = oldData ?? newData
+  const count = data?.count ?? data?.products?.length ?? data?.product_ids?.length ?? 0
   const categoryName = newData?.category_id
     ? lookups.categoryMap[newData.category_id]?.name ?? 'Sin categoría'
     : 'Sin categoría'
 
   return (
-    <p className="text-body">
-      <span className="font-semibold text-heading">{count}</span>{' '}
-      {count === 1 ? 'producto movido a' : 'productos movidos a'}{' '}
-      <span className="font-semibold text-heading">{categoryName}</span>
-    </p>
+    <div className="space-y-2">
+      <p className="text-body">
+        <span className="font-semibold text-heading">{count}</span>{' '}
+        {count === 1 ? 'producto movido a' : 'productos movidos a'}{' '}
+        <span className="font-semibold text-heading">{categoryName}</span>
+      </p>
+      <BulkProductList data={data} />
+    </div>
   )
 }
 
@@ -179,15 +211,19 @@ interface BulkProductBrandProps {
 }
 
 export function BulkProductBrand({ oldData, newData, lookups }: BulkProductBrandProps) {
-  const count = oldData?.count ?? oldData?.product_ids?.length ?? 0
+  const data = oldData ?? newData
+  const count = data?.count ?? data?.products?.length ?? data?.product_ids?.length ?? 0
   const brandName = newData?.brand_id ? lookups.brandMap[newData.brand_id] ?? 'Sin marca' : 'Sin marca'
 
   return (
-    <p className="text-body">
-      <span className="font-semibold text-heading">{count}</span>{' '}
-      {count === 1 ? 'producto asignado a' : 'productos asignados a'}{' '}
-      <span className="font-semibold text-heading">{brandName}</span>
-    </p>
+    <div className="space-y-2">
+      <p className="text-body">
+        <span className="font-semibold text-heading">{count}</span>{' '}
+        {count === 1 ? 'producto asignado a' : 'productos asignados a'}{' '}
+        <span className="font-semibold text-heading">{brandName}</span>
+      </p>
+      <BulkProductList data={data} />
+    </div>
   )
 }
 
