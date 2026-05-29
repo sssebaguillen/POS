@@ -122,7 +122,7 @@ Dividir P10 en dos capas para no sobrediseñar antes de validar demanda real.
 ### P11 — Analytics avanzado
 - **P11.1 — Snapshots diarios ✅ (hecho 2026-05-27)** — Tabla `daily_snapshots` con upsert RPC + cron pg_cron nocturno (`refresh-daily-snapshots-nightly`, 03:10 ART) llamando a la Edge Function `refresh-daily-snapshots`. Widget en `/stats` con totales + chart.
 - **P11.2 — Comparativas temporales ✅ (hecho 2026-05-27)** — RPC `get_period_comparison` (alinea período actual vs anterior por offset) + página dedicada `/stats/trends` con KPIs delta% y chart current-vs-previous.
-- **P11.3 — Pendiente** — Heatmap de ventas por hora del día (requiere nueva agregación sobre `sales.created_at`, no sale de `daily_snapshots`). Reporte mensual exportable en PDF.
+- **P11.3 — Hecho (2026-05-30)** — Heatmap de ventas por día/hora (RPC `get_sales_heatmap`, hora local del negocio; widget en `/stats` + página `/stats/heatmap`). Reporte exportable en PDF por rango de fechas (`/stats/report`, edge): reutiliza las RPCs existentes (`get_stats_kpis`, `get_period_comparison`, `get_stats_breakdown`, `get_top_products_detail`, `get_sales_by_operator_detail`, `get_daily_snapshots`) — sin migración nueva. Documento A4 imprimible (`window.print()` + `@media print`, mismo patrón que el recibo térmico, sin librería PDF); usa `DateRangeFilter` (default `mes`, mes en curso). Próximo en P11: rotación de inventario / dead stock.
 
 ### P12 — IA proactiva opt-in
 Edge Function `generate-insights` con cron nocturno. Anthropic API: Haiku para análisis rutinario, Sonnet para anomalías. Tabla `ai_insights`. Canales: in-app, email (Resend), WhatsApp Business (fase madura).

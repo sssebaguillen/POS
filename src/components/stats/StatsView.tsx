@@ -3,7 +3,7 @@
 import { useMemo, useState, memo } from 'react'
 import { usePathname } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
-import { TrendingDown, TrendingUp, DollarSign, ShoppingBag, Receipt, Hash } from 'lucide-react'
+import { TrendingDown, TrendingUp, DollarSign, ShoppingBag, Receipt, Hash, FileText } from 'lucide-react'
 import Link from 'next/link'
 import PageHeader from '@/components/shared/PageHeader'
 import DateRangeFilter from '@/components/shared/DateRangeFilter'
@@ -306,6 +306,13 @@ export default function StatsView({
               onChange={handlePeriodChange}
             />
             {isFetching && <span className="text-xs text-hint shrink-0">Actualizando...</span>}
+            <Link
+              href={`/stats/report?period=${period}${from ? `&from=${from}` : ''}${to ? `&to=${to}` : ''}`}
+              className="ml-auto inline-flex items-center gap-1.5 pill-tab border border-edge text-body hover:border-primary/30 hover:text-primary transition-colors shrink-0"
+            >
+              <FileText size={15} />
+              Reporte PDF
+            </Link>
           </div>
 
           <div className={`space-y-5 transition-opacity ${isFetching ? 'opacity-60' : ''}`}>

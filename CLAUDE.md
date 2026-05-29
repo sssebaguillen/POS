@@ -231,6 +231,7 @@ src/
 │   │   ├── stats/operators/page.tsx
 │   │   ├── stats/trends/page.tsx           # edge — period comparison via get_period_comparison RPC
 │   │   ├── stats/heatmap/page.tsx          # edge — sales heatmap by weekday/hour (business-local tz)
+│   │   ├── stats/report/page.tsx           # edge — printable PDF report by date range; gates `analysis` perm
 │   │   ├── profile/page.tsx              # Owner only
 │   │   ├── operator/me/page.tsx          # Active operator personal profile
 │   │   ├── activity/page.tsx             # edge — audit log with chip+DateRangeFilter+operator filters; defense-in-depth `analysis` perm check
@@ -290,7 +291,8 @@ src/
     │   ├── OperatorSalesDetailView.tsx
     │   ├── TrendsDetailView.tsx           # P11.2 — daily trends + period-over-period comparison
     │   ├── SalesHeatmap.tsx                # P11.3 — reusable 7×24 grid component (compact prop for /stats widget)
-    │   └── SalesHeatmapView.tsx            # P11.3 — /stats/heatmap detail view
+    │   ├── SalesHeatmapView.tsx            # P11.3 — /stats/heatmap detail view
+    │   └── ReportView.tsx                   # P11.3 — /stats/report printable PDF doc (window.print + @media print); reuses stats RPCs, no new migration
     ├── inventory/
     │   ├── InventoryPanel.tsx            # ~1291 lines — refactor pending post-beta
     │   ├── NewProductModal.tsx
@@ -347,7 +349,7 @@ src/
         └── types.ts
 ```
 
-**Edge Runtime** (`export const runtime = 'edge'`): `/pos`, `/dashboard`, `/stats`, `/stats/trends`, `/stats/heatmap`, `/operator-select`, `/activity`
+**Edge Runtime** (`export const runtime = 'edge'`): `/pos`, `/dashboard`, `/stats`, `/stats/trends`, `/stats/heatmap`, `/stats/report`, `/operator-select`, `/activity`
 
 Full route map with permission gates: `docs/conventions.md`.
 

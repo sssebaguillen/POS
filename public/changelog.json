@@ -1,6 +1,17 @@
 {
-  "current": "0.0.6.4",
+  "current": "0.0.6.5",
   "releases": [
+    {
+      "version": "0.0.6.5",
+      "kind": "feature",
+      "date": "2026-05-30",
+      "label": "Reporte de ventas en PDF",
+      "changes": [
+        { "type": "new", "text": "Nuevo Reporte de ventas dentro de Estadísticas: se abre desde el botón 'Reporte PDF' arriba, al lado del filtro de fechas. Arma un documento prolijo, listo para imprimir o guardar como PDF, con el resumen del período: ingresos brutos, descuentos, ingresos netos, gastos y resultado, además de cantidad de ventas, unidades y ticket promedio. Cada número viene comparado contra el período anterior equivalente." },
+        { "type": "new", "text": "El reporte también incluye tus productos más vendidos, los ingresos por categoría, el desglose por método de pago, las ventas por operador y el detalle día por día. Ideal para revisar el cierre del mes, mostrar números a un socio o guardar un respaldo." },
+        { "type": "new", "text": "El reporte se arma sobre el rango de fechas que elijas (hoy, esta semana, este mes, trimestre, año o un rango personalizado) y por defecto muestra el mes en curso. Para guardarlo en PDF, usa el botón 'Descargar PDF' y elige 'Guardar como PDF' en el cuadro de impresión del navegador." }
+      ]
+    },
     {
       "version": "0.0.6.4",
       "kind": "patch",
