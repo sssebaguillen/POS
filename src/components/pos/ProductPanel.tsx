@@ -58,7 +58,12 @@ export default function ProductPanel({ products, search, activeFilter, activePri
   }, [products, search, activeFilter])
 
   const topSellers = useMemo(
-    () => filtered.filter(p => p.sales_count > 0).slice(0, 8),
+    () => filtered.filter(p => p.sales_count > 0).slice(0, 6),
+    [filtered]
+  )
+
+  const sortedProducts = useMemo(
+    () => [...filtered].sort((a, b) => a.name.localeCompare(b.name, 'es', { sensitivity: 'base' })),
     [filtered]
   )
 
@@ -81,18 +86,19 @@ export default function ProductPanel({ products, search, activeFilter, activePri
           <p className="text-xs font-semibold text-hint uppercase tracking-wider mb-3">
             Más vendidos, últimos 30 días
           </p>
-          <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))' }}>
+          <div className="flex gap-3 overflow-x-auto">
             {topSellers.map((product, index) => (
-              <ProductCard
-                key={product.id}
-                product={product}
-                index={index}
-                activePriceList={activePriceList}
-                priceListOverrides={priceListOverrides}
-                onAdd={handleAdd}
-                onAddVariant={handleAddVariant}
-                formatMoney={formatMoney}
-              />
+              <div key={product.id} className="w-40 shrink-0">
+                <ProductCard
+                  product={product}
+                  index={index}
+                  activePriceList={activePriceList}
+                  priceListOverrides={priceListOverrides}
+                  onAdd={handleAdd}
+                  onAddVariant={handleAddVariant}
+                  formatMoney={formatMoney}
+                />
+              </div>
             ))}
           </div>
         </section>
@@ -113,7 +119,7 @@ export default function ProductPanel({ products, search, activeFilter, activePri
         ) : (
           <PaginatedProductGrid
             key={paginationKey}
-            products={filtered}
+            products={sortedProducts}
             activePriceList={activePriceList}
             priceListOverrides={priceListOverrides}
             onAdd={handleAdd}
