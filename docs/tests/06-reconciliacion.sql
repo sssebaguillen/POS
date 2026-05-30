@@ -373,4 +373,61 @@ $$;
 
 
 -- =============================================================
+-- R11: GASTOS DE MERCADERÍA + MOVIMIENTOS DE COMPRA
+-- Invariantes duras sobre el flujo create_mercaderia_expense.
+-- (Detalle del stress en docs/tests/10-stress-gastos.md.)
+-- =============================================================
+
+-- R11a: el monto de todo gasto de mercadería = Σ(unit_cost × quantity) de
+-- sus ítems. Cierto siempre — create_mercaderia_expense calcula el total
+-- desde los ítems, independientemente de si actualizó stock o no.
+DO $$
+DECLARE n int;
+BEGIN
+  SELECT COUNT(*) INTO n
+  FROM expenses e
+  WHERE e.category = 'mercaderia'
+    AND ABS(e.amount - COALESCE((
+      SELECT SUM(ei.unit_cost * ei.quantity)
+      FROM expense_items ei WHERE ei.expense_id = e.id), 0)) > 0.01;
+
+  PERFORM test_assert('R11a amount mercadería = SUM(expense_items.unit_cost*quantity)', n = 0,
+    format('%s gastos de mercadería con amount != suma de ítems', n));
+END;
+$$;
+-- detail:
+-- SELECT e.id, e.amount,
+--        (SELECT SUM(ei.unit_cost*ei.quantity) FROM expense_items ei WHERE ei.expense_id=e.id) esperado
+-- FROM expenses e WHERE e.category='mercaderia'
+--   AND ABS(e.amount - COALESCE((SELECT SUM(ei.unit_cost*ei.quantity) FROM expense_items ei WHERE ei.expense_id=e.id),0)) > 0.01;
+
+-- R11b: todo movimiento 'purchase' tiene quantity > 0 (las compras suman stock).
+DO $$
+DECLARE n int;
+BEGIN
+  SELECT COUNT(*) INTO n FROM inventory_movements WHERE type = 'purchase' AND quantity <= 0;
+  PERFORM test_assert('R11b inventory_movements.purchase quantity > 0', n = 0,
+    format('%s movimientos de compra con quantity <= 0', n));
+END;
+$$;
+
+-- R11c: todo movimiento 'purchase' referencia un gasto existente.
+DO $$
+DECLARE n int;
+BEGIN
+  SELECT COUNT(*) INTO n
+  FROM inventory_movements m
+  WHERE m.type = 'purchase'
+    AND NOT EXISTS (SELECT 1 FROM expenses e WHERE e.id = m.reference_id);
+  PERFORM test_assert('R11c movimientos purchase apuntan a gasto existente', n = 0,
+    format('%s movimientos de compra sin gasto', n));
+END;
+$$;
+-- NOTA: NO existe invariante dura "Σ purchase = Σ ítems de mercadería" porque
+-- create_mercaderia_expense permite p_update_stock = false (carga el gasto sin
+-- mover stock). En ese caso hay ítems pero no movimientos, y es correcto.
+-- Esa igualdad sólo se valida acotada a una corrida controlada (E2 en 10-stress-gastos.md).
+
+
+-- =============================================================
 DROP FUNCTION IF EXISTS test_assert(text, boolean, text);
