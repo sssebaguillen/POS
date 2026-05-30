@@ -3,9 +3,9 @@
 import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useQueryClient } from '@tanstack/react-query'
-import { Minus, Pencil, Plus, ShoppingCart, Trash2, PenLine, User, X } from 'lucide-react'
+import { Minus, Pencil, Percent, Plus, ShoppingCart, Trash2, PenLine, User, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { useCartStore } from '@/lib/store/cart.store'
+import { useCartStore, resolveDiscountAmount, type DiscountMode } from '@/lib/store/cart.store'
 import { getCartItemId } from '@/lib/types'
 import PaymentModal from '@/components/pos/PaymentModal'
 import SalesHistoryPanel from '@/components/pos/SalesHistoryPanel'
@@ -62,9 +62,11 @@ interface Props {
 const CartPanel = forwardRef<CartPanelHandle, Props>(function CartPanel({ businessId, businessName, freeLineEnabled, activePriceList, priceListOverrides, operatorId, permissions, sessionId = null, confirmingClear: externalConfirming, onVaciar, onSaleCompleted }: Props, ref) {
   const formatMoney = useFormatMoney()
   const router = useRouter()
-  const { items, removeItem, updateQuantity, updatePrice, addFreeLineItem, discount, clearCart, restoreCart } = useCartStore()
+  const { items, removeItem, updateQuantity, updatePrice, addFreeLineItem, discountMode, discountValue, setDiscount, clearDiscount, clearCart, restoreCart } = useCartStore()
   const [showFreeLineForm, setShowFreeLineForm] = useState(false)
   const [freeLineForm, setFreeLineForm] = useState<FreeLineForm>({ description: '', price: '', quantity: '1' })
+  const [showDiscountForm, setShowDiscountForm] = useState(false)
+  const [discountForm, setDiscountForm] = useState<{ mode: DiscountMode; value: string }>({ mode: 'fixed', value: '' })
   const [showPayment, setShowPayment] = useState(false)
   const [selectedCustomer, setSelectedCustomer] = useState<CustomerSelection | null>(null)
   const [showCustomerSearch, setShowCustomerSearch] = useState(false)
@@ -127,7 +129,8 @@ const CartPanel = forwardRef<CartPanelHandle, Props>(function CartPanel({ busine
   }, [adjustedItems])
 
   const adjustedSubtotal = adjustedItems.reduce((sum, i) => sum + i.total, 0)
-  const adjustedTotal = Math.max(0, adjustedSubtotal - discount)
+  const discountAmount = resolveDiscountAmount(adjustedSubtotal, discountMode, discountValue)
+  const adjustedTotal = Math.max(0, adjustedSubtotal - discountAmount)
   const receiptItems = useMemo<ReceiptItemInput[]>(() => {
     return items.map(item => {
       if (item.product === null) {
@@ -231,13 +234,39 @@ const CartPanel = forwardRef<CartPanelHandle, Props>(function CartPanel({ busine
     if (confirmClearTimerRef.current) clearTimeout(confirmClearTimerRef.current)
     setLocalConfirming(false)
     const snapshot = items.slice()
-    const discountSnapshot = discount
+    const discountSnapshot = { mode: discountMode, value: discountValue }
+    setShowDiscountForm(false)
     clearCart()
     showToast({
       message: 'Carrito vaciado',
       duration: 5500,
       onUndo: () => restoreCart(snapshot, discountSnapshot),
     })
+  }
+
+  function openDiscountForm() {
+    setShowCustomerSearch(false)
+    setShowFreeLineForm(false)
+    setDiscountForm(
+      discountValue > 0
+        ? { mode: discountMode, value: String(discountValue) }
+        : { mode: 'fixed', value: '' }
+    )
+    setShowDiscountForm(prev => !prev)
+  }
+
+  function applyDiscount() {
+    const parsed = parseFloat(discountForm.value)
+    if (isNaN(parsed) || parsed <= 0) return
+    const value = discountForm.mode === 'percent' ? Math.min(parsed, 100) : parsed
+    setDiscount(discountForm.mode, value)
+    setShowDiscountForm(false)
+  }
+
+  function removeDiscount() {
+    clearDiscount()
+    setShowDiscountForm(false)
+    setDiscountForm({ mode: 'fixed', value: '' })
   }
 
   function startPriceEdit(itemId: string, currentValue: number, mode: 'unit' | 'total') {
@@ -511,10 +540,10 @@ const CartPanel = forwardRef<CartPanelHandle, Props>(function CartPanel({ busine
                   <span>Ítems</span>
                   <span className="tabular-nums">{items.length === 0 ? '—' : items.length}</span>
                 </div>
-                {discount > 0 && (
+                {discountAmount > 0 && (
                   <div className="flex justify-between text-[var(--primary-active-text)]">
-                    <span>Descuento</span>
-                    <span className="tabular-nums">-{formatMoney(discount)}</span>
+                    <span>Descuento{discountMode === 'percent' ? ` (${discountValue}%)` : ''}</span>
+                    <span className="tabular-nums">-{formatMoney(discountAmount)}</span>
                   </div>
                 )}
                 <div className="flex justify-between font-semibold text-heading text-2xl pt-2 border-t border-edge-soft leading-none">
@@ -529,7 +558,53 @@ const CartPanel = forwardRef<CartPanelHandle, Props>(function CartPanel({ busine
                 </p>
               )}
 
-              {selectedCustomer ? (
+              {/* Modifier triggers — compact icon+label row */}
+              {(() => {
+                const canDiscount = permissions?.price_override === true
+                const canFreeLine = freeLineEnabled && permissions?.free_line === true
+                const count = 1 + (canDiscount ? 1 : 0) + (canFreeLine ? 1 : 0)
+                const cols = count === 3 ? 'grid-cols-3' : count === 2 ? 'grid-cols-2' : 'grid-cols-1'
+                const base = 'flex flex-col items-center justify-center gap-1 h-14 rounded-xl border text-[11px] font-medium transition-colors'
+                const cls = (active: boolean) =>
+                  `${base} ${active
+                    ? 'border-primary bg-primary/10 text-[var(--primary-active-text)]'
+                    : 'border-edge text-hint hover:text-body hover:border-primary/40 hover:bg-primary/5'}`
+                return (
+                  <div className={`grid ${cols} gap-2`}>
+                    <button
+                      type="button"
+                      onClick={() => { setShowDiscountForm(false); setShowFreeLineForm(false); setShowCustomerSearch(v => !v) }}
+                      className={cls(!!selectedCustomer || showCustomerSearch)}
+                    >
+                      <User size={18} />
+                      Cliente
+                    </button>
+                    {canDiscount && (
+                      <button
+                        type="button"
+                        onClick={openDiscountForm}
+                        className={cls(discountValue > 0 || showDiscountForm)}
+                      >
+                        <Percent size={18} />
+                        Desc.
+                      </button>
+                    )}
+                    {canFreeLine && (
+                      <button
+                        type="button"
+                        onClick={() => { setShowCustomerSearch(false); setShowDiscountForm(false); setShowFreeLineForm(v => !v) }}
+                        className={cls(showFreeLineForm)}
+                      >
+                        <PenLine size={18} />
+                        Libre
+                      </button>
+                    )}
+                  </div>
+                )
+              })()}
+
+              {/* Customer — active chip */}
+              {selectedCustomer && !showCustomerSearch && (
                 <div className="flex items-center justify-between gap-2 w-full rounded-xl border border-primary/30 bg-primary/5 px-3 py-2">
                   <div className="flex items-center gap-2 min-w-0">
                     <User size={14} className="text-primary shrink-0" />
@@ -551,7 +626,10 @@ const CartPanel = forwardRef<CartPanelHandle, Props>(function CartPanel({ busine
                     <X size={14} />
                   </button>
                 </div>
-              ) : showCustomerSearch ? (
+              )}
+
+              {/* Customer — search form */}
+              {showCustomerSearch && (
                 <div className="rounded-xl border border-primary/30 bg-primary/5 p-3 space-y-2">
                   <p className="text-xs font-medium text-primary">Asignar cliente</p>
                   <input
@@ -605,95 +683,170 @@ const CartPanel = forwardRef<CartPanelHandle, Props>(function CartPanel({ busine
                     Cancelar
                   </button>
                 </div>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => setShowCustomerSearch(true)}
-                  className="flex items-center justify-center gap-1.5 w-full h-8 rounded-xl border border-primary/40 text-xs text-primary/70 hover:text-primary hover:border-primary hover:bg-primary/5 transition-colors"
-                >
-                  <User size={12} />
-                  Asignar cliente
-                </button>
               )}
 
-              {freeLineEnabled && permissions?.free_line === true && (
-                showFreeLineForm ? (
-                  <div className="rounded-xl border border-primary/30 bg-primary/5 p-3 space-y-2">
-                    <p className="text-xs font-medium text-primary">Producto Libre</p>
-                    <input
-                      type="text"
-                      autoFocus
-                      placeholder="Descripción (ej: Envío, servicio…)"
-                      value={freeLineForm.description}
-                      onChange={e => setFreeLineForm(prev => ({ ...prev, description: e.target.value }))}
-                      onKeyDown={e => {
-                        if (e.key === 'Enter') handleAddFreeLine()
-                        if (e.key === 'Escape') setShowFreeLineForm(false)
-                      }}
-                      className="w-full rounded-lg border border-edge bg-surface px-3 py-1.5 text-sm text-heading placeholder:text-hint focus:outline-none focus:border-primary"
-                    />
-                    <div className="grid grid-cols-2 gap-2">
-                      <div className="space-y-0.5">
-                        <label className="text-[10px] text-hint uppercase tracking-wide">Precio</label>
-                        <input
-                          type="number"
-                          min={0}
-                          step="any"
-                          placeholder="0"
-                          value={freeLineForm.price}
-                          onChange={e => setFreeLineForm(prev => ({ ...prev, price: e.target.value }))}
-                          onKeyDown={e => {
-                            if (e.key === 'Enter') handleAddFreeLine()
-                            if (e.key === 'Escape') setShowFreeLineForm(false)
-                          }}
-                          className="w-full rounded-lg border border-edge bg-surface px-3 py-1.5 text-sm text-heading placeholder:text-hint focus:outline-none focus:border-primary tabular-nums"
-                        />
-                      </div>
-                      <div className="space-y-0.5">
-                        <label className="text-[10px] text-hint uppercase tracking-wide">Cantidad</label>
-                        <input
-                          type="number"
-                          min={1}
-                          step={1}
-                          placeholder="1"
-                          value={freeLineForm.quantity}
-                          onChange={e => setFreeLineForm(prev => ({ ...prev, quantity: e.target.value }))}
-                          onKeyDown={e => {
-                            if (e.key === 'Enter') handleAddFreeLine()
-                            if (e.key === 'Escape') setShowFreeLineForm(false)
-                          }}
-                          className="w-full rounded-lg border border-edge bg-surface px-3 py-1.5 text-sm text-heading placeholder:text-hint focus:outline-none focus:border-primary tabular-nums"
-                        />
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-2">
-                      <button
-                        type="button"
-                        onClick={() => { setShowFreeLineForm(false); setFreeLineForm({ description: '', price: '', quantity: '1' }) }}
-                        className="h-8 rounded-lg border border-edge text-sm text-hint hover:text-body hover:bg-hover-bg transition-colors"
-                      >
-                        Cancelar
-                      </button>
-                      <button
-                        type="button"
-                        onClick={handleAddFreeLine}
-                        disabled={!freeLineForm.description.trim() || !freeLineForm.price}
-                        className="h-8 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-40"
-                      >
-                        Agregar
-                      </button>
-                    </div>
+              {/* Discount — active chip */}
+              {discountValue > 0 && discountAmount > 0 && !showDiscountForm && (
+                <div className="flex items-center justify-between gap-2 w-full rounded-xl border border-primary/30 bg-primary/5 px-3 py-2">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <Percent size={14} className="text-primary shrink-0" />
+                    <p className="text-xs font-medium text-heading truncate">
+                      Descuento {discountMode === 'percent' ? `${discountValue}%` : formatMoney(discountValue)}
+                      <span className="text-hint"> · -{formatMoney(discountAmount)}</span>
+                    </p>
                   </div>
-                ) : (
                   <button
                     type="button"
-                    onClick={() => setShowFreeLineForm(true)}
-                    className="flex items-center justify-center gap-1.5 w-full h-8 rounded-xl border border-dashed border-primary/40 text-xs text-primary/70 hover:text-primary hover:border-primary hover:bg-primary/5 transition-colors"
+                    onClick={removeDiscount}
+                    aria-label="Quitar descuento"
+                    className="text-hint hover:text-red-500 transition-colors shrink-0"
                   >
-                    <PenLine size={12} />
-                    Producto Libre
+                    <X size={14} />
                   </button>
-                )
+                </div>
+              )}
+
+              {/* Discount — form */}
+              {showDiscountForm && (
+                <div className="rounded-xl border border-primary/30 bg-primary/5 p-3 space-y-2">
+                  <p className="text-xs font-medium text-primary">Descuento</p>
+                  <div className="grid grid-cols-2 gap-1 rounded-lg border border-edge bg-surface p-0.5">
+                    <button
+                      type="button"
+                      onClick={() => setDiscountForm(f => ({ ...f, mode: 'percent' }))}
+                      className={`h-7 rounded-md text-xs font-medium transition-colors ${discountForm.mode === 'percent' ? 'bg-primary text-primary-foreground' : 'text-hint hover:text-body'}`}
+                    >
+                      %
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setDiscountForm(f => ({ ...f, mode: 'fixed' }))}
+                      className={`h-7 rounded-md text-xs font-medium transition-colors ${discountForm.mode === 'fixed' ? 'bg-primary text-primary-foreground' : 'text-hint hover:text-body'}`}
+                    >
+                      $
+                    </button>
+                  </div>
+                  <input
+                    type="number"
+                    min={0}
+                    step="any"
+                    autoFocus
+                    placeholder="0"
+                    value={discountForm.value}
+                    onChange={e => setDiscountForm(f => ({ ...f, value: e.target.value }))}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter') applyDiscount()
+                      if (e.key === 'Escape') setShowDiscountForm(false)
+                    }}
+                    className="w-full rounded-lg border border-edge bg-surface px-3 py-1.5 text-sm text-heading placeholder:text-hint focus:outline-none focus:border-primary tabular-nums"
+                  />
+                  {(() => {
+                    const preview = resolveDiscountAmount(adjustedSubtotal, discountForm.mode, parseFloat(discountForm.value) || 0)
+                    return (
+                      <div className="space-y-0.5 text-xs">
+                        <div className="flex justify-between text-subtle">
+                          <span>Subtotal</span>
+                          <span className="tabular-nums">{formatMoney(adjustedSubtotal)}</span>
+                        </div>
+                        <div className="flex justify-between text-[var(--primary-active-text)]">
+                          <span>Descuento</span>
+                          <span className="tabular-nums">-{formatMoney(preview)}</span>
+                        </div>
+                        <div className="flex justify-between font-semibold text-heading">
+                          <span>Total</span>
+                          <span className="tabular-nums">{formatMoney(Math.max(0, adjustedSubtotal - preview))}</span>
+                        </div>
+                      </div>
+                    )
+                  })()}
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setShowDiscountForm(false)}
+                      className="h-8 rounded-lg border border-edge text-sm text-hint hover:text-body hover:bg-hover-bg transition-colors"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      type="button"
+                      onClick={applyDiscount}
+                      disabled={!discountForm.value || parseFloat(discountForm.value) <= 0}
+                      className="h-8 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-40"
+                    >
+                      Aplicar
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Free line — form */}
+              {showFreeLineForm && freeLineEnabled && permissions?.free_line === true && (
+                <div className="rounded-xl border border-primary/30 bg-primary/5 p-3 space-y-2">
+                  <p className="text-xs font-medium text-primary">Producto Libre</p>
+                  <input
+                    type="text"
+                    autoFocus
+                    placeholder="Descripción (ej: Envío, servicio…)"
+                    value={freeLineForm.description}
+                    onChange={e => setFreeLineForm(prev => ({ ...prev, description: e.target.value }))}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter') handleAddFreeLine()
+                      if (e.key === 'Escape') setShowFreeLineForm(false)
+                    }}
+                    className="w-full rounded-lg border border-edge bg-surface px-3 py-1.5 text-sm text-heading placeholder:text-hint focus:outline-none focus:border-primary"
+                  />
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="space-y-0.5">
+                      <label className="text-[10px] text-hint uppercase tracking-wide">Precio</label>
+                      <input
+                        type="number"
+                        min={0}
+                        step="any"
+                        placeholder="0"
+                        value={freeLineForm.price}
+                        onChange={e => setFreeLineForm(prev => ({ ...prev, price: e.target.value }))}
+                        onKeyDown={e => {
+                          if (e.key === 'Enter') handleAddFreeLine()
+                          if (e.key === 'Escape') setShowFreeLineForm(false)
+                        }}
+                        className="w-full rounded-lg border border-edge bg-surface px-3 py-1.5 text-sm text-heading placeholder:text-hint focus:outline-none focus:border-primary tabular-nums"
+                      />
+                    </div>
+                    <div className="space-y-0.5">
+                      <label className="text-[10px] text-hint uppercase tracking-wide">Cantidad</label>
+                      <input
+                        type="number"
+                        min={1}
+                        step={1}
+                        placeholder="1"
+                        value={freeLineForm.quantity}
+                        onChange={e => setFreeLineForm(prev => ({ ...prev, quantity: e.target.value }))}
+                        onKeyDown={e => {
+                          if (e.key === 'Enter') handleAddFreeLine()
+                          if (e.key === 'Escape') setShowFreeLineForm(false)
+                        }}
+                        className="w-full rounded-lg border border-edge bg-surface px-3 py-1.5 text-sm text-heading placeholder:text-hint focus:outline-none focus:border-primary tabular-nums"
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => { setShowFreeLineForm(false); setFreeLineForm({ description: '', price: '', quantity: '1' }) }}
+                      className="h-8 rounded-lg border border-edge text-sm text-hint hover:text-body hover:bg-hover-bg transition-colors"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleAddFreeLine}
+                      disabled={!freeLineForm.description.trim() || !freeLineForm.price}
+                      className="h-8 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-40"
+                    >
+                      Agregar
+                    </button>
+                  </div>
+                </div>
               )}
 
               <div className="grid grid-cols-2 gap-2">
@@ -733,7 +886,7 @@ const CartPanel = forwardRef<CartPanelHandle, Props>(function CartPanel({ busine
         <PaymentModal
           businessName={businessName}
           subtotal={adjustedSubtotal}
-          discount={discount}
+          discount={discountAmount}
           total={adjustedTotal}
           businessId={businessId}
           priceListId={activePriceList?.id ?? null}

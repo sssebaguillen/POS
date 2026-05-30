@@ -21,6 +21,9 @@ export function SaleSummary({ data, lookups, deleted = false }: SaleSummaryProps
   const payments = Array.isArray(data.payments) ? data.payments : []
   const legacyMethods = !payments.length && Array.isArray(data.payment_methods) ? data.payment_methods : null
   const total = toNumber(data.total)
+  const subtotal = toNumber(data.subtotal)
+  const discount = toNumber(data.discount)
+  const hasDiscount = discount > 0
   const customerId = typeof data.customer_id === 'string' ? data.customer_id : null
   const customerName = customerId ? lookups.customerMap[customerId] ?? null : null
 
@@ -29,6 +32,8 @@ export function SaleSummary({ data, lookups, deleted = false }: SaleSummaryProps
       {deleted && <DeletedBadge label="Eliminada" />}
 
       <div className="flex flex-wrap items-baseline gap-x-6 gap-y-2">
+        {hasDiscount && <Stat label="Subtotal" value={formatMoney(subtotal)} />}
+        {hasDiscount && <Stat label="Descuento" value={`- ${formatMoney(discount)}`} />}
         <Stat label="Total" value={formatMoney(total)} emphasis />
         <Stat label="Cliente" value={customerId ? customerName ?? 'Cliente eliminado' : 'Sin cliente'} />
       </div>

@@ -2,9 +2,26 @@ import { create } from 'zustand'
 import type { CartItem, Product, ProductVariant } from '@/lib/types'
 import { getCartItemId } from '@/lib/types'
 
+export type DiscountMode = 'fixed' | 'percent'
+
+export interface CartDiscount {
+  mode: DiscountMode
+  value: number
+}
+
+// Resolves the absolute discount amount against a given subtotal.
+// Percent is computed on the subtotal; both modes are clamped to [0, subtotal].
+export function resolveDiscountAmount(subtotal: number, mode: DiscountMode, value: number): number {
+  if (!value || value <= 0 || subtotal <= 0) return 0
+  const raw = mode === 'percent' ? (subtotal * value) / 100 : value
+  const clamped = Math.min(Math.max(0, raw), subtotal)
+  return Math.round(clamped * 100) / 100
+}
+
 interface CartStore {
   items: CartItem[]
-  discount: number
+  discountMode: DiscountMode
+  discountValue: number
   customerId: string | null
 
   addItem: (product: Product) => void
@@ -13,18 +30,21 @@ interface CartStore {
   removeItem: (itemId: string) => void
   updateQuantity: (itemId: string, quantity: number) => void
   updatePrice: (itemId: string, price: number) => void
-  setDiscount: (discount: number) => void
+  setDiscount: (mode: DiscountMode, value: number) => void
+  clearDiscount: () => void
   setCustomer: (customerId: string | null) => void
   clearCart: () => void
-  restoreCart: (savedItems: CartItem[], savedDiscount: number) => void
+  restoreCart: (savedItems: CartItem[], savedDiscount: CartDiscount) => void
 
   subtotal: () => number
+  discountAmount: () => number
   total: () => number
 }
 
 export const useCartStore = create<CartStore>((set, get) => ({
   items: [],
-  discount: 0,
+  discountMode: 'fixed',
+  discountValue: 0,
   customerId: null,
 
   addItem: (product) => {
@@ -133,18 +153,20 @@ export const useCartStore = create<CartStore>((set, get) => ({
     })
   },
 
-  setDiscount: (discount) => set({ discount }),
+  setDiscount: (mode, value) => set({ discountMode: mode, discountValue: value }),
+
+  clearDiscount: () => set({ discountMode: 'fixed', discountValue: 0 }),
 
   setCustomer: (customerId) => set({ customerId }),
 
-  clearCart: () => set({ items: [], discount: 0, customerId: null }),
+  clearCart: () => set({ items: [], discountMode: 'fixed', discountValue: 0, customerId: null }),
 
-  restoreCart: (savedItems, savedDiscount) => set({ items: savedItems, discount: savedDiscount, customerId: null }),
+  restoreCart: (savedItems, savedDiscount) =>
+    set({ items: savedItems, discountMode: savedDiscount.mode, discountValue: savedDiscount.value, customerId: null }),
 
   subtotal: () => get().items.reduce((sum, i) => sum + i.total, 0),
 
-  total: () => {
-    const subtotal = get().subtotal()
-    return Math.max(0, subtotal - get().discount)
-  },
+  discountAmount: () => resolveDiscountAmount(get().subtotal(), get().discountMode, get().discountValue),
+
+  total: () => Math.max(0, get().subtotal() - get().discountAmount()),
 }))

@@ -61,6 +61,7 @@ export interface SalePayment {
 export interface SaleData {
   total?: number | string
   subtotal?: number | string
+  discount?: number | string
   status?: string
   customer_id?: string | null
   items?: SaleItem[]
