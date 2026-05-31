@@ -232,6 +232,7 @@ src/
 │   │   ├── stats/trends/page.tsx           # edge — period comparison via get_period_comparison RPC
 │   │   ├── stats/heatmap/page.tsx          # edge — sales heatmap by weekday/hour (business-local tz)
 │   │   ├── stats/report/page.tsx           # edge — printable PDF report by date range; gates `analysis` perm
+│   │   ├── stats/dead-stock/page.tsx        # edge — stock inmovilizado/capital inmovilizado (lente recencia: never_sold|dead); gates `analysis`; usa get_dead_stock
 │   │   ├── profile/page.tsx              # Owner only
 │   │   ├── operator/me/page.tsx          # Active operator personal profile
 │   │   ├── activity/page.tsx             # edge — audit log with chip+DateRangeFilter+operator filters; defense-in-depth `analysis` perm check
@@ -292,7 +293,8 @@ src/
     │   ├── TrendsDetailView.tsx           # P11.2 — daily trends + period-over-period comparison
     │   ├── SalesHeatmap.tsx                # P11.3 — reusable 7×24 grid component (compact prop for /stats widget)
     │   ├── SalesHeatmapView.tsx            # P11.3 — /stats/heatmap detail view
-    │   └── ReportView.tsx                   # P11.3 — /stats/report printable PDF doc (window.print + @media print); reuses stats RPCs, no new migration
+    │   ├── ReportView.tsx                   # P11.3 — /stats/report printable PDF doc (window.print + @media print); reuses stats RPCs, no new migration
+    │   └── DeadStockView.tsx                # Stock inmovilizado: un listado (never_sold + dead 90d) con chips Todos/Sin movimiento/Nunca vendido, KPIs (capital inmovilizado), tabla read-only; link a /inventory. Filtro por chip + paginación 100% en memoria (la página trae todas las filas marcadas en 1 RPC, tope 500) — chips instantáneos, sin round-trip; URL sync con history.replaceState
     ├── inventory/
     │   ├── InventoryPanel.tsx            # ~1291 lines — refactor pending post-beta
     │   ├── NewProductModal.tsx
@@ -349,7 +351,7 @@ src/
         └── types.ts
 ```
 
-**Edge Runtime** (`export const runtime = 'edge'`): `/pos`, `/dashboard`, `/stats`, `/stats/trends`, `/stats/heatmap`, `/stats/report`, `/operator-select`, `/activity`
+**Edge Runtime** (`export const runtime = 'edge'`): `/pos`, `/dashboard`, `/stats`, `/stats/trends`, `/stats/heatmap`, `/stats/report`, `/stats/dead-stock`, `/operator-select`, `/activity`
 
 Full route map with permission gates: `docs/conventions.md`.
 

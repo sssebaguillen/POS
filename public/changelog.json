@@ -1,6 +1,16 @@
 {
-  "current": "0.0.6.5",
+  "current": "0.0.6.6",
   "releases": [
+    {
+      "version": "0.0.6.6",
+      "kind": "feature",
+      "date": "2026-05-31",
+      "label": "Stock inmovilizado",
+      "changes": [
+        { "type": "new", "text": "Nueva sección Stock inmovilizado dentro de Estadísticas: te muestra los productos que tenés en stock pero que no se venden, y cuánto dinero tenés parado ahí. Ideal para decidir qué liquidar o dejar de reponer. Entrás desde el nuevo widget en Estadísticas, que te avisa de un vistazo cuánto capital tenés inmovilizado." },
+        { "type": "new", "text": "Cada producto se clasifica entre 'Sin movimiento' (se vendió alguna vez pero lleva meses parado) y 'Nunca vendido' (nunca se vendió desde que lo cargaste), con los días que lleva sin venderse y el capital que tiene trabado. Cambiás entre uno y otro al instante, y podés exportar la lista a CSV." }
+      ]
+    },
     {
       "version": "0.0.6.5",
       "kind": "feature",

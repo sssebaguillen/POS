@@ -14,6 +14,10 @@
 
 ## Bugs conocidos
 
+- **✅ (2026-05-31) Stock inmovilizado (ex "Stock muerto") — lente 1 rehecho.** La pantalla original mezclaba **3 ejes** (recencia / velocidad / cobertura) bajo un control, y nada cuadraba (la perilla de días solo movía `dead`; `slow` medía cobertura no velocidad; el titular "capital inmovilizado" inflaba con sobrestock que en realidad rota). **Decisión (supera el "fix de 3 buckets" que se había acordado): separar los ejes en lentes.** Lente 1 = **Stock inmovilizado** (eje recencia puro): un solo listado `never_sold` + `dead` (90d fijo, perilla no expuesta), titular de capital honesto (solo plata realmente trabada). Chips `Todos / Sin movimiento / Nunca vendido`. Se quitaron columnas Velocidad/Cobertura y el cálculo de cobertura de `get_dead_stock`. Renombrada la pantalla a "Stock inmovilizado" (coherente con el KPI). Cambios: `get_dead_stock` (mig `20260530_02`, recencia-only), `DeadStockBucket = never_sold|dead`, `DeadStockView`, `stats/dead-stock/page.tsx`, widget `StatsView`.
+
+- **Lente 2 — "Sobrestock" (eje cobertura, PENDIENTE)** (2026-05-31) — separar el eje cobertura como pantalla/lente propia: productos que **sí rotan** pero se compró de más (cobertura = stock ÷ velocidad ≥ N meses). KPI propio "comprado de más" = **capital del excedente** (lo que pasa de la cobertura objetivo), **no** el stock entero (clave: un overstock de algo que vende NO es capital congelado). **Bug a arreglar al construirlo:** la velocidad se calculaba como `units_90d / 3` (3 meses fijos) sin importar la antigüedad → para productos recién salidos de la gracia subestima la velocidad e infla la cobertura (falso sobrestock). Dividir por `min(90, age)` en meses. Diseño de lentes y contexto en `~/.claude/plans/radiant-painting-hamming.md`.
+
 - **Borrar una venta deja pagos huérfanos** (hallazgo 2026-05-28, reconciliación R8b) — al borrar una venta, sus filas en `payments` quedan con `sale_id = NULL` (no se borran en cascada). Un pago huérfano ($4000, card) detectado en prod sin venta asociada. Riesgo: reportes de métodos de pago que no joineen por `sales` pueden sumar pagos sin venta. Revisar el comportamiento de borrado de ventas (¿`ON DELETE SET NULL` en `payments.sale_id`?) y decidir si los pagos deben borrarse en cascada o si el borrado de ventas debe estar vedado. Revisar al terminar la prueba de estrés.
 - **Cuenta corriente sin ledger / auditoría** (hallazgo 2026-05-28, reconciliación R10b) — `customers.credit_balance` se ajusta directo (sube al fiar, baja al cobrar) sin tabla append-only de movimientos. No hay forma de reconciliar ni auditar saldos de fiado: si un saldo queda mal, no hay rastro de por qué. Considerar una tabla `customer_account_movements` (o similar) que registre cargos y pagos de cuenta corriente. Revisar al terminar la prueba de estrés.
 - **Catálogo online: se puede agregar al carrito un producto con variantes sin elegir variante** (hallazgo 2026-05-29) — cuando la variante default tiene stock, el catálogo permite "Agregar al carrito" desde la card sin seleccionar ninguna variante. El item se agrega (al parecer con el precio de la variante default), pero en el carrito se muestran los datos del producto **padre** (nombre/atributos) en vez de la variante elegida — no se ve qué variante se agregó. No ocurre en todos los productos (solo cuando la default tiene stock). Hay que forzar la selección de variante antes de permitir agregar, o mapear correctamente la variante (id, atributos, precio, stock) al item del carrito. Revisar `ProductCard.tsx` (flujo de add-to-cart con variantes) y el render del carrito del catálogo.
@@ -190,6 +194,32 @@ El owner sube un PDF o foto de la factura de una compra recién hecha y el siste
 | `categories.public_read_categories` policy | Permite SELECT anon — OK para catálogo pero amplio |
 | `DateRangeFilter.tsx` | `QUARTER_RANGES` recalcula en cada render. No-issue en práctica. |
 | ~~`daily_snapshots` agrupa en UTC~~ ✅ (2026-05-28) | Resuelto en `20260528_05_daily_snapshots_tz_fix.sql`: las agregaciones de ventas ahora castean `(s.created_at AT TIME ZONE b.timezone)::date` (mirror de `get_sales_heatmap`). `refresh_daily_snapshot` / `refresh_all_daily_snapshots` resuelven "ayer" en la TZ local de cada negocio (default param → NULL). Re-backfill completo (DELETE + rebuild, tabla derivada) para evitar filas huérfanas del bucket UTC viejo. Verificado: 2 ventas nocturnas ART reasignadas al día local correcto; snapshots == agregado local-day exacto. |
+
+---
+
+## `inventory_movements` — tabla parcial huérfana (deuda técnica, planteado 2026-05-30)
+
+> Hallazgo al evaluar la feature de **stock muerto / dead-stock**. Se rastreó a fondo el uso real de la tabla antes de apoyar analytics sobre ella.
+
+**Qué es hoy, en concreto:**
+- **Escrita por solo 2 flujos:** el trigger `update_stock_on_sale` (en `sale_items` insert → movimientos `'sale'`, cantidad negativa) y `create_mercaderia_expense` / `update_mercaderia_expense` (→ movimientos `'purchase'`).
+- **Leída por NADIE:** 0 referencias en `src/` (ni frontend ni API), 0 `SELECT` en cualquier RPC. **Todas** las apariciones tipo "FROM" en las migraciones son `DELETE` de limpieza (al borrar una venta o un producto se purgan sus movimientos por `reference_id` / `product_id`).
+- **Tipos muertos:** el CHECK permite `('sale','purchase','adjustment','return')`, pero `'adjustment'` y `'return'` **nunca se insertan** en ningún lado.
+- **No reconcilia:** `create_product` y `update_product` **no loguean** (el stock inicial y los ajustes manuales de stock son invisibles) → `stock_inicial + Σmovimientos ≠ stock_actual`. `create_product` snapshotea el alta en `audit_log.new_data`, no acá.
+
+**Por qué la limitación NO parece deliberada** (kardex a medio construir, huérfano tras la llegada del audit log P7h):
+1. Nadie lo lee — una limitación con propósito tendría al menos un lector.
+2. Borra en vez de revertir (`DELETE FROM inventory_movements` al borrar venta/producto) → anti-ledger; un libro mayor real nunca borra, agrega asiento compensatorio.
+3. Tipos `'adjustment'`/`'return'` sin cablear.
+4. Columna `created_by` ya eliminada por ser muerta (ver M-3, `20260528_06`).
+
+**Opciones para resolver (decidir post-beta; no patchear a medias — sumar un 3er escritor parcial no la vuelve confiable):**
+
+- **(A) Eliminar la tabla y su poco aporte.** El trigger de venta y el flujo de mercadería dejan de insertar; se quitan los `DELETE` de limpieza. `audit_log` + `sale_items` ya cubren auditoría y analytics. Lo más simple; reduce superficie y código muerto. Riesgo: perder la base si después se quiere un kardex.
+- **(B) Rediseñarla como libro mayor real (kardex inmutable).** Encaja con el **módulo contable del roadmap (P10.c, diferido)**. Implica: loguear **todos** los deltas (create/update/bulk/venta/compra/ajuste/devolución), **nunca borrar** (revertir con asiento compensatorio), centralizar las mutaciones de stock en un solo punto, y construir UI de lectura ("historial de stock del producto"). Feature de **confianza** ("¿por qué tengo 5 si compré 20?"). Mayor scope + disciplina permanente (todo camino que toque stock debe loguear o el invariante se rompe en silencio). No es retroactivo: el replay histórico solo sirve desde que el libro queda completo.
+- **(C) Dejarla como está** (inofensiva) y marcarla como deuda. Status quo.
+
+**Recomendación:** decidir A vs B **en conjunto con P10.c**. Si el módulo contable avanza → **B** (el kardex es insumo natural de la contabilidad). Si no se va a construir contabilidad pronto → **A** (limpiar código muerto). **Dead-stock v1 NO depende de esto** — usa `sale_items` (última venta/velocidad) + `products.created_at` (antigüedad), no `inventory_movements`.
 
 ---
 

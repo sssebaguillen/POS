@@ -282,6 +282,40 @@ export interface OperatorSalesStatsRow {
   units_sold: number
 }
 
+// Stock inmovilizado / capital inmovilizado (advanced analytics) — RPC get_dead_stock
+// Eje RECENCIA: never_sold (nunca vendió) | dead (lleva >= 90d sin moverse).
+// El eje cobertura (sobrestock) vive en una pantalla aparte (lente 2, pendiente).
+export type DeadStockBucket = 'never_sold' | 'dead'
+
+export interface DeadStockRow {
+  id: string
+  name: string
+  sku: string | null
+  category_name: string | null
+  brand_name: string | null
+  is_active: boolean | null
+  image_url: string | null
+  image_source: string | null
+  has_variants: boolean
+  effective_stock: number
+  frozen_capital: number
+  unit_cost: number | null          // null cuando el producto tiene variantes (costo por variante)
+  last_sold_at: string | null
+  days_since_last_sale: number | null
+  age_days: number
+  bucket: DeadStockBucket
+  missing_cost: boolean             // stock > 0 pero capital = 0 (costo sin cargar)
+}
+
+export interface DeadStockSummary {
+  total_frozen_capital: number
+  products_with_stock: number       // todos los productos con stock (denominador)
+  products_flagged: number          // productos sin rotación (suma de buckets)
+  products_missing_cost: number
+  count_by_bucket: Record<DeadStockBucket, number>
+  capital_by_bucket: Record<DeadStockBucket, number>
+}
+
 // Cart types (client-side only)
 export interface CartItem {
   product: Product | null

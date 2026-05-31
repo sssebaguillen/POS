@@ -6,7 +6,7 @@ import type { TopProductRow } from '@/components/stats/StatsView'
 import { requireAuthenticatedBusinessId } from '@/lib/business'
 import { resolveDateRange } from '@/lib/date-utils'
 import { normalizeOperatorSalesStatsRows } from '@/lib/mappers'
-import type { DailySnapshotRow, OperatorSalesStatsRow, StatsKpis, StatsEvolution, StatsBreakdown, SalesHeatmapCell } from '@/lib/types'
+import type { DailySnapshotRow, OperatorSalesStatsRow, StatsKpis, StatsEvolution, StatsBreakdown, SalesHeatmapCell, DeadStockSummary } from '@/lib/types'
 
 interface SearchParams {
   period?: string
@@ -34,6 +34,7 @@ export default async function StatsPage({
     { data: operatorsRaw },
     { data: dailySnapshotsRaw },
     { data: heatmapRaw },
+    { data: deadStockRaw },
   ] =
     await Promise.all([
       supabase.rpc('get_stats_kpis', {
@@ -73,6 +74,14 @@ export default async function StatsPage({
         p_from: from,
         p_to: to,
       }),
+      // Stock muerto: independiente del período (estado "al día de hoy"). Solo se usa el summary.
+      supabase.rpc('get_dead_stock', {
+        p_business_id: businessId,
+        p_days_threshold: 90,
+        p_bucket: null,
+        p_limit: 1,
+        p_offset: 0,
+      }),
     ])
 
   const kpis = kpisRaw as unknown as StatsKpis | null
@@ -83,6 +92,7 @@ export default async function StatsPage({
   const operators = normalizeOperatorSalesStatsRows(operatorRows)
   const dailySnapshots = (dailySnapshotsRaw as unknown as { data: DailySnapshotRow[] } | null)?.data ?? []
   const heatmapCells = (heatmapRaw as unknown as { data: SalesHeatmapCell[] } | null)?.data ?? []
+  const deadStockSummary = (deadStockRaw as unknown as { summary: DeadStockSummary } | null)?.summary ?? null
 
   return (
     <StatsView
@@ -94,6 +104,7 @@ export default async function StatsPage({
       operators={operators}
       dailySnapshots={dailySnapshots}
       heatmapCells={heatmapCells}
+      deadStockSummary={deadStockSummary}
       period={period}
       from={params.from}
       to={params.to}

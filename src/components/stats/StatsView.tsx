@@ -3,7 +3,7 @@
 import { useMemo, useState, memo } from 'react'
 import { usePathname } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
-import { TrendingDown, TrendingUp, DollarSign, ShoppingBag, Receipt, Hash, FileText } from 'lucide-react'
+import { TrendingDown, TrendingUp, DollarSign, ShoppingBag, Receipt, Hash, FileText, PackageX, ChevronRight } from 'lucide-react'
 import Link from 'next/link'
 import PageHeader from '@/components/shared/PageHeader'
 import DateRangeFilter from '@/components/shared/DateRangeFilter'
@@ -14,7 +14,7 @@ import { cn } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
 import { normalizeOperatorSalesStatsRows } from '@/lib/mappers'
 import type {
-  DailySnapshotRow, OperatorSalesStatsRow, StatsKpis, StatsEvolution, StatsBreakdown, SalesHeatmapCell,
+  DailySnapshotRow, OperatorSalesStatsRow, StatsKpis, StatsEvolution, StatsBreakdown, SalesHeatmapCell, DeadStockSummary,
 } from '@/lib/types'
 import SalesHeatmap from '@/components/stats/SalesHeatmap'
 import {
@@ -59,6 +59,7 @@ interface Props {
   operators: OperatorSalesStatsRow[]
   dailySnapshots: DailySnapshotRow[]
   heatmapCells: SalesHeatmapCell[]
+  deadStockSummary: DeadStockSummary | null
   period: string
   from?: string
   to?: string
@@ -97,6 +98,7 @@ export default function StatsView({
   operators: initialOperators,
   dailySnapshots: initialDailySnapshots,
   heatmapCells: initialHeatmapCells,
+  deadStockSummary,
   period: initialPeriod,
   from: initialFrom,
   to: initialTo,
@@ -314,6 +316,43 @@ export default function StatsView({
               Reporte PDF
             </Link>
           </div>
+
+          {/* Stock inmovilizado — independiente del período (estado "al día de hoy") */}
+          {deadStockSummary && (
+            <Link
+              href="/stats/dead-stock"
+              className="surface-card flex items-center gap-4 p-4 hover:border-primary/30 transition-colors group"
+            >
+              <span
+                className={cn(
+                  'h-10 w-10 rounded-xl flex items-center justify-center shrink-0',
+                  deadStockSummary.products_flagged > 0
+                    ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400'
+                    : 'bg-muted text-body'
+                )}
+              >
+                <PackageX size={18} />
+              </span>
+              <div className="min-w-0 flex-1">
+                {deadStockSummary.products_flagged > 0 ? (
+                  <>
+                    <p className="text-sm font-semibold text-heading">
+                      {formatMoney(deadStockSummary.total_frozen_capital)} inmovilizados
+                    </p>
+                    <p className="text-xs text-hint">
+                      {deadStockSummary.products_flagged} {deadStockSummary.products_flagged === 1 ? 'producto sin rotación' : 'productos sin rotación'}
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-sm font-semibold text-heading">Tu inventario rota bien</p>
+                    <p className="text-xs text-hint">Sin stock inmovilizado detectado</p>
+                  </>
+                )}
+              </div>
+              <ChevronRight size={18} className="text-hint group-hover:text-primary transition-colors shrink-0" />
+            </Link>
+          )}
 
           <div className={`space-y-5 transition-opacity ${isFetching ? 'opacity-60' : ''}`}>
             {/* KPI Cards */}
