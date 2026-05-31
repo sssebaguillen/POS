@@ -316,6 +316,35 @@ export interface DeadStockSummary {
   capital_by_bucket: Record<DeadStockBucket, number>
 }
 
+// Sobrestock / capital comprado de más (advanced analytics) — RPC get_overstock
+// Eje COBERTURA: productos que SÍ rotan pero con >= 6 meses de stock para su ritmo.
+export interface OverstockRow {
+  id: string
+  name: string
+  sku: string | null
+  category_name: string | null
+  brand_name: string | null
+  is_active: boolean | null
+  image_url: string | null
+  image_source: string | null
+  has_variants: boolean
+  effective_stock: number
+  frozen_capital: number            // capital total inmovilizado en el stock
+  monthly_velocity: number          // u/mes (units_90d ÷ min(90,age)/30)
+  months_of_stock: number           // cobertura = stock ÷ velocidad
+  excess_capital: number            // lo que pasa de 6 meses de cobertura
+  age_days: number
+}
+
+export interface OverstockSummary {
+  total_excess_capital: number      // suma de excedentes (titular)
+  total_overstock_capital: number   // capital total de los productos con sobrestock
+  products_count: number
+}
+
+// Selector de lente en /stats/inventory-health (Salud de inventario)
+export type InventoryHealthLens = 'dead' | 'overstock'
+
 // Cart types (client-side only)
 export interface CartItem {
   product: Product | null

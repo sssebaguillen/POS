@@ -1,6 +1,16 @@
 {
-  "current": "0.0.6.6",
+  "current": "0.0.6.7",
   "releases": [
+    {
+      "version": "0.0.6.7",
+      "kind": "feature",
+      "date": "2026-05-31",
+      "label": "Sobrestock y Salud de inventario",
+      "changes": [
+        { "type": "new", "text": "Stock inmovilizado ahora vive dentro de una pantalla más completa llamada Salud de inventario, con dos vistas que cambiás desde arriba al instante: 'Stock inmovilizado' (lo que no se vende) y la nueva 'Sobrestock'." },
+        { "type": "new", "text": "Nueva vista Sobrestock: te muestra los productos que sí se venden, pero de los que compraste de más — tenés stock para 6 meses o más al ritmo que salen. Para cada uno ves su velocidad de venta, cuántos meses de stock te quedan y, sobre todo, cuánto dinero compraste de más. Ideal para frenar la reposición y no seguir trabando plata en lo que ya tenés de sobra." }
+      ]
+    },
     {
       "version": "0.0.6.6",
       "kind": "feature",

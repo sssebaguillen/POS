@@ -320,7 +320,7 @@ export default function StatsView({
           {/* Stock inmovilizado — independiente del período (estado "al día de hoy") */}
           {deadStockSummary && (
             <Link
-              href="/stats/dead-stock"
+              href="/stats/inventory-health"
               className="surface-card flex items-center gap-4 p-4 hover:border-primary/30 transition-colors group"
             >
               <span
