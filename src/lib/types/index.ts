@@ -345,6 +345,37 @@ export interface OverstockSummary {
 // Selector de lente en /stats/inventory-health (Salud de inventario)
 export type InventoryHealthLens = 'dead' | 'overstock'
 
+// Historial de ventas paginado server-side (dashboard) — RPC get_sales_history
+export interface SalesHistoryRow {
+  id: string
+  created_at: string
+  subtotal: number
+  discount: number
+  total: number
+  status: string | null
+  method: PaymentMethod | null      // método del pago más temprano; null si no hay pago
+  operator_name: string | null      // null = dueño
+}
+
+export interface SalesHistorySummary {
+  count: number
+  total_revenue: number
+  top_method: PaymentMethod | null
+}
+
+// Una página de la RPC: total/summary solo vienen en la primera (cursor null)
+export interface SalesHistoryPage {
+  data: SalesHistoryRow[]
+  total: number | null
+  summary: SalesHistorySummary | null
+}
+
+// Operador para el dropdown de filtro del historial
+export interface SalesHistoryOperator {
+  id: string
+  name: string
+}
+
 // Cart types (client-side only)
 export interface CartItem {
   product: Product | null

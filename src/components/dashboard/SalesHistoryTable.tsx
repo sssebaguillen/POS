@@ -1,8 +1,7 @@
 'use client'
 
-import { useState, useMemo, memo, useRef } from 'react'
-import { useRouter } from 'next/navigation'
-import { useMutation } from '@tanstack/react-query'
+import { useState, useMemo, useEffect, memo, useRef } from 'react'
+import { useMutation, useInfiniteQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query'
 import { Printer, Trash2, X } from 'lucide-react'
 import ReceiptPreviewModal from '@/components/pos/ReceiptPreviewModal'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog'
@@ -20,6 +19,10 @@ import { useToast } from '@/hooks/useToast'
 import Toast from '@/components/shared/Toast'
 import SelectDropdown from '@/components/ui/SelectDropdown'
 import { DynamicIcon } from '@/components/inventory/CategoryIconPreview'
+import type { SalesHistoryRow, SalesHistoryPage, SalesHistoryOperator } from '@/lib/types'
+
+const PAGE_SIZE = 50
+const OWNER_SENTINEL = '00000000-0000-0000-0000-000000000000'
 
 interface SaleItem {
   id: string
@@ -32,34 +35,31 @@ interface SaleItem {
   unit_price: number
 }
 
-interface SaleRow {
-  id: string
-  subtotal: number
-  discount: number
-  created_at: string
-  total: number
-  status: string | null
-  method: PaymentMethod | 'sin dato'
-  product_names: string[]
-  operator_name: string | null
-}
-
-interface SaleDetail extends SaleRow {
+interface SaleDetail extends SalesHistoryRow {
   items: SaleItem[]
 }
 
+interface Cursor {
+  created_at: string
+  id: string
+}
+
 interface Props {
-  rows: SaleRow[]
   businessId: string | null
   businessName: string
   operatorId: string | null
-  onSaleDeleted?: (id: string) => void
+  from: string                       // ISO — inicio del período seleccionado
+  to: string                         // ISO — fin del período seleccionado
+  operators: SalesHistoryOperator[]  // para el dropdown de filtro
 }
 
-function SalesHistoryTable({ rows, businessId, businessName, operatorId, onSaleDeleted }: Props) {
-  const router = useRouter()
+function SalesHistoryTable({ businessId, businessName, operatorId, from, to, operators }: Props) {
   const currency = useCurrency()
   const fmt = useFormatMoney()
+  const queryClient = useQueryClient()
+  const supabase = useMemo(() => createClient(), [])
+  const { toast, showToast, dismissToast } = useToast()
+
   const [deletedIds, setDeletedIds] = useState<Set<string>>(new Set())
   const [expandedSaleId, setExpandedSaleId] = useState<string | null>(null)
   const [saleDetails, setSaleDetails] = useState<Record<string, SaleDetail>>({})
@@ -67,81 +67,79 @@ function SalesHistoryTable({ rows, businessId, businessName, operatorId, onSaleD
   const [editingSale, setEditingSale] = useState<SaleDetail | null>(null)
   const [confirmingDeleteId, setConfirmingDeleteId] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
+  const [debouncedSearch, setDebouncedSearch] = useState('')
   const [filterMethod, setFilterMethod] = useState<PaymentMethod | null>(null)
-  const [filterOperatorName, setFilterOperatorName] = useState('')
+  const [filterOperatorId, setFilterOperatorId] = useState('')
   const [receiptPreview, setReceiptPreview] = useState<ReceiptData | null>(null)
   const [localError, setLocalError] = useState<string | null>(null)
-  const supabase = useMemo(() => createClient(), [])
-  const { toast, showToast, dismissToast } = useToast()
   const deleteTimersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map())
 
-  // Filter out deleted items
-  const visibleRows = useMemo(() => rows.filter(r => !deletedIds.has(r.id)), [rows, deletedIds])
+  // Debounce de la búsqueda para no disparar el query en cada tecla
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(searchQuery.trim()), 350)
+    return () => clearTimeout(t)
+  }, [searchQuery])
 
-  const filteredRows = useMemo(() => {
-    return visibleRows.filter(row => {
-      // text search (full-capability, unchanged)
-      const q = searchQuery.trim().toLowerCase()
-      if (q) {
-        const normalizedMethod = normalizePayment(row.method).toLowerCase()
-        const matchesBasic =
-          row.id.toLowerCase().includes(q) ||
-          row.method.toLowerCase().includes(q) ||
-          normalizedMethod.includes(q) ||
-          row.total.toString().includes(q)
-        const matchesProducts = row.product_names.some(name => name.toLowerCase().includes(q))
-        const matchesOperator = row.operator_name ? row.operator_name.toLowerCase().includes(q) : false
-        const detail = saleDetails[row.id]
-        const matchesDetail = detail
-          ? detail.items.some(i => i.product_name.toLowerCase().includes(q)) ||
-            (detail.operator_name?.toLowerCase().includes(q) ?? false)
-          : false
-        if (!matchesBasic && !matchesProducts && !matchesOperator && !matchesDetail) return false
-      }
-      // chip filters — AND with text search and each other
-      if (filterMethod !== null && row.method !== filterMethod) return false
-      if (filterOperatorName !== '') {
-        if (filterOperatorName === '__owner__') {
-          if (row.operator_name !== null) return false
-        } else {
-          if (row.operator_name !== filterOperatorName) return false
-        }
-      }
-      return true
-    })
-  }, [visibleRows, searchQuery, filterMethod, filterOperatorName, saleDetails])
+  const { data, isFetching, isFetchingNextPage, hasNextPage, fetchNextPage } = useInfiniteQuery({
+    queryKey: ['sales-history', businessId, from, to, filterMethod, filterOperatorId, debouncedSearch],
+    enabled: !!businessId,
+    initialPageParam: null as Cursor | null,
+    placeholderData: keepPreviousData,
+    staleTime: 30_000,
+    queryFn: async ({ pageParam }) => {
+      const { data: rpcResult, error } = await supabase.rpc('get_sales_history', {
+        p_business_id: businessId,
+        p_from: from,
+        p_to: to,
+        p_method: filterMethod,
+        p_operator_id: filterOperatorId === '' ? null : filterOperatorId,
+        p_search: debouncedSearch || null,
+        p_before_created_at: pageParam?.created_at ?? null,
+        p_before_id: pageParam?.id ?? null,
+        p_limit: PAGE_SIZE,
+      })
+      if (error) throw new Error(error.message)
+      return (rpcResult as unknown as SalesHistoryPage) ?? { data: [], total: 0, summary: null }
+    },
+    getNextPageParam: (lastPage): Cursor | undefined => {
+      if (lastPage.data.length < PAGE_SIZE) return undefined
+      const last = lastPage.data[lastPage.data.length - 1]
+      return { created_at: last.created_at, id: last.id }
+    },
+  })
 
-  const operatorOptions = useMemo(() => {
-    const names = [...new Set(visibleRows.map(r => r.operator_name).filter(Boolean))] as string[]
-    const hasOwnerSales = visibleRows.some(r => r.operator_name === null)
-    return [
-      { value: '', label: 'Todos' },
-      ...(hasOwnerSales ? [{ value: '__owner__', label: 'Dueño' }] : []),
-      ...names.map(name => ({ value: name, label: name })),
-    ]
-  }, [visibleRows])
-
-  const hasActiveFilters = !!searchQuery || filterMethod !== null || filterOperatorName !== ''
-
-  const summaryTotal = useMemo(
-    () => filteredRows.reduce((acc, r) => acc + r.total, 0),
-    [filteredRows]
+  const allRows = useMemo<SalesHistoryRow[]>(
+    () => (data?.pages ?? []).flatMap(p => p.data),
+    [data]
   )
+  const visibleRows = useMemo(() => allRows.filter(r => !deletedIds.has(r.id)), [allRows, deletedIds])
 
-  const mostUsedMethod = useMemo(() => {
-    const counts: Record<string, number> = {}
-    filteredRows.forEach(r => {
-      counts[r.method] = (counts[r.method] ?? 0) + 1
-    })
-    const winner = Object.entries(counts).sort((a, b) => b[1] - a[1])[0]
-    return winner ? winner[0] : null
-  }, [filteredRows])
+  const firstPage = data?.pages[0]
+  const total = firstPage?.total ?? visibleRows.length
+  const summary = firstPage?.summary ?? null
+  const deletedVisibleCount = allRows.length - visibleRows.length
+  const summaryCount = Math.max((summary?.count ?? total) - deletedVisibleCount, 0)
+
+  const operatorOptions = useMemo(() => [
+    { value: '', label: 'Todos' },
+    { value: OWNER_SENTINEL, label: 'Dueño' },
+    ...operators.map(o => ({ value: o.id, label: o.name })),
+  ], [operators])
+
+  const hasActiveFilters = !!debouncedSearch || filterMethod !== null || filterOperatorId !== ''
+
+  function clearAllFilters() {
+    setSearchQuery('')
+    setFilterMethod(null)
+    setFilterOperatorId('')
+  }
+
+  function invalidateHistory() {
+    queryClient.invalidateQueries({ queryKey: ['sales-history', businessId] })
+  }
 
   async function loadSaleDetail(saleId: string): Promise<SaleDetail | null> {
-    if (saleDetails[saleId]) {
-      return saleDetails[saleId]
-    }
-
+    if (saleDetails[saleId]) return saleDetails[saleId]
     if (!businessId) return null
     setLoadingDetailId(saleId)
     const result = await getSaleDetail(supabase, { saleId, businessId })
@@ -150,7 +148,7 @@ function SalesHistoryTable({ rows, businessId, businessName, operatorId, onSaleD
       setLocalError(result.error)
       return null
     }
-    const row = rows.find(s => s.id === saleId)
+    const row = allRows.find(s => s.id === saleId)
     if (!row) {
       setLoadingDetailId(null)
       return null
@@ -181,7 +179,6 @@ function SalesHistoryTable({ rows, businessId, businessName, operatorId, onSaleD
       setExpandedSaleId(prev => (prev === saleId ? null : saleId))
       return
     }
-
     const detail = await loadSaleDetail(saleId)
     if (!detail) return
     setExpandedSaleId(saleId)
@@ -191,7 +188,6 @@ function SalesHistoryTable({ rows, businessId, businessName, operatorId, onSaleD
     setLocalError(null)
     const detail = await loadSaleDetail(saleId)
     if (!detail) return
-
     try {
       setReceiptPreview(buildReceiptData({
         businessName,
@@ -201,7 +197,7 @@ function SalesHistoryTable({ rows, businessId, businessName, operatorId, onSaleD
           subtotal: detail.subtotal,
           discount: detail.discount,
           total: detail.total,
-          paymentMethod: detail.method,
+          paymentMethod: detail.method ?? 'cash',
         },
         items: detail.items,
         currency,
@@ -237,13 +233,10 @@ function SalesHistoryTable({ rows, businessId, businessName, operatorId, onSaleD
         operatorId,
         status: vars.status,
       })
-      if (!result.ok) {
-        throw new Error(result.error)
-      }
+      if (!result.ok) throw new Error(result.error)
       return { ...vars, total: Number(result.data.total) }
     },
     onSuccess: (result) => {
-      // Update saleDetails for immediate UI feedback; main data updates via parent revalidation
       setSaleDetails(prev => {
         const existing = prev[result.saleId]
         if (!existing) return prev
@@ -273,6 +266,7 @@ function SalesHistoryTable({ rows, businessId, businessName, operatorId, onSaleD
       })
       setEditingSale(null)
       showToast({ message: 'Venta actualizada' })
+      invalidateHistory()
     },
   })
 
@@ -284,17 +278,9 @@ function SalesHistoryTable({ rows, businessId, businessName, operatorId, onSaleD
     updateMutation.reset()
   }
 
-  function clearAllFilters() {
-    setSearchQuery('')
-    setFilterMethod(null)
-    setFilterOperatorName('')
-  }
-
   function handleDeleteSale(saleId: string) {
     if (!businessId) return
-
     const TOAST_DURATION = 6000
-
     setLocalError(null)
     setDeletedIds(prev => new Set([...prev, saleId]))
     if (expandedSaleId === saleId) setExpandedSaleId(null)
@@ -308,7 +294,6 @@ function SalesHistoryTable({ rows, businessId, businessName, operatorId, onSaleD
           clearTimeout(timer)
           deleteTimersRef.current.delete(saleId)
         }
-
         setDeletedIds(prev => {
           const next = new Set(prev)
           next.delete(saleId)
@@ -329,9 +314,8 @@ function SalesHistoryTable({ rows, businessId, businessName, operatorId, onSaleD
         setLocalError(result.error)
         return
       }
-      onSaleDeleted?.(saleId)
       setSaleDetails(prev => { const next = { ...prev }; delete next[saleId]; return next })
-      router.refresh()
+      invalidateHistory()
     }, TOAST_DURATION + 500)
 
     deleteTimersRef.current.set(saleId, timer)
@@ -348,19 +332,20 @@ function SalesHistoryTable({ rows, businessId, businessName, operatorId, onSaleD
   }
 
   function formatTime(dateString: string) {
-    return new Date(dateString).toLocaleTimeString('es-AR', {
-      hour: '2-digit',
-      minute: '2-digit',
-    })
+    return new Date(dateString).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })
   }
 
   return (
     <div className="relative surface-card overflow-hidden">
       {/* Filters + summary */}
       <div className="p-4 border-b border-edge-soft space-y-3">
-        <p className="font-semibold text-heading font-display">Historial detallado</p>
+        <div className="flex items-center justify-between gap-2">
+          <p className="font-semibold text-heading font-display">Historial detallado</p>
+          {isFetching && !isFetchingNextPage && (
+            <span className="text-xs text-primary animate-pulse">actualizando…</span>
+          )}
+        </div>
 
-        {/* Search + method chips + operator + clear */}
         <div className="flex flex-wrap items-center gap-2">
           <Input
             value={searchQuery}
@@ -379,10 +364,10 @@ function SalesHistoryTable({ rows, businessId, businessName, operatorId, onSaleD
               </button>
             ))}
           </div>
-          {operatorOptions.length >= 3 && (
+          {operators.length >= 1 && (
             <SelectDropdown
-              value={filterOperatorName}
-              onChange={setFilterOperatorName}
+              value={filterOperatorId}
+              onChange={setFilterOperatorId}
               options={operatorOptions}
               className="w-[160px] shrink-0"
               usePortal
@@ -400,19 +385,19 @@ function SalesHistoryTable({ rows, businessId, businessName, operatorId, onSaleD
         <div className="flex flex-wrap items-stretch gap-x-5 gap-y-2 px-4 py-2.5 bg-muted/50 rounded-xl">
           <div className="flex flex-col gap-0.5">
             <span className="text-label text-hint">Ventas</span>
-            <span className="text-base font-semibold text-heading tabular-nums leading-tight">{filteredRows.length}</span>
+            <span className="text-base font-semibold text-heading tabular-nums leading-tight">{summaryCount}</span>
           </div>
           <div className="w-px bg-border self-stretch hidden sm:block" />
           <div className="flex flex-col gap-0.5">
             <span className="text-label text-hint">Recaudado</span>
-            <span className="text-base font-semibold text-heading tabular-nums leading-tight">{fmt(summaryTotal)}</span>
+            <span className="text-base font-semibold text-heading tabular-nums leading-tight">{fmt(summary?.total_revenue ?? 0)}</span>
           </div>
-          {mostUsedMethod && (
+          {summary?.top_method && (
             <>
               <div className="w-px bg-border self-stretch hidden sm:block" />
               <div className="flex flex-col gap-0.5">
                 <span className="text-label text-hint">Método</span>
-                <span className="text-base font-semibold text-heading leading-tight">{normalizePayment(mostUsedMethod)}</span>
+                <span className="text-base font-semibold text-heading leading-tight">{normalizePayment(summary.top_method)}</span>
               </div>
             </>
           )}
@@ -432,7 +417,7 @@ function SalesHistoryTable({ rows, businessId, businessName, operatorId, onSaleD
       </div>
 
       {/* Sale list */}
-      {filteredRows.length === 0 ? (
+      {visibleRows.length === 0 ? (
         <div className="p-8 text-center text-sm text-hint">
           {hasActiveFilters ? (
             <>
@@ -444,166 +429,179 @@ function SalesHistoryTable({ rows, businessId, businessName, operatorId, onSaleD
           ) : 'No hay ventas para mostrar'}
         </div>
       ) : (
-        <ul className="p-3 space-y-1.5">
-          {filteredRows.map((sale, index) => {
-            const isExpanded = expandedSaleId === sale.id
-            const detail = saleDetails[sale.id]
-            const isLoadingDetail = loadingDetailId === sale.id
-            const saleNumber = filteredRows.length - index
+        <>
+          <ul className="p-3 space-y-1.5">
+            {visibleRows.map((sale) => {
+              const isExpanded = expandedSaleId === sale.id
+              const detail = saleDetails[sale.id]
+              const isLoadingDetail = loadingDetailId === sale.id
+              const totalQty = detail ? detail.items.reduce((sum, i) => sum + i.quantity, 0) : 0
+              const methodLabel = sale.method ? normalizePayment(sale.method) : 'sin dato'
 
-            const totalQty = detail ? detail.items.reduce((sum, i) => sum + i.quantity, 0) : 0
-
-            return (
-              <li
-                key={sale.id}
-                className={`rounded-xl border transition-all overflow-hidden ${
-                  isExpanded
-                    ? 'bg-primary/5 border-primary/30 dark:bg-primary/10 dark:border-primary/20'
-                    : 'bg-surface border-edge hover:border-primary/30 hover:bg-surface-alt/40'
-                }`}
-              >
-                <button
-                  className="w-full px-4 py-3 text-left"
-                  onClick={() => fetchSaleDetail(sale.id)}
-                  aria-expanded={isExpanded}
-                  aria-label={`${isExpanded ? 'Contraer' : 'Ver'} detalle, Venta #${saleNumber}, ${fmt(sale.total)}`}
+              return (
+                <li
+                  key={sale.id}
+                  className={`rounded-xl border transition-all overflow-hidden ${
+                    isExpanded
+                      ? 'bg-primary/5 border-primary/30 dark:bg-primary/10 dark:border-primary/20'
+                      : 'bg-surface border-edge hover:border-primary/30 hover:bg-surface-alt/40'
+                  }`}
                 >
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-1.5 min-w-0">
-                      <span className="text-sm font-semibold text-heading tabular-nums shrink-0">
-                        {formatTime(sale.created_at)}
-                      </span>
-                      <span className="text-xs text-hint shrink-0">· Venta #{saleNumber}</span>
-                    </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      <span className={`text-sm font-bold tabular-nums ${isExpanded ? 'text-primary' : 'text-heading'}`}>
-                        {fmt(sale.total)}
-                      </span>
-                      {isLoadingDetail ? (
-                        <span className="w-3 h-3 border-2 border-hint border-t-transparent rounded-full animate-spin" role="status" aria-label="Cargando" />
-                      ) : (
-                        <span className={`text-[10px] text-hint transition-transform duration-150 inline-block ${isExpanded ? '-rotate-180' : ''}`} aria-hidden="true">
-                          ▾
+                  <button
+                    className="w-full px-4 py-3 text-left"
+                    onClick={() => fetchSaleDetail(sale.id)}
+                    aria-expanded={isExpanded}
+                    aria-label={`${isExpanded ? 'Contraer' : 'Ver'} detalle, Venta #${sale.id.slice(0, 6)}, ${fmt(sale.total)}`}
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <span className="text-sm font-semibold text-heading tabular-nums shrink-0">
+                          {formatTime(sale.created_at)}
                         </span>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-1.5 mt-1 flex-wrap">
-                    <span className={`inline-flex items-center text-[11px] px-2 py-0.5 rounded-full border font-medium ${
-                      isPaymentMethod(sale.method)
-                        ? ACCENT_CHIP[PAYMENT_TONE[sale.method]]
-                        : 'bg-surface-alt border-edge text-body'
-                    }`}>
-                      {normalizePayment(sale.method)}
-                    </span>
-                    {sale.status === 'cancelled' && (
-                      <span className="inline-flex items-center text-[11px] px-2 py-0.5 rounded-full border font-medium bg-amber-50 border-amber-200 text-amber-700 dark:bg-amber-500/10 dark:border-amber-500/30 dark:text-amber-400">
-                        Cancelada
-                      </span>
-                    )}
-                    {sale.status === 'refunded' && (
-                      <span className="inline-flex items-center text-[11px] px-2 py-0.5 rounded-full border font-medium bg-red-50 border-red-200 text-red-600 dark:bg-red-500/10 dark:border-red-500/30 dark:text-red-400">
-                        Reembolsada
-                      </span>
-                    )}
-                    {detail && (
-                      <>
-                        <span className="text-[11px] text-hint">
-                          {totalQty} item{totalQty !== 1 ? 's' : ''}
+                        <span className="text-xs text-hint shrink-0">· #{sale.id.slice(0, 6)}</span>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span className={`text-sm font-bold tabular-nums ${isExpanded ? 'text-primary' : 'text-heading'}`}>
+                          {fmt(sale.total)}
                         </span>
-                        {detail.items.slice(0, 4).map(item =>
-                          item.product_icon ? (
-                            <DynamicIcon key={item.id} name={item.product_icon} size={13} color={item.product_icon_color ?? undefined} />
-                          ) : null
-                        )}
-                      </>
-                    )}
-                  </div>
-                </button>
-
-                {isExpanded && detail && (
-                  <div className="px-4 pb-3 border-t border-dashed border-primary/20 dark:border-primary/15">
-                    <ul className="space-y-1 pt-2.5 mb-2.5">
-                      {detail.items.map(item => (
-                        <li key={item.id} className="flex items-center justify-between text-sm">
-                          <span className="flex items-center gap-1.5 text-body min-w-0">
-                            {item.product_icon && (
-                              <DynamicIcon name={item.product_icon} size={14} color={item.product_icon_color ?? undefined} className="shrink-0" />
-                            )}
-                            <span className="truncate text-xs">
-                              {item.product_name}
-                              {item.variant_label && (
-                                <span className="text-hint"> · {item.variant_label}</span>
-                              )}
-                            </span>
-                            <span className="text-hint shrink-0 text-xs">×{item.quantity}</span>
-                          </span>
-                          <span className="text-xs font-semibold text-heading tabular-nums shrink-0 ml-3">
-                            {fmt(item.quantity * item.unit_price)}
-                          </span>
-                        </li>
-                      ))}
-                    </ul>
-
-                    <div className="flex justify-between items-center border-t border-dashed border-primary/20 dark:border-primary/15 pt-2 mb-1">
-                      <span className="text-xs font-semibold text-heading">Total cobrado</span>
-                      <span className="text-xs font-bold text-primary tabular-nums">
-                        {fmt(detail.total)}
-                      </span>
-                    </div>
-
-                    {detail.operator_name && (
-                      <p className="text-[11px] text-hint mb-2.5">Por: {detail.operator_name}</p>
-                    )}
-
-                    <div className="flex items-center justify-between gap-2 mt-3">
-                      <div className="flex items-center gap-1.5">
-                        <button
-                          onClick={() => setEditingSale(detail)}
-                          className="h-8 px-3 text-xs rounded-lg border border-edge text-body bg-surface hover:bg-hover-bg transition-colors"
-                        >
-                          Editar
-                        </button>
-                        {confirmingDeleteId === sale.id ? (
-                          <>
-                            <span className="text-xs text-red-500 dark:text-red-400 font-medium">¿Eliminar?</span>
-                            <button
-                              onClick={() => { setConfirmingDeleteId(null); handleDeleteSale(sale.id) }}
-                              className="h-9 px-3 text-xs rounded-lg border border-red-300 text-red-600 bg-red-50 dark:border-red-500/40 dark:text-red-400 dark:bg-red-500/10 hover:bg-red-100 dark:hover:bg-red-500/20 transition-colors"
-                            >
-                              Sí
-                            </button>
-                            <button
-                              onClick={() => setConfirmingDeleteId(null)}
-                              className="h-8 px-3 text-xs rounded-lg border border-edge text-body bg-surface hover:bg-hover-bg transition-colors"
-                            >
-                              No
-                            </button>
-                          </>
+                        {isLoadingDetail ? (
+                          <span className="w-3 h-3 border-2 border-hint border-t-transparent rounded-full animate-spin" role="status" aria-label="Cargando" />
                         ) : (
-                          <button
-                            onClick={() => setConfirmingDeleteId(sale.id)}
-                            className="h-8 px-3 text-xs rounded-lg border border-red-200 text-red-500 bg-surface hover:bg-red-50 dark:border-red-500/30 dark:text-red-400 dark:bg-transparent dark:hover:bg-red-500/10 transition-colors"
-                          >
-                            Eliminar
-                          </button>
+                          <span className={`text-[10px] text-hint transition-transform duration-150 inline-block ${isExpanded ? '-rotate-180' : ''}`} aria-hidden="true">
+                            ▾
+                          </span>
                         )}
                       </div>
-                      <button
-                        onClick={() => handleOpenReceiptPreview(sale.id)}
-                        className="h-8 px-3 text-xs rounded-lg border border-edge text-body bg-surface hover:bg-hover-bg transition-colors inline-flex items-center gap-1.5"
-                      >
-                        <Printer size={11} />
-                        Imprimir
-                      </button>
                     </div>
-                  </div>
-                )}
-              </li>
-            )
-          })}
-        </ul>
+
+                    <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                      <span className={`inline-flex items-center text-[11px] px-2 py-0.5 rounded-full border font-medium ${
+                        isPaymentMethod(sale.method)
+                          ? ACCENT_CHIP[PAYMENT_TONE[sale.method]]
+                          : 'bg-surface-alt border-edge text-body'
+                      }`}>
+                        {methodLabel}
+                      </span>
+                      {sale.status === 'cancelled' && (
+                        <span className="inline-flex items-center text-[11px] px-2 py-0.5 rounded-full border font-medium bg-amber-50 border-amber-200 text-amber-700 dark:bg-amber-500/10 dark:border-amber-500/30 dark:text-amber-400">
+                          Cancelada
+                        </span>
+                      )}
+                      {sale.status === 'refunded' && (
+                        <span className="inline-flex items-center text-[11px] px-2 py-0.5 rounded-full border font-medium bg-red-50 border-red-200 text-red-600 dark:bg-red-500/10 dark:border-red-500/30 dark:text-red-400">
+                          Reembolsada
+                        </span>
+                      )}
+                      {detail && (
+                        <>
+                          <span className="text-[11px] text-hint">
+                            {totalQty} item{totalQty !== 1 ? 's' : ''}
+                          </span>
+                          {detail.items.slice(0, 4).map(item =>
+                            item.product_icon ? (
+                              <DynamicIcon key={item.id} name={item.product_icon} size={13} color={item.product_icon_color ?? undefined} />
+                            ) : null
+                          )}
+                        </>
+                      )}
+                    </div>
+                  </button>
+
+                  {isExpanded && detail && (
+                    <div className="px-4 pb-3 border-t border-dashed border-primary/20 dark:border-primary/15">
+                      <ul className="space-y-1 pt-2.5 mb-2.5">
+                        {detail.items.map(item => (
+                          <li key={item.id} className="flex items-center justify-between text-sm">
+                            <span className="flex items-center gap-1.5 text-body min-w-0">
+                              {item.product_icon && (
+                                <DynamicIcon name={item.product_icon} size={14} color={item.product_icon_color ?? undefined} className="shrink-0" />
+                              )}
+                              <span className="truncate text-xs">
+                                {item.product_name}
+                                {item.variant_label && (
+                                  <span className="text-hint"> · {item.variant_label}</span>
+                                )}
+                              </span>
+                              <span className="text-hint shrink-0 text-xs">×{item.quantity}</span>
+                            </span>
+                            <span className="text-xs font-semibold text-heading tabular-nums shrink-0 ml-3">
+                              {fmt(item.quantity * item.unit_price)}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+
+                      <div className="flex justify-between items-center border-t border-dashed border-primary/20 dark:border-primary/15 pt-2 mb-1">
+                        <span className="text-xs font-semibold text-heading">Total cobrado</span>
+                        <span className="text-xs font-bold text-primary tabular-nums">
+                          {fmt(detail.total)}
+                        </span>
+                      </div>
+
+                      {detail.operator_name && (
+                        <p className="text-[11px] text-hint mb-2.5">Por: {detail.operator_name}</p>
+                      )}
+
+                      <div className="flex items-center justify-between gap-2 mt-3">
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            onClick={() => setEditingSale(detail)}
+                            className="h-8 px-3 text-xs rounded-lg border border-edge text-body bg-surface hover:bg-hover-bg transition-colors"
+                          >
+                            Editar
+                          </button>
+                          {confirmingDeleteId === sale.id ? (
+                            <>
+                              <span className="text-xs text-red-500 dark:text-red-400 font-medium">¿Eliminar?</span>
+                              <button
+                                onClick={() => { setConfirmingDeleteId(null); handleDeleteSale(sale.id) }}
+                                className="h-9 px-3 text-xs rounded-lg border border-red-300 text-red-600 bg-red-50 dark:border-red-500/40 dark:text-red-400 dark:bg-red-500/10 hover:bg-red-100 dark:hover:bg-red-500/20 transition-colors"
+                              >
+                                Sí
+                              </button>
+                              <button
+                                onClick={() => setConfirmingDeleteId(null)}
+                                className="h-8 px-3 text-xs rounded-lg border border-edge text-body bg-surface hover:bg-hover-bg transition-colors"
+                              >
+                                No
+                              </button>
+                            </>
+                          ) : (
+                            <button
+                              onClick={() => setConfirmingDeleteId(sale.id)}
+                              className="h-8 px-3 text-xs rounded-lg border border-red-200 text-red-500 bg-surface hover:bg-red-50 dark:border-red-500/30 dark:text-red-400 dark:bg-transparent dark:hover:bg-red-500/10 transition-colors"
+                            >
+                              Eliminar
+                            </button>
+                          )}
+                        </div>
+                        <button
+                          onClick={() => handleOpenReceiptPreview(sale.id)}
+                          className="h-8 px-3 text-xs rounded-lg border border-edge text-body bg-surface hover:bg-hover-bg transition-colors inline-flex items-center gap-1.5"
+                        >
+                          <Printer size={11} />
+                          Imprimir
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </li>
+              )
+            })}
+          </ul>
+
+          {hasNextPage && (
+            <div className="px-3 pb-3 pt-1">
+              <button
+                onClick={() => fetchNextPage()}
+                disabled={isFetchingNextPage}
+                className="w-full h-9 rounded-lg border border-edge text-sm text-body hover:bg-hover-bg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                {isFetchingNextPage ? 'Cargando…' : 'Cargar más'}
+              </button>
+            </div>
+          )}
+        </>
       )}
 
       <Dialog open={!!editingSale} onOpenChange={nextOpen => !nextOpen && setEditingSale(null)}>

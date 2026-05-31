@@ -7,13 +7,12 @@ import { type DateRangePeriod } from '@/lib/date-utils'
 import KPICard from '@/components/shared/KPICard'
 import Link from 'next/link'
 import { isCompletedSale, getDateRange, getPreviousPeriodRange } from '@/lib/date-utils'
-import type { PaymentMethod } from '@/lib/constants/domain'
 import SalesHistoryTable from '@/components/dashboard/SalesHistoryTable'
 import BalanceWidget from '@/components/dashboard/BalanceWidget'
 import RecentActivityWidget from '@/components/dashboard/RecentActivityWidget'
 import { usePillIndicator } from '@/hooks/usePillIndicator'
 import type { BusinessBalance } from '@/components/expenses/types'
-import type { PriceList } from '@/lib/types'
+import type { PriceList, SalesHistoryOperator } from '@/lib/types'
 import type { InventoryBrand } from '@/components/inventory/types'
 import type { SupportedCurrencyCode } from '@/lib/constants/currencies'
 import OnboardingWizard, { type OnboardingWizardProfile } from '@/components/onboarding/OnboardingWizard'
@@ -29,25 +28,6 @@ interface SaleRecord {
   created_at: string
   status: string | null
   operator_name: string | null
-}
-
-interface PaymentRecord {
-  sale_id: string
-  method: PaymentMethod
-  amount: number
-  created_at: string
-}
-
-interface SaleItemRecord {
-  sale_id: string
-  product_id: string | null
-  quantity: number
-  total: number
-}
-
-interface SaleHistoryRow extends SaleRecord {
-  method: PaymentMethod | 'sin dato'
-  product_names: string[]
 }
 
 export interface RecentActivityRow {
@@ -72,8 +52,7 @@ interface ProductRecord {
 
 interface Props {
   sales: SaleRecord[]
-  payments: PaymentRecord[]
-  saleItems: SaleItemRecord[]
+  operators: SalesHistoryOperator[]
   products: ProductRecord[]
   businessId: string | null
   businessName: string
@@ -109,8 +88,7 @@ function computeTrend(
 
 export default function DashboardView({
   sales,
-  payments,
-  saleItems,
+  operators,
   products,
   businessId,
   businessName,
@@ -142,33 +120,6 @@ export default function DashboardView({
   const wizardOpen = showOnboardingWizard && !suppressWizardLocal
 
   const { setRef, indicator } = usePillIndicator(showHistory ? 'history' : 'overview')
-
-  const productsById = useMemo(() => new Map(products.map(p => [p.id, p])), [products])
-
-  const productNamesBySaleId = useMemo(() => {
-    const map = new Map<string, string[]>()
-    saleItems.forEach(item => {
-      if (!item.product_id) return
-      // Get product name from the products map
-      const product = productsById.get(item.product_id)
-      const name = product?.name ?? null
-      if (!name) return
-      const current = map.get(item.sale_id)
-      if (current) {
-        if (!current.includes(name)) current.push(name)
-      } else {
-        map.set(item.sale_id, [name])
-      }
-    })
-    return map
-  }, [saleItems, productsById])
-
-  const paymentsBySaleId = useMemo(() => {
-    const map = new Map<string, PaymentMethod>()
-    const ordered = [...payments].sort((a, b) => +new Date(a.created_at) - +new Date(b.created_at))
-    ordered.forEach(p => { if (!map.has(p.sale_id)) map.set(p.sale_id, p.method) })
-    return map
-  }, [payments])
 
   const periodRange = useMemo(
     () => getDateRange(period, fromDate, toDate),
@@ -286,18 +237,11 @@ export default function DashboardView({
     transactions: computeTrend(transactions, prevCompletedSales.length, trendLabel, prevPeriodRange !== null),
   }), [totalSold, prevTotalSold, trendLabel, transactions, prevCompletedSales, prevPeriodRange])
 
-  const historyRows = useMemo<SaleHistoryRow[]>(() =>
-    filteredSales.map(s => ({
-      ...s,
-      method: paymentsBySaleId.get(s.id) ?? 'sin dato',
-      product_names: productNamesBySaleId.get(s.id) ?? [],
-    })),
-    [filteredSales, paymentsBySaleId, productNamesBySaleId])
-
-  const historyTableKey = useMemo(
-    () => `${period}:${fromDate}:${toDate}`,
-    [period, fromDate, toDate]
+  const historyRange = useMemo(
+    () => ({ from: periodRange.from.toISOString(), to: periodRange.to.toISOString() }),
+    [periodRange]
   )
+  const historyTableKey = `${historyRange.from}:${historyRange.to}`
 
   const periodLabel =
     period === 'hoy'
@@ -404,10 +348,12 @@ export default function DashboardView({
           {showHistory ? (
             <SalesHistoryTable
               key={historyTableKey}
-              rows={historyRows}
               businessId={businessId}
               businessName={businessName}
               operatorId={operatorId}
+              from={historyRange.from}
+              to={historyRange.to}
+              operators={operators}
             />
           ) : (
             <>

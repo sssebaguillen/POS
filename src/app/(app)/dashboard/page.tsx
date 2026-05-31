@@ -4,7 +4,6 @@ import { cookies } from 'next/headers'
 import { createClient } from '@/lib/supabase/server'
 import DashboardView from '@/components/dashboard/DashboardView'
 import type { BusinessBalance } from '@/components/expenses/types'
-import type { PaymentMethod } from '@/lib/constants/domain'
 import { requireAuthenticatedBusinessContext } from '@/lib/business'
 import { getActiveOperator } from '@/lib/operator'
 import { normalizePriceList } from '@/lib/mappers'
@@ -28,6 +27,7 @@ export default async function DashboardPage() {
     balanceResult,
     { data: profile },
     { data: recentActivityRaw },
+    { data: operatorsData },
   ] = await Promise.all([
     supabase
       .from('sales')
@@ -60,6 +60,11 @@ export default async function DashboardPage() {
       p_limit: 5,
       p_offset: 0,
     }),
+    supabase
+      .from('operators')
+      .select('id, name')
+      .eq('business_id', businessId)
+      .order('name'),
   ])
 
   const recentActivity =
@@ -68,11 +73,6 @@ export default async function DashboardPage() {
   const balance = (balanceResult.data as unknown as BusinessBalance | null) ?? {
     income: 0, expenses: 0, profit: 0, margin: 0, by_category: {}, period_from: '', period_to: '',
   }
-
-  const saleIds = (sales ?? []).map(sale => sale.id)
-
-  let payments: Array<{ sale_id: string; method: PaymentMethod; amount: number; created_at: string }> = []
-  let saleItems: Array<{ sale_id: string; product_id: string | null; quantity: number; total: number }> = []
 
   const onboarding = parseOnboardingState(profile?.onboarding_state)
   const isOwnerProfile = profile?.role === 'owner'
@@ -118,34 +118,7 @@ export default async function DashboardPage() {
   const initialCurrency: SupportedCurrencyCode =
     rawCurrency && CURRENCIES.some(c => c.code === rawCurrency) ? (rawCurrency as SupportedCurrencyCode) : 'ARS'
 
-  if (saleIds.length > 0) {
-    const [{ data: paymentsData }, { data: saleItemsData }] = await Promise.all([
-      supabase
-        .from('payments')
-        .select('sale_id, method, amount, created_at')
-        .in('sale_id', saleIds)
-        .limit(5000),
-      supabase
-        .from('sale_items')
-        .select('sale_id, product_id, quantity, total')
-        .in('sale_id', saleIds)
-        .limit(10000),
-    ])
-
-    payments = (paymentsData ?? []).map(payment => ({
-      sale_id: payment.sale_id,
-      method: payment.method as PaymentMethod,
-      amount: Number(payment.amount),
-      created_at: payment.created_at,
-    }))
-
-    saleItems = (saleItemsData ?? []).map(item => ({
-      sale_id: item.sale_id,
-      product_id: item.product_id,
-      quantity: Number(item.quantity),
-      total: Number(item.total),
-    }))
-  }
+  const operators = (operatorsData ?? []).map(op => ({ id: op.id, name: op.name }))
 
   return (
     <DashboardView
@@ -163,8 +136,7 @@ export default async function DashboardPage() {
           operator_name: operatorName,
         }
       })}
-      payments={payments}
-      saleItems={saleItems}
+      operators={operators}
       products={(products ?? []).map(product => ({
         id: product.id,
         name: product.name,
