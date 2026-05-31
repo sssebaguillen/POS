@@ -1,4 +1,4 @@
-import { memo, type ReactNode } from 'react'
+import { memo, useId, type ReactNode } from 'react'
 import { TrendingDown, TrendingUp } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -6,86 +6,135 @@ interface Trend {
   percent: number
   direction: 'up' | 'down' | 'neutral'
   label: string
+  amount?: string   // delta absoluto ya formateado (con signo), se muestra entre paréntesis
+}
+
+interface SparkPoint {
+  label: string
+  value: number
 }
 
 interface Props {
   label: string
   value: string
-  icon: ReactNode
-  iconBg: string
-  iconColor: string
   trend?: Trend
   subtitle?: string
-  sparkline?: number[]
+  sparkline?: SparkPoint[]
   children?: ReactNode
 }
 
-function KPICard({ label, value, icon, iconBg, iconColor, trend, subtitle, sparkline, children }: Props) {
+// Catmull-Rom → curva Bézier suave (línea redondeada, sin segmentos rígidos)
+function smoothPath(pts: { x: number; y: number }[]): string {
+  if (pts.length < 2) return ''
+  let d = `M ${pts[0].x.toFixed(2)},${pts[0].y.toFixed(2)}`
+  for (let i = 0; i < pts.length - 1; i++) {
+    const p0 = pts[i - 1] ?? pts[i]
+    const p1 = pts[i]
+    const p2 = pts[i + 1]
+    const p3 = pts[i + 2] ?? p2
+    const c1x = p1.x + (p2.x - p0.x) / 6
+    const c1y = p1.y + (p2.y - p0.y) / 6
+    const c2x = p2.x - (p3.x - p1.x) / 6
+    const c2y = p2.y - (p3.y - p1.y) / 6
+    d += ` C ${c1x.toFixed(2)},${c1y.toFixed(2)} ${c2x.toFixed(2)},${c2y.toFixed(2)} ${p2.x.toFixed(2)},${p2.y.toFixed(2)}`
+  }
+  return d
+}
+
+// Gráfico de área a ancho completo, anclado al fondo de la card. Se estira para llenar
+// el contenedor (preserveAspectRatio="none" + non-scaling-stroke mantiene el trazo nítido).
+// Color heredado vía currentColor (lo fija el wrapper según la dirección de la tendencia).
+function Sparkline({ points, className }: { points: SparkPoint[]; className?: string }) {
+  const gradId = useId()
+  const vals = points.map(s => s.value)
+  const min = Math.min(...vals)
+  const max = Math.max(...vals)
+  const range = max - min || 1
+  const W = 100
+  const H = 40
+  const padX = 1
+  const padY = 3
+  const pts = vals.map((v, i) => ({
+    x: padX + (i / (vals.length - 1)) * (W - padX * 2),
+    y: H - padY - ((v - min) / range) * (H - padY * 2),
+  }))
+  const line = smoothPath(pts)
+  const area = `${line} L ${pts[pts.length - 1].x.toFixed(2)},${H} L ${pts[0].x.toFixed(2)},${H} Z`
+
   return (
-    <div className="surface-card p-5 flex flex-col gap-3">
-      <div className="flex items-start justify-between">
-        <span className={cn('h-10 w-10 rounded-xl flex items-center justify-center shrink-0', iconBg, iconColor)}>
-          {icon}
-        </span>
-        {trend && (
-          <div
+    <svg
+      viewBox={`0 0 ${W} ${H}`}
+      width="100%"
+      height="100%"
+      preserveAspectRatio="none"
+      className={cn('block h-full w-full', className)}
+      aria-hidden
+    >
+      <defs>
+        <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="currentColor" stopOpacity="0.18" />
+          <stop offset="100%" stopColor="currentColor" stopOpacity="0" />
+        </linearGradient>
+      </defs>
+      <path d={area} fill={`url(#${gradId})`} stroke="none" />
+      <path
+        d={line}
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.75"
+        vectorEffect="non-scaling-stroke"
+        strokeLinejoin="round"
+        strokeLinecap="round"
+      />
+    </svg>
+  )
+}
+
+function KPICard({ label, value, trend, subtitle, sparkline, children }: Props) {
+  const hasSpark = !!sparkline && sparkline.length > 1
+  const sparkColor =
+    trend?.direction === 'up'
+      ? 'text-emerald-500/80'
+      : trend?.direction === 'down'
+      ? 'text-red-500/80'
+      : 'text-primary/50'
+
+  return (
+    <div className="surface-card p-5 flex flex-col h-full">
+      <p className="text-xs font-medium text-hint mb-2.5">{label}</p>
+      <p className="text-3xl font-bold text-heading leading-none tracking-tight">{value}</p>
+
+      {trend ? (
+        <p className="flex items-center gap-1.5 text-xs mt-2">
+          <span
             className={cn(
-              'flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full',
+              'inline-flex items-center gap-0.5 font-semibold',
               trend.direction === 'up'
-                ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400'
+                ? 'text-emerald-600 dark:text-emerald-400'
                 : trend.direction === 'down'
-                ? 'bg-red-50 text-red-600 dark:bg-red-950/40 dark:text-red-400'
-                : 'bg-muted text-hint'
+                ? 'text-red-600 dark:text-red-400'
+                : 'text-hint'
             )}
           >
-            {trend.direction === 'up' && <TrendingUp size={12} />}
-            {trend.direction === 'down' && <TrendingDown size={12} />}
-            {trend.percent !== 0 ? `${trend.direction === 'up' ? '+' : ''}${trend.percent.toFixed(1)}%` : '—'}
-          </div>
-        )}
-      </div>
-      <div>
-        <p className="text-xs font-medium text-hint mb-1">{label}</p>
-        <p className="text-2xl font-bold text-heading leading-none">{value}</p>
-        {(subtitle ?? trend?.label) && (
-          <p className="text-xs text-hint mt-1.5">{subtitle ?? trend?.label}</p>
-        )}
-        {children}
-      </div>
-      {sparkline && sparkline.length > 1 && (() => {
-        const vals = sparkline
-        const min = Math.min(...vals)
-        const max = Math.max(...vals)
-        const range = max - min || 1
-        const W = 100
-        const H = 28
-        const pad = 2
-        const points = vals.map((v, i) => {
-          const x = pad + (i / (vals.length - 1)) * (W - pad * 2)
-          const y = H - pad - ((v - min) / range) * (H - pad * 2)
-          return `${x.toFixed(1)},${y.toFixed(1)}`
-        }).join(' ')
-        return (
-          <svg
-            viewBox={`0 0 ${W} ${H}`}
-            width="100%"
-            height="28"
-            preserveAspectRatio="none"
-            className="mt-3 overflow-visible"
-          >
-            <polyline
-              points={points}
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.5"
-              vectorEffect="non-scaling-stroke"
-              strokeLinejoin="round"
-              strokeLinecap="round"
-              className="text-primary/60"
-            />
-          </svg>
-        )
-      })()}
+            {trend.direction === 'up' && <TrendingUp size={13} />}
+            {trend.direction === 'down' && <TrendingDown size={13} />}
+            {trend.percent !== 0
+              ? `${trend.direction === 'up' ? '+' : ''}${trend.percent.toFixed(1)}%${trend.amount ? ` (${trend.amount})` : ''}`
+              : '—'}
+          </span>
+          <span className="text-hint">{trend.label}</span>
+        </p>
+      ) : subtitle ? (
+        <p className="text-xs text-hint mt-2">{subtitle}</p>
+      ) : null}
+
+      {hasSpark ? (
+        <div className="h-20 mt-4 -mx-1">
+          <Sparkline points={sparkline!} className={sparkColor} />
+        </div>
+      ) : (
+        children
+      )}
     </div>
   )
 }

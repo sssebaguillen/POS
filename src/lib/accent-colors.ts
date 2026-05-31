@@ -52,3 +52,18 @@ export const ACCENT_BAR: Record<AccentTone, string> = {
   rose:    'bg-rose-500/30 dark:bg-rose-400/30',
   muted:   'bg-hint/30',
 }
+
+// Relleno intermedio (/60) — más presencia que ACCENT_BAR, sin la saturación plena de ACCENT_DOT.
+export const ACCENT_FILL: Record<AccentTone, string> = {
+  blue:    'bg-blue-500/60 dark:bg-blue-400/60',
+  sky:     'bg-sky-500/60 dark:bg-sky-400/60',
+  indigo:  'bg-indigo-500/60 dark:bg-indigo-400/60',
+  violet:  'bg-violet-500/60 dark:bg-violet-400/60',
+  amber:   'bg-amber-500/60 dark:bg-amber-400/60',
+  orange:  'bg-orange-500/60 dark:bg-orange-400/60',
+  emerald: 'bg-emerald-500/60 dark:bg-emerald-400/60',
+  teal:    'bg-teal-500/60 dark:bg-teal-400/60',
+  red:     'bg-red-500/60 dark:bg-red-400/60',
+  rose:    'bg-rose-500/60 dark:bg-rose-400/60',
+  muted:   'bg-hint/60',
+}

@@ -18,7 +18,6 @@ import type { InventoryBrand } from '@/components/inventory/types'
 import type { SupportedCurrencyCode } from '@/lib/constants/currencies'
 import OnboardingWizard, { type OnboardingWizardProfile } from '@/components/onboarding/OnboardingWizard'
 import { useFormatMoney } from '@/lib/context/CurrencyContext'
-import { DollarSign, Receipt, AlertTriangle } from 'lucide-react'
 import { ResponsiveContainer, BarChart, Bar, XAxis, Tooltip } from 'recharts'
 
 interface ChartPoint {
@@ -207,8 +206,14 @@ export default function DashboardView({
     : period === 'mes' ? 'vs mes anterior'
     : ''
   const showTrend = trendLabel !== '' && overview.kpis !== null
+  const prevRevenue = overview.kpis?.prev_total_revenue ?? 0
+  const revenueDelta = totalSold - prevRevenue
+  const revenueDeltaLabel =
+    showTrend && prevRevenue !== 0
+      ? `${revenueDelta >= 0 ? '+' : '-'}${fmt(Math.abs(revenueDelta))}`
+      : undefined
   const kpiTrends = {
-    total: computeTrend(totalSold, overview.kpis?.prev_total_revenue ?? 0, trendLabel, showTrend),
+    total: { ...computeTrend(totalSold, prevRevenue, trendLabel, showTrend), amount: revenueDeltaLabel },
     transactions: computeTrend(transactions, overview.kpis?.prev_total_sales ?? 0, trendLabel, showTrend),
   }
 
@@ -352,27 +357,18 @@ export default function DashboardView({
               {/* KPI Cards */}
               <div className="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-3 gap-4 animate-fade-in">
                 <KPICard
-                  icon={<DollarSign size={16} />}
-                  iconBg="bg-muted"
-                  iconColor="text-body"
                   label="Total vendido"
                   value={fmt(totalSold)}
                   trend={trendLabel ? kpiTrends.total : undefined}
-                  sparkline={chartData.map(point => point.value)}
+                  sparkline={chartData.map(point => ({ label: point.label, value: point.value }))}
                 />
                 <KPICard
-                  icon={<Receipt size={16} />}
-                  iconBg="bg-muted"
-                  iconColor="text-body"
                   label="Transacciones"
                   value={String(transactions)}
                   trend={trendLabel ? kpiTrends.transactions : undefined}
-                  sparkline={chartData.map(point => point.transactions)}
+                  sparkline={chartData.map(point => ({ label: point.label, value: point.transactions }))}
                 />
                 <KPICard
-                  icon={<AlertTriangle size={16} />}
-                  iconBg="bg-muted"
-                  iconColor="text-body"
                   label="Stock crítico"
                   value={String(lowStockProducts.length)}
                   subtitle={`${outOfStockCount} sin stock · ${lowStockCount} stock bajo`}
@@ -404,7 +400,7 @@ export default function DashboardView({
                     margin={balance.margin}
                     title={balanceTitle}
                     periodLabel={periodLabel}
-                    chartData={chartData}
+                    byCategory={balance.by_category}
                   />
                 </div>
                 <div className="xl:col-span-1 h-full">
@@ -418,9 +414,9 @@ export default function DashboardView({
                     {chartTitle}
                   </p>
                   {chartData.every(d => d.value === 0) ? (
-                    <p className="text-sm text-hint flex-1 flex items-center justify-center">Sin datos para el período</p>
+                    <p className="text-sm text-hint flex-1 min-h-[16rem] flex items-center justify-center">Sin datos para el período</p>
                   ) : (
-                    <div className="flex-1 min-h-0">
+                    <div className="flex-1 min-h-[16rem]">
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart data={chartData} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
                         <XAxis

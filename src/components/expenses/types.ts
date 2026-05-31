@@ -1,3 +1,5 @@
+import { ACCENT_FILL, type AccentTone } from '@/lib/accent-colors'
+
 export type ExpenseCategory =
   | 'mercaderia'
   | 'alquiler'
@@ -86,3 +88,19 @@ export const EXPENSE_CATEGORIES: ExpenseCategory[] = [
   'sueldos',
   'otro',
 ]
+
+// Mapeo a tone del palette compartido (lib/accent-colors). No reescribir colores acá —
+// igual que PAYMENT_TONE en lib/payments.ts.
+export const EXPENSE_CATEGORY_TONE: Record<ExpenseCategory, AccentTone> = {
+  mercaderia: 'amber',
+  proveedores: 'sky',
+  sueldos: 'rose',
+  alquiler: 'orange',
+  servicios: 'violet',
+  seguros: 'teal',
+  otro: 'muted',
+}
+
+export const EXPENSE_CATEGORY_COLORS: Record<ExpenseCategory, string> = Object.fromEntries(
+  EXPENSE_CATEGORIES.map(c => [c, ACCENT_FILL[EXPENSE_CATEGORY_TONE[c]]])
+) as Record<ExpenseCategory, string>

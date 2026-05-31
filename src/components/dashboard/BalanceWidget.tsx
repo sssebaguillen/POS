@@ -1,8 +1,10 @@
 'use client'
 
 import Link from 'next/link'
-import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis } from 'recharts'
+import { cn } from '@/lib/utils'
 import { useFormatMoney } from '@/lib/context/CurrencyContext'
+import { ACCENT_FILL } from '@/lib/accent-colors'
+import { EXPENSE_CATEGORY_LABELS, EXPENSE_CATEGORY_COLORS, type ExpenseCategory } from '@/components/expenses/types'
 
 interface BalanceWidgetProps {
   income: number
@@ -11,10 +13,19 @@ interface BalanceWidgetProps {
   margin: number
   title: string
   periodLabel: string
-  chartData: Array<{
-    label: string
-    value: number
-  }>
+  byCategory: Record<string, number>
+}
+
+function categoryColor(key: string): string {
+  return EXPENSE_CATEGORY_COLORS[key as ExpenseCategory] ?? ACCENT_FILL.muted
+}
+
+function categoryLabel(key: string): string {
+  return EXPENSE_CATEGORY_LABELS[key as ExpenseCategory] ?? key
+}
+
+function formatPct(pct: number): string {
+  return pct >= 1 ? `${Math.round(pct)}%` : '<1%'
 }
 
 export default function BalanceWidget({
@@ -24,11 +35,19 @@ export default function BalanceWidget({
   margin,
   title,
   periodLabel,
-  chartData,
+  byCategory,
 }: BalanceWidgetProps) {
   const fmt = useFormatMoney()
   const isPositive = profit >= 0
-  const hasChartData = chartData.some(point => point.value > 0)
+  const positiveClass = 'text-emerald-600/80 dark:text-emerald-400/80'
+  const negativeClass = 'text-red-500/80 dark:text-red-400/80'
+
+  const entries = Object.entries(byCategory)
+    .filter(([, value]) => value > 0)
+    .sort((a, b) => b[1] - a[1])
+  const categorizedTotal = entries.reduce((sum, [, value]) => sum + value, 0) || 1
+  const visible = entries.slice(0, 5)
+  const hiddenCount = entries.length - visible.length
 
   return (
     <div className="surface-card p-5 h-full flex flex-col gap-4 animate-fade-in">
@@ -45,69 +64,64 @@ export default function BalanceWidget({
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-6 gap-y-3 pb-4 border-b border-edge/40">
         <div>
           <p className="text-xs text-hint uppercase tracking-wide mb-1">Ingresos</p>
-          <p className="text-xl font-semibold text-heading">
-            {fmt(income)}
-          </p>
+          <p className="text-xl font-semibold text-heading">{fmt(income)}</p>
         </div>
         <div>
           <p className="text-xs text-hint uppercase tracking-wide mb-1">Egresos</p>
-          <p className="text-xl font-semibold text-heading">
-            {fmt(expenses)}
-          </p>
+          <p className="text-xl font-semibold text-heading">{fmt(expenses)}</p>
         </div>
         <div>
           <p className="text-xs text-hint uppercase tracking-wide mb-1">Ganancia neta</p>
-          <p className={`text-xl font-semibold ${isPositive ? 'text-emerald-600/80 dark:text-emerald-400/80' : 'text-red-500/80 dark:text-red-400/80'}`}>
+          <p className={`text-xl font-semibold ${isPositive ? positiveClass : negativeClass}`}>
             {isPositive ? '' : '-'}{fmt(Math.abs(profit))}
           </p>
         </div>
         <div>
           <p className="text-xs text-hint uppercase tracking-wide mb-1">Margen</p>
-          <p className={`text-xl font-semibold ${isPositive ? 'text-emerald-600/80 dark:text-emerald-400/80' : 'text-red-500/80 dark:text-red-400/80'}`}>
+          <p className={`text-xl font-semibold ${isPositive ? positiveClass : negativeClass}`}>
             {margin.toFixed(1)}%
           </p>
         </div>
       </div>
 
-      <div className="mt-auto h-24">
-        {!hasChartData ? (
-          <p className="text-sm text-hint h-full flex items-center justify-center">
-            Sin datos para el período
-          </p>
+      {/* Composición de egresos por categoría: barra segmentada + lista */}
+      <div className="flex-1 flex flex-col min-h-0">
+        {entries.length === 0 ? (
+          <p className="text-sm text-hint flex-1 flex items-center justify-center">Sin egresos en el período</p>
         ) : (
-          <ResponsiveContainer width="100%" height="100%" minWidth={0}>
-            <AreaChart data={chartData} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
-              <XAxis
-                dataKey="label"
-                tick={{ fontSize: 10, fill: 'var(--color-hint, #9ca3af)' }}
-                axisLine={false}
-                tickLine={false}
-                interval={chartData.length > 10 ? Math.floor(chartData.length / 6) : 0}
-              />
-              <Tooltip
-                cursor={{ stroke: 'currentColor', strokeOpacity: 0.2 }}
-                content={({ active, payload, label }) => {
-                  if (!active || !payload?.length) return null
-                  return (
-                    <div className="surface-card rounded-lg px-3 py-2 text-xs shadow-sm border border-edge/40">
-                      <p className="text-hint mb-0.5">{label}</p>
-                      <p className="font-semibold text-heading">
-                        {fmt(Number(payload[0]?.value ?? 0))}
-                      </p>
-                    </div>
-                  )
-                }}
-              />
-              <Area
-                type="monotone"
-                dataKey="value"
-                stroke="var(--color-primary, currentColor)"
-                strokeWidth={1.5}
-                fill="var(--color-primary, currentColor)"
-                fillOpacity={0.08}
-              />
-            </AreaChart>
-          </ResponsiveContainer>
+          <>
+            <p className="text-xs text-hint uppercase tracking-wide mb-2.5">Egresos por categoría</p>
+
+            <div className="flex h-2.5 rounded-full overflow-hidden bg-muted/60 gap-0.5">
+              {entries.map(([key, value]) => (
+                <div
+                  key={key}
+                  className={categoryColor(key)}
+                  style={{ width: `${(value / categorizedTotal) * 100}%` }}
+                />
+              ))}
+            </div>
+
+            <div className="mt-4 flex-1 flex flex-col justify-between gap-2">
+              {visible.map(([key, value]) => (
+                <div key={key} className="flex items-center gap-2.5">
+                  <span className={cn('shrink-0 w-2 h-2 rounded-full', categoryColor(key))} />
+                  <span className="text-sm text-body flex-1 min-w-0 truncate">
+                    {categoryLabel(key)}
+                  </span>
+                  <span className="text-xs text-hint tabular-nums shrink-0 w-10 text-right">
+                    {formatPct((value / categorizedTotal) * 100)}
+                  </span>
+                  <span className="text-sm font-semibold text-heading tabular-nums shrink-0 text-right">
+                    {fmt(value)}
+                  </span>
+                </div>
+              ))}
+              {hiddenCount > 0 && (
+                <p className="text-xs text-hint pl-[18px]">+{hiddenCount} categoría{hiddenCount > 1 ? 's' : ''} más</p>
+              )}
+            </div>
+          </>
         )}
       </div>
     </div>

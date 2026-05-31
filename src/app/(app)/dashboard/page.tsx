@@ -55,7 +55,7 @@ export default async function DashboardPage() {
       p_operator_id: null,
       p_date_from: null,
       p_date_to: null,
-      p_limit: 5,
+      p_limit: 6,
       p_offset: 0,
     }),
     supabase

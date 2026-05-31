@@ -56,7 +56,7 @@ export default function RecentActivityWidget({ entries }: Props) {
           <p className="text-sm text-hint">Sin actividad reciente</p>
         </div>
       ) : (
-        <ul className="flex-1 space-y-2.5 overflow-hidden">
+        <ul className="flex-1 flex flex-col justify-between gap-2.5 overflow-hidden">
           {entries.map(entry => {
             const tone = getAuditActionTone(entry.action)
             const saleTotal = extractSaleTotal(entry)

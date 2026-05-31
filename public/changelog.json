@@ -1,6 +1,17 @@
 {
-  "current": "0.0.6.8",
+  "current": "0.0.6.9",
   "releases": [
+    {
+      "version": "0.0.6.9",
+      "kind": "patch",
+      "date": "2026-05-31",
+      "label": "Dashboard más claro",
+      "changes": [
+        { "type": "improvement", "text": "Rediseñamos las tarjetas de Total vendido y Transacciones del Dashboard para que se lean mejor. La comparación con el período anterior ahora aparece junto al número (antes el porcentaje quedaba arriba en una esquina y el texto 'vs período' debajo, lo que confundía). En Total vendido, además del porcentaje, ahora ves entre paréntesis cuánto subió o bajó en dinero." },
+        { "type": "improvement", "text": "El widget de Balance ahora te muestra en qué se fueron tus egresos: una barra de composición y el detalle por categoría (mercadería, alquiler, sueldos, etc.) con su monto y porcentaje, en lugar de repetir los totales que ya figuran arriba. Mucho más útil para ver a dónde va la plata del período." },
+        { "type": "fix", "text": "Corregimos que el gráfico de ventas del período no se mostraba en celular ni en tablet. Ahora se ve correctamente en cualquier tamaño de pantalla." }
+      ]
+    },
     {
       "version": "0.0.6.8",
       "kind": "patch",
