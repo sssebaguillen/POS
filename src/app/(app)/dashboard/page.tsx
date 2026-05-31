@@ -7,7 +7,8 @@ import type { BusinessBalance } from '@/components/expenses/types'
 import { requireAuthenticatedBusinessContext } from '@/lib/business'
 import { getActiveOperator } from '@/lib/operator'
 import { normalizePriceList } from '@/lib/mappers'
-import type { PriceList } from '@/lib/types'
+import { resolveDateRange } from '@/lib/date-utils'
+import type { PriceList, StatsKpis, SalesHeatmapCell } from '@/lib/types'
 import type { InventoryBrand } from '@/components/inventory/types'
 import { CURRENCIES, type SupportedCurrencyCode } from '@/lib/constants/currencies'
 import { parseOnboardingState } from '@/components/onboarding/onboarding-types'
@@ -20,21 +21,23 @@ export default async function DashboardPage() {
 
   const { userId, businessId } = await requireAuthenticatedBusinessContext(supabase)
 
+  // Seed del período inicial ("hoy") para el primer paint del Resumen sin parpadeo.
+  // Los demás períodos los refetchea DashboardView client-side por React Query.
+  const hoy = resolveDateRange('hoy')
+
   const [
-    { data: sales },
+    { data: kpisRaw },
+    { data: balanceRaw },
+    { data: heatmapRaw },
     { data: products },
     { data: business },
-    balanceResult,
     { data: profile },
     { data: recentActivityRaw },
     { data: operatorsData },
   ] = await Promise.all([
-    supabase
-      .from('sales')
-      .select('id, subtotal, discount, total, created_at, status, operator_id, operators(name)')
-      .eq('business_id', businessId)
-      .order('created_at', { ascending: false })
-      .limit(3000),
+    supabase.rpc('get_stats_kpis', { p_business_id: businessId, p_from: hoy.from, p_to: hoy.to }),
+    supabase.rpc('get_business_balance', { p_business_id: businessId, p_from: hoy.from, p_to: hoy.to }),
+    supabase.rpc('get_sales_heatmap', { p_business_id: businessId, p_from: hoy.from, p_to: hoy.to }),
     supabase
       .from('products')
       .select('id, name, category_id, stock, min_stock, is_active')
@@ -45,11 +48,6 @@ export default async function DashboardPage() {
       .select('name, settings')
       .eq('id', businessId)
       .single(),
-    supabase.rpc('get_business_balance', {
-      p_business_id: businessId,
-      p_from: null,
-      p_to: null,
-    }),
     supabase.from('profiles').select('id, role, onboarding_state').eq('id', userId).single(),
     supabase.rpc('get_audit_log', {
       p_business_id: businessId,
@@ -70,9 +68,9 @@ export default async function DashboardPage() {
   const recentActivity =
     ((recentActivityRaw as unknown as { data: RecentActivityRow[] } | null)?.data ?? []) as RecentActivityRow[]
 
-  const balance = (balanceResult.data as unknown as BusinessBalance | null) ?? {
-    income: 0, expenses: 0, profit: 0, margin: 0, by_category: {}, period_from: '', period_to: '',
-  }
+  const initialKpis = (kpisRaw as unknown as StatsKpis | null)
+  const initialBalance = (balanceRaw as unknown as BusinessBalance | null)
+  const initialHeatmap = (heatmapRaw as unknown as { data: SalesHeatmapCell[] } | null)?.data ?? []
 
   const onboarding = parseOnboardingState(profile?.onboarding_state)
   const isOwnerProfile = profile?.role === 'owner'
@@ -122,20 +120,6 @@ export default async function DashboardPage() {
 
   return (
     <DashboardView
-      sales={(sales ?? []).map(sale => {
-        const operatorName = sale.operators && typeof sale.operators === 'object' && 'name' in sale.operators 
-          ? (sale.operators.name as string)
-          : null
-        return {
-          id: sale.id,
-          subtotal: Number(sale.subtotal),
-          discount: Number(sale.discount ?? 0),
-          total: Number(sale.total),
-          created_at: sale.created_at,
-          status: sale.status,
-          operator_name: operatorName,
-        }
-      })}
       operators={operators}
       products={(products ?? []).map(product => ({
         id: product.id,
@@ -147,7 +131,9 @@ export default async function DashboardPage() {
       }))}
       businessId={businessId}
       businessName={business?.name ?? ''}
-      balance={balance}
+      initialKpis={initialKpis}
+      initialBalance={initialBalance}
+      initialHeatmap={initialHeatmap}
       onboardingProfile={
         profile && typeof profile.id === 'string' && typeof profile.role === 'string'
           ? {

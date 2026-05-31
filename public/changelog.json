@@ -1,6 +1,16 @@
 {
-  "current": "0.0.6.7",
+  "current": "0.0.6.8",
   "releases": [
+    {
+      "version": "0.0.6.8",
+      "kind": "patch",
+      "date": "2026-05-31",
+      "label": "Dashboard a prueba de volumen",
+      "changes": [
+        { "type": "improvement", "text": "El Dashboard ahora funciona sin problemas aunque tu negocio tenga miles de ventas. Antes, al superar cierto volumen, los totales del período (Total vendido, Transacciones, Recaudado) podían quedar incompletos sin avisarte. Ahora los números siempre reflejan exactamente lo que pasó en el período que elijas — hoy, esta semana, este mes, el año entero o un rango personalizado." },
+        { "type": "improvement", "text": "El Historial de ventas se carga por partes con un botón 'Cargar más', así el Dashboard abre más rápido y no descarga todo de golpe. Los filtros por método de pago, operador y la búsqueda por producto siguen igual, ahora aplicados sobre todo el período seleccionado." }
+      ]
+    },
     {
       "version": "0.0.6.7",
       "kind": "feature",

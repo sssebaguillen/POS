@@ -3,16 +3,17 @@
 import { useEffect, useMemo, useState } from 'react'
 import PageHeader from '@/components/shared/PageHeader'
 import DateRangeFilter from '@/components/shared/DateRangeFilter'
-import { type DateRangePeriod } from '@/lib/date-utils'
+import { type DateRangePeriod, getDateRange, resolveDateRange, periodNeedsCustomDates } from '@/lib/date-utils'
 import KPICard from '@/components/shared/KPICard'
 import Link from 'next/link'
-import { isCompletedSale, getDateRange, getPreviousPeriodRange } from '@/lib/date-utils'
 import SalesHistoryTable from '@/components/dashboard/SalesHistoryTable'
 import BalanceWidget from '@/components/dashboard/BalanceWidget'
 import RecentActivityWidget from '@/components/dashboard/RecentActivityWidget'
 import { usePillIndicator } from '@/hooks/usePillIndicator'
+import { useQuery, keepPreviousData } from '@tanstack/react-query'
+import { createClient } from '@/lib/supabase/client'
 import type { BusinessBalance } from '@/components/expenses/types'
-import type { PriceList, SalesHistoryOperator } from '@/lib/types'
+import type { PriceList, SalesHistoryOperator, StatsKpis, StatsEvolution, SalesHeatmapCell } from '@/lib/types'
 import type { InventoryBrand } from '@/components/inventory/types'
 import type { SupportedCurrencyCode } from '@/lib/constants/currencies'
 import OnboardingWizard, { type OnboardingWizardProfile } from '@/components/onboarding/OnboardingWizard'
@@ -20,14 +21,41 @@ import { useFormatMoney } from '@/lib/context/CurrencyContext'
 import { DollarSign, Receipt, AlertTriangle } from 'lucide-react'
 import { ResponsiveContainer, BarChart, Bar, XAxis, Tooltip } from 'recharts'
 
-interface SaleRecord {
-  id: string
-  subtotal: number
-  discount: number
-  total: number
-  created_at: string
-  status: string | null
-  operator_name: string | null
+interface ChartPoint {
+  label: string
+  value: number          // ingresos del bucket
+  transactions: number   // cantidad de ventas del bucket
+}
+
+interface DashboardOverview {
+  kpis: StatsKpis | null
+  balance: BusinessBalance | null
+  chart: ChartPoint[]
+}
+
+const EMPTY_BALANCE: BusinessBalance = {
+  income: 0, expenses: 0, profit: 0, margin: 0, by_category: {}, period_from: '', period_to: '',
+}
+
+// "hoy" → barras por hora (8-20h) desde get_sales_heatmap (rango de un día)
+function buildHourlyChart(cells: SalesHeatmapCell[]): ChartPoint[] {
+  return Array.from({ length: 13 }, (_, i) => {
+    const hour = i + 8
+    let value = 0
+    let transactions = 0
+    for (const c of cells) {
+      if (c.hour === hour) {
+        value += c.net_revenue
+        transactions += c.sales_count
+      }
+    }
+    return { label: `${String(hour).padStart(2, '0')}:00`, value, transactions }
+  })
+}
+
+// resto de períodos → barras por día/semana desde get_stats_evolution
+function buildEvolutionChart(evo: StatsEvolution | null): ChartPoint[] {
+  return (evo?.data ?? []).map(p => ({ label: p.label, value: p.revenue, transactions: p.count }))
 }
 
 export interface RecentActivityRow {
@@ -51,12 +79,14 @@ interface ProductRecord {
 }
 
 interface Props {
-  sales: SaleRecord[]
   operators: SalesHistoryOperator[]
   products: ProductRecord[]
   businessId: string | null
   businessName: string
-  balance: BusinessBalance
+  // Seed server-side del período inicial ("hoy") para primer paint sin parpadeo
+  initialKpis: StatsKpis | null
+  initialBalance: BusinessBalance | null
+  initialHeatmap: SalesHeatmapCell[]
   onboardingProfile: OnboardingWizardProfile | null
   showOnboardingWizard: boolean
   initialBusinessSettings: Record<string, unknown> | null
@@ -87,12 +117,13 @@ function computeTrend(
 }
 
 export default function DashboardView({
-  sales,
   operators,
   products,
   businessId,
   businessName,
-  balance,
+  initialKpis,
+  initialBalance,
+  initialHeatmap,
   onboardingProfile,
   showOnboardingWizard,
   initialBusinessSettings,
@@ -105,11 +136,13 @@ export default function DashboardView({
   recentActivity,
 }: Props) {
   const fmt = useFormatMoney()
+  const supabase = useMemo(() => createClient(), [])
   const [period, setPeriod] = useState<DateRangePeriod>('hoy')
   const [showHistory, setShowHistory] = useState(false)
   const [fromDate, setFromDate] = useState('')
   const [toDate, setToDate] = useState('')
   const [suppressWizardLocal, setSuppressWizardLocal] = useState(false)
+  const [mountedAt] = useState(() => Date.now())
 
   useEffect(() => {
     if (!showOnboardingWizard) {
@@ -126,77 +159,65 @@ export default function DashboardView({
     [period, fromDate, toDate]
   )
 
-  const filteredSales = useMemo(() =>
-    sales.filter(s => {
-      const d = new Date(s.created_at)
-      return d >= periodRange.from && d <= periodRange.to
-    }),
-    [sales, periodRange])
+  const resolved = useMemo(
+    () => resolveDateRange(period, fromDate || undefined, toDate || undefined),
+    [period, fromDate, toDate]
+  )
+  const isInitialRange = period === 'hoy' && !fromDate && !toDate
 
-  const completedSales = useMemo(
-    () => filteredSales.filter(sale => isCompletedSale(sale.status)),
-    [filteredSales]
+  const initialOverview = useMemo<DashboardOverview>(
+    () => ({ kpis: initialKpis, balance: initialBalance, chart: buildHourlyChart(initialHeatmap) }),
+    [initialKpis, initialBalance, initialHeatmap]
   )
 
-  const totalSold = useMemo(
-    () => completedSales.reduce((acc, s) => acc + Number(s.total), 0),
-    [completedSales]
-  )
-  const transactions = completedSales.length
+  const { data: overviewData } = useQuery<DashboardOverview>({
+    queryKey: ['dashboard-overview', businessId, period, resolved.from, resolved.to],
+    enabled: !!businessId && !!resolved.from && !!resolved.to,
+    initialData: isInitialRange ? initialOverview : undefined,
+    initialDataUpdatedAt: isInitialRange ? mountedAt : undefined,
+    placeholderData: keepPreviousData,
+    staleTime: 30_000,
+    queryFn: async () => {
+      const [kpisRes, balanceRes, chartRes] = await Promise.all([
+        supabase.rpc('get_stats_kpis', { p_business_id: businessId, p_from: resolved.from, p_to: resolved.to }),
+        supabase.rpc('get_business_balance', { p_business_id: businessId, p_from: resolved.from, p_to: resolved.to }),
+        period === 'hoy'
+          ? supabase.rpc('get_sales_heatmap', { p_business_id: businessId, p_from: resolved.from, p_to: resolved.to })
+          : supabase.rpc('get_stats_evolution', { p_business_id: businessId, p_from: resolved.from, p_to: resolved.to }),
+      ])
+      return {
+        kpis: (kpisRes.data as unknown as StatsKpis | null),
+        balance: (balanceRes.data as unknown as BusinessBalance | null),
+        chart: period === 'hoy'
+          ? buildHourlyChart(((chartRes.data as unknown as { data: SalesHeatmapCell[] } | null)?.data) ?? [])
+          : buildEvolutionChart(chartRes.data as unknown as StatsEvolution | null),
+      }
+    },
+  })
+
+  const overview = overviewData ?? { kpis: null, balance: null, chart: [] }
+  const totalSold = overview.kpis?.total_revenue ?? 0
+  const transactions = overview.kpis?.total_sales ?? 0
+  const chartData = overview.chart
+  const balance = overview.balance ?? EMPTY_BALANCE
+
+  const trendLabel =
+    period === 'hoy' ? 'vs ayer'
+    : period === 'semana' ? 'vs semana anterior'
+    : period === 'mes' ? 'vs mes anterior'
+    : ''
+  const showTrend = trendLabel !== '' && overview.kpis !== null
+  const kpiTrends = {
+    total: computeTrend(totalSold, overview.kpis?.prev_total_revenue ?? 0, trendLabel, showTrend),
+    transactions: computeTrend(transactions, overview.kpis?.prev_total_sales ?? 0, trendLabel, showTrend),
+  }
+
   const lowStockProducts = useMemo(
     () => products.filter(p => p.is_active && p.stock <= p.min_stock),
     [products]
   )
   const outOfStockCount = useMemo(() => lowStockProducts.filter(p => p.stock <= 0).length, [lowStockProducts])
   const lowStockCount = useMemo(() => lowStockProducts.filter(p => p.stock > 0).length, [lowStockProducts])
-
-  // Vertical bar chart data
-  const chartData = useMemo(() => {
-    if (period === 'hoy') {
-      return Array.from({ length: 13 }, (_, i) => {
-        const hour = i + 8
-        const total = completedSales
-          .filter(s => new Date(s.created_at).getHours() === hour)
-          .reduce((acc, s) => acc + Number(s.total), 0)
-        return { label: `${hour.toString().padStart(2, '0')}:00`, value: total }
-      })
-    }
-    const groups = new Map<string, number>()
-    completedSales.forEach(s => {
-      const dayKey = s.created_at.slice(0, 10)
-      groups.set(dayKey, (groups.get(dayKey) ?? 0) + Number(s.total))
-    })
-    return [...groups.entries()]
-      .sort(([a], [b]) => a.localeCompare(b))
-      .map(([dayKey, value]) => ({
-        label: new Date(`${dayKey}T00:00:00`).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit' }),
-        value,
-      }))
-  }, [completedSales, period])
-
-  const transactionsChartData = useMemo(() => {
-    if (period === 'hoy') {
-      return Array.from({ length: 13 }, (_, i) => {
-        const hour = i + 8
-        const transactionsCount = completedSales
-          .filter(s => new Date(s.created_at).getHours() === hour)
-          .length
-        return { label: `${hour.toString().padStart(2, '0')}:00`, transactions: transactionsCount }
-      })
-    }
-    const groups = new Map<string, number>()
-    completedSales.forEach(s => {
-      const dayKey = s.created_at.slice(0, 10)
-      groups.set(dayKey, (groups.get(dayKey) ?? 0) + 1)
-    })
-    return [...groups.entries()]
-      .sort(([a], [b]) => a.localeCompare(b))
-      .map(([dayKey, transactionsCount]) => ({
-        label: new Date(`${dayKey}T00:00:00`).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit' }),
-        transactions: transactionsCount,
-      }))
-  }, [completedSales, period])
-
   const outOfStock = useMemo(
     () => lowStockProducts.filter(p => p.stock <= 0).sort((a, b) => a.stock - b.stock),
     [lowStockProducts]
@@ -205,37 +226,6 @@ export default function DashboardView({
     () => lowStockProducts.filter(p => p.stock > 0).sort((a, b) => a.stock - b.stock),
     [lowStockProducts]
   )
-
-  // Trend: previous period range for comparison
-  const prevPeriodRange = useMemo(() => {
-    if (period !== 'hoy' && period !== 'semana' && period !== 'mes') return null
-    return getPreviousPeriodRange(period, periodRange)
-  }, [period, periodRange])
-
-  const prevCompletedSales = useMemo(() => {
-    if (!prevPeriodRange) return []
-    return sales.filter(s => {
-      const d = new Date(s.created_at)
-      return d >= prevPeriodRange.from && d <= prevPeriodRange.to && isCompletedSale(s.status)
-    })
-  }, [sales, prevPeriodRange])
-
-  const trendLabel = useMemo(() =>
-    period === 'hoy' ? 'vs ayer'
-    : period === 'semana' ? 'vs semana anterior'
-    : period === 'mes' ? 'vs mes anterior'
-    : '',
-    [period]
-  )
-
-  const prevTotalSold = useMemo(
-    () => prevCompletedSales.reduce((acc, s) => acc + Number(s.total), 0),
-    [prevCompletedSales]
-  )
-  const kpiTrends = useMemo(() => ({
-    total: computeTrend(totalSold, prevTotalSold, trendLabel, prevPeriodRange !== null),
-    transactions: computeTrend(transactions, prevCompletedSales.length, trendLabel, prevPeriodRange !== null),
-  }), [totalSold, prevTotalSold, trendLabel, transactions, prevCompletedSales, prevPeriodRange])
 
   const historyRange = useMemo(
     () => ({ from: periodRange.from.toISOString(), to: periodRange.to.toISOString() }),
@@ -310,8 +300,10 @@ export default function DashboardView({
               to={toDate}
               onChange={(p, f, t) => {
                 setPeriod(p)
-                if (f) setFromDate(f)
-                if (t) setToDate(t)
+                // Limpiar from/to en períodos simples: resolveDateRange prioriza
+                // from/to explícitos, así que dejarlos stale rompería hoy/semana/mes.
+                setFromDate(periodNeedsCustomDates(p) ? (f ?? '') : '')
+                setToDate(periodNeedsCustomDates(p) ? (t ?? '') : '')
               }}
             />
 
@@ -375,7 +367,7 @@ export default function DashboardView({
                   label="Transacciones"
                   value={String(transactions)}
                   trend={trendLabel ? kpiTrends.transactions : undefined}
-                  sparkline={transactionsChartData.map(point => point.transactions)}
+                  sparkline={chartData.map(point => point.transactions)}
                 />
                 <KPICard
                   icon={<AlertTriangle size={16} />}
