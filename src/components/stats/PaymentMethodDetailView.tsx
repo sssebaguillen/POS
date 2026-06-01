@@ -52,15 +52,25 @@ export default function PaymentMethodDetailView({ rows, collections, period, fro
     [sortedCollections]
   )
 
-  const csvData = useMemo(() =>
-    sorted.map(r => ({
+  const csvData = useMemo(() => [
+    ...sorted.map(r => ({
+      Tipo: 'Venta',
       'Método de pago': normalizePayment(r.method),
       'Total cobrado': r.total_amount ?? 0,
       Transacciones: r.transactions ?? 0,
       'Ticket promedio': r.avg_ticket ?? 0,
       '% del total': grandTotal > 0 ? `${(((r.total_amount ?? 0) / grandTotal) * 100).toFixed(1)}%` : '0%',
     })),
-    [sorted, grandTotal]
+    ...sortedCollections.map(r => ({
+      Tipo: 'Cobro cuenta corriente',
+      'Método de pago': normalizePayment(r.method),
+      'Total cobrado': r.total_amount ?? 0,
+      Transacciones: r.transactions ?? 0,
+      'Ticket promedio': r.avg_ticket ?? 0,
+      '% del total': '—',
+    })),
+  ],
+    [sorted, sortedCollections, grandTotal]
   )
 
   return (
