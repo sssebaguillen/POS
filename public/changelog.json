@@ -1,6 +1,19 @@
 {
-  "current": "0.0.6.9",
+  "current": "0.0.6.10",
   "releases": [
+    {
+      "version": "0.0.6.10",
+      "kind": "feature",
+      "date": "2026-06-01",
+      "label": "Cobros de cuenta corriente",
+      "changes": [
+        { "type": "new", "text": "Ahora puedes cobrar la deuda de un cliente directamente desde la lista de Clientes: al lado del monto adeudado aparece un botón 'Cobrar' que abre una ventana para registrar el pago (monto y método: efectivo, tarjeta o transferencia). Antes el cobro estaba escondido dentro de 'Editar cliente'." },
+        { "type": "improvement", "text": "Los cobros de fiado en efectivo ahora se suman al efectivo esperado al cerrar la caja. Antes, si un cliente pagaba su deuda en efectivo durante el turno, ese dinero aparecía como sobrante en el arqueo; ahora el conteo cuadra." },
+        { "type": "new", "text": "En Estadísticas, dentro de Métodos de pago, los cobros de cuenta corriente ahora se muestran en una sección aparte, separados de las ventas. No se suman a los ingresos por ventas para no contar dos veces lo mismo (la venta a crédito ya se contó cuando la registraste). También se incluyen en el CSV exportado, identificados con su tipo." },
+        { "type": "fix", "text": "En Estadísticas, dentro de Métodos de pago, las columnas 'Transacciones' y 'Ticket promedio' mostraban siempre 0. Ahora muestran los valores reales de cada método." },
+        { "type": "improvement", "text": "Mejoras internas de rendimiento y seguridad en la base de datos: agregamos índices para que las consultas sean más rápidas a medida que crece tu negocio, y reorganizamos cómo se guardan los cobros de cuenta corriente para que los números siempre cuadren. Son cambios técnicos que no modifican tu forma de trabajar." }
+      ]
+    },
     {
       "version": "0.0.6.9",
       "kind": "patch",
