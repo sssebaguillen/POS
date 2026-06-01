@@ -98,7 +98,7 @@ export default async function DashboardPage() {
       supabase.from('brands').select('id, name').eq('business_id', businessId).order('name'),
       supabase
         .from('price_lists')
-        .select('id, business_id, name, description, multiplier, is_default, created_at')
+        .select('id, business_id, name, description, multiplier, created_at')
         .eq('business_id', businessId)
         .order('created_at'),
     ])

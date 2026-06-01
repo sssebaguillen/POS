@@ -518,14 +518,14 @@ export default function SalesHistoryPanel({ businessId, businessName, operatorId
                           <div className="flex gap-1.5">
                             <button
                               onClick={() => setEditingSale(detail)}
-                              className="text-[11px] px-2.5 py-1 rounded-lg border border-edge text-body bg-surface hover:bg-hover-bg transition-colors"
+                              className="text-[11px] px-2.5 py-1 rounded-lg border border-edge text-body bg-surface hover:bg-hover-bg transition-[transform,background-color,color] duration-150 ease-[var(--ease-out)] active:scale-[0.97]"
                             >
                               Editar
                             </button>
                             <button
                               onClick={() => requestDeleteSale(sale.id)}
                               disabled={isDeleting}
-                              className={`text-[11px] px-2.5 py-1 rounded-lg border transition-colors disabled:opacity-50 ${
+                              className={`text-[11px] px-2.5 py-1 rounded-lg border transition-[transform,background-color,border-color,color] duration-150 ease-[var(--ease-out)] active:scale-[0.97] disabled:opacity-50 ${
                                 confirmingDeleteId === sale.id
                                   ? 'border-red-400 bg-red-500 text-white dark:bg-red-600 dark:border-red-600 font-medium'
                                   : 'border-red-200 text-red-500 bg-surface hover:bg-red-50 dark:border-red-500/30 dark:text-red-400 dark:bg-transparent dark:hover:bg-red-500/10'
@@ -536,7 +536,7 @@ export default function SalesHistoryPanel({ businessId, businessName, operatorId
                           </div>
                           <button
                             onClick={() => handleOpenReceiptPreview(sale.id)}
-                            className="text-[11px] px-2.5 py-1 rounded-lg border border-edge text-body bg-surface hover:bg-hover-bg transition-colors inline-flex items-center gap-1.5"
+                            className="text-[11px] px-2.5 py-1 rounded-lg border border-edge text-body bg-surface hover:bg-hover-bg transition-[transform,background-color,color] duration-150 ease-[var(--ease-out)] active:scale-[0.97] inline-flex items-center gap-1.5"
                           >
                             <Printer size={12} />
                             Imprimir
@@ -579,7 +579,7 @@ export default function SalesHistoryPanel({ businessId, businessName, operatorId
           <div className="flex items-center gap-3 px-4 h-12 border-b border-edge shrink-0">
             <button
               onClick={() => setEditingSale(null)}
-              className="text-hint hover:text-body transition-colors text-sm"
+              className="text-hint hover:text-body transition-[transform,color] duration-150 ease-[var(--ease-out)] active:scale-[0.97] text-sm"
             >
               ← Volver
             </button>

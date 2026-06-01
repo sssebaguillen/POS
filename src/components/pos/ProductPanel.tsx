@@ -345,7 +345,7 @@ function VariantSelectorContent({
                   type="button"
                   onClick={() => selectValue(option.id, val.id)}
                   className={[
-                    'px-2 py-1 rounded-lg border text-xs font-medium transition-colors',
+                    'px-2 py-1 rounded-lg border text-xs font-medium transition-[transform,background-color,border-color,color] duration-150 ease-[var(--ease-out)] active:scale-[0.97]',
                     isSelected
                       ? 'bg-primary border-primary text-primary-foreground'
                       : 'border-edge text-body bg-surface hover:border-primary/50 hover:bg-primary/5',
@@ -381,7 +381,7 @@ function VariantSelectorContent({
         type="button"
         disabled={!allSelected}
         onClick={handleAdd}
-        className="w-full h-8 rounded-lg bg-primary text-primary-foreground text-xs font-semibold disabled:opacity-40 hover:bg-primary/90 transition-colors"
+        className="w-full h-8 rounded-lg bg-primary text-primary-foreground text-xs font-semibold disabled:opacity-40 hover:bg-primary/90 transition-[transform,background-color] duration-150 ease-[var(--ease-out)] active:scale-[0.97]"
       >
         Agregar al carrito
       </button>
@@ -451,7 +451,7 @@ const ProductCard = memo(function ProductCard({
       onClick={handleClick}
       aria-label={`${displayName}, ${formatMoney(displayPrice)}${stockLabel ? `, ${stockLabel}` : ''}`}
       className={[
-        'group relative text-left p-4 rounded-2xl border border-edge/60 bg-surface hover:border-primary/50 transition-all flex flex-col w-full',
+        'group relative text-left p-4 rounded-2xl border border-edge/60 bg-surface hover:border-primary/50 transition-[transform,border-color,box-shadow] duration-150 ease-[var(--ease-out)] active:scale-[0.97] flex flex-col w-full',
         product.has_variants ? 'ring-0 hover:ring-1 hover:ring-primary/20' : '',
       ].join(' ')}
     >

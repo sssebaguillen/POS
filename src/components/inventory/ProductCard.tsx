@@ -163,7 +163,7 @@ const ProductCard = memo(function ProductCard({
             <button
               type="button"
               onClick={() => onViewStock(product.id)}
-              className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-primary/10 dark:bg-primary/20 text-primary border border-primary/20 dark:border-primary/40 hover:bg-primary/20 dark:hover:bg-primary/30 transition-colors cursor-pointer touch-manipulation"
+              className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-primary/10 dark:bg-primary/20 text-primary border border-primary/20 dark:border-primary/40 hover:bg-primary/20 dark:hover:bg-primary/30 transition-[transform,background-color] duration-150 ease-[var(--ease-out)] active:scale-[0.97] cursor-pointer touch-manipulation"
               aria-label={`Ver stock de variantes de ${product.name}`}
             >
               {product.variant_count ?? '?'} variantes

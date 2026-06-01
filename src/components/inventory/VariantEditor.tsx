@@ -600,7 +600,7 @@ export default function VariantEditor({
                       <button
                         type="button"
                         onClick={() => removeOption(optIdx)}
-                        className="shrink-0 p-1.5 rounded-lg text-hint hover:text-destructive hover:bg-destructive/10 transition-colors"
+                        className="shrink-0 p-1.5 rounded-lg text-hint hover:text-destructive hover:bg-destructive/10 transition-[transform,background-color,color] duration-150 ease-[var(--ease-out)] active:scale-90"
                       >
                         <X className="w-3.5 h-3.5" />
                       </button>
@@ -618,7 +618,7 @@ export default function VariantEditor({
                         <button
                           type="button"
                           onClick={() => removeValue(optIdx, valIdx)}
-                          className="text-hint hover:text-destructive transition-colors ml-0.5"
+                          className="text-hint hover:text-destructive transition-[transform,color] duration-150 ease-[var(--ease-out)] active:scale-90 ml-0.5"
                         >
                           <X className="w-2.5 h-2.5" />
                         </button>
@@ -638,7 +638,7 @@ export default function VariantEditor({
                       <button
                         type="button"
                         onClick={() => addValue(optIdx)}
-                        className="h-7 w-7 rounded-full border border-dashed border-edge bg-surface text-hint hover:text-primary hover:border-primary flex items-center justify-center transition-colors"
+                        className="h-7 w-7 rounded-full border border-dashed border-edge bg-surface text-hint hover:text-primary hover:border-primary flex items-center justify-center transition-[transform,background-color,border-color,color] duration-150 ease-[var(--ease-out)] active:scale-90"
                       >
                         <Plus className="w-3 h-3" />
                       </button>
@@ -653,7 +653,7 @@ export default function VariantEditor({
             <button
               type="button"
               onClick={addOption}
-              className="flex items-center gap-1.5 text-xs text-primary/80 hover:text-primary transition-colors"
+              className="flex items-center gap-1.5 text-xs text-primary/80 hover:text-primary transition-[transform,color] duration-150 ease-[var(--ease-out)] active:scale-[0.97]"
             >
               <Plus className="w-3.5 h-3.5" />
               Agregar atributo
@@ -675,7 +675,7 @@ export default function VariantEditor({
                         key={val.value}
                         type="button"
                         onClick={() => setFilterPillValue(val.value)}
-                        className={`px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${
+                        className={`px-2.5 py-1 rounded-full text-xs font-medium transition-[transform,background-color,border-color,color] duration-150 ease-[var(--ease-out)] active:scale-[0.97] ${
                           activeFilterPill === val.value
                             ? 'bg-primary text-primary-foreground'
                             : 'bg-surface-alt border border-edge text-body hover:border-primary/50'
@@ -785,7 +785,7 @@ export default function VariantEditor({
                                       <button
                                         type="button"
                                         className={[
-                                          'inline-flex items-center gap-1.5 rounded-lg border px-2 py-1 text-xs font-medium transition-colors',
+                                          'inline-flex items-center gap-1.5 rounded-lg border px-2 py-1 text-xs font-medium transition-[transform,background-color,border-color,color] duration-150 ease-[var(--ease-out)] active:scale-[0.97]',
                                           openPopoverKey === key
                                             ? 'border-primary bg-primary/10 text-primary'
                                             : 'border-edge bg-surface hover:border-primary/50 text-body',

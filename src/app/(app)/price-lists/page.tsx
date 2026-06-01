@@ -14,7 +14,7 @@ export default async function PriceListsPage() {
   const [{ data: lists }, { data: products }, { data: variantCostRows }] = await Promise.all([
     supabase
       .from('price_lists')
-      .select('id, business_id, name, description, multiplier, is_default, created_at')
+      .select('id, business_id, name, description, multiplier, created_at')
       .eq('business_id', businessId)
       .order('created_at'),
     supabase

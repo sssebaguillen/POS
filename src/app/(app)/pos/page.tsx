@@ -34,9 +34,8 @@ export default async function POSPage() {
       .order('created_at', { ascending: false }),
     supabase
       .from('price_lists')
-      .select('id, business_id, name, description, multiplier, is_default, created_at')
+      .select('id, business_id, name, description, multiplier, created_at')
       .eq('business_id', businessId)
-      .order('is_default', { ascending: false })
       .order('name', { ascending: true }),
   ])
 

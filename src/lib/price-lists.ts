@@ -1,15 +1,13 @@
 import type { CartItem, PriceList, PriceListOverride } from '@/lib/types'
 
-// Resolution:
-// - variantPrice > 0           → variantPrice (precio explícito de variante manda)
-// - cost > 0                   → cost × multiplier (override producto > override marca > lista)
-// - cost = 0 && price > 0      → price
-// - cost = 0 && price = 0      → 0
+// Precio bajo una LISTA ALTERNATIVA (mayorista, etc.). La lista es un tier de markup
+// sobre el costo, así que acá el costo manda incluso para variantes:
+// - cost > 0  → cost × multiplier (override producto > override marca > lista)
+// - cost = 0  → precio explícito (de variante si existe, si no el base)
 //
-// Bajo la regla "precio explícito de variante manda" la lista de precios NO modifica
-// variantes con precio > 0. Si querés que la lista aplique a la variante, dejá su
-// price en 0 y un cost > 0 — entonces se calcula con el multiplicador (y los overrides
-// del producto/marca del padre, si existen).
+// Nota: el "precio de venta de todos los días" NO pasa por acá — ese es el precio base
+// (campo price / precio de variante) y se resuelve en resolveDisplayPrice cuando priceList
+// es null. La regla "variante con price>0 manda" aplica SOLO al precio base, no a los tiers.
 export function calculateProductPrice(
   cost: number,
   price: number,
@@ -19,8 +17,7 @@ export function calculateProductPrice(
   overrides: PriceListOverride[],
   variantPrice?: number | null
 ): number {
-  if (variantPrice != null && variantPrice > 0) return variantPrice
-  if (cost <= 0) return price
+  if (cost <= 0) return variantPrice != null && variantPrice > 0 ? variantPrice : price
   const listOverrides = overrides.filter(o => o.price_list_id === priceList.id)
   const productOverride = listOverrides.find(o => o.product_id === productId) ?? null
   const brandOverride =

@@ -433,7 +433,7 @@ const CartPanel = forwardRef<CartPanelHandle, Props>(function CartPanel({ busine
                                       <button
                                         type="button"
                                         onClick={() => startPriceEdit(itemId, effectivePrice, 'unit')}
-                                        className="text-faint hover:text-primary transition-colors"
+                                        className="text-faint hover:text-primary transition-[transform,color] duration-150 ease-[var(--ease-out)] active:scale-90"
                                         aria-label="Editar precio unitario"
                                       >
                                         <Pencil size={10} />
@@ -465,7 +465,7 @@ const CartPanel = forwardRef<CartPanelHandle, Props>(function CartPanel({ busine
                           <button
                             onClick={() => updateQuantity(itemId, item.quantity - 1)}
                             aria-label={`Quitar una unidad`}
-                            className="w-8 h-8 rounded-md bg-surface hover:bg-hover-bg flex items-center justify-center transition-colors"
+                            className="w-8 h-8 rounded-md bg-surface hover:bg-hover-bg flex items-center justify-center transition-[transform,background-color] duration-150 ease-[var(--ease-out)] active:scale-90"
                           >
                             <Minus size={12} />
                           </button>
@@ -475,7 +475,7 @@ const CartPanel = forwardRef<CartPanelHandle, Props>(function CartPanel({ busine
                           <button
                             onClick={() => updateQuantity(itemId, item.quantity + 1)}
                             aria-label={`Agregar una unidad`}
-                            className="w-8 h-8 rounded-md bg-surface hover:bg-hover-bg flex items-center justify-center transition-colors"
+                            className="w-8 h-8 rounded-md bg-surface hover:bg-hover-bg flex items-center justify-center transition-[transform,background-color] duration-150 ease-[var(--ease-out)] active:scale-90"
                           >
                             <Plus size={12} />
                           </button>
@@ -507,7 +507,7 @@ const CartPanel = forwardRef<CartPanelHandle, Props>(function CartPanel({ busine
                               <button
                                 type="button"
                                 onClick={() => startPriceEdit(itemId, effectiveTotal, 'total')}
-                                className="text-faint hover:text-primary transition-colors"
+                                className="text-faint hover:text-primary transition-[transform,color] duration-150 ease-[var(--ease-out)] active:scale-90"
                                 aria-label="Editar total"
                               >
                                 <Pencil size={12} />
@@ -516,7 +516,7 @@ const CartPanel = forwardRef<CartPanelHandle, Props>(function CartPanel({ busine
                             <button
                               onClick={() => removeItem(itemId)}
                               aria-label="Quitar del carrito"
-                              className="text-faint hover:text-red-400 transition-colors"
+                              className="text-faint hover:text-red-400 transition-[transform,color] duration-150 ease-[var(--ease-out)] active:scale-90"
                             >
                               <Trash2 size={12} />
                             </button>
@@ -564,7 +564,7 @@ const CartPanel = forwardRef<CartPanelHandle, Props>(function CartPanel({ busine
                 const canFreeLine = freeLineEnabled && permissions?.free_line === true
                 const count = 1 + (canDiscount ? 1 : 0) + (canFreeLine ? 1 : 0)
                 const cols = count === 3 ? 'grid-cols-3' : count === 2 ? 'grid-cols-2' : 'grid-cols-1'
-                const base = 'flex flex-col items-center justify-center gap-1 h-14 rounded-xl border text-[11px] font-medium transition-colors'
+                const base = 'flex flex-col items-center justify-center gap-1 h-14 rounded-xl border text-[11px] font-medium transition-[transform,background-color,border-color,color] duration-150 ease-[var(--ease-out)] active:scale-[0.97]'
                 const cls = (active: boolean) =>
                   `${base} ${active
                     ? 'border-primary bg-primary/10 text-[var(--primary-active-text)]'
@@ -621,7 +621,7 @@ const CartPanel = forwardRef<CartPanelHandle, Props>(function CartPanel({ busine
                     type="button"
                     onClick={() => setSelectedCustomer(null)}
                     aria-label="Quitar cliente asignado"
-                    className="text-hint hover:text-red-500 transition-colors shrink-0"
+                    className="text-hint hover:text-red-500 transition-[transform,color] duration-150 ease-[var(--ease-out)] active:scale-90 shrink-0"
                   >
                     <X size={14} />
                   </button>
@@ -678,7 +678,7 @@ const CartPanel = forwardRef<CartPanelHandle, Props>(function CartPanel({ busine
                       setCustomerQuery('')
                       setCustomerResults([])
                     }}
-                    className="h-8 w-full rounded-lg border border-edge text-sm text-hint hover:text-body hover:bg-hover-bg transition-colors"
+                    className="h-8 w-full rounded-lg border border-edge text-sm text-hint hover:text-body hover:bg-hover-bg transition-[transform,background-color,color] duration-150 ease-[var(--ease-out)] active:scale-[0.97]"
                   >
                     Cancelar
                   </button>
@@ -699,7 +699,7 @@ const CartPanel = forwardRef<CartPanelHandle, Props>(function CartPanel({ busine
                     type="button"
                     onClick={removeDiscount}
                     aria-label="Quitar descuento"
-                    className="text-hint hover:text-red-500 transition-colors shrink-0"
+                    className="text-hint hover:text-red-500 transition-[transform,color] duration-150 ease-[var(--ease-out)] active:scale-90 shrink-0"
                   >
                     <X size={14} />
                   </button>
@@ -714,14 +714,14 @@ const CartPanel = forwardRef<CartPanelHandle, Props>(function CartPanel({ busine
                     <button
                       type="button"
                       onClick={() => setDiscountForm(f => ({ ...f, mode: 'percent' }))}
-                      className={`h-7 rounded-md text-xs font-medium transition-colors ${discountForm.mode === 'percent' ? 'bg-primary text-primary-foreground' : 'text-hint hover:text-body'}`}
+                      className={`h-7 rounded-md text-xs font-medium transition-[transform,background-color,color] duration-150 ease-[var(--ease-out)] active:scale-[0.97] ${discountForm.mode === 'percent' ? 'bg-primary text-primary-foreground' : 'text-hint hover:text-body'}`}
                     >
                       %
                     </button>
                     <button
                       type="button"
                       onClick={() => setDiscountForm(f => ({ ...f, mode: 'fixed' }))}
-                      className={`h-7 rounded-md text-xs font-medium transition-colors ${discountForm.mode === 'fixed' ? 'bg-primary text-primary-foreground' : 'text-hint hover:text-body'}`}
+                      className={`h-7 rounded-md text-xs font-medium transition-[transform,background-color,color] duration-150 ease-[var(--ease-out)] active:scale-[0.97] ${discountForm.mode === 'fixed' ? 'bg-primary text-primary-foreground' : 'text-hint hover:text-body'}`}
                     >
                       $
                     </button>
@@ -763,7 +763,7 @@ const CartPanel = forwardRef<CartPanelHandle, Props>(function CartPanel({ busine
                     <button
                       type="button"
                       onClick={() => setShowDiscountForm(false)}
-                      className="h-8 rounded-lg border border-edge text-sm text-hint hover:text-body hover:bg-hover-bg transition-colors"
+                      className="h-8 rounded-lg border border-edge text-sm text-hint hover:text-body hover:bg-hover-bg transition-[transform,background-color,color] duration-150 ease-[var(--ease-out)] active:scale-[0.97]"
                     >
                       Cancelar
                     </button>
@@ -771,7 +771,7 @@ const CartPanel = forwardRef<CartPanelHandle, Props>(function CartPanel({ busine
                       type="button"
                       onClick={applyDiscount}
                       disabled={!discountForm.value || parseFloat(discountForm.value) <= 0}
-                      className="h-8 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-40"
+                      className="h-8 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-[transform,background-color] duration-150 ease-[var(--ease-out)] active:scale-[0.97] disabled:opacity-40"
                     >
                       Aplicar
                     </button>
@@ -833,7 +833,7 @@ const CartPanel = forwardRef<CartPanelHandle, Props>(function CartPanel({ busine
                     <button
                       type="button"
                       onClick={() => { setShowFreeLineForm(false); setFreeLineForm({ description: '', price: '', quantity: '1' }) }}
-                      className="h-8 rounded-lg border border-edge text-sm text-hint hover:text-body hover:bg-hover-bg transition-colors"
+                      className="h-8 rounded-lg border border-edge text-sm text-hint hover:text-body hover:bg-hover-bg transition-[transform,background-color,color] duration-150 ease-[var(--ease-out)] active:scale-[0.97]"
                     >
                       Cancelar
                     </button>
@@ -841,7 +841,7 @@ const CartPanel = forwardRef<CartPanelHandle, Props>(function CartPanel({ busine
                       type="button"
                       onClick={handleAddFreeLine}
                       disabled={!freeLineForm.description.trim() || !freeLineForm.price}
-                      className="h-8 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-40"
+                      className="h-8 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-[transform,background-color] duration-150 ease-[var(--ease-out)] active:scale-[0.97] disabled:opacity-40"
                     >
                       Agregar
                     </button>
@@ -852,14 +852,14 @@ const CartPanel = forwardRef<CartPanelHandle, Props>(function CartPanel({ busine
               <div className="grid grid-cols-2 gap-2">
                 <Button
                   variant={isConfirmingClear ? 'destructive' : 'cancel'}
-                  className="h-10 rounded-xl text-sm font-medium transition-colors"
+                  className="h-10 rounded-xl text-sm font-medium"
                   disabled={isEmpty}
                   onClick={e => { handleCancelSale(); e.currentTarget.blur() }}
                 >
                   {isConfirmingClear ? '¿Vaciar carrito?' : 'Vaciar'}
                 </Button>
                 <Button
-                  className={`h-10 rounded-xl text-sm font-semibold text-primary-foreground transition-colors ${
+                  className={`h-10 rounded-xl text-sm font-semibold text-primary-foreground ${
                     hasStockWarning
                       ? 'bg-orange-500 hover:bg-orange-600'
                       : 'bg-primary hover:bg-primary/90'

@@ -128,7 +128,6 @@ export interface PriceList {
   name: string
   description: string | null
   multiplier: number
-  is_default: boolean
   created_at: string
 }
 

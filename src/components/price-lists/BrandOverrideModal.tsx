@@ -115,7 +115,7 @@ export default function BrandOverrideModal({
           <button
             type="button"
             onClick={handleClose}
-            className="p-1.5 rounded-lg hover:bg-hover-bg transition-colors text-hint"
+            className="p-1.5 rounded-lg hover:bg-hover-bg transition-[transform,background-color,color] duration-150 ease-[var(--ease-out)] active:scale-90 text-hint"
             aria-label="Cerrar modal"
           >
             <X className="w-4 h-4" />

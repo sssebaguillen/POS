@@ -224,7 +224,7 @@ export default function NewOperatorModal({
                   key={role}
                   type="button"
                   onClick={() => handleRoleSelect(role)}
-                  className={`flex-1 rounded-lg border px-3 py-2 text-sm font-medium transition-colors ${
+                  className={`flex-1 rounded-lg border px-3 py-2 text-sm font-medium transition-[transform,background-color,border-color,color] duration-150 ease-[var(--ease-out)] active:scale-[0.97] ${
                     baseRole === role
                       ? 'bg-primary text-primary-foreground border-primary'
                       : 'bg-transparent text-body border-edge hover:bg-hover-bg'
@@ -380,7 +380,7 @@ export default function NewOperatorModal({
           <h2 className="text-base font-semibold text-heading">Nuevo operario</h2>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg hover:bg-hover-bg transition-colors text-hint"
+            className="p-1.5 rounded-lg hover:bg-hover-bg transition-[transform,background-color,color] duration-150 ease-[var(--ease-out)] active:scale-90 text-hint"
             aria-label="Cerrar"
           >
             <X className="w-4 h-4" />

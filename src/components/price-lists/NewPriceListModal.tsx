@@ -15,7 +15,6 @@ interface NewPriceListModalProps {
   onClose: () => void
   businessId: string
   operatorId: string | null
-  hasDefault: boolean
   products: { id: string; name: string; price: number; cost: number; has_variants?: boolean }[]
   onCreated: (list: PriceList, newOverrides: { price_list_id: string; product_id: string; brand_id: null; multiplier: number }[]) => void
 }
@@ -25,7 +24,6 @@ export default function NewPriceListModal({
   onClose,
   businessId,
   operatorId,
-  hasDefault,
   products,
   onCreated,
 }: NewPriceListModalProps) {
@@ -107,7 +105,6 @@ export default function NewPriceListModal({
         p_name: name.trim(),
         p_description: description.trim() || null,
         p_multiplier: newMultiplier,
-        p_is_default: !hasDefault,
         p_overrides: overridesPayload,
       })
 
@@ -120,7 +117,6 @@ export default function NewPriceListModal({
           name: string
           description: string | null
           multiplier: number | string
-          is_default: boolean
           created_at: string
         }
         overrides?: { id: string; price_list_id: string; product_id: string; brand_id: string | null; multiplier: number | string }[]
@@ -148,7 +144,6 @@ export default function NewPriceListModal({
           name: createdList.name,
           description: createdList.description,
           multiplier: Number(createdList.multiplier),
-          is_default: createdList.is_default,
           created_at: createdList.created_at,
         },
         createdOverrides
@@ -280,7 +275,7 @@ export default function NewPriceListModal({
                 <button
                   type="button"
                   onClick={() => { setOverwriteManual(true); setError(null) }}
-                  className={`flex-1 rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors ${
+                  className={`flex-1 rounded-lg border px-3 py-1.5 text-xs font-medium transition-[transform,background-color,border-color,color] duration-150 ease-[var(--ease-out)] active:scale-[0.97] ${
                     overwriteManual === true
                       ? 'bg-amber-600 border-amber-600 text-white'
                       : 'border-amber-300 text-amber-700 hover:bg-amber-100 dark:border-amber-700 dark:text-amber-400 dark:hover:bg-amber-900/40'
@@ -291,7 +286,7 @@ export default function NewPriceListModal({
                 <button
                   type="button"
                   onClick={() => { setOverwriteManual(false); setError(null) }}
-                  className={`flex-1 rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors ${
+                  className={`flex-1 rounded-lg border px-3 py-1.5 text-xs font-medium transition-[transform,background-color,border-color,color] duration-150 ease-[var(--ease-out)] active:scale-[0.97] ${
                     overwriteManual === false
                       ? 'bg-amber-600 border-amber-600 text-white'
                       : 'border-amber-300 text-amber-700 hover:bg-amber-100 dark:border-amber-700 dark:text-amber-400 dark:hover:bg-amber-900/40'

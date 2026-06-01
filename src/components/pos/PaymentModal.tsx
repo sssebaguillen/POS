@@ -324,7 +324,7 @@ export default function PaymentModal({
                   {formatMoney(total)}
                 </p>
               </div>
-              <button onClick={onClose} className="text-hint hover:text-body transition-colors" type="button">
+              <button onClick={onClose} className="text-hint hover:text-body transition-[transform,color] duration-150 ease-[var(--ease-out)] active:scale-90" type="button">
                 <X size={20} />
               </button>
             </div>
@@ -346,7 +346,7 @@ export default function PaymentModal({
                             key={m.id}
                             onClick={() => handlePrimaryMethodChange(m.id)}
                             type="button"
-                            className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border text-sm font-medium transition-all ${
+                            className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border text-sm font-medium transition-[transform,background-color,border-color,color] duration-150 ease-[var(--ease-out)] active:scale-[0.97] ${
                               isSelected
                                 ? 'border-primary bg-primary text-primary-foreground'
                                 : 'border-edge text-body hover:border-primary/40'
@@ -405,7 +405,7 @@ export default function PaymentModal({
                       <button
                         type="button"
                         onClick={enterMixedMode}
-                        className="flex items-center gap-1.5 text-sm text-primary hover:bg-primary/8 transition-colors font-medium px-2 py-1 rounded-lg -ml-2"
+                        className="flex items-center gap-1.5 text-sm text-primary hover:bg-primary/8 transition-[transform,background-color] duration-150 ease-[var(--ease-out)] active:scale-[0.97] font-medium px-2 py-1 rounded-lg -ml-2"
                       >
                         <Plus size={15} />
                         Agregar método
@@ -451,7 +451,7 @@ export default function PaymentModal({
                         <button
                           type="button"
                           onClick={exitMixedMode}
-                          className="text-hint hover:text-red-500 transition-colors"
+                          className="text-hint hover:text-red-500 transition-[transform,color] duration-150 ease-[var(--ease-out)] active:scale-90"
                         >
                           <X size={14} />
                         </button>

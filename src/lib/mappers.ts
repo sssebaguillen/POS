@@ -17,7 +17,6 @@ export function normalizePriceList(row: {
   name: string
   description: string | null
   multiplier: number | string
-  is_default: boolean
   created_at: string
 }): PriceList {
   return {
@@ -26,7 +25,6 @@ export function normalizePriceList(row: {
     name: row.name,
     description: row.description,
     multiplier: Number(row.multiplier),
-    is_default: row.is_default,
     created_at: row.created_at,
   }
 }

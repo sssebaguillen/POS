@@ -145,8 +145,7 @@ export default function POSView({ products, businessId, businessName, freeLineEn
       .slice(0, TOP_FILTER_LIMIT)
   }, [products])
 
-  const defaultList = priceLists.find(pl => pl.is_default) ?? null
-  const [activePriceListId, setActivePriceListId] = useState<string | null>(defaultList?.id ?? null)
+  const [activePriceListId, setActivePriceListId] = useState<string | null>(null)
   const [listDropdownOpen, setListDropdownOpen] = useState(false)
   const listDropdownRef = useRef<HTMLDivElement>(null)
 
@@ -373,7 +372,7 @@ export default function POSView({ products, businessId, businessName, freeLineEn
       <header className="relative h-14 bg-surface border-b border-edge/60 flex items-center px-5 gap-4 shrink-0">
         <button
           onClick={toggle}
-          className="p-1.5 -ml-1 rounded-lg hover:bg-hover-bg transition-colors lg:hidden"
+          className="p-1.5 -ml-1 rounded-lg hover:bg-hover-bg transition-[transform,background-color] duration-150 ease-[var(--ease-out)] active:scale-90 lg:hidden"
           aria-label="Abrir menú"
         >
           <Menu size={20} className="text-body" />
@@ -429,7 +428,7 @@ export default function POSView({ products, businessId, businessName, freeLineEn
 
         <button
           onClick={() => setMobileSearchOpen(true)}
-          className="lg:hidden ml-auto p-1.5 rounded-lg hover:bg-hover-bg transition-colors"
+          className="lg:hidden ml-auto p-1.5 rounded-lg hover:bg-hover-bg transition-[transform,background-color] duration-150 ease-[var(--ease-out)] active:scale-90"
           aria-label="Buscar"
         >
           <Search size={20} className="text-body" />
@@ -441,18 +440,25 @@ export default function POSView({ products, businessId, businessName, freeLineEn
             onClick={() => canSelectList && priceLists.length > 0 && setListDropdownOpen(prev => !prev)}
             title={!canSelectList ? 'Solo operadores con permiso de stock pueden cambiar la lista de precios' : undefined}
             className={
-              'flex items-center gap-1.5 h-8 px-3 rounded-lg border border-edge text-sm font-medium transition-colors select-none ' +
+              'flex items-center gap-1.5 h-8 px-3 rounded-lg border border-edge text-sm font-medium transition-[transform,background-color,color] duration-150 ease-[var(--ease-out)] active:scale-[0.97] select-none ' +
               (canSelectList && priceLists.length > 0
                 ? 'hover:bg-hover-bg text-body'
                 : 'opacity-60 cursor-not-allowed text-subtle')
             }
           >
             <span className="text-hint text-xs hidden lg:inline">Lista:</span>
-            <span>{priceLists.length === 0 ? '—' : (activePriceList?.name ?? 'Sin lista')}</span>
+            <span>{priceLists.length === 0 ? '—' : (activePriceList?.name ?? 'Precio base')}</span>
             {canSelectList && priceLists.length > 0 && <ChevronDown size={14} className="text-hint" />}
           </button>
           {listDropdownOpen && priceLists.length > 0 && (
             <div className="absolute top-full right-0 mt-1 surface-elevated z-30 py-1 min-w-[180px] rounded-lg overflow-hidden">
+              <button
+                onClick={() => { setActivePriceListId(null); setListDropdownOpen(false) }}
+                className="w-full flex items-center justify-between px-3 py-2 text-sm text-body hover:bg-hover-bg transition-colors"
+              >
+                <span>Precio base</span>
+                {activePriceListId === null && <Check size={14} className="text-primary" />}
+              </button>
               {priceLists.map(pl => (
                 <button
                   key={pl.id}
@@ -471,7 +477,7 @@ export default function POSView({ products, businessId, businessName, freeLineEn
           {formatDate(new Date())}
         </span>
         <Button
-          className={`hidden lg:inline-flex h-9 px-4 rounded-lg text-sm font-semibold shrink-0 transition-colors ${
+          className={`hidden lg:inline-flex h-9 px-4 rounded-lg text-sm font-semibold shrink-0 ${
             confirmingNewSale
               ? 'bg-destructive hover:bg-destructive/90 text-destructive-foreground'
               : 'bg-primary hover:bg-primary/90 text-primary-foreground'
@@ -519,7 +525,7 @@ export default function POSView({ products, businessId, businessName, freeLineEn
               setMobileSearchOpen(false)
               setFilterValue(prev => ({ ...prev, search: '' }))
             }}
-            className="shrink-0 p-1.5 rounded-lg hover:bg-hover-bg transition-colors"
+            className="shrink-0 p-1.5 rounded-lg hover:bg-hover-bg transition-[transform,background-color] duration-150 ease-[var(--ease-out)] active:scale-90"
             aria-label="Cerrar búsqueda"
           >
             <X size={20} className="text-body" />

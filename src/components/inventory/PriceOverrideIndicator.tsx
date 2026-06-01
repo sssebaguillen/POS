@@ -93,7 +93,6 @@ export default function PriceOverrideIndicator({ selectedListIds, priceLists, on
                     </button>
                     <span className="text-xs text-body">
                       {list.name}
-                      {list.is_default && <span className="ml-1 text-hint">(predeterminada)</span>}
                     </span>
                   </label>
                 )

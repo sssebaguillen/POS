@@ -119,7 +119,7 @@ export default function ExpenseAttachmentUploader({ businessId, onUpload, onRemo
         <button
           type="button"
           onClick={() => { setLocalPreviewUrl(null); onRemove() }}
-          className="p-1 rounded-lg hover:bg-hover-bg transition-colors text-hint hover:text-destructive"
+          className="p-1 rounded-lg hover:bg-hover-bg transition-[transform,background-color,color] duration-150 ease-[var(--ease-out)] active:scale-90 text-hint hover:text-destructive"
         >
           <X size={16} />
         </button>

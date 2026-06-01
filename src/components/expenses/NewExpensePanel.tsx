@@ -179,7 +179,7 @@ export default function NewExpensePanel({
           <button
             type="button"
             onClick={onClose}
-            className="p-1.5 rounded-lg hover:bg-hover-bg transition-colors text-hint"
+            className="p-1.5 rounded-lg hover:bg-hover-bg transition-[transform,background-color,color] duration-150 ease-[var(--ease-out)] active:scale-90 text-hint"
           >
             <X size={18} />
           </button>

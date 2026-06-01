@@ -70,9 +70,9 @@ export default function NewProductModal({
   onSuccess,
   initialName,
 }: Props) {
-  const defaultPriceList = priceLists.find(pl => pl.is_default) ?? null
-  const defaultSelectedIds = (): Set<string> =>
-    new Set(defaultPriceList ? [defaultPriceList.id] : [])
+  // Precio base manual: no se ata a ninguna lista al crear. Las listas son tiers opt-in.
+  const defaultPriceList = null
+  const defaultSelectedIds = (): Set<string> => new Set<string>()
 
   const {
     form,
@@ -817,7 +817,7 @@ export default function NewProductModal({
           <button
             type="button"
             onClick={handleClose}
-            className="p-1.5 rounded-lg hover:bg-hover-bg transition-colors text-hint"
+            className="p-1.5 rounded-lg hover:bg-hover-bg transition-[transform,background-color,color] duration-150 ease-[var(--ease-out)] active:scale-90 text-hint"
             aria-label="Cerrar"
           >
             <X className="w-4 h-4" />

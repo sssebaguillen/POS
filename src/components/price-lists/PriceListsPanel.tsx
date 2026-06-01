@@ -23,7 +23,7 @@ import type { PriceList, PriceListOverride } from '@/lib/types'
 import type { PriceListProduct } from '@/components/price-lists/types'
 import type { PriceListExportItem } from '@/components/price-lists/ExportPriceListModal'
 import { calculateProductPrice, getMarginPercent } from '@/lib/price-lists'
-import { trackFeatureUsed, trackPriceListSwitched } from '@/lib/analytics'
+import { trackFeatureUsed } from '@/lib/analytics'
 import { useFormatMoney } from '@/lib/context/CurrencyContext'
 import { usePillIndicator } from '@/hooks/usePillIndicator'
 
@@ -73,7 +73,6 @@ export default function PriceListsPanel({
   const [overrideProductId, setOverrideProductId] = useState<string | null>(null)
   const [overrideBrandId, setOverrideBrandId] = useState<string | null>(null)
   const [showExportModal, setShowExportModal] = useState(false)
-  const [savingDefaultId, setSavingDefaultId] = useState<string | null>(null)
   const [crudError, setCrudError] = useState<string | null>(null)
   const [search, setSearch] = useState('')
   const [variantPreviewProductId, setVariantPreviewProductId] = useState<string | null>(null)
@@ -209,12 +208,7 @@ export default function PriceListsPanel({
     list: PriceList,
     newOverrides: { price_list_id: string; product_id: string; brand_id: null; multiplier: number }[]
   ) {
-    setLists(prev => {
-      const base = list.is_default
-        ? prev.map(l => ({ ...l, is_default: false }))
-        : prev
-      return [...base, list]
-    })
+    setLists(prev => [...prev, list])
 
     if (newOverrides.length > 0) {
       setOverrides(prev => [
@@ -305,33 +299,6 @@ export default function PriceListsPanel({
     setOverrideBrandId(null)
   }
 
-  async function makeDefault(listId: string) {
-    if (!businessId) {
-      setCrudError('No se encontró el negocio activo.')
-      return
-    }
-
-    setSavingDefaultId(listId)
-    setCrudError(null)
-
-    const { error } = await supabase.rpc('swap_default_price_list', {
-      p_operator_id: operatorId,
-      p_business_id: businessId,
-      p_price_list_id: listId,
-    })
-
-    if (error) {
-      console.error('swap_default_price_list:', error)
-      setCrudError('No se pudo cambiar la lista predeterminada. Intenta de nuevo.')
-      setSavingDefaultId(null)
-      return
-    }
-
-    setLists(prev => prev.map(list => ({ ...list, is_default: list.id === listId })))
-    trackPriceListSwitched()
-    setSavingDefaultId(null)
-  }
-
   return (
     <div className="flex flex-col h-full overflow-hidden">
       <PageHeader title="Listas de precios">
@@ -375,11 +342,6 @@ export default function PriceListsPanel({
                   className={`pill-tab whitespace-nowrap${isActive ? ' pill-tab-active' : ''}`}
                 >
                   {list.name}
-                  {list.is_default && (
-                    <span className="ml-1 rounded-full border border-primary/25 bg-primary/[0.07] px-1.5 py-0.5 text-[10px] font-medium text-primary">
-                      Predeterminada
-                    </span>
-                  )}
                 </button>
               )
             })}
@@ -452,18 +414,6 @@ export default function PriceListsPanel({
                 >
                   <Download size={14} />
                 </Button>
-                {!activeList.is_default && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="rounded-lg text-xs"
-                    onClick={() => void makeDefault(activeList.id)}
-                    disabled={readOnly || savingDefaultId === activeList.id || !businessId}
-                    title="Esta lista se aplicará automáticamente a las ventas nuevas en el POS"
-                  >
-                    {savingDefaultId === activeList.id ? 'Guardando...' : 'Predeterminar'}
-                  </Button>
-                )}
                 <Button
                   variant="outline"
                   size="sm"
@@ -496,7 +446,6 @@ export default function PriceListsPanel({
           onClose={() => setShowNewListModal(false)}
           businessId={businessId}
           operatorId={operatorId}
-          hasDefault={lists.some(l => l.is_default)}
           products={products}
           onCreated={handleCreated}
         />

@@ -148,7 +148,7 @@ export default function ExpenseAttachmentModal({ signedUrl, type, name, onClose 
           <button
             type="button"
             onClick={onClose}
-            className="p-1 rounded-lg hover:bg-hover-bg transition-colors text-hint hover:text-body"
+            className="p-1 rounded-lg hover:bg-hover-bg transition-[transform,background-color,color] duration-150 ease-[var(--ease-out)] active:scale-90 text-hint hover:text-body"
             title="Cerrar"
           >
             <X size={18} />

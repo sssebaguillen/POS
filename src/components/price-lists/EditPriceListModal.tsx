@@ -173,7 +173,6 @@ export default function EditPriceListModal({
           name: name.trim(),
           description: description.trim() || null,
           multiplier: newMultiplier,
-          is_default: list.is_default,
           created_at: list.created_at,
         }),
         upsertedOverrides,
@@ -226,7 +225,7 @@ export default function EditPriceListModal({
             <button
               type="button"
               onClick={handleClose}
-              className="p-1.5 rounded-lg hover:bg-hover-bg transition-colors text-hint"
+              className="p-1.5 rounded-lg hover:bg-hover-bg transition-[transform,background-color,color] duration-150 ease-[var(--ease-out)] active:scale-90 text-hint"
               aria-label="Cerrar modal"
             >
               <X className="w-4 h-4" />
@@ -332,7 +331,7 @@ export default function EditPriceListModal({
                   <button
                     type="button"
                     onClick={() => { setOverwriteManual(true); setError(null) }}
-                    className={`flex-1 rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors ${
+                    className={`flex-1 rounded-lg border px-3 py-1.5 text-xs font-medium transition-[transform,background-color,border-color,color] duration-150 ease-[var(--ease-out)] active:scale-[0.97] ${
                       overwriteManual === true
                         ? 'bg-amber-600 border-amber-600 text-white'
                         : 'border-amber-300 text-amber-700 hover:bg-amber-100 dark:border-amber-700 dark:text-amber-400 dark:hover:bg-amber-900/40'
@@ -343,7 +342,7 @@ export default function EditPriceListModal({
                   <button
                     type="button"
                     onClick={() => { setOverwriteManual(false); setError(null) }}
-                    className={`flex-1 rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors ${
+                    className={`flex-1 rounded-lg border px-3 py-1.5 text-xs font-medium transition-[transform,background-color,border-color,color] duration-150 ease-[var(--ease-out)] active:scale-[0.97] ${
                       overwriteManual === false
                         ? 'bg-amber-600 border-amber-600 text-white'
                         : 'border-amber-300 text-amber-700 hover:bg-amber-100 dark:border-amber-700 dark:text-amber-400 dark:hover:bg-amber-900/40'
