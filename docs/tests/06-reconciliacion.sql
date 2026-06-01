@@ -271,9 +271,11 @@ $$;
 
 -- =============================================================
 -- R7: arqueo de caja — efectivo esperado al cierre =
--- fondo de apertura + ventas en efectivo de la sesión.
--- ⚠️ VERIFICAR que la fórmula coincida con close_cash_session:
--- si el modelo contempla retiros/ingresos manuales de caja, ajustar.
+-- fondo de apertura + ventas en efectivo + cobros de fiado en efectivo.
+-- Desde Batch 2a (mig 20260601_03) close_cash_session suma los cobros de
+-- cuenta corriente en efectivo (customer_account_movements, type=payment,
+-- method=cash) atribuidos a la sesión. La fórmula debe reflejarlo.
+-- ⚠️ Si el modelo suma retiros/ingresos manuales de caja, ajustar.
 -- =============================================================
 DO $$
 DECLARE n int;
@@ -285,16 +287,23 @@ BEGIN
     WHERE p.method = 'cash' AND p.status = 'completed'
       AND s.status = 'completed' AND s.session_id IS NOT NULL
     GROUP BY s.session_id
+  ),
+  settle_in AS (
+    SELECT m.session_id, SUM(m.amount) settle_amt
+    FROM customer_account_movements m
+    WHERE m.type = 'payment' AND m.method = 'cash' AND m.session_id IS NOT NULL
+    GROUP BY m.session_id
   )
   SELECT COUNT(*) INTO n
   FROM cash_sessions cs
-  LEFT JOIN cash_in c ON c.session_id = cs.id
+  LEFT JOIN cash_in c    ON c.session_id  = cs.id
+  LEFT JOIN settle_in se ON se.session_id = cs.id
   WHERE cs.status = 'closed'
     AND cs.expected_amount IS NOT NULL
-    AND ABS(cs.expected_amount - (COALESCE(cs.opening_amount,0) + COALESCE(c.cash_amt,0))) > 0.01;
+    AND ABS(cs.expected_amount - (COALESCE(cs.opening_amount,0) + COALESCE(c.cash_amt,0) + COALESCE(se.settle_amt,0))) > 0.01;
 
-  PERFORM test_assert('R7 expected_amount = apertura + ventas cash', n = 0,
-    format('%s sesiones cerradas con expected != apertura+cash (¿retiros manuales?)', n));
+  PERFORM test_assert('R7 expected_amount = apertura + ventas cash + cobros cash', n = 0,
+    format('%s sesiones cerradas con expected != apertura+cash+cobros (¿retiros manuales?)', n));
 END;
 $$;
 
@@ -308,6 +317,10 @@ BEGIN
   SELECT COUNT(*) INTO n_si
   FROM sale_items si LEFT JOIN sales s ON s.id = si.sale_id WHERE s.id IS NULL;
 
+  -- Desde Batch 2a: payments.sale_id es NOT NULL (los cobros de fiado viven
+  -- en customer_account_movements, no en payments). Este check ahora detecta
+  -- huérfanos reales: pagos que apuntan a una venta inexistente (imposible con
+  -- el FK ON DELETE CASCADE, pero se valida como defensa en profundidad).
   SELECT COUNT(*) INTO n_pay
   FROM payments p LEFT JOIN sales s ON s.id = p.sale_id WHERE s.id IS NULL;
 

@@ -375,11 +375,12 @@ CREATE OR REPLACE FUNCTION "public"."close_cash_session"("p_session_id" "uuid", 
     SET "search_path" TO 'public', 'extensions'
     AS $$
 DECLARE
-  v_business_id    uuid;
-  v_cash_sales     numeric;
-  v_expected       numeric;
-  v_difference     numeric;
-  v_row            cash_sessions;
+  v_business_id      uuid;
+  v_cash_sales       numeric;
+  v_cash_settlements numeric;
+  v_expected         numeric;
+  v_difference       numeric;
+  v_row              cash_sessions;
 BEGIN
   v_business_id := get_business_id();
   IF v_business_id IS NULL THEN
@@ -402,7 +403,14 @@ BEGIN
     AND s.business_id = v_business_id
     AND p.method = 'cash';
 
-  v_expected   := v_row.opening_amount + v_cash_sales;
+  SELECT COALESCE(SUM(m.amount), 0) INTO v_cash_settlements
+  FROM customer_account_movements m
+  WHERE m.session_id = p_session_id
+    AND m.business_id = v_business_id
+    AND m.type = 'payment'
+    AND m.method = 'cash';
+
+  v_expected   := v_row.opening_amount + v_cash_sales + v_cash_settlements;
   v_difference := p_closing_amount - v_expected;
 
   UPDATE cash_sessions SET
@@ -432,11 +440,12 @@ BEGIN
   );
 
   RETURN jsonb_build_object(
-    'success',          true,
-    'session',          row_to_json(v_row),
-    'cash_sales',       v_cash_sales,
-    'expected_amount',  v_expected,
-    'difference',       v_difference
+    'success',           true,
+    'session',           row_to_json(v_row),
+    'cash_sales',        v_cash_sales,
+    'cash_settlements',  v_cash_settlements,
+    'expected_amount',   v_expected,
+    'difference',        v_difference
   );
 EXCEPTION WHEN OTHERS THEN
   RETURN jsonb_build_object('success', false, 'error', SQLERRM);
@@ -4221,6 +4230,7 @@ BEGIN
     'closed_by_name',  CASE WHEN cs.closed_by IS NULL THEN 'Dueño' ELSE cl.name END,
     'sales_count',     COALESCE(agg.sales_count, 0),
     'sales_total',     COALESCE(agg.sales_total, 0),
+    'cash_settlements', COALESCE(settle_agg.cash_settlements, 0),
     'payments_by_method', COALESCE(pay_agg.breakdown, '[]'::jsonb),
     'digital_balances', COALESCE(dig_agg.balances, '[]'::jsonb)
   ) INTO v_result
@@ -4232,6 +4242,12 @@ BEGIN
     FROM sales s
     WHERE s.session_id = cs.id AND s.business_id = v_business_id
   ) agg ON true
+  LEFT JOIN LATERAL (
+    SELECT COALESCE(SUM(m.amount), 0) AS cash_settlements
+    FROM customer_account_movements m
+    WHERE m.session_id = cs.id AND m.business_id = v_business_id
+      AND m.type = 'payment' AND m.method = 'cash'
+  ) settle_agg ON true
   LEFT JOIN LATERAL (
     SELECT jsonb_agg(jsonb_build_object('method', p.method, 'total', p.method_total) ORDER BY p.method_total DESC) AS breakdown
     FROM (
@@ -5159,6 +5175,7 @@ DECLARE
   v_actor_role   text;
   v_prev_balance numeric;
   v_next_balance numeric;
+  v_session_id   uuid;
 BEGIN
   v_business_id := get_business_id();
   IF v_business_id IS NULL THEN
@@ -5185,9 +5202,6 @@ BEGIN
     RAISE EXCEPTION 'El monto supera la deuda actual del cliente';
   END IF;
 
-  INSERT INTO payments (sale_id, method, amount, status)
-  VALUES (NULL, p_method, p_amount, 'completed');
-
   UPDATE customers
   SET credit_balance = v_prev_balance - p_amount
   WHERE id = p_customer_id;
@@ -5201,11 +5215,15 @@ BEGIN
     v_actor_role := 'owner';
   END IF;
 
+  SELECT id INTO v_session_id
+  FROM cash_sessions
+  WHERE business_id = v_business_id AND status = 'open';
+
   INSERT INTO customer_account_movements
-    (business_id, customer_id, type, amount, method, operator_id, balance_after)
+    (business_id, customer_id, type, amount, method, operator_id, balance_after, session_id)
   VALUES
     (v_business_id, p_customer_id, 'payment', p_amount, p_method,
-     CASE WHEN v_actor_role = 'owner' THEN NULL ELSE p_operator_id END, v_next_balance);
+     CASE WHEN v_actor_role = 'owner' THEN NULL ELSE p_operator_id END, v_next_balance, v_session_id);
 
   PERFORM log_audit_event(
     v_business_id,
@@ -7204,6 +7222,7 @@ CREATE TABLE IF NOT EXISTS "public"."customer_account_movements" (
     "balance_after" numeric NOT NULL,
     "notes" "text",
     "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "session_id" "uuid",
     CONSTRAINT "customer_account_movements_amount_check" CHECK (("amount" > (0)::numeric)),
     CONSTRAINT "customer_account_movements_method_check" CHECK (("method" = ANY (ARRAY['cash'::"text", 'card'::"text", 'transfer'::"text"]))),
     CONSTRAINT "customer_account_movements_type_check" CHECK (("type" = ANY (ARRAY['charge'::"text", 'payment'::"text", 'opening'::"text"])))
@@ -7359,7 +7378,7 @@ ALTER TABLE "public"."operators" OWNER TO "postgres";
 
 CREATE TABLE IF NOT EXISTS "public"."payments" (
     "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
-    "sale_id" "uuid",
+    "sale_id" "uuid" NOT NULL,
     "method" "text" NOT NULL,
     "amount" numeric(12,2) NOT NULL,
     "reference" "text",
@@ -7870,6 +7889,10 @@ CREATE INDEX "idx_cam_sale_id" ON "public"."customer_account_movements" USING "b
 
 
 
+CREATE INDEX "idx_cam_session_id" ON "public"."customer_account_movements" USING "btree" ("session_id");
+
+
+
 CREATE INDEX "idx_cash_sessions_business_id" ON "public"."cash_sessions" USING "btree" ("business_id");
 
 
@@ -8216,6 +8239,11 @@ ALTER TABLE ONLY "public"."customer_account_movements"
 
 ALTER TABLE ONLY "public"."customer_account_movements"
     ADD CONSTRAINT "customer_account_movements_sale_id_fkey" FOREIGN KEY ("sale_id") REFERENCES "public"."sales"("id") ON DELETE SET NULL;
+
+
+
+ALTER TABLE ONLY "public"."customer_account_movements"
+    ADD CONSTRAINT "customer_account_movements_session_id_fkey" FOREIGN KEY ("session_id") REFERENCES "public"."cash_sessions"("id") ON DELETE SET NULL;
 
 
 

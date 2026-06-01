@@ -69,24 +69,47 @@ Risk: low. Pure addition + a guarded edit to the two RPCs. The `create_sale_tran
 additive (one extra INSERT inside the existing credit branch) — needs careful review since it is the
 most load-bearing RPC.
 
-## Batch 2 — cutover (BEHAVIOR-CHANGING, needs decisions)
+## Decisions (resolved 2026-06-01)
 
-Open product decisions (D1–D3 below) gate this batch.
+- **D1 — Till: YES.** Cash cobros count toward the cash session's `expected_amount` (real cash in the
+  drawer). Card/transfer don't affect the till. Requires a `session_id` link on settlement movements.
+- **D2 — Stats: SEPARATE line.** Settlements appear as their own "Cobros de cuenta corriente"
+  collections line, **not merged** into the sales payment-mix — merging would double-count against the
+  existing `'credit'` revenue line (a credit sale is already booked as revenue under `'credit'` at sale time).
+- **D3 — Ledger only.** Settlements live solely in `customer_account_movements`; `payments.sale_id`
+  becomes `NOT NULL`. Add a unified `cash_inflows` view so till/stats read both sources cleanly.
 
-- Stop inserting settlement rows into `payments` (settlements live only in the ledger).
-- Migrate the 1 existing dev settlement payment row out of `payments` → ledger; then
-  `ALTER TABLE payments ALTER COLUMN sale_id SET NOT NULL` (no more NULLs ever).
-- Update readers per decisions:
-  - `close_cash_session` (D1): include cash settlements in `expected_amount`.
-  - `get_sales_by_payment_detail` (D2): include settlements (merged or separate line).
-- Update reconciliation: R8b tightens to "0 payments with sale_id NULL"; R7 updated for settlements.
+## Batch 2a — DONE (2026-06-01, mig 20260601_03)
 
-### Decisions needed before Batch 2
+D1 (till) + D3 (model) shipped. `payments.sale_id` is now `NOT NULL`; settlements live only in
+the ledger with `session_id`. `close_cash_session` + `get_session_summary` + `CloseSessionModal`
+all include cash settlements in the till's expected amount (the preview recomputes client-side, so
+all three had to change together). The single dev orphan settlement row was removed from `payments`
+first. Reconciliation R7 (now `apertura + ventas cash + cobros cash`) and R8b (now a true-orphan
+check) updated; R7/R10c/orphan checks all pass. **Dropped** the `cash_inflows` view — nothing reads
+it (no speculative infra). **Pending: Batch 2b (D2 stats line).**
 
-- **D1 — Till:** should a **cash** cobro de fiado count toward the cash session's expected amount?
-  (Real cash entered the drawer → almost certainly yes.)
-- **D2 — Stats:** should settlements appear in payment-method breakdowns? As a merged amount per
-  method, or a separate "Cobros de cuenta corriente" line? (Affects whether "revenue" mixes sales + collections.)
-- **D3 — payments.sale_id NOT NULL:** confirm we fully remove settlements from `payments`
-  (vs. keeping a typed `payments` row with `customer_id`/`session_id`). Recommended: full removal,
-  ledger is the single source for cuenta corriente.
+## Batch 2 — cutover plan (reference)
+
+Order matters; do it in one transaction where noted.
+
+1. **Ledger: add `session_id`** (`uuid REFERENCES cash_sessions ON DELETE SET NULL`) + FK index.
+   Only `payment` movements set it (the till only cares about cash collections).
+2. **`settle_customer_credit`:** (a) stop the `INSERT INTO payments (sale_id=NULL,...)`; (b) resolve the
+   open session for the business and store `session_id` on the `payment` movement. Settlement now lives
+   only in the ledger. (Lookup is safe: ≤1 open session per business, enforced by the unique partial index.)
+3. **Data cleanup (DEV ONLY):** delete the single `tienda de seba` orphan settlement row from `payments`
+   (net effect already captured in the ledger `opening` backfill + audit_log). Confirm 0 NULL-sale
+   payments remain, then `ALTER TABLE payments ALTER COLUMN sale_id SET NOT NULL`. (Same migration tx.)
+4. **`close_cash_session` (D1):** `expected = opening + cash_sales + cash_settlements`, where
+   `cash_settlements = Σ ledger payment movements for the session with method='cash'`.
+5. **`get_sales_by_payment_detail` + UI (D2):** return a separate `collections` section (Σ ledger
+   payment movements in range, by method); render as a distinct "Cobros de cuenta corriente" line in
+   `PaymentMethodDetailView` — never summed into the sales payment-mix.
+6. **`cash_inflows` view (D3):** union of sale-payments + ledger payment movements, for clean reads.
+7. **Reconciliation:** R8b tightens to "0 payments with `sale_id` NULL"; R7 updated to include cash
+   settlements; R10c stays.
+8. **schema.sql** kept in sync.
+
+Note: step 5 touches the frontend (`PaymentMethodDetailView` + the stats page). Could be split as Batch 2b
+if we want the backend cutover (1–4, 6–7) landed first.

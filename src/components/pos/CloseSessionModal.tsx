@@ -14,6 +14,7 @@ interface SessionSummary {
   opening_amount: number
   sales_count: number
   sales_total: number
+  cash_settlements: number
   payments_by_method: { method: string; total: number }[]
 }
 
@@ -58,10 +59,12 @@ export default function CloseSessionModal({ sessionId, operatorId, onClosed, onC
     return summary.payments_by_method.find(p => p.method === 'cash')?.total ?? 0
   }, [summary])
 
+  const cashFromSettlements = summary?.cash_settlements ?? 0
+
   const expectedInDrawer = useMemo(() => {
     if (!summary) return 0
-    return (summary.opening_amount ?? 0) + cashFromSales
-  }, [summary, cashFromSales])
+    return (summary.opening_amount ?? 0) + cashFromSales + cashFromSettlements
+  }, [summary, cashFromSales, cashFromSettlements])
 
   const counted = parseFloat(countedCash) || 0
   const difference = countedCash !== '' ? counted - expectedInDrawer : null
@@ -145,6 +148,12 @@ export default function CloseSessionModal({ sessionId, operatorId, onClosed, onC
                 <span className="text-muted-foreground">Ventas en efectivo</span>
                 <span>{formatMoney(cashFromSales)}</span>
               </div>
+              {cashFromSettlements > 0 && (
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Cobros en efectivo</span>
+                  <span>{formatMoney(cashFromSettlements)}</span>
+                </div>
+              )}
               <div className="flex justify-between font-semibold border-t border-border pt-1.5">
                 <span>Efectivo esperado</span>
                 <span>{formatMoney(expectedInDrawer)}</span>

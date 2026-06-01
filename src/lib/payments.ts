@@ -1,5 +1,5 @@
 import { PAYMENT_METHOD_LABELS, PAYMENT_METHODS, type PaymentMethod } from '@/lib/constants/domain'
-import { ACCENT_BAR, ACCENT_DOT, type AccentTone } from '@/lib/accent-colors'
+import { ACCENT_DOT, ACCENT_FILL, type AccentTone } from '@/lib/accent-colors'
 
 export { PAYMENT_METHOD_LABELS as PAYMENT_LABELS } from '@/lib/constants/domain'
 
@@ -16,7 +16,7 @@ export const PAYMENT_COLORS: Record<PaymentMethod, string> = Object.fromEntries(
 ) as Record<PaymentMethod, string>
 
 export const PAYMENT_BAR_COLORS: Record<PaymentMethod, string> = Object.fromEntries(
-  PAYMENT_METHODS.map(m => [m, ACCENT_BAR[PAYMENT_TONE[m]]])
+  PAYMENT_METHODS.map(m => [m, ACCENT_FILL[PAYMENT_TONE[m]]])
 ) as Record<PaymentMethod, string>
 
 export function isPaymentMethod(value: string | null): value is PaymentMethod {
