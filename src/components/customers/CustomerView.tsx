@@ -13,6 +13,7 @@ import { cn } from '@/lib/utils'
 import type { Customer } from '@/lib/types'
 import NewCustomerModal from './NewCustomerModal'
 import EditCustomerModal from './EditCustomerModal'
+import SettlePaymentModal from './SettlePaymentModal'
 
 type CreditFilter = 'all' | 'enabled' | 'disabled'
 
@@ -34,6 +35,7 @@ export default function CustomerView({ businessId, operatorId, initialCustomers 
   const [customers, setCustomers] = useState<Customer[]>(initialCustomers)
   const [showNewModal, setShowNewModal] = useState(false)
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null)
+  const [settlingCustomer, setSettlingCustomer] = useState<Customer | null>(null)
   const [search, setSearch] = useState('')
   const [creditFilter, setCreditFilter] = useState<CreditFilter>('all')
   const [deletingCustomer, setDeletingCustomer] = useState<Customer | null>(null)
@@ -89,6 +91,14 @@ export default function CustomerView({ businessId, operatorId, initialCustomers 
         .sort((a, b) => a.name.localeCompare(b.name, 'es'))
     )
     setEditingCustomer(null)
+    router.refresh()
+  }
+
+  function handleSettled(customerId: string, nextBalance: number) {
+    setCustomers(prev =>
+      prev.map(c => (c.id === customerId ? { ...c, credit_balance: nextBalance } : c))
+    )
+    setSettlingCustomer(null)
     router.refresh()
   }
 
@@ -184,8 +194,21 @@ export default function CustomerView({ businessId, operatorId, initialCustomers 
                             </span>
                           )}
                         </td>
-                        <td className={`px-4 py-3 text-right tabular-nums ${hasDebt ? 'text-destructive font-semibold' : 'text-hint'}`}>
-                          {formatMoney(customer.credit_balance)}
+                        <td className="px-4 py-3 text-right tabular-nums">
+                          <div className="flex items-center justify-end gap-2">
+                            <span className={hasDebt ? 'text-destructive font-semibold' : 'text-hint'}>
+                              {formatMoney(customer.credit_balance)}
+                            </span>
+                            {hasDebt && (
+                              <button
+                                type="button"
+                                onClick={() => setSettlingCustomer(customer)}
+                                className="rounded-full border border-primary/30 bg-primary/5 px-2.5 py-0.5 text-xs font-medium text-primary hover:bg-primary/10 transition-colors"
+                              >
+                                Cobrar
+                              </button>
+                            )}
+                          </div>
                         </td>
                         <td className={`px-4 py-3 text-right tabular-nums hidden md:table-cell ${hasLimit ? 'text-body' : 'text-hint'}`}>
                           {formatMoney(customer.credit_limit)}
@@ -235,6 +258,15 @@ export default function CustomerView({ businessId, operatorId, initialCustomers 
           customer={editingCustomer}
           operatorId={operatorId}
           onUpdated={handleUpdated}
+        />
+      )}
+
+      {settlingCustomer && (
+        <SettlePaymentModal
+          customer={settlingCustomer}
+          operatorId={operatorId}
+          onSettled={nb => handleSettled(settlingCustomer.id, nb)}
+          onClose={() => setSettlingCustomer(null)}
         />
       )}
 

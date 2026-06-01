@@ -7,14 +7,10 @@ import { Input } from '@/components/ui/input'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { X } from 'lucide-react'
 import { formatMoney } from '@/lib/format'
-import { PAYMENT_LABELS } from '@/lib/payments'
 import Toast from '@/components/shared/Toast'
 import type { Customer } from '@/lib/types'
 import { ERR } from '@/lib/errors'
-
-type SettlementMethod = 'cash' | 'card' | 'transfer'
-
-const SETTLEMENT_METHODS: SettlementMethod[] = ['cash', 'card', 'transfer']
+import SettlePaymentForm from './SettlePaymentForm'
 
 interface Props {
   open: boolean
@@ -39,10 +35,6 @@ export default function EditCustomerModal({ open, onClose, customer, operatorId,
   const [saving, setSaving] = useState(false)
 
   const [showSettleForm, setShowSettleForm] = useState(false)
-  const [settleAmount, setSettleAmount] = useState('')
-  const [settleMethod, setSettleMethod] = useState<SettlementMethod>('cash')
-  const [settleError, setSettleError] = useState<string | null>(null)
-  const [settling, setSettling] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
 
   async function handleSave() {
@@ -88,47 +80,6 @@ export default function EditCustomerModal({ open, onClose, customer, operatorId,
     } finally {
       setSaving(false)
     }
-  }
-
-  async function handleSettlePayment() {
-    const parsedAmount = Number.parseFloat(settleAmount.replace(',', '.'))
-    if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
-      setSettleError('El monto debe ser mayor a 0.')
-      return
-    }
-    if (parsedAmount > creditBalance) {
-      setSettleError(`El monto no puede superar la deuda actual (${formatMoney(creditBalance)}).`)
-      return
-    }
-
-    setSettling(true)
-    setSettleError(null)
-
-    const { data, error: rpcError } = await supabase.rpc('settle_customer_credit', {
-      p_customer_id: customer.id,
-      p_amount: parsedAmount,
-      p_method: settleMethod,
-      p_operator_id: operatorId,
-    })
-
-    if (rpcError) {
-      setSettleError(rpcError.message ?? 'No se pudo registrar el pago.')
-      setSettling(false)
-      return
-    }
-
-    const nextBalance =
-      typeof data === 'number'
-        ? data
-        : Math.max(0, creditBalance - parsedAmount)
-
-    setCreditBalance(nextBalance)
-    setShowSettleForm(false)
-    setSettleAmount('')
-    setSettleMethod('cash')
-    setSettling(false)
-    setToast('Pago registrado correctamente.')
-    onUpdated({ ...customer, credit_balance: nextBalance })
   }
 
   if (!open) return null
@@ -260,75 +211,18 @@ export default function EditCustomerModal({ open, onClose, customer, operatorId,
                     Registrar pago
                   </Button>
                 ) : (
-                  <div className="space-y-2.5">
-                    <div className="space-y-1.5">
-                      <label className="text-label text-subtle">
-                        Monto <span className="text-destructive">*</span>
-                      </label>
-                      <Input
-                        type="number"
-                        inputMode="decimal"
-                        min="0"
-                        max={creditBalance}
-                        step="0.01"
-                        value={settleAmount}
-                        onChange={e => { setSettleAmount(e.target.value); setSettleError(null) }}
-                        placeholder="0.00"
-                        autoFocus
-                      />
-                    </div>
-
-                    <div className="space-y-1.5">
-                      <label className="text-label text-subtle">Método</label>
-                      <div className="flex gap-2">
-                        {SETTLEMENT_METHODS.map(method => (
-                          <button
-                            key={method}
-                            type="button"
-                            onClick={() => setSettleMethod(method)}
-                            className={`flex-1 rounded-lg border px-3 py-2 text-sm font-medium transition-colors ${
-                              settleMethod === method
-                                ? 'bg-primary text-primary-foreground border-primary'
-                                : 'bg-transparent text-body border-edge hover:bg-hover-bg'
-                            }`}
-                          >
-                            {PAYMENT_LABELS[method]}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
-                    {settleError && (
-                      <p className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
-                        {settleError}
-                      </p>
-                    )}
-
-                    <div className="flex items-center justify-end gap-2">
-                      <Button
-                        type="button"
-                        variant="cancel"
-                        onClick={() => {
-                          setShowSettleForm(false)
-                          setSettleAmount('')
-                          setSettleMethod('cash')
-                          setSettleError(null)
-                        }}
-                        disabled={settling}
-                        className="h-8 rounded-lg text-sm"
-                      >
-                        Cancelar
-                      </Button>
-                      <Button
-                        type="button"
-                        onClick={() => void handleSettlePayment()}
-                        disabled={settling || creditBalance <= 0}
-                        className="h-8 rounded-lg text-sm bg-primary hover:bg-primary/90 text-primary-foreground"
-                      >
-                        {settling ? 'Confirmando...' : 'Confirmar pago'}
-                      </Button>
-                    </div>
-                  </div>
+                  <SettlePaymentForm
+                    customerId={customer.id}
+                    creditBalance={creditBalance}
+                    operatorId={operatorId}
+                    onSettled={nextBalance => {
+                      setCreditBalance(nextBalance)
+                      setShowSettleForm(false)
+                      setToast('Pago registrado correctamente.')
+                      onUpdated({ ...customer, credit_balance: nextBalance })
+                    }}
+                    onCancel={() => setShowSettleForm(false)}
+                  />
                 )}
               </div>
             )}
