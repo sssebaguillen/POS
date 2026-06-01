@@ -11,6 +11,7 @@ export const AUDIT_ACTION_LABELS: Record<string, string> = {
   product_variants_updated:   'Variantes editadas',
   product_bulk_deleted:       'Productos eliminados (masivo)',
   product_bulk_status:        'Estado de productos (masivo)',
+  product_bulk_catalog:       'Catálogo de productos (masivo)',
   product_bulk_category:      'Categoría de productos (masivo)',
   product_bulk_brand:         'Marca de productos (masivo)',
   category_created:           'Categoría creada',

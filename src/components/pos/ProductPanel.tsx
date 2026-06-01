@@ -88,7 +88,7 @@ export default function ProductPanel({ products, search, activeFilter, activePri
           </p>
           <div className="flex gap-3 overflow-x-auto">
             {topSellers.map((product, index) => (
-              <div key={product.id} className="w-40 shrink-0">
+              <div key={product.id} className="w-40 shrink-0 flex">
                 <ProductCard
                   product={product}
                   index={index}

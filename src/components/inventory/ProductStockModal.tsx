@@ -6,6 +6,7 @@ import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { createClient } from '@/lib/supabase/client'
 import { useFormatMoney } from '@/lib/context/CurrencyContext'
+import { translateDbError } from '@/lib/errors'
 import type { ProductWithVariants, ProductVariant } from '@/lib/types'
 
 interface ProductStockModalProps {
@@ -29,7 +30,7 @@ export default function ProductStockModal({ productId, businessId, onClose }: Pr
       .then(({ data: rpc, error: rpcError }) => {
         if (cancelled) return
         if (rpcError) {
-          setError(rpcError.message)
+          setError(translateDbError(rpcError.message, 'No se pudo cargar el stock de variantes.'))
           setLoading(false)
           return
         }

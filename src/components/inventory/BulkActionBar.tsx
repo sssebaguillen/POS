@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Trash2, Power, PowerOff, Tag, Stamp } from 'lucide-react'
+import { Trash2, Power, PowerOff, Tag, Stamp, Globe, GlobeLock } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import SelectDropdown from '@/components/ui/SelectDropdown'
@@ -17,9 +17,12 @@ interface BulkActionBarProps {
   // Estado del primer producto seleccionado: define la acción del toggle.
   // Activo → "Discontinuar" (desactiva todos); inactivo → "Activar" (activa todos).
   firstSelectedActive: boolean
+  // Catálogo del primer seleccionado: en catálogo → "Quitar del catálogo"; fuera → "Agregar al catálogo".
+  firstSelectedInCatalog: boolean
   onDelete: () => void
   onActivate: () => void
   onDeactivate: () => void
+  onSetCatalog: (show: boolean) => void
   onChangeCategory: (categoryId: string | null) => void
   onChangeBrand: (brandId: string | null) => void
 }
@@ -30,9 +33,11 @@ export default function BulkActionBar({
   brands,
   loading,
   firstSelectedActive,
+  firstSelectedInCatalog,
   onDelete,
   onActivate,
   onDeactivate,
+  onSetCatalog,
   onChangeCategory,
   onChangeBrand,
 }: BulkActionBarProps) {
@@ -95,6 +100,17 @@ export default function BulkActionBar({
             >
               {firstSelectedActive ? <PowerOff size={13} /> : <Power size={13} />}
               <span className="hidden sm:inline">{firstSelectedActive ? 'Discontinuar' : 'Activar'}</span>
+            </Button>
+
+            <Button
+              variant="outline"
+              size="sm"
+              className="rounded-lg text-xs gap-1.5 hover:bg-surface-alt"
+              disabled={loading}
+              onClick={() => onSetCatalog(!firstSelectedInCatalog)}
+            >
+              {firstSelectedInCatalog ? <GlobeLock size={13} /> : <Globe size={13} />}
+              <span className="hidden sm:inline">{firstSelectedInCatalog ? 'Quitar del catálogo' : 'Agregar al catálogo'}</span>
             </Button>
 
             <Popover open={categoryOpen} onOpenChange={setCategoryOpen}>

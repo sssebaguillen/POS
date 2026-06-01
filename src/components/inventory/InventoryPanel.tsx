@@ -35,6 +35,7 @@ import Toast from '@/components/shared/Toast'
 import { useFormatMoney } from '@/lib/context/CurrencyContext'
 import { trackFeatureUsed } from '@/lib/analytics'
 import { fetchInventoryProducts } from '@/lib/inventory-products'
+import { translateDbError, ERR } from '@/lib/errors'
 import CategoryIconPreview from '@/components/inventory/CategoryIconPreview'
 
 const PAGE_SIZE = 60
@@ -125,7 +126,7 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
 
     const { data, error } = await fetchInventoryProducts(supabase, businessId)
     if (error || !data) {
-      setCrudError(error?.message ?? 'No se pudieron recargar los productos.')
+      setCrudError(translateDbError(error?.message ?? '', 'No se pudieron recargar los productos.'))
       return
     }
 
@@ -283,7 +284,7 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
         }
       }))
     } else {
-      setCrudError(error.message)
+      setCrudError(translateDbError(error.message, ERR.INV1))
     }
 
     setLoadingId(null)
@@ -401,7 +402,7 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
           if (rpcError || !result?.success) {
             // DB delete failed — restore the product and surface the error
             setProducts(prev => [product, ...prev])
-            setCrudError(result?.error ?? rpcError?.message ?? 'Error al eliminar el producto')
+            setCrudError(result?.error ?? translateDbError(rpcError?.message ?? '', ERR.INV1))
           } else if (result.soft_deleted) {
             // Product was soft-deleted (had completed sales) — bring it back to the list
             // as inactive so the user can still see it.
@@ -452,6 +453,10 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
 
   const handleToggleActive = useCallback((product: InventoryProduct) => {
     void updateProduct(product.id, { is_active: !product.is_active })
+  }, [updateProduct])
+
+  const handleToggleCatalog = useCallback((product: InventoryProduct) => {
+    void updateProduct(product.id, { show_in_catalog: !(product.show_in_catalog ?? true) })
   }, [updateProduct])
 
   const handleDeleteProduct = useCallback((product: InventoryProduct) => {
@@ -522,7 +527,7 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
     })
     setBulkLoading(false)
     if (error) {
-      showToast({ message: error.message })
+      showToast({ message: translateDbError(error.message, ERR.INV1) })
       return
     }
     const result = data as { deleted: number; discontinued: number } | null
@@ -559,7 +564,7 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
     })
     setBulkLoading(false)
     if (error) {
-      showToast({ message: error.message })
+      showToast({ message: translateDbError(error.message, ERR.INV1) })
       return
     }
     const result = data as { updated: number } | null
@@ -582,13 +587,35 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
     })
     setBulkLoading(false)
     if (error) {
-      showToast({ message: error.message })
+      showToast({ message: translateDbError(error.message, ERR.INV1) })
       return
     }
     const result = data as { updated: number } | null
     showToast({ message: `${result?.updated ?? 0} productos discontinuados` })
     // Update local state directly — do not rely on router.refresh()
     setProducts(prev => prev.map(p => ids.includes(p.id) ? { ...p, is_active: false } : p))
+    handleCloseSelection()
+    router.refresh()
+  }, [businessId, selectedIds, supabase, showToast, handleCloseSelection, router])
+
+  const handleBulkSetCatalog = useCallback(async (show: boolean) => {
+    if (!businessId) return
+    setBulkLoading(true)
+    const ids = Array.from(selectedIds)
+    const { data, error } = await supabase.rpc('bulk_set_product_catalog', {
+      p_operator_id: operatorId,
+      p_business_id: businessId,
+      p_product_ids: ids,
+      p_show_in_catalog: show,
+    })
+    setBulkLoading(false)
+    if (error) {
+      showToast({ message: translateDbError(error.message, ERR.INV1) })
+      return
+    }
+    const result = data as { updated: number } | null
+    showToast({ message: `${result?.updated ?? 0} productos ${show ? 'agregados al' : 'quitados del'} catálogo` })
+    setProducts(prev => prev.map(p => ids.includes(p.id) ? { ...p, show_in_catalog: show } : p))
     handleCloseSelection()
     router.refresh()
   }, [businessId, selectedIds, supabase, showToast, handleCloseSelection, router])
@@ -605,7 +632,7 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
     })
     setBulkLoading(false)
     if (error) {
-      showToast({ message: error.message })
+      showToast({ message: translateDbError(error.message, ERR.INV1) })
       return
     }
     const result = data as { updated: number } | null
@@ -634,7 +661,7 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
     })
     setBulkLoading(false)
     if (error) {
-      showToast({ message: error.message })
+      showToast({ message: translateDbError(error.message, ERR.INV1) })
       return
     }
     const result = data as { updated: number } | null
@@ -1077,6 +1104,7 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
                 onToggleSelect={handleToggleSelect}
                 onEdit={handleEdit}
                 onToggleActive={handleToggleActive}
+                onToggleCatalog={handleToggleCatalog}
                 onDelete={handleDeleteProduct}
                 onQuickCategory={handleQuickCategory}
                 onQuickBrand={handleQuickBrand}
@@ -1098,7 +1126,7 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
                       />
                     )}
                   </TableHead>
-                  <TableHead>Estado</TableHead>
+                  <TableHead className="text-center">En catálogo</TableHead>
                   <TableHead>Producto</TableHead>
                   <TableHead className="hidden xl:table-cell">Categoría</TableHead>
                   <TableHead className="hidden xl:table-cell">Marca</TableHead>
@@ -1121,6 +1149,7 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
                     onToggleSelect={handleToggleSelect}
                     onEdit={handleEdit}
                     onToggleActive={handleToggleActive}
+                    onToggleCatalog={handleToggleCatalog}
                     onDelete={handleDeleteProduct}
                     onQuickCategory={handleQuickCategory}
                     onQuickBrand={handleQuickBrand}
@@ -1241,7 +1270,7 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
             ])
             const refreshError = productsError ?? categoriesError ?? brandsError
             if (refreshError) {
-              setCrudError(refreshError.message)
+              setCrudError(translateDbError(refreshError.message, ERR.INV1))
               return
             }
             if (updatedProducts) {
@@ -1393,9 +1422,14 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
             const firstId = selectedIds.values().next().value
             return products.find(p => p.id === firstId)?.is_active ?? true
           })()}
+          firstSelectedInCatalog={(() => {
+            const firstId = selectedIds.values().next().value
+            return products.find(p => p.id === firstId)?.show_in_catalog ?? true
+          })()}
           onDelete={handleBulkDelete}
           onActivate={handleBulkActivate}
           onDeactivate={handleBulkDeactivate}
+          onSetCatalog={handleBulkSetCatalog}
           onChangeCategory={handleBulkChangeCategory}
           onChangeBrand={handleBulkChangeBrand}
         />

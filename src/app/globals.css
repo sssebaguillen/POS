@@ -43,6 +43,10 @@
 }
 
 :root {
+  /* Easing curves — stronger than the built-in CSS keywords */
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+
   /* Layout background — warm ivory */
   --app-bg: #fbfaf2;
   --background: #fbfaf2;
@@ -341,8 +345,8 @@
     @apply bg-faint;
     top: 4px;
     height: calc(100% - 8px);
-    transition: transform 200ms cubic-bezier(0.4, 0, 0.2, 1),
-                width 200ms cubic-bezier(0.4, 0, 0.2, 1);
+    transition: transform 180ms var(--ease-out),
+                width 180ms var(--ease-out);
     will-change: transform, width;
   }
 
@@ -361,7 +365,7 @@
     @apply inline-flex items-center bg-surface-alt rounded-full p-1 gap-0.5 relative;
   }
   .pill-tab {
-    @apply relative z-10 px-4 py-1.5 text-sm font-medium rounded-full text-body hover:text-heading whitespace-nowrap;
+    @apply relative z-10 px-4 py-1.5 text-sm font-medium rounded-full text-body hover:text-heading whitespace-nowrap transition-[transform,color] duration-150 ease-[var(--ease-out)] active:scale-[0.97];
   }
   .pill-tab-active {
     @apply text-heading font-semibold;
@@ -370,8 +374,8 @@
     @apply absolute bg-surface shadow-sm rounded-full pointer-events-none;
     top: 4px;
     height: calc(100% - 8px);
-    transition: transform 200ms cubic-bezier(0.4, 0, 0.2, 1),
-                width 200ms cubic-bezier(0.4, 0, 0.2, 1);
+    transition: transform 180ms var(--ease-out),
+                width 180ms var(--ease-out);
     will-change: transform, width;
   }
 
@@ -445,5 +449,19 @@
   }
   to {
     clip-path: circle(var(--vt-r, 150vmax) at var(--vt-x, 50%) var(--vt-y, 50%));
+  }
+}
+
+/* ───────────────────────────────────────────────────────────────────────────
+   Reduced motion — keep opacity/color fades, drop movement and scale.
+─────────────────────────────────────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }

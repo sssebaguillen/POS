@@ -132,7 +132,7 @@ export default function DateRangeFilter({ value, from, to, onChange, useUrlParam
                 <button
                   key={key}
                   onClick={() => handleQuarterSelect(key)}
-                  className="px-3 py-1.5 text-sm rounded-lg border border-border bg-surface hover:bg-muted transition-colors font-medium"
+                  className="px-3 py-1.5 text-sm rounded-lg border border-border bg-surface hover:bg-muted transition-[transform,background-color] duration-150 ease-[var(--ease-out)] active:scale-[0.97] font-medium"
                 >
                   {label}
                 </button>
@@ -165,7 +165,7 @@ export default function DateRangeFilter({ value, from, to, onChange, useUrlParam
           <DatePicker value={localTo} onChange={setLocalTo} className="w-40" />
           <button
             type="button"
-            className="px-3 py-1.5 text-sm rounded-lg border border-border bg-surface hover:bg-muted transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-3 py-1.5 text-sm rounded-lg border border-border bg-surface hover:bg-muted transition-[transform,background-color] duration-150 ease-[var(--ease-out)] active:scale-[0.97] font-medium disabled:opacity-50 disabled:cursor-not-allowed"
             disabled={!localFrom || !localTo}
             onClick={() => handleSelect('personalizado', localFrom, localTo)}
           >

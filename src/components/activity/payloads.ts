@@ -18,6 +18,7 @@ export type ActivityAction =
   | 'product_variants_updated'
   | 'product_bulk_deleted'
   | 'product_bulk_status'
+  | 'product_bulk_catalog'
   | 'product_bulk_category'
   | 'product_bulk_brand'
   | 'category_created'
@@ -145,6 +146,7 @@ export interface BulkData {
   products?: { id: string; name: string }[]
   count?: number
   is_active?: boolean
+  show_in_catalog?: boolean
   category_id?: string | null
   brand_id?: string | null
 }
@@ -274,6 +276,7 @@ export interface ActivityPayloadMap {
   product_variants_updated: { entityType: 'product'; oldData: ProductVariantsData | null; newData: ProductVariantsData | null }
   product_bulk_deleted: { entityType: 'product'; oldData: BulkData | null; newData: null }
   product_bulk_status: { entityType: 'product'; oldData: BulkData | null; newData: BulkData | null }
+  product_bulk_catalog: { entityType: 'product'; oldData: BulkData | null; newData: BulkData | null }
   product_bulk_category: { entityType: 'product'; oldData: BulkData | null; newData: BulkData | null }
   product_bulk_brand: { entityType: 'product'; oldData: BulkData | null; newData: BulkData | null }
   category_created: { entityType: 'category'; oldData: null; newData: CategoryData | null }
@@ -330,6 +333,7 @@ export const ACTIVITY_ACTIONS: ActivityAction[] = [
   'product_variants_updated',
   'product_bulk_deleted',
   'product_bulk_status',
+  'product_bulk_catalog',
   'product_bulk_category',
   'product_bulk_brand',
   'category_created',
@@ -376,6 +380,7 @@ export const ACTION_ENTITY_TYPES: Record<ActivityAction, ActivityEntityType> = {
   product_variants_updated: 'product',
   product_bulk_deleted: 'product',
   product_bulk_status: 'product',
+  product_bulk_catalog: 'product',
   product_bulk_category: 'product',
   product_bulk_brand: 'product',
   category_created: 'category',

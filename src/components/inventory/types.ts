@@ -55,6 +55,7 @@ export interface ProductCardProps {
   onToggleSelect: (id: string) => void
   onEdit: (product: InventoryProduct) => void
   onToggleActive: (product: InventoryProduct) => void
+  onToggleCatalog: (product: InventoryProduct) => void
   onDelete: (product: InventoryProduct) => void
   onQuickCategory: (product: InventoryProduct) => void
   onQuickBrand: (product: InventoryProduct) => void

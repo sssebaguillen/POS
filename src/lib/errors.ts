@@ -1,6 +1,29 @@
 export function translateDbError(message: string, fallback: string): string {
   const lower = message.toLowerCase()
 
+  // App-level RPC errors: our SECURITY DEFINER functions return coded strings
+  // (e.g. "403: Permisos de inventario insuficientes", "Contexto de negocio
+  // inválido", "Sesión inválida"). These carry internal detail and must never
+  // reach the user verbatim — map them to neutral, user-facing copy.
+  if (
+    lower.startsWith('403') ||
+    lower.includes('permisos de inventario') ||
+    lower.includes('permisos insuficientes') ||
+    lower.includes('sin permiso')
+  ) {
+    return 'No tienes permisos para realizar esta acción. Solicita acceso al dueño.'
+  }
+
+  if (
+    lower.includes('contexto de negocio') ||
+    lower.includes('sesión inválida') ||
+    lower.includes('sesion invalida') ||
+    lower.includes('sesión de operador') ||
+    lower.includes('sesion de operador')
+  ) {
+    return 'Tu sesión expiró o no es válida. Inicia sesión nuevamente.'
+  }
+
   if (lower.includes('sku') && (lower.includes('unique') || lower.includes('duplicate'))) {
     return 'Ya existe un producto con ese SKU en este negocio.'
   }

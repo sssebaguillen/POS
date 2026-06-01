@@ -177,18 +177,17 @@ export default function Sidebar({
         {(!collapsed || isMobileDrawer) && (
           <div className="min-w-0 py-3">
             <p className="truncate font-bold text-base text-heading font-display tracking-tight">{businessName}</p>
-            <p className="text-xs text-hint">powered by Pulsar</p>
           </div>
         )}
         {isMobileDrawer ? (
-          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-hover-bg transition-colors ml-auto">
+          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-hover-bg transition-[transform,background-color] duration-150 ease-[var(--ease-out)] active:scale-95 ml-auto">
             <X size={18} className="text-hint" />
           </button>
         ) : (
           <button
             onClick={e => { onToggleCollapse(); e.currentTarget.blur() }}
             className={cn(
-              'p-1.5 rounded-lg hover:bg-hover-bg transition-colors text-hint',
+              'p-1.5 rounded-lg hover:bg-hover-bg transition-[transform,background-color] duration-150 ease-[var(--ease-out)] active:scale-90 text-hint',
               collapsed && 'mx-auto'
             )}
             title={collapsed ? 'Expandir sidebar' : 'Colapsar sidebar'}
@@ -204,7 +203,7 @@ export default function Sidebar({
           <Link
             href="/dashboard"
             title="Retomar configuración inicial"
-            className="flex items-center justify-center p-2.5 rounded-xl text-primary hover:bg-primary/10 transition-colors mb-2"
+            className="flex items-center justify-center p-2.5 rounded-xl text-primary hover:bg-primary/10 transition-[transform,background-color,color] duration-150 ease-[var(--ease-out)] active:scale-90 mb-2"
           >
             <Sparkles size={18} />
           </Link>
@@ -252,9 +251,9 @@ export default function Sidebar({
                       onClick={isMobileDrawer ? onClose : undefined}
                       title={collapsed && !isMobileDrawer ? label : undefined}
                       className={cn(
-                        'relative flex items-center rounded-xl text-sm font-medium transition-colors',
+                        'relative flex items-center rounded-xl text-sm font-medium transition-[transform,background-color,color] duration-150 ease-[var(--ease-out)] active:scale-[0.98]',
                         collapsed && !isMobileDrawer
-                          ? 'justify-center p-2.5'
+                          ? 'justify-center p-2.5 active:scale-90'
                           : 'gap-3 px-3 py-2.5',
                         isActive
                           ? 'bg-primary/10 text-[var(--primary-active-text)] font-semibold'
@@ -279,9 +278,9 @@ export default function Sidebar({
                     rel="noopener noreferrer"
                     title={collapsed && !isMobileDrawer ? 'Catálogo online' : undefined}
                     className={cn(
-                      'flex items-center rounded-xl text-sm font-medium transition-colors text-body hover:bg-hover-bg hover:text-heading',
+                      'flex items-center rounded-xl text-sm font-medium transition-[transform,background-color,color] duration-150 ease-[var(--ease-out)] active:scale-[0.98] text-body hover:bg-hover-bg hover:text-heading',
                       collapsed && !isMobileDrawer
-                        ? 'justify-center p-2.5'
+                        ? 'justify-center p-2.5 active:scale-90'
                         : 'gap-3 px-3 py-2.5'
                     )}
                   >
@@ -322,9 +321,9 @@ export default function Sidebar({
             <button
               title={collapsed && !isMobileDrawer ? 'Cuenta' : undefined}
               className={cn(
-                'rounded-lg text-sm text-body hover:bg-hover-bg transition-colors',
+                'rounded-lg text-sm text-body hover:bg-hover-bg transition-[transform,background-color,color] duration-150 ease-[var(--ease-out)] active:scale-[0.98]',
                 collapsed && !isMobileDrawer
-                  ? 'p-2.5 flex items-center justify-center w-full'
+                  ? 'p-2.5 flex items-center justify-center w-full active:scale-90'
                   : 'flex items-center gap-2 px-3 py-2 text-left w-full'
               )}
               onClick={e => { router.push('/profile'); if (isMobileDrawer) onClose(); e.currentTarget.blur() }}
@@ -338,9 +337,9 @@ export default function Sidebar({
               onClick={handleLogout}
               title={collapsed && !isMobileDrawer ? 'Cerrar sesion' : undefined}
               className={cn(
-                'rounded-lg text-red-500 hover:bg-red-50 hover:text-red-700 transition-colors',
+                'rounded-lg text-red-500 hover:bg-red-50 hover:text-red-700 transition-[transform,background-color,color] duration-150 ease-[var(--ease-out)] active:scale-[0.98]',
                 collapsed && !isMobileDrawer
-                  ? 'p-2.5 flex items-center justify-center w-full'
+                  ? 'p-2.5 flex items-center justify-center w-full active:scale-90'
                   : 'flex items-center gap-2 px-3 py-2 text-left w-full text-sm'
               )}
               aria-label="Cerrar sesion"
@@ -358,9 +357,9 @@ export default function Sidebar({
             ? (themeForUi === 'dark' ? 'Modo claro' : 'Modo oscuro')
             : undefined}
           className={cn(
-            'rounded-lg hover:bg-hover-bg transition-colors text-subtle',
+            'rounded-lg hover:bg-hover-bg transition-[transform,background-color,color] duration-150 ease-[var(--ease-out)] active:scale-[0.98] text-subtle',
             collapsed && !isMobileDrawer
-              ? 'p-2.5 flex items-center justify-center w-full'
+              ? 'p-2.5 flex items-center justify-center w-full active:scale-90'
               : 'flex items-center gap-2 px-3 py-2 text-sm w-full'
           )}
         >
@@ -397,13 +396,13 @@ export default function Sidebar({
       {/* ── Mobile: full-screen drawer overlay (all screen sizes when open) ── */}
       {open && (
         <div
-          className="fixed inset-0 bg-black/25 z-40 transition-opacity lg:hidden"
+          className="fixed inset-0 bg-black/25 z-40 transition-opacity duration-200 ease-out lg:hidden"
           onClick={onClose}
         />
       )}
       <aside
         className={cn(
-          'fixed top-0 left-0 h-full surface-sidebar shadow-xl z-50 flex flex-col transition-transform duration-200 ease-in-out w-64 lg:hidden',
+          'fixed top-0 left-0 h-full surface-sidebar shadow-xl z-50 flex flex-col transition-transform duration-[280ms] ease-[var(--ease-drawer)] w-64 lg:hidden',
           open ? 'translate-x-0' : '-translate-x-full'
         )}
       >

@@ -179,6 +179,29 @@ export function BulkProductStatus({ oldData, newData, lookups }: BulkProductStat
   )
 }
 
+interface BulkProductCatalogProps {
+  oldData: BulkData | null
+  newData: BulkData | null
+  lookups: ActivityLookups
+}
+
+export function BulkProductCatalog({ oldData, newData }: BulkProductCatalogProps) {
+  const data = oldData ?? newData
+  const count = data?.count ?? data?.products?.length ?? data?.product_ids?.length ?? 0
+  const inCatalog = newData?.show_in_catalog === true
+
+  return (
+    <div className="space-y-2">
+      <p className="text-body">
+        <span className="font-semibold text-heading">{count}</span>{' '}
+        {count === 1 ? 'producto' : 'productos'}{' '}
+        <span className="font-semibold text-heading">{inCatalog ? 'agregado(s) al catálogo' : 'quitado(s) del catálogo'}</span>
+      </p>
+      <BulkProductList data={data} />
+    </div>
+  )
+}
+
 interface BulkProductCategoryProps {
   oldData: BulkData | null
   newData: BulkData | null

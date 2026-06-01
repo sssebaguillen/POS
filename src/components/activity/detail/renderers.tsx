@@ -54,6 +54,7 @@ import {
 } from '@/components/activity/detail/price-settings'
 import {
   BulkProductBrand,
+  BulkProductCatalog,
   BulkProductCategory,
   BulkProductDeleted,
   BulkProductStatus,
@@ -119,6 +120,13 @@ const ACTIVITY_DETAIL_RENDERERS: Record<ActivityAction, ActivityRenderer> = {
   ),
   product_bulk_status: ({ row, lookups }) => (
     <BulkProductStatus
+      oldData={readAuditPayload<BulkData>(row.old_data)}
+      newData={readAuditPayload<BulkData>(row.new_data)}
+      lookups={lookups}
+    />
+  ),
+  product_bulk_catalog: ({ row, lookups }) => (
+    <BulkProductCatalog
       oldData={readAuditPayload<BulkData>(row.old_data)}
       newData={readAuditPayload<BulkData>(row.new_data)}
       lookups={lookups}

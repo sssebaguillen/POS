@@ -1,10 +1,12 @@
+'use client'
+
 import Image from 'next/image'
-import { memo } from 'react'
-import { Package, Pencil } from 'lucide-react'
+import { memo, useState } from 'react'
+import { Package, Pencil, MoreVertical } from 'lucide-react'
 import { TableCell, TableRow } from '@/components/ui/table'
 import type { ProductCardProps } from '@/components/inventory/types'
-import { getStatus, statusConfig } from '@/components/inventory/types'
 import { SelectionCheckbox } from '@/components/inventory/ProductCard'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { useFormatMoney } from '@/lib/context/CurrencyContext'
 
 const ProductListRow = memo(function ProductListRow({
@@ -16,20 +18,32 @@ const ProductListRow = memo(function ProductListRow({
   onToggleSelect,
   onEdit,
   onToggleActive,
+  onToggleCatalog,
   onDelete,
   onQuickCategory,
   onQuickBrand,
   onViewStock,
 }: ProductCardProps) {
   const formatMoney = useFormatMoney()
-  const status = getStatus(product)
-  const config = statusConfig[status]
+  const [menuOpen, setMenuOpen] = useState(false)
+  const inCatalog = product.show_in_catalog ?? true
   const margin = product.cost > 0 && product.price > 0
     ? Math.round(((product.price - product.cost) / product.price) * 100)
     : 0
+  const loading = loadingId === product.id
+
+  // Stock health is independent of the active/discontinued lifecycle — it lives on
+  // the Stock column, while is_active lives on the Estado toggle.
+  const stockColor = product.has_variants
+    ? 'text-heading'
+    : product.stock <= 0
+      ? 'text-destructive'
+      : product.stock <= product.min_stock
+        ? 'text-amber-600 dark:text-amber-400'
+        : 'text-heading'
 
   return (
-    <TableRow className={`group/row ${isSelected ? 'bg-primary/5' : ''}`}>
+    <TableRow className={`group/row ${isSelected ? 'bg-primary/5' : ''} ${!product.is_active ? 'opacity-60' : ''}`}>
       <TableCell className={`w-10 ${selectionMode ? '' : '[@media(hover:none)]:opacity-40 opacity-0 group-hover/row:opacity-100'} transition-opacity`}>
         {!readOnly && (
           <SelectionCheckbox
@@ -38,10 +52,19 @@ const ProductListRow = memo(function ProductListRow({
           />
         )}
       </TableCell>
-      <TableCell>
-        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap ${config.badge}`}>
-          {config.label}
-        </span>
+
+      <TableCell className="text-center">
+        <button
+          type="button"
+          role="switch"
+          aria-checked={inCatalog}
+          aria-label={inCatalog ? `Ocultar ${product.name} del catálogo online` : `Mostrar ${product.name} en el catálogo online`}
+          onClick={readOnly ? undefined : () => onToggleCatalog(product)}
+          disabled={readOnly || loading}
+          className={`relative w-9 h-5 rounded-full transition-colors shrink-0 ${inCatalog ? 'bg-primary' : 'bg-input'} ${readOnly ? 'cursor-default' : 'cursor-pointer'} disabled:opacity-50`}
+        >
+          <span className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-card shadow-sm transition-transform ${inCatalog ? 'translate-x-4' : 'translate-x-0'}`} />
+        </button>
       </TableCell>
 
       <TableCell>
@@ -62,8 +85,15 @@ const ProductListRow = memo(function ProductListRow({
               <Package size={20} className="text-muted-foreground/40" />
             </div>
           )}
-          <div>
-            <p className="font-semibold text-sm text-heading">{product.name}</p>
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <p className="font-semibold text-sm text-heading truncate">{product.name}</p>
+              {!product.is_active && (
+                <span className="shrink-0 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
+                  Discontinuado
+                </span>
+              )}
+            </div>
             <p className="text-xs text-subtle xl:hidden">
               {product.categories?.name ?? '—'} · {product.brand?.name ?? '—'}
             </p>
@@ -72,27 +102,27 @@ const ProductListRow = memo(function ProductListRow({
       </TableCell>
 
       <TableCell className="hidden xl:table-cell">
-        <div
-          className={`group/cat flex items-center gap-1 min-w-0 rounded px-1 -mx-1 touch-manipulation ${!readOnly ? 'cursor-pointer hover:bg-primary/5' : ''}`}
+        <span
+          className={`group/cat inline-flex items-center gap-1 min-w-0 touch-manipulation ${!readOnly ? 'cursor-pointer' : ''}`}
           onClick={!readOnly ? () => onQuickCategory(product) : undefined}
         >
-          <p className="text-sm text-subtle truncate">{product.categories?.name ?? '—'}</p>
+          <span className="text-sm text-subtle truncate transition-colors group-hover/cat:text-heading">{product.categories?.name ?? '—'}</span>
           {!readOnly && (
-            <Pencil size={11} className="shrink-0 text-primary opacity-40 [@media(hover:hover)]:opacity-0 group-hover/cat:opacity-60 transition-opacity" />
+            <Pencil size={11} className="shrink-0 text-primary opacity-0 [@media(hover:none)]:opacity-50 group-hover/cat:opacity-100 transition-opacity" />
           )}
-        </div>
+        </span>
       </TableCell>
 
       <TableCell className="hidden xl:table-cell">
-        <div
-          className={`group/brand flex items-center gap-1 min-w-0 rounded px-1 -mx-1 touch-manipulation ${!readOnly ? 'cursor-pointer hover:bg-primary/5' : ''}`}
+        <span
+          className={`group/brand inline-flex items-center gap-1 min-w-0 touch-manipulation ${!readOnly ? 'cursor-pointer' : ''}`}
           onClick={!readOnly ? () => onQuickBrand(product) : undefined}
         >
-          <p className="text-sm text-subtle truncate">{product.brand?.name ?? '—'}</p>
+          <span className="text-sm text-subtle truncate transition-colors group-hover/brand:text-heading">{product.brand?.name ?? '—'}</span>
           {!readOnly && (
-            <Pencil size={11} className="shrink-0 text-primary opacity-40 [@media(hover:hover)]:opacity-0 group-hover/brand:opacity-60 transition-opacity" />
+            <Pencil size={11} className="shrink-0 text-primary opacity-0 [@media(hover:none)]:opacity-50 group-hover/brand:opacity-100 transition-opacity" />
           )}
-        </div>
+        </span>
       </TableCell>
 
       <TableCell className="text-right hidden md:table-cell">
@@ -121,7 +151,7 @@ const ProductListRow = memo(function ProductListRow({
           </button>
         ) : (
           <>
-            <p className="text-sm font-semibold text-heading tabular-nums">{product.stock} <span className="text-xs font-normal text-hint">uds</span></p>
+            <p className={`text-sm font-semibold tabular-nums ${stockColor}`}>{product.stock} <span className="text-xs font-normal text-hint">uds</span></p>
             <p className="text-xs text-hint">min. {product.min_stock}</p>
           </>
         )}
@@ -133,27 +163,41 @@ const ProductListRow = memo(function ProductListRow({
             <button
               type="button"
               onClick={() => onEdit(product)}
-              disabled={loadingId === product.id}
-              className="text-xs px-3 py-2 rounded-lg border border-edge text-body hover:bg-hover-bg transition-colors disabled:opacity-50 touch-manipulation"
+              disabled={loading}
+              className="text-xs px-3 py-2 rounded-lg border border-edge text-body hover:bg-hover-bg transition-[transform,background-color,color] duration-150 ease-[var(--ease-out)] active:scale-[0.97] disabled:opacity-50 touch-manipulation"
             >
               Editar
             </button>
-            <button
-              type="button"
-              onClick={() => onToggleActive(product)}
-              disabled={loadingId === product.id}
-              className="text-xs px-3 py-2 rounded-lg border border-edge text-body hover:bg-hover-bg transition-colors disabled:opacity-50 touch-manipulation"
-            >
-              {product.is_active ? 'Discontinuar' : 'Activar'}
-            </button>
-            <button
-              type="button"
-              onClick={() => onDelete(product)}
-              disabled={loadingId === product.id}
-              className="text-xs px-3 py-2 rounded-lg bg-destructive/10 text-destructive hover:bg-destructive/20 dark:bg-destructive/20 dark:hover:bg-destructive/30 transition-colors disabled:opacity-50 touch-manipulation"
-            >
-              Eliminar
-            </button>
+            <Popover open={menuOpen} onOpenChange={setMenuOpen}>
+              <PopoverTrigger asChild>
+                <button
+                  type="button"
+                  disabled={loading}
+                  aria-label="Más acciones"
+                  className="shrink-0 px-2 py-2 rounded-lg border border-edge text-subtle hover:bg-hover-bg hover:text-body transition-[transform,background-color,color] duration-150 ease-[var(--ease-out)] active:scale-[0.97] disabled:opacity-50 touch-manipulation"
+                >
+                  <MoreVertical size={16} />
+                </button>
+              </PopoverTrigger>
+              <PopoverContent align="end" className="w-44 p-1 gap-0.5" onClick={() => setMenuOpen(false)}>
+                <button
+                  type="button"
+                  onClick={() => onToggleActive(product)}
+                  disabled={loading}
+                  className="w-full text-left text-sm px-2.5 py-2 rounded-md text-body hover:bg-hover-bg transition-colors disabled:opacity-50 touch-manipulation"
+                >
+                  {product.is_active ? 'Discontinuar' : 'Activar'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onDelete(product)}
+                  disabled={loading}
+                  className="w-full text-left text-sm px-2.5 py-2 rounded-md text-destructive hover:bg-destructive/10 transition-colors disabled:opacity-50 touch-manipulation"
+                >
+                  Eliminar
+                </button>
+              </PopoverContent>
+            </Popover>
           </div>
         </TableCell>
       )}
