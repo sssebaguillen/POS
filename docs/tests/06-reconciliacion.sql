@@ -363,11 +363,40 @@ BEGIN
     AND p.stock <> COALESCE(m.net, 0);
   RAISE NOTICE 'INFO R10a: % productos (sin variantes) con stock != suma de movimientos. Esperable si hubo import/edición manual; revisar sólo si no debería haberla.', v_drift;
 
-  -- Cuenta corriente: NO existe tabla-libro append-only. credit_balance se
-  -- ajusta directo (sube al fiar, baja al cobrar) sin rastro reconciliable.
-  -- HALLAZGO: considerar un ledger de cuenta corriente para auditar saldos.
-  SELECT COUNT(*) INTO v_no_ledger FROM customers WHERE is_credit_enabled AND COALESCE(credit_balance,0) <> 0;
-  RAISE NOTICE 'INFO R10b: % clientes con saldo de cuenta corriente != 0 y sin ledger para reconciliar. Hallazgo: no hay auditoría de movimientos de fiado.', v_no_ledger;
+  -- Cuenta corriente: desde Batch 1 (mig 20260601_02) existe el ledger
+  -- customer_account_movements. credit_balance sigue siendo el cache
+  -- denormalizado; el ledger es la fuente append-only reconciliable (ver R10c).
+  -- Este informativo cuenta clientes con saldo != 0 que AÚN no tienen ledger
+  -- (sólo posible en negocios no backfilleados — el backfill cubrió dev).
+  SELECT COUNT(*) INTO v_no_ledger
+  FROM customers c
+  WHERE COALESCE(c.credit_balance,0) <> 0
+    AND NOT EXISTS (SELECT 1 FROM customer_account_movements m WHERE m.customer_id = c.id);
+  RAISE NOTICE 'INFO R10b: % clientes con saldo != 0 sin ninguna fila de ledger (pendiente de backfill).', v_no_ledger;
+END;
+$$;
+
+-- =============================================================
+-- R10c: el saldo del ledger (Σ con signo) = customers.credit_balance.
+-- charge/opening suman; payment resta. Invariante dura desde Batch 1.
+-- Sólo evalúa clientes que ya tienen ledger (excluye no-backfilleados → R10b).
+-- =============================================================
+DO $$
+DECLARE n int;
+BEGIN
+  WITH ledger AS (
+    SELECT customer_id,
+           SUM(CASE type WHEN 'payment' THEN -amount ELSE amount END) AS bal
+    FROM customer_account_movements
+    GROUP BY customer_id
+  )
+  SELECT COUNT(*) INTO n
+  FROM ledger l
+  JOIN customers c ON c.id = l.customer_id
+  WHERE ABS(COALESCE(c.credit_balance,0) - l.bal) > 0.01;
+
+  PERFORM test_assert('R10c ledger Σ con signo = customers.credit_balance', n = 0,
+    format('%s clientes con ledger != credit_balance', n));
 END;
 $$;
 
