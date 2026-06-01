@@ -28,11 +28,14 @@ export default async function PaymentMethodsDetailPage({
     p_to: to,
   })
 
-  const rows = (rpcResult as unknown as { data: PaymentMethodRow[] } | null)?.data ?? []
+  const result = rpcResult as unknown as { data: PaymentMethodRow[]; collections: PaymentMethodRow[] } | null
+  const rows = result?.data ?? []
+  const collections = result?.collections ?? []
 
   return (
     <PaymentMethodDetailView
       rows={rows}
+      collections={collections}
       period={period}
       from={params.from}
       to={params.to}

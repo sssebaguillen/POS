@@ -3974,7 +3974,8 @@ CREATE OR REPLACE FUNCTION "public"."get_sales_by_payment_detail"("p_business_id
     SET "search_path" TO 'public', 'extensions'
     AS $$
 DECLARE
-  v_rows jsonb;
+  v_rows        jsonb;
+  v_collections jsonb;
 BEGIN
   PERFORM public.assert_tenant(p_business_id);
 
@@ -3983,14 +3984,9 @@ BEGIN
   FROM (
     SELECT
       pay.method,
-      COUNT(DISTINCT s.id)::int   AS transaction_count,
-      SUM(pay.amount)             AS total_amount,
-      AVG(pay.amount)             AS avg_amount,
-      ROUND(
-        SUM(pay.amount) * 100.0 /
-        NULLIF(SUM(SUM(pay.amount)) OVER (), 0),
-        2
-      )                           AS percentage
+      COUNT(DISTINCT s.id)::int AS transactions,
+      SUM(pay.amount)           AS total_amount,
+      AVG(pay.amount)           AS avg_ticket
     FROM public.payments pay
     JOIN public.sales s ON s.id = pay.sale_id
     WHERE s.business_id = p_business_id
@@ -4002,8 +3998,26 @@ BEGIN
     ORDER BY total_amount DESC
   ) r;
 
+  SELECT jsonb_agg(row_to_json(c))
+  INTO v_collections
+  FROM (
+    SELECT
+      m.method,
+      COUNT(*)::int   AS transactions,
+      SUM(m.amount)   AS total_amount,
+      AVG(m.amount)   AS avg_ticket
+    FROM public.customer_account_movements m
+    WHERE m.business_id = p_business_id
+      AND m.type = 'payment'
+      AND (p_from IS NULL OR m.created_at::date >= p_from)
+      AND (p_to   IS NULL OR m.created_at::date <= p_to)
+    GROUP BY m.method
+    ORDER BY total_amount DESC
+  ) c;
+
   RETURN jsonb_build_object(
-    'data', COALESCE(v_rows, '[]'::jsonb)
+    'data',        COALESCE(v_rows, '[]'::jsonb),
+    'collections', COALESCE(v_collections, '[]'::jsonb)
   );
 END;
 $$;

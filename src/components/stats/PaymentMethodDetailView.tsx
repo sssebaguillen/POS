@@ -19,12 +19,13 @@ export interface PaymentMethodRow {
 
 interface Props {
   rows: PaymentMethodRow[]
+  collections: PaymentMethodRow[]
   period: string
   from?: string
   to?: string
 }
 
-export default function PaymentMethodDetailView({ rows, period, from, to }: Props) {
+export default function PaymentMethodDetailView({ rows, collections, period, from, to }: Props) {
   const router = useRouter()
   const pathname = usePathname()
   const formatMoney = useFormatMoney()
@@ -41,6 +42,15 @@ export default function PaymentMethodDetailView({ rows, period, from, to }: Prop
 
   const sorted = useMemo(() => [...rows].sort((a, b) => (b.total_amount ?? 0) - (a.total_amount ?? 0)), [rows])
   const grandTotal = useMemo(() => sorted.reduce((acc, r) => acc + (r.total_amount ?? 0), 0), [sorted])
+
+  const sortedCollections = useMemo(
+    () => [...collections].sort((a, b) => (b.total_amount ?? 0) - (a.total_amount ?? 0)),
+    [collections]
+  )
+  const collectionsTotal = useMemo(
+    () => sortedCollections.reduce((acc, r) => acc + (r.total_amount ?? 0), 0),
+    [sortedCollections]
+  )
 
   const csvData = useMemo(() =>
     sorted.map(r => ({
@@ -123,6 +133,48 @@ export default function PaymentMethodDetailView({ rows, period, from, to }: Prop
               </tbody>
             </table>
           </div>
+
+          {/* Cobros de cuenta corriente — separados de las ventas (no son ingreso nuevo:
+              la venta a crédito ya se contó como 'crédito' al momento de venderla) */}
+          {sortedCollections.length > 0 && (
+            <div className="space-y-2">
+              <div className="flex items-baseline justify-between px-1">
+                <h2 className="text-sm font-semibold text-heading">Cobros de cuenta corriente</h2>
+                <span className="text-xs text-hint">Total {formatMoney(collectionsTotal)}</span>
+              </div>
+              <p className="text-xs text-hint px-1">
+                Pagos de fiado recibidos en el período. No se suman a las ventas: el ingreso ya se
+                registró al momento de la venta a crédito.
+              </p>
+              <div className="surface-card overflow-hidden">
+                <table className="w-full text-sm">
+                  <thead className="border-b border-edge/60">
+                    <tr className="text-xs text-hint font-medium">
+                      <th className="text-left px-4 py-3">Método</th>
+                      <th className="text-right px-4 py-3">Total cobrado</th>
+                      <th className="text-right px-4 py-3 hidden md:table-cell">Cobros</th>
+                      <th className="text-right px-4 py-3 hidden md:table-cell">Promedio</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {sortedCollections.map(row => (
+                      <tr key={row.method} className="border-b border-edge/40 hover:bg-hover-bg transition-colors">
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-2">
+                            <span className={`h-2.5 w-2.5 rounded-full shrink-0 ${isPaymentMethod(row.method) ? PAYMENT_COLORS[row.method] : 'bg-hint'}`} />
+                            <span className="font-medium text-heading">{normalizePayment(row.method)}</span>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-right font-semibold">{formatMoney(row.total_amount ?? 0)}</td>
+                        <td className="px-4 py-3 text-right hidden md:table-cell">{row.transactions ?? 0}</td>
+                        <td className="px-4 py-3 text-right hidden md:table-cell">{formatMoney(row.avg_ticket ?? 0)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

@@ -79,6 +79,15 @@ most load-bearing RPC.
 - **D3 — Ledger only.** Settlements live solely in `customer_account_movements`; `payments.sale_id`
   becomes `NOT NULL`. Add a unified `cash_inflows` view so till/stats read both sources cleanly.
 
+## Batch 2b — DONE (2026-06-01, mig 20260601_04)
+
+D2 shipped. `get_sales_by_payment_detail` returns a separate `collections` key (credit
+settlements from the ledger, by method) — never merged into the sales payment-mix (avoids
+double-counting against the `'credit'` line). `PaymentMethodDetailView` renders a distinct
+"Cobros de cuenta corriente" section. Also fixed a pre-existing naming bug: the RPC returned
+`transaction_count`/`avg_amount` but the view read `transactions`/`avg_ticket` (blind cast hid it
+→ those two columns showed 0); renamed in the RPC so they populate. **Ledger work complete.**
+
 ## Batch 2a — DONE (2026-06-01, mig 20260601_03)
 
 D1 (till) + D3 (model) shipped. `payments.sale_id` is now `NOT NULL`; settlements live only in
