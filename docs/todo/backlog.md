@@ -169,7 +169,11 @@ El owner sube un PDF o foto de la factura de una compra recién hecha y el siste
   - Widget compacto en `/stats` con link `Ver detalle →`.
   - Componente reusable `SalesHeatmap` con prop `compact`.
 - **P11.3 parte 2** — pendiente: reporte mensual exportable en PDF (consolidado mes con KPIs, top productos, gastos, comparativa vs mes anterior).
-- **P12** — IA proactiva. Después de P11.3, usando el historial acumulado en `daily_snapshots` como contexto barato para el LLM.
+- **P12** — IA proactiva. Plan refinado en [`docs/todo/p12-ia-proactiva.md`](p12-ia-proactiva.md) (estado detallado + decisiones cerradas ahí). **Pasos 1–3 hechos y verificados en vivo** (2026-06-02):
+  - `ai_insights` (tabla + RLS + opt-in `businesses.settings.ai_insights_enabled`) — mig. `20260602_06`.
+  - Capa de datos: `get_margin_analysis` (mig. `05`); detectores **Nivel 1** `get_product_demand_shifts` / `get_payment_mix_shift` / `get_channel_signals` (mig. `07`); historial **Nivel 2** de producto `get_product_history` (mig. `08`). Todas con guard dual-use (`if auth.uid() not null → assert_tenant`, si no service_role/cron) + REVOKE anon. schema.sql en sync.
+  - **Próximo (paso 4) = el corazón no-probado:** assembler de dos niveles + Edge Function `generate-insights` + cron nocturno (patrón `refresh-daily-snapshots`), proveedor LLM abstraído + **anti-repetición** (alimentar últimos N insights + `status`). **Decisión abierta:** modelo/proveedor para beta (N1 barato con buen recall vs N2 fuerte, **sin BYOK**). Luego paso 5 (UI anclada por `surface`/`target`) y paso 6 (sonido + animación).
+  - **Diferidos a backlog** (incorporar cuando el loop ruede bien): detector N1 + historia N2 de **cliente** (RFM — regulares que se apagaron vs su cadencia + deuda/`credit_balance`) y de **proveedor** (cost creep: último `unit_cost` vs anterior por producto desde `expense_items`). Mismo patrón comparativo + guard dual-use.
 - **Segmentación POS vs Pedido online en stats/dashboard** (2026-05-29) — la columna `sales.source` (`'pos' | 'catalog'`) ya existe y se setea en la conversión de pedidos del catálogo, pero **no está expuesta** en la UI. Pendiente: filtros/segmentación por canal en `/stats`, `/dashboard` e historial de ventas, y en los export. El dato ya se captura desde ahora; solo falta mostrarlo. (Ventas históricas pre-columna quedan como `'pos'`; las que vinieron de pedidos siguen identificables vía `catalog_orders.sale_id`.)
 
 ---
