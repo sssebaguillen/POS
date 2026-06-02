@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { X, ChevronRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { createClient } from '@/lib/supabase/client'
 import { useFormatMoney } from '@/lib/context/CurrencyContext'
 import { PAYMENT_METHOD_LABELS } from '@/lib/constants/domain'
@@ -19,13 +20,14 @@ interface SessionSummary {
 }
 
 interface Props {
+  open: boolean
   sessionId: string
   operatorId: string | null
   onClosed: () => void
   onClose: () => void
 }
 
-export default function CloseSessionModal({ sessionId, operatorId, onClosed, onClose }: Props) {
+export default function CloseSessionModal({ open, sessionId, operatorId, onClosed, onClose }: Props) {
   const formatMoney = useFormatMoney()
   const supabase = useMemo(() => createClient(), [])
 
@@ -38,21 +40,20 @@ export default function CloseSessionModal({ sessionId, operatorId, onClosed, onC
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
+    if (!open) return
+    setStep('summary')
+    setCountedCash('')
+    setNotes('')
+    setError(null)
+    setSummary(null)
+    setLoadingSummary(true)
     async function fetchSummary() {
       const { data } = await supabase.rpc('get_session_summary', { p_session_id: sessionId })
       setSummary(data as SessionSummary | null)
       setLoadingSummary(false)
     }
     void fetchSummary()
-  }, [sessionId, supabase])
-
-  useEffect(() => {
-    function handleKeyDown(e: KeyboardEvent) {
-      if (e.key === 'Escape') onClose()
-    }
-    document.addEventListener('keydown', handleKeyDown)
-    return () => document.removeEventListener('keydown', handleKeyDown)
-  }, [onClose])
+  }, [open, sessionId, supabase])
 
   const cashFromSales = useMemo(() => {
     if (!summary) return 0
@@ -97,12 +98,16 @@ export default function CloseSessionModal({ sessionId, operatorId, onClosed, onC
   const diffDisplay = formatDiff(difference)
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/40 dark:bg-black/60 backdrop-blur-sm">
-      <div className="bg-background border border-border rounded-xl w-full max-w-md mx-4 shadow-xl">
+    <Dialog open={open} onOpenChange={next => { if (!next) onClose() }}>
+      <DialogContent
+        showCloseButton={false}
+        onOpenAutoFocus={e => e.preventDefault()}
+        className="block p-0 overflow-hidden sm:max-w-md"
+      >
         <div className="flex items-center justify-between p-5 border-b border-border">
-          <h2 className="text-base font-semibold">Cerrar caja</h2>
-          <button onClick={onClose} className="text-muted-foreground hover:text-foreground">
-            <X size={18} />
+          <DialogTitle className="text-base font-semibold">Cerrar caja</DialogTitle>
+          <button onClick={onClose} type="button" aria-label="Cerrar" className="p-1.5 rounded-lg hover:bg-hover-bg transition-[transform,background-color,color] duration-150 ease-[var(--ease-out)] active:scale-95 text-hint">
+            <X className="w-4 h-4" />
           </button>
         </div>
 
@@ -239,7 +244,7 @@ export default function CloseSessionModal({ sessionId, operatorId, onClosed, onC
             </div>
           </div>
         )}
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   )
 }

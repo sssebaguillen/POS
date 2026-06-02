@@ -383,12 +383,12 @@ export default function OnboardingWizard({
                     autoComplete="off"
                   />
                   {showCurrencyOptions && (
-                    <div className="absolute z-20 top-full mt-1 w-full max-h-52 overflow-y-auto rounded-xl border border-edge surface-elevated">
+                    <div className="absolute z-20 top-full mt-1 w-full max-h-52 overflow-y-auto rounded-xl border border-edge surface-elevated animate-in fade-in-0 zoom-in-95 origin-top duration-150">
                       {filteredCurrencies.map(c => (
                         <button
                           key={c.code}
                           type="button"
-                          className={`w-full px-3 py-2 text-left text-sm hover:bg-hover-bg transition-colors flex items-center justify-between ${
+                          className={`w-full px-3 py-2 text-left text-sm hover:bg-hover-bg transition-[transform,background-color] duration-150 ease-[var(--ease-out)] active:scale-[0.98] flex items-center justify-between ${
                             c.code === currencyCode ? 'text-primary font-medium' : 'text-body'
                           }`}
                           onMouseDown={ev => {
@@ -451,7 +451,7 @@ export default function OnboardingWizard({
                         onClick={() => setCategoryIcon(name)}
                         className={cn(
                           'flex flex-col items-center justify-center gap-1 rounded-lg p-1.5 h-14',
-                          'border transition-colors hover:bg-accent',
+                          'border transition-[transform,background-color,border-color] duration-150 ease-[var(--ease-out)] active:scale-95 hover:bg-accent',
                           categoryIcon === name ? 'border-2 bg-accent/60' : 'border-transparent',
                         )}
                         style={categoryIcon === name ? { borderColor: categoryColor } : undefined}

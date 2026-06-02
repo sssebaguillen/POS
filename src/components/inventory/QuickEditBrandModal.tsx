@@ -118,7 +118,7 @@ export default function QuickEditBrandModal({ open, product, brands, businessId,
                 className="h-9 text-sm rounded-lg"
                 autoFocus
               />
-              <button type="button" onClick={() => { setCreating(false); setNewName('') }} className="text-xs text-subtle hover:text-body transition-colors">
+              <button type="button" onClick={() => { setCreating(false); setNewName('') }} className="text-xs text-subtle hover:text-body transition-[transform,color] duration-150 ease-[var(--ease-out)] active:scale-[0.97]">
                 ← Volver a seleccionar
               </button>
             </>

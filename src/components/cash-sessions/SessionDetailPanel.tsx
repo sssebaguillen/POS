@@ -354,7 +354,7 @@ export default function SessionDetailPanel({ session, operatorId, onClose, onClo
                 {!showDigital ? (
                   <button
                     onClick={() => setShowDigital(true)}
-                    className="w-full text-sm text-primary border border-dashed border-primary/30 rounded-lg py-2.5 hover:bg-primary/5 transition-colors"
+                    className="w-full text-sm text-primary border border-dashed border-primary/30 rounded-lg py-2.5 hover:bg-primary/5 transition-[transform,background-color] duration-150 ease-[var(--ease-out)] active:scale-[0.98]"
                   >
                     Registrar saldo de cuentas
                   </button>

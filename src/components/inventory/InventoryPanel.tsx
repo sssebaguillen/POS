@@ -699,7 +699,7 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
         {/* Mobile search icon */}
         <button
           onClick={() => setMobileSearchOpen(true)}
-          className="inv:hidden p-1.5 rounded-lg hover:bg-hover-bg transition-colors"
+          className="inv:hidden p-1.5 rounded-lg hover:bg-hover-bg transition-[transform,background-color] duration-150 ease-[var(--ease-out)] active:scale-95"
           aria-label="Buscar"
         >
           <Search size={18} className="text-body" />
@@ -716,7 +716,7 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
               setIoDropdownOpen(prev => !prev)
               void rect
             }}
-            className="inv:hidden p-1.5 rounded-lg border border-edge hover:bg-surface-alt transition-colors"
+            className="inv:hidden p-1.5 rounded-lg border border-edge hover:bg-surface-alt transition-[transform,background-color] duration-150 ease-[var(--ease-out)] active:scale-95"
             aria-label="Importar / Exportar"
             title="Importar / Exportar"
           >
@@ -757,10 +757,10 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
                 minWidth: 140,
               }}
             >
-              <div className="rounded-lg border border-edge bg-surface shadow-lg py-1">
+              <div className="rounded-lg border border-edge bg-surface shadow-lg py-1 animate-in fade-in-0 zoom-in-95 origin-top-right duration-150">
                 <button
                   type="button"
-                  className="w-full text-left px-4 py-2.5 text-sm hover:bg-surface-alt transition-colors disabled:opacity-50 disabled:pointer-events-none"
+                  className="w-full text-left px-4 py-2.5 text-sm hover:bg-surface-alt transition-[transform,background-color] duration-150 ease-[var(--ease-out)] active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none"
                   disabled={readOnly || !businessId}
                   onClick={() => { setIoDropdownOpen(false); setShowImport(true); trackFeatureUsed('import_products') }}
                 >
@@ -768,7 +768,7 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
                 </button>
                 <button
                   type="button"
-                  className="w-full text-left px-4 py-2.5 text-sm hover:bg-surface-alt transition-colors disabled:opacity-50 disabled:pointer-events-none"
+                  className="w-full text-left px-4 py-2.5 text-sm hover:bg-surface-alt transition-[transform,background-color] duration-150 ease-[var(--ease-out)] active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none"
                   disabled={filtered.length === 0}
                   onClick={() => { setIoDropdownOpen(false); exportCsv() }}
                 >
@@ -787,7 +787,7 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
             ref={tagsButtonRef}
             type="button"
             onClick={() => setTagsDropdownOpen(prev => !prev)}
-            className="inv:hidden p-1.5 rounded-lg border border-edge hover:bg-surface-alt transition-colors"
+            className="inv:hidden p-1.5 rounded-lg border border-edge hover:bg-surface-alt transition-[transform,background-color] duration-150 ease-[var(--ease-out)] active:scale-95"
             disabled={readOnly}
             aria-label="Categorías / Marcas"
             title="Categorías / Marcas"
@@ -830,17 +830,17 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
                 minWidth: 140,
               }}
             >
-              <div className="rounded-lg border border-edge bg-surface shadow-lg py-1">
+              <div className="rounded-lg border border-edge bg-surface shadow-lg py-1 animate-in fade-in-0 zoom-in-95 origin-top-right duration-150">
                 <button
                   type="button"
-                  className="w-full text-left px-4 py-2.5 text-sm hover:bg-surface-alt transition-colors"
+                  className="w-full text-left px-4 py-2.5 text-sm hover:bg-surface-alt transition-[transform,background-color] duration-150 ease-[var(--ease-out)] active:scale-[0.98]"
                   onClick={() => { setTagsDropdownOpen(false); setShowCategories(true) }}
                 >
                   Categorías
                 </button>
                 <button
                   type="button"
-                  className="w-full text-left px-4 py-2.5 text-sm hover:bg-surface-alt transition-colors"
+                  className="w-full text-left px-4 py-2.5 text-sm hover:bg-surface-alt transition-[transform,background-color] duration-150 ease-[var(--ease-out)] active:scale-[0.98]"
                   onClick={() => { setTagsDropdownOpen(false); setShowBrands(true) }}
                 >
                   Marcas
@@ -892,7 +892,7 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
             setMobileSearchOpen(false)
             setFilterValue(prev => ({ ...prev, search: '' }))
           }}
-          className="shrink-0 p-1.5 rounded-lg hover:bg-hover-bg transition-colors"
+          className="shrink-0 p-1.5 rounded-lg hover:bg-hover-bg transition-[transform,background-color] duration-150 ease-[var(--ease-out)] active:scale-95"
           aria-label="Cerrar búsqueda"
         >
           <X size={20} className="text-body" />
@@ -910,7 +910,7 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
           <button
             type="button"
             onClick={() => setFilterOpen(true)}
-            className={`h-9 px-4 rounded-lg border text-sm font-medium flex items-center gap-2 transition-colors shrink-0 ${
+            className={`h-9 px-4 rounded-lg border text-sm font-medium flex items-center gap-2 transition-[transform,background-color,border-color,color] duration-150 ease-[var(--ease-out)] active:scale-[0.97] shrink-0 ${
               activeFilterCount > 0
                 ? 'border-primary bg-primary/5 text-primary'
                 : 'border-edge bg-surface text-body hover:bg-surface-alt'
@@ -971,7 +971,7 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
               ref={setViewRef('list')}
               type="button"
               onClick={() => { setViewMode('list'); document.cookie = 'inventory-view-mode=list; path=/; max-age=31536000; SameSite=Lax'; localStorage.setItem('inventory-view-mode', 'list') }}
-              className={`relative p-2 rounded-md transition-colors touch-manipulation ${viewMode === 'list' ? 'text-primary-foreground' : 'text-subtle hover:text-body'}`}
+              className={`relative p-2 rounded-md transition-[transform,color] duration-150 ease-[var(--ease-out)] active:scale-95 touch-manipulation ${viewMode === 'list' ? 'text-primary-foreground' : 'text-subtle hover:text-body'}`}
               title="Vista lista"
               aria-label="Vista lista"
             >
@@ -981,7 +981,7 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
               ref={setViewRef('grid')}
               type="button"
               onClick={() => { setViewMode('grid'); document.cookie = 'inventory-view-mode=grid; path=/; max-age=31536000; SameSite=Lax'; localStorage.setItem('inventory-view-mode', 'grid') }}
-              className={`relative p-2 rounded-md transition-colors touch-manipulation ${viewMode === 'grid' ? 'text-primary-foreground' : 'text-subtle hover:text-body'}`}
+              className={`relative p-2 rounded-md transition-[transform,color] duration-150 ease-[var(--ease-out)] active:scale-95 touch-manipulation ${viewMode === 'grid' ? 'text-primary-foreground' : 'text-subtle hover:text-body'}`}
               title="Vista cuadrícula"
               aria-label="Vista cuadrícula"
             >
@@ -1004,7 +1004,7 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
                   type="button"
                   onClick={() => setFilterValue(prev => ({ ...prev, categoryIds: prev.categoryIds.filter(c => c !== id) }))}
                   aria-label={`Quitar categoría ${cat.name}`}
-                  className="hover:opacity-70 transition-opacity p-0.5 -m-0.5 touch-manipulation"
+                  className="hover:opacity-70 transition-[transform,opacity] duration-150 ease-[var(--ease-out)] active:scale-95 p-0.5 -m-0.5 touch-manipulation"
                 >
                   <X size={11} />
                 </button>
@@ -1021,7 +1021,7 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
                   type="button"
                   onClick={() => setFilterValue(prev => ({ ...prev, brandIds: prev.brandIds.filter(b => b !== id) }))}
                   aria-label={`Quitar marca ${brand.name}`}
-                  className="hover:opacity-70 transition-opacity p-0.5 -m-0.5 touch-manipulation"
+                  className="hover:opacity-70 transition-[transform,opacity] duration-150 ease-[var(--ease-out)] active:scale-95 p-0.5 -m-0.5 touch-manipulation"
                 >
                   <X size={11} />
                 </button>
@@ -1031,7 +1031,7 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
           <button
             type="button"
             onClick={() => setFilterValue(prev => ({ ...prev, categoryIds: [], brandIds: [] }))}
-            className="text-xs text-subtle hover:text-body transition-colors"
+            className="text-xs text-subtle hover:text-body transition-[transform,color] duration-150 ease-[var(--ease-out)] active:scale-[0.97]"
           >
             Limpiar todo
           </button>
@@ -1057,7 +1057,7 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
           </div>
         ) : (
           <>
-            <div className="flex items-center gap-3 mb-3 pl-1">
+            <div className="flex items-center gap-3 mb-3 pl-1 min-h-7">
               {viewMode === 'grid' && !readOnly && (
                 <>
                   <SelectionCheckbox
@@ -1068,7 +1068,7 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
                   <button
                     type="button"
                     onClick={handleMasterToggle}
-                    className="text-xs font-medium text-subtle hover:text-body transition-colors touch-manipulation"
+                    className="text-xs font-medium text-subtle hover:text-body transition-[transform,color] duration-150 ease-[var(--ease-out)] active:scale-[0.97] touch-manipulation"
                   >
                     {allFilteredSelected ? 'Deseleccionar todos' : 'Seleccionar todos'}
                   </button>
@@ -1084,7 +1084,7 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
                 <button
                   type="button"
                   onClick={handleCloseSelection}
-                  className="inline-flex items-center gap-1 rounded-md border border-edge px-2 py-1 text-xs font-medium text-subtle hover:text-body hover:bg-surface-alt transition-colors touch-manipulation"
+                  className="inline-flex items-center gap-1 rounded-md border border-edge px-2 py-1 text-xs font-medium text-subtle hover:text-body hover:bg-surface-alt transition-[transform,background-color,color] duration-150 ease-[var(--ease-out)] active:scale-[0.97] touch-manipulation"
                 >
                   <X size={12} />
                   Cancelar selección
@@ -1376,7 +1376,7 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
               <button
                 type="button"
                 onClick={() => setFilterOpen(false)}
-                className="text-subtle hover:text-body transition-colors rounded-lg p-1 hover:bg-hover-bg"
+                className="text-subtle hover:text-body transition-[transform,background-color,color] duration-150 ease-[var(--ease-out)] active:scale-95 rounded-lg p-1 hover:bg-hover-bg"
               >
                 <X size={16} />
               </button>

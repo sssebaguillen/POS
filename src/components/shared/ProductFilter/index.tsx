@@ -166,7 +166,7 @@ function TopbarLayout({
   brands: FilterBrand[]
 }) {
   const chip = (active: boolean) =>
-    `shrink-0 rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
+    `shrink-0 rounded-full border px-3 py-1 text-xs font-medium transition-[transform,background-color,border-color,color] duration-150 ease-[var(--ease-out)] active:scale-[0.97] ${
       active
         ? 'bg-primary/10 text-primary border border-primary/20 dark:bg-primary/15 dark:border-primary/30'
         : 'text-muted-foreground hover:text-foreground hover:bg-muted border-transparent'
@@ -355,7 +355,7 @@ function SidebarLayout({
                     key={opt.field}
                     type="button"
                     onClick={() => handleSort(opt.field)}
-                    className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm text-left transition-colors ${
+                    className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm text-left transition-[transform,background-color,color] duration-150 ease-[var(--ease-out)] active:scale-[0.98] ${
                       isActive ? 'bg-primary/10 text-primary font-medium' : 'text-body hover:bg-hover-bg'
                     }`}
                   >
@@ -388,7 +388,7 @@ function SidebarLayout({
                     key={opt.value}
                     type="button"
                     onClick={() => onChange({ ...value, stockStatus: opt.value })}
-                    className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-left transition-colors ${
+                    className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-left transition-[transform,background-color,color] duration-150 ease-[var(--ease-out)] active:scale-[0.98] ${
                       isActive ? 'bg-primary/10 text-primary font-medium' : 'text-body hover:bg-hover-bg'
                     }`}
                   >
@@ -431,7 +431,7 @@ function SidebarLayout({
                     key={cat.id}
                     type="button"
                     onClick={() => toggleCategory(cat.id)}
-                    className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-left transition-colors ${
+                    className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-left transition-[transform,background-color,color] duration-150 ease-[var(--ease-out)] active:scale-[0.98] ${
                       checked ? 'bg-primary/10 text-primary font-medium' : 'text-body hover:bg-hover-bg'
                     }`}
                   >
@@ -477,7 +477,7 @@ function SidebarLayout({
                     key={brand.id}
                     type="button"
                     onClick={() => toggleBrand(brand.id)}
-                    className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-left transition-colors ${
+                    className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-left transition-[transform,background-color,color] duration-150 ease-[var(--ease-out)] active:scale-[0.98] ${
                       checked ? 'bg-primary/10 text-primary font-medium' : 'text-body hover:bg-hover-bg'
                     }`}
                   >
@@ -514,7 +514,7 @@ function SidebarLayout({
                             key={val}
                             type="button"
                             onClick={() => toggleVariantValue(group.typeId, val)}
-                            className={`px-2.5 py-1 rounded-full border text-xs font-medium transition-colors ${
+                            className={`px-2.5 py-1 rounded-full border text-xs font-medium transition-[transform,background-color,border-color,color] duration-150 ease-[var(--ease-out)] active:scale-[0.97] ${
                               active
                                 ? 'bg-primary/10 dark:bg-primary/20 text-primary border-primary/20 dark:border-primary/40'
                                 : 'border-edge text-body hover:bg-hover-bg'

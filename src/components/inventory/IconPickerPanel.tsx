@@ -80,7 +80,7 @@ export default function IconPickerPanel({
         <button
           type="button"
           onClick={onCancel}
-          className="p-1 rounded-md hover:bg-hover-bg transition-[transform,background-color,color] duration-150 ease-[var(--ease-out)] active:scale-90 text-hint text-base leading-none"
+          className="p-1 rounded-md hover:bg-hover-bg transition-[transform,background-color,color] duration-150 ease-[var(--ease-out)] active:scale-95 text-hint text-base leading-none"
           aria-label="Volver"
         >
           ←

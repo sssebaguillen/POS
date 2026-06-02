@@ -174,7 +174,7 @@ export default function QuickEditCategoryModal({ open, product, categories, busi
                   <button
                     type="button"
                     onClick={() => { setCreating(false); setView('main'); setNewName(''); setNewIcon('Tag'); setNewIconColor('#7a3e10') }}
-                    className="text-xs text-subtle hover:text-body transition-colors"
+                    className="text-xs text-subtle hover:text-body transition-[transform,color] duration-150 ease-[var(--ease-out)] active:scale-[0.97]"
                   >
                     ← Volver a seleccionar
                   </button>

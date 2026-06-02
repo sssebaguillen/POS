@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Mail, Printer, Send, Share2, X } from 'lucide-react'
 import ReceiptTemplate from '@/components/pos/ReceiptTemplate'
 import { Button } from '@/components/ui/button'
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { normalizePayment } from '@/lib/payments'
 import { useFormatMoney } from '@/lib/context/CurrencyContext'
 import { printReceiptEscPos, supportsWebSerial } from '@/lib/printer/escpos'
@@ -130,23 +131,24 @@ export default function ReceiptPreviewModal({ receipt, onClose, autoPrintOnOpen 
   }
 
   return (
-    <div className="fixed inset-0 bg-foreground/40 g-black/40 dark:bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="surface-elevated rounded-2xl w-full max-w-sm max-h-[calc(100vh-2rem)] flex flex-col overflow-hidden">
+    <Dialog open onOpenChange={next => { if (!next) onClose() }}>
+      <DialogContent showCloseButton={false} className="flex flex-col p-0 overflow-hidden max-h-[calc(100vh-2rem)]">
         <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain">
           <div className="p-5 space-y-4">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="text-base font-bold text-heading">Vista previa del ticket</p>
+                <DialogTitle className="text-base font-bold text-heading">Vista previa del ticket</DialogTitle>
                 <p className="text-sm text-subtle">
                   Podes imprimirlo, guardarlo como PDF o compartirlo.
                 </p>
               </div>
               <button
                 onClick={onClose}
-                className="text-hint hover:text-body transition-colors"
                 type="button"
+                aria-label="Cerrar"
+                className="p-1.5 rounded-lg hover:bg-hover-bg transition-[transform,background-color,color] duration-150 ease-[var(--ease-out)] active:scale-95 text-hint"
               >
-                <X size={20} />
+                <X className="w-4 h-4" />
               </button>
             </div>
 
@@ -232,7 +234,7 @@ export default function ReceiptPreviewModal({ receipt, onClose, autoPrintOnOpen 
             </div>
           </div>
         </div>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   )
 }

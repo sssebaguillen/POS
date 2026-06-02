@@ -4,6 +4,7 @@ import { useMemo, useRef, useState } from 'react'
 import * as XLSX from '@e965/xlsx'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import SelectDropdown from '@/components/ui/SelectDropdown'
 import type { InventoryBrand, InventoryCategory } from '@/components/inventory/types'
 import { useFormatMoney } from '@/lib/context/CurrencyContext'
@@ -568,14 +569,17 @@ export default function ImportProductsModal({
   const previewRows = resolvedRows.slice(0, 10)
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 dark:bg-black/60 backdrop-blur-sm" onClick={!importing && toast === null ? onClose : undefined} />
-
-      <div className="relative surface-elevated rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-hidden flex flex-col">
+    <Dialog open onOpenChange={next => { if (!next) onClose() }}>
+      <DialogContent
+        showCloseButton={false}
+        onInteractOutside={e => { if (importing || toast !== null) e.preventDefault() }}
+        onEscapeKeyDown={e => { if (importing || toast !== null) e.preventDefault() }}
+        className="flex flex-col p-0 overflow-hidden sm:max-w-3xl max-h-[90vh]"
+      >
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-edge/60 shrink-0">
           <div>
-            <h2 className="text-heading font-semibold">Importar productos</h2>
+            <DialogTitle className="text-heading font-semibold">Importar productos</DialogTitle>
             <p className="text-caption text-hint mt-0.5">
               {step === 'upload' && 'Selecciona un archivo Excel o CSV'}
               {step === 'mapping' && 'Asigna las columnas de tu archivo a los campos del sistema'}
@@ -603,7 +607,7 @@ export default function ImportProductsModal({
           <button
             onClick={onClose}
             disabled={importing || toast !== null}
-            className="text-hint hover:text-body transition-colors disabled:opacity-50"
+            className="p-1.5 rounded-lg hover:bg-hover-bg transition-[transform,background-color,color] duration-150 ease-[var(--ease-out)] active:scale-95 text-hint disabled:opacity-50"
             aria-label="Cerrar"
           >
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
@@ -846,7 +850,7 @@ export default function ImportProductsModal({
             </Button>
           )}
         </div>
-      </div>
+      </DialogContent>
       {toast && (
         <Toast
           message={toast.message}
@@ -855,6 +859,6 @@ export default function ImportProductsModal({
           onDismiss={handleDismissToast}
         />
       )}
-    </div>
+    </Dialog>
   )
 }

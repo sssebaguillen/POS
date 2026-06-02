@@ -10,6 +10,7 @@ import { DatePicker } from '@/components/ui/DatePicker'
 import SupplierSelectDropdown from './SupplierSelectDropdown'
 import ExpenseAttachmentUploader from './ExpenseAttachmentUploader'
 import MercaderiaItemsSection from './MercaderiaItemsSection'
+import { useSlidePanelAnimation } from './useSlidePanelAnimation'
 import {
   EXPENSE_CATEGORY_LABELS,
   type Expense,
@@ -62,6 +63,7 @@ export default function EditExpensePanel({
   const searchInputRef = useRef<HTMLDivElement>(null)
   const firstItemCostRef = useRef<HTMLInputElement>(null)
   const totalRef = useRef<HTMLDivElement>(null)
+  const { visible, closePanel } = useSlidePanelAnimation({ onClose })
 
   useEffect(() => {
     if (!isMercaderia) return
@@ -152,7 +154,7 @@ export default function EditExpensePanel({
           return
         }
         onUpdated()
-        onClose()
+        closePanel()
       } catch {
         setError(ERR.EXP1)
       } finally {
@@ -195,7 +197,7 @@ export default function EditExpensePanel({
         return
       }
       onUpdated()
-      onClose()
+      closePanel()
     } catch {
       setError(ERR.EXP1)
     } finally {
@@ -204,13 +206,18 @@ export default function EditExpensePanel({
   }
 
   return (
-    <div className="fixed inset-y-0 right-0 z-40 w-full max-w-md surface-elevated border-l border-edge flex flex-col" style={{ borderRadius: 0 }}>
+    <div
+      className={`fixed inset-y-0 right-0 z-40 w-full max-w-md surface-elevated border-l border-edge flex flex-col transition-transform duration-200 ease-in-out ${
+        visible ? 'translate-x-0' : 'translate-x-full'
+      }`}
+      style={{ borderRadius: 0 }}
+    >
       <div className="h-14 border-b border-edge/60 flex items-center justify-between px-5 shrink-0">
         <h2 className="font-semibold text-heading">Editar gasto</h2>
         <button
           type="button"
-          onClick={onClose}
-          className="p-1.5 rounded-lg hover:bg-hover-bg transition-[transform,background-color,color] duration-150 ease-[var(--ease-out)] active:scale-90 text-hint"
+          onClick={closePanel}
+          className="p-1.5 rounded-lg hover:bg-hover-bg transition-[transform,background-color,color] duration-150 ease-[var(--ease-out)] active:scale-95 text-hint"
         >
           <X size={18} />
         </button>
@@ -335,7 +342,7 @@ export default function EditExpensePanel({
           type="button"
           variant="outline"
           className="flex-1 h-9 rounded-lg text-sm"
-          onClick={onClose}
+          onClick={closePanel}
           disabled={saving}
         >
           Cancelar

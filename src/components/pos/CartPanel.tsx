@@ -433,7 +433,7 @@ const CartPanel = forwardRef<CartPanelHandle, Props>(function CartPanel({ busine
                                       <button
                                         type="button"
                                         onClick={() => startPriceEdit(itemId, effectivePrice, 'unit')}
-                                        className="text-faint hover:text-primary transition-[transform,color] duration-150 ease-[var(--ease-out)] active:scale-90"
+                                        className="text-faint hover:text-primary transition-[transform,color] duration-150 ease-[var(--ease-out)] active:scale-95"
                                         aria-label="Editar precio unitario"
                                       >
                                         <Pencil size={10} />
@@ -465,7 +465,7 @@ const CartPanel = forwardRef<CartPanelHandle, Props>(function CartPanel({ busine
                           <button
                             onClick={() => updateQuantity(itemId, item.quantity - 1)}
                             aria-label={`Quitar una unidad`}
-                            className="w-8 h-8 rounded-md bg-surface hover:bg-hover-bg flex items-center justify-center transition-[transform,background-color] duration-150 ease-[var(--ease-out)] active:scale-90"
+                            className="w-8 h-8 rounded-md bg-surface hover:bg-hover-bg flex items-center justify-center transition-[transform,background-color] duration-150 ease-[var(--ease-out)] active:scale-95"
                           >
                             <Minus size={12} />
                           </button>
@@ -475,7 +475,7 @@ const CartPanel = forwardRef<CartPanelHandle, Props>(function CartPanel({ busine
                           <button
                             onClick={() => updateQuantity(itemId, item.quantity + 1)}
                             aria-label={`Agregar una unidad`}
-                            className="w-8 h-8 rounded-md bg-surface hover:bg-hover-bg flex items-center justify-center transition-[transform,background-color] duration-150 ease-[var(--ease-out)] active:scale-90"
+                            className="w-8 h-8 rounded-md bg-surface hover:bg-hover-bg flex items-center justify-center transition-[transform,background-color] duration-150 ease-[var(--ease-out)] active:scale-95"
                           >
                             <Plus size={12} />
                           </button>
@@ -507,7 +507,7 @@ const CartPanel = forwardRef<CartPanelHandle, Props>(function CartPanel({ busine
                               <button
                                 type="button"
                                 onClick={() => startPriceEdit(itemId, effectiveTotal, 'total')}
-                                className="text-faint hover:text-primary transition-[transform,color] duration-150 ease-[var(--ease-out)] active:scale-90"
+                                className="text-faint hover:text-primary transition-[transform,color] duration-150 ease-[var(--ease-out)] active:scale-95"
                                 aria-label="Editar total"
                               >
                                 <Pencil size={12} />
@@ -516,7 +516,7 @@ const CartPanel = forwardRef<CartPanelHandle, Props>(function CartPanel({ busine
                             <button
                               onClick={() => removeItem(itemId)}
                               aria-label="Quitar del carrito"
-                              className="text-faint hover:text-red-400 transition-[transform,color] duration-150 ease-[var(--ease-out)] active:scale-90"
+                              className="text-faint hover:text-red-400 transition-[transform,color] duration-150 ease-[var(--ease-out)] active:scale-95"
                             >
                               <Trash2 size={12} />
                             </button>
@@ -621,7 +621,7 @@ const CartPanel = forwardRef<CartPanelHandle, Props>(function CartPanel({ busine
                     type="button"
                     onClick={() => setSelectedCustomer(null)}
                     aria-label="Quitar cliente asignado"
-                    className="text-hint hover:text-red-500 transition-[transform,color] duration-150 ease-[var(--ease-out)] active:scale-90 shrink-0"
+                    className="text-hint hover:text-red-500 transition-[transform,color] duration-150 ease-[var(--ease-out)] active:scale-95 shrink-0"
                   >
                     <X size={14} />
                   </button>
@@ -659,7 +659,7 @@ const CartPanel = forwardRef<CartPanelHandle, Props>(function CartPanel({ busine
                             <button
                               type="button"
                               onClick={() => selectCustomer(customer)}
-                              className="w-full text-left px-3 py-1.5 hover:bg-hover-bg transition-colors"
+                              className="w-full text-left px-3 py-1.5 hover:bg-hover-bg transition-[transform,background-color] duration-150 ease-[var(--ease-out)] active:scale-[0.98]"
                             >
                               <p className="text-xs font-semibold text-heading truncate">{customer.name}</p>
                               {customer.phone && (
@@ -699,7 +699,7 @@ const CartPanel = forwardRef<CartPanelHandle, Props>(function CartPanel({ busine
                     type="button"
                     onClick={removeDiscount}
                     aria-label="Quitar descuento"
-                    className="text-hint hover:text-red-500 transition-[transform,color] duration-150 ease-[var(--ease-out)] active:scale-90 shrink-0"
+                    className="text-hint hover:text-red-500 transition-[transform,color] duration-150 ease-[var(--ease-out)] active:scale-95 shrink-0"
                   >
                     <X size={14} />
                   </button>

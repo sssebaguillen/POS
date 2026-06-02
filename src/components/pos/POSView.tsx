@@ -372,7 +372,7 @@ export default function POSView({ products, businessId, businessName, freeLineEn
       <header className="relative h-14 bg-surface border-b border-edge/60 flex items-center px-5 gap-4 shrink-0">
         <button
           onClick={toggle}
-          className="p-1.5 -ml-1 rounded-lg hover:bg-hover-bg transition-[transform,background-color] duration-150 ease-[var(--ease-out)] active:scale-90 lg:hidden"
+          className="p-1.5 -ml-1 rounded-lg hover:bg-hover-bg transition-[transform,background-color] duration-150 ease-[var(--ease-out)] active:scale-95 lg:hidden"
           aria-label="Abrir menú"
         >
           <Menu size={20} className="text-body" />
@@ -428,7 +428,7 @@ export default function POSView({ products, businessId, businessName, freeLineEn
 
         <button
           onClick={() => setMobileSearchOpen(true)}
-          className="lg:hidden ml-auto p-1.5 rounded-lg hover:bg-hover-bg transition-[transform,background-color] duration-150 ease-[var(--ease-out)] active:scale-90"
+          className="lg:hidden ml-auto p-1.5 rounded-lg hover:bg-hover-bg transition-[transform,background-color] duration-150 ease-[var(--ease-out)] active:scale-95"
           aria-label="Buscar"
         >
           <Search size={20} className="text-body" />
@@ -451,10 +451,10 @@ export default function POSView({ products, businessId, businessName, freeLineEn
             {canSelectList && priceLists.length > 0 && <ChevronDown size={14} className="text-hint" />}
           </button>
           {listDropdownOpen && priceLists.length > 0 && (
-            <div className="absolute top-full right-0 mt-1 surface-elevated z-30 py-1 min-w-[180px] rounded-lg overflow-hidden">
+            <div className="absolute top-full right-0 mt-1 surface-elevated z-30 py-1 min-w-[180px] rounded-lg overflow-hidden animate-in fade-in-0 zoom-in-95 origin-top-right duration-150">
               <button
                 onClick={() => { setActivePriceListId(null); setListDropdownOpen(false) }}
-                className="w-full flex items-center justify-between px-3 py-2 text-sm text-body hover:bg-hover-bg transition-colors"
+                className="w-full flex items-center justify-between px-3 py-2 text-sm text-body hover:bg-hover-bg transition-[transform,background-color] duration-150 ease-[var(--ease-out)] active:scale-[0.98]"
               >
                 <span>Precio base</span>
                 {activePriceListId === null && <Check size={14} className="text-primary" />}
@@ -463,7 +463,7 @@ export default function POSView({ products, businessId, businessName, freeLineEn
                 <button
                   key={pl.id}
                   onClick={() => { setActivePriceListId(pl.id); setListDropdownOpen(false) }}
-                  className="w-full flex items-center justify-between px-3 py-2 text-sm text-body hover:bg-hover-bg transition-colors"
+                  className="w-full flex items-center justify-between px-3 py-2 text-sm text-body hover:bg-hover-bg transition-[transform,background-color] duration-150 ease-[var(--ease-out)] active:scale-[0.98]"
                 >
                   <span>{pl.name}</span>
                   {pl.id === activePriceListId && <Check size={14} className="text-primary" />}
@@ -525,7 +525,7 @@ export default function POSView({ products, businessId, businessName, freeLineEn
               setMobileSearchOpen(false)
               setFilterValue(prev => ({ ...prev, search: '' }))
             }}
-            className="shrink-0 p-1.5 rounded-lg hover:bg-hover-bg transition-[transform,background-color] duration-150 ease-[var(--ease-out)] active:scale-90"
+            className="shrink-0 p-1.5 rounded-lg hover:bg-hover-bg transition-[transform,background-color] duration-150 ease-[var(--ease-out)] active:scale-95"
             aria-label="Cerrar búsqueda"
           >
             <X size={20} className="text-body" />
@@ -616,19 +616,19 @@ export default function POSView({ products, businessId, businessName, freeLineEn
         />
       </div>
 
-      {showOpenModal && (
-        <OpenSessionModal
-          operatorId={operatorId}
-          onOpened={sessionId => {
-            setShowOpenModal(false)
-            void fetchActiveSession()
-          }}
-          onClose={() => setShowOpenModal(false)}
-        />
-      )}
+      <OpenSessionModal
+        open={showOpenModal}
+        operatorId={operatorId}
+        onOpened={() => {
+          setShowOpenModal(false)
+          void fetchActiveSession()
+        }}
+        onClose={() => setShowOpenModal(false)}
+      />
 
-      {showCloseModal && activeSession && (
+      {activeSession && (
         <CloseSessionModal
+          open={showCloseModal}
           sessionId={activeSession.id}
           operatorId={operatorId}
           onClosed={() => {

@@ -75,7 +75,7 @@ export default function SelectDropdown({ value, onChange, options, placeholder, 
   const dropdownList = (
     <div
       ref={dropdownRef}
-      className={`overflow-hidden surface-elevated ${!usePortal ? 'absolute z-50 w-full mt-1' : ''}`}
+      className={`animate-in fade-in-0 zoom-in-95 origin-top duration-150 overflow-hidden surface-elevated ${!usePortal ? 'absolute z-50 w-full mt-1' : ''}`}
       style={usePortal ? dropdownStyle : undefined}
     >
       {options.map(option => {
@@ -85,7 +85,7 @@ export default function SelectDropdown({ value, onChange, options, placeholder, 
             key={option.value}
             type="button"
             onClick={() => { onChange(option.value); setOpen(false) }}
-            className={`w-full px-3 py-2 text-sm flex items-center justify-between gap-2 cursor-pointer hover:bg-surface-alt transition-colors text-left ${
+            className={`w-full px-3 py-2 text-sm flex items-center justify-between gap-2 cursor-pointer hover:bg-surface-alt transition-[transform,background-color,color] duration-150 ease-[var(--ease-out)] active:scale-[0.98] text-left ${
               isActive ? 'text-primary font-medium' : 'text-body'
             }`}
           >
@@ -103,7 +103,7 @@ export default function SelectDropdown({ value, onChange, options, placeholder, 
         ref={buttonRef}
         type="button"
         onClick={() => setOpen(prev => !prev)}
-        className="h-9 w-full rounded-lg border border-input bg-card text-sm text-body px-3 flex items-center justify-between gap-2 transition-colors hover:bg-surface-alt dark:bg-input/30"
+        className="h-9 w-full rounded-lg border border-input bg-card text-sm text-body px-3 flex items-center justify-between gap-2 transition-[transform,background-color] duration-150 ease-[var(--ease-out)] active:scale-[0.98] hover:bg-surface-alt dark:bg-input/30"
       >
         {renderSelected && selectedOption
           ? <span className="truncate flex items-center gap-2">{renderSelected(selectedOption)}</span>

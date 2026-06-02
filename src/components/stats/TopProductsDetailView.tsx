@@ -227,7 +227,7 @@ export default function TopProductsDetailView({ rows, total, kpis, period, from,
                 <button
                   disabled={page <= 1}
                   onClick={() => goToPage(page - 1)}
-                  className="px-3 py-1.5 rounded-lg border border-edge text-body hover:bg-hover-bg disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                  className="px-3 py-1.5 rounded-lg border border-edge text-body hover:bg-hover-bg disabled:opacity-40 disabled:cursor-not-allowed transition-[transform,background-color,color] duration-150 ease-[var(--ease-out)] active:scale-[0.97]"
                 >
                   Anterior
                 </button>
@@ -235,7 +235,7 @@ export default function TopProductsDetailView({ rows, total, kpis, period, from,
                 <button
                   disabled={page >= totalPages}
                   onClick={() => goToPage(page + 1)}
-                  className="px-3 py-1.5 rounded-lg border border-edge text-body hover:bg-hover-bg disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                  className="px-3 py-1.5 rounded-lg border border-edge text-body hover:bg-hover-bg disabled:opacity-40 disabled:cursor-not-allowed transition-[transform,background-color,color] duration-150 ease-[var(--ease-out)] active:scale-[0.97]"
                 >
                   Siguiente
                 </button>

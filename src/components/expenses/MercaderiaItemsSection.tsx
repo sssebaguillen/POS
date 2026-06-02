@@ -165,7 +165,7 @@ export default function MercaderiaItemsSection({
                 <button
                   type="button"
                   onClick={() => removeItem(index)}
-                  className="p-1 rounded text-hint hover:text-destructive hover:bg-destructive/10 transition-colors shrink-0"
+                  className="p-1 rounded text-hint hover:text-destructive hover:bg-destructive/10 transition-[transform,background-color,color] duration-150 ease-[var(--ease-out)] active:scale-95 shrink-0"
                 >
                   <Trash2 size={13} />
                 </button>

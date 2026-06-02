@@ -36,7 +36,7 @@ export default function ChangelogBanner({ initialLastSeenVersion, collapsed, isM
         onClick={handleOpen}
         title={compact ? `v${latestRelease.version} · Novedades` : undefined}
         className={cn(
-          'group rounded-lg border border-primary/20 bg-primary/10 text-primary transition-colors hover:bg-primary/15 animate-in fade-in',
+          'group rounded-lg border border-primary/20 bg-primary/10 text-primary transition-[transform,background-color] duration-150 ease-[var(--ease-out)] active:scale-[0.98] hover:bg-primary/15 animate-in fade-in',
           compact
             ? 'p-2.5 flex items-center justify-center w-full'
             : 'flex items-center gap-2 px-2.5 py-2 w-full text-left'
@@ -60,7 +60,7 @@ export default function ChangelogBanner({ initialLastSeenVersion, collapsed, isM
                   markAsSeen()
                 }
               }}
-              className="shrink-0 rounded p-0.5 text-primary/70 hover:text-primary hover:bg-primary/10 transition-colors"
+              className="shrink-0 rounded p-0.5 text-primary/70 hover:text-primary hover:bg-primary/10 transition-[transform,background-color,color] duration-150 ease-[var(--ease-out)] active:scale-95"
             >
               <X size={13} />
             </span>

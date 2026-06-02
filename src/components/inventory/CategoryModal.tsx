@@ -255,7 +255,7 @@ export default function CategoryModal({
             <button
               type="button"
               onClick={handleClose}
-              className="p-1.5 rounded-lg hover:bg-hover-bg transition-[transform,background-color,color] duration-150 ease-[var(--ease-out)] active:scale-90 text-hint"
+              className="p-1.5 rounded-lg hover:bg-hover-bg transition-[transform,background-color,color] duration-150 ease-[var(--ease-out)] active:scale-95 text-hint"
               aria-label="Cerrar modal"
             >
               <X className="w-4 h-4" />
@@ -338,7 +338,7 @@ export default function CategoryModal({
                               type="button"
                               onClick={cancelEdit}
                               disabled={saving}
-                              className="p-1.5 rounded-lg hover:bg-hover-bg transition-[transform,background-color,color] duration-150 ease-[var(--ease-out)] active:scale-90 text-hint disabled:opacity-50"
+                              className="p-1.5 rounded-lg hover:bg-hover-bg transition-[transform,background-color,color] duration-150 ease-[var(--ease-out)] active:scale-95 text-hint disabled:opacity-50"
                               aria-label="Cancelar edición"
                             >
                               <X className="w-4 h-4" />
@@ -354,7 +354,7 @@ export default function CategoryModal({
                               type="button"
                               onClick={() => startEdit(category)}
                               disabled={creating || deletingId !== null || !stockWriteAllowed || editingId !== null}
-                              className="p-1.5 rounded-lg hover:bg-hover-bg transition-[transform,background-color,color] duration-150 ease-[var(--ease-out)] active:scale-90 text-hint disabled:opacity-30"
+                              className="p-1.5 rounded-lg hover:bg-hover-bg transition-[transform,background-color,color] duration-150 ease-[var(--ease-out)] active:scale-95 text-hint disabled:opacity-30"
                               aria-label={`Editar ${category.name}`}
                             >
                               <Pencil className="w-3.5 h-3.5" />

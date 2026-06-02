@@ -172,7 +172,7 @@ export default function FeedbackModal({ open, onOpenChange, businessId, onSucces
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
-                className="flex items-center justify-center gap-2 rounded-lg border border-dashed border-border bg-muted/20 px-3 py-3 text-sm text-muted-foreground hover:bg-muted/40 hover:border-primary/40 hover:text-foreground transition-colors"
+                className="flex items-center justify-center gap-2 rounded-lg border border-dashed border-border bg-muted/20 px-3 py-3 text-sm text-muted-foreground hover:bg-muted/40 hover:border-primary/40 hover:text-foreground transition-[transform,background-color,border-color,color] duration-150 ease-[var(--ease-out)] active:scale-[0.98]"
               >
                 <ImageIcon size={16} />
                 Adjuntar imagen
@@ -199,7 +199,7 @@ export default function FeedbackModal({ open, onOpenChange, businessId, onSucces
             type="button"
             onClick={() => onOpenChange(false)}
             disabled={isSubmitting}
-            className="h-9 rounded-lg px-4 text-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors disabled:opacity-50"
+            className="h-9 rounded-lg px-4 text-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-[transform,background-color,color] duration-150 ease-[var(--ease-out)] active:scale-[0.97] disabled:opacity-50"
           >
             Cancelar
           </button>
@@ -207,7 +207,7 @@ export default function FeedbackModal({ open, onOpenChange, businessId, onSucces
             type="button"
             onClick={handleSubmit}
             disabled={!canSubmit}
-            className="h-9 rounded-lg bg-primary px-5 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="h-9 rounded-lg bg-primary px-5 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-[transform,background-color] duration-150 ease-[var(--ease-out)] active:scale-[0.97] disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isSubmitting ? 'Enviando…' : 'Enviar'}
           </button>

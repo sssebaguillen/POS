@@ -239,7 +239,7 @@ export default function OnboardingChecklist() {
                         wizard_suppressed: false,
                       })
                     }}
-                    className={`w-full flex items-center gap-2 text-xs rounded-lg px-1.5 py-1 transition-colors ${
+                    className={`w-full flex items-center gap-2 text-xs rounded-lg px-1.5 py-1 transition-[transform,background-color,color] duration-150 ease-[var(--ease-out)] active:scale-[0.98] ${
                       isPending
                         ? 'text-body hover:bg-hover-bg cursor-pointer'
                         : 'text-subtle cursor-default'

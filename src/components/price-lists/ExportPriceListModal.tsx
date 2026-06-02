@@ -315,7 +315,7 @@ export default function ExportPriceListModal({
           <button
             type="button"
             onClick={handleClose}
-            className="text-hint hover:text-body transition-colors p-0.5"
+            className="text-hint hover:text-body transition-[transform,color] duration-150 ease-[var(--ease-out)] active:scale-95 p-0.5"
             aria-label="Cerrar modal"
           >
             <X className="w-4 h-4" />

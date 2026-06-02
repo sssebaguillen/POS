@@ -225,7 +225,7 @@ export default function OperatorSelectView({
               <button
                 type="button"
                 onClick={() => handleSelectOperator(OWNER_CARD_ID)}
-                className="rounded-xl border border-primary/30 bg-background p-4 text-left transition-colors hover:bg-primary/5"
+                className="rounded-xl border border-primary/30 bg-background p-4 text-left transition-[transform,background-color] duration-150 ease-[var(--ease-out)] active:scale-[0.98] hover:bg-primary/5"
               >
                 <div className="flex items-center gap-3">
                   <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-semibold text-primary-foreground">
@@ -245,7 +245,7 @@ export default function OperatorSelectView({
                   key={operator.id}
                   type="button"
                   onClick={() => handleSelectOperator(operator.id)}
-                  className="rounded-xl border border-border/60 bg-background p-4 text-left transition-colors hover:bg-muted/30"
+                  className="rounded-xl border border-border/60 bg-background p-4 text-left transition-[transform,background-color] duration-150 ease-[var(--ease-out)] active:scale-[0.98] hover:bg-muted/30"
                 >
                   <div className="flex items-center gap-3">
                     <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-border/60 bg-muted/30 text-sm font-semibold text-foreground">
@@ -284,7 +284,7 @@ export default function OperatorSelectView({
             <button
               type="button"
               onClick={handleBack}
-              className="-ml-1 flex h-11 items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-foreground"
+              className="-ml-1 flex h-11 items-center gap-1 text-sm text-muted-foreground transition-[transform,color] duration-150 ease-[var(--ease-out)] active:scale-[0.97] hover:text-foreground"
             >
               <ChevronLeft className="h-4 w-4" />
               Volver

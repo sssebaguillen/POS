@@ -380,7 +380,7 @@ export default function NewOperatorModal({
           <h2 className="text-base font-semibold text-heading">Nuevo operario</h2>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg hover:bg-hover-bg transition-[transform,background-color,color] duration-150 ease-[var(--ease-out)] active:scale-90 text-hint"
+            className="p-1.5 rounded-lg hover:bg-hover-bg transition-[transform,background-color,color] duration-150 ease-[var(--ease-out)] active:scale-95 text-hint"
             aria-label="Cerrar"
           >
             <X className="w-4 h-4" />

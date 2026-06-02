@@ -203,7 +203,7 @@ export default function CustomerView({ businessId, operatorId, initialCustomers 
                               <button
                                 type="button"
                                 onClick={() => setSettlingCustomer(customer)}
-                                className="rounded-full border border-primary/30 bg-primary/5 px-2.5 py-0.5 text-xs font-medium text-primary hover:bg-primary/10 transition-colors"
+                                className="rounded-full border border-primary/30 bg-primary/5 px-2.5 py-0.5 text-xs font-medium text-primary hover:bg-primary/10 transition-[transform,background-color] duration-150 ease-[var(--ease-out)] active:scale-[0.97]"
                               >
                                 Cobrar
                               </button>

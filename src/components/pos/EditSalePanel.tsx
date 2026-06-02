@@ -48,14 +48,14 @@ export default function EditSalePanel({
             <div className="flex items-center gap-1.5 shrink-0">
               <button
                 onClick={() => updateQty(item.id, item.quantity - 1)}
-                className="w-6 h-6 rounded-md hover:bg-hover-bg flex items-center justify-center transition-[transform,background-color] duration-150 ease-[var(--ease-out)] active:scale-90 text-xs"
+                className="w-6 h-6 rounded-md hover:bg-hover-bg flex items-center justify-center transition-[transform,background-color] duration-150 ease-[var(--ease-out)] active:scale-95 text-xs"
               >
                 −
               </button>
               <span className="text-sm font-semibold w-6 text-center tabular-nums">{item.quantity}</span>
               <button
                 onClick={() => updateQty(item.id, item.quantity + 1)}
-                className="w-6 h-6 rounded-md hover:bg-hover-bg flex items-center justify-center transition-[transform,background-color] duration-150 ease-[var(--ease-out)] active:scale-90 text-xs"
+                className="w-6 h-6 rounded-md hover:bg-hover-bg flex items-center justify-center transition-[transform,background-color] duration-150 ease-[var(--ease-out)] active:scale-95 text-xs"
               >
                 +
               </button>
@@ -65,7 +65,7 @@ export default function EditSalePanel({
             </p>
             <button
               onClick={() => removeItem(item.id)}
-              className="text-faint hover:text-red-400 transition-[transform,color] duration-150 ease-[var(--ease-out)] active:scale-90 shrink-0"
+              className="text-faint hover:text-red-400 transition-[transform,color] duration-150 ease-[var(--ease-out)] active:scale-95 shrink-0"
             >
               <Trash2 size={14} />
             </button>

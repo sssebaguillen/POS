@@ -195,7 +195,7 @@ export default function OrdersView({ initialOrders, operatorId }: Props) {
               aria-pressed={groupFilter === 'pendientes'}
               onClick={() => { setGroupFilter('pendientes'); setSubFilter(null); setPendientesHighlight(false) }}
               className={cn(
-                'pill-tab transition-all duration-200',
+                'pill-tab transition-[transform,color,background-color,border-color] duration-150 ease-[var(--ease-out)]',
                 groupFilter === 'pendientes'
                   ? 'bg-primary/10 text-primary border border-primary/20 dark:bg-primary/15 dark:border-primary/30'
                   : pendientesHighlight && pendientesCount > 0
@@ -283,7 +283,7 @@ export default function OrdersView({ initialOrders, operatorId }: Props) {
                     <button
                       type="button"
                       className={cn(
-                        'w-full text-left rounded-xl border px-4 py-3 transition-colors',
+                        'w-full text-left rounded-xl border px-4 py-3 transition-[transform,background-color,border-color] duration-150 ease-[var(--ease-out)] active:scale-[0.98]',
                         cardClass(order, groupFilter, viewedIds, viewedMounted),
                       )}
                       onClick={() => {

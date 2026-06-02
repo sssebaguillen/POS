@@ -108,14 +108,14 @@ export function DatePicker({ value, onChange, className, placeholder = 'dd/mm/aa
         <PopoverPrimitive.Content
           align="start"
           sideOffset={6}
-          className="surface-elevated z-[100] w-64 rounded-xl bg-popover p-3 shadow-lg ring-1 ring-black/10 dark:ring-white/10 text-popover-foreground"
+          className="surface-elevated z-[100] w-64 rounded-xl bg-popover p-3 shadow-lg ring-1 ring-black/10 dark:ring-white/10 text-popover-foreground origin-(--radix-popover-content-transform-origin) duration-150 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95"
         >
           {/* Month navigation */}
           <div className="flex items-center justify-between mb-3">
             <button
               type="button"
               onClick={prevMonth}
-              className="flex h-7 w-7 items-center justify-center rounded-md hover:bg-accent transition-colors"
+              className="flex h-7 w-7 items-center justify-center rounded-md hover:bg-accent transition-[transform,background-color] duration-150 ease-[var(--ease-out)] active:scale-95"
             >
               <ChevronLeft className="h-4 w-4 text-body" />
             </button>
@@ -125,7 +125,7 @@ export function DatePicker({ value, onChange, className, placeholder = 'dd/mm/aa
             <button
               type="button"
               onClick={nextMonth}
-              className="flex h-7 w-7 items-center justify-center rounded-md hover:bg-accent transition-colors"
+              className="flex h-7 w-7 items-center justify-center rounded-md hover:bg-accent transition-[transform,background-color] duration-150 ease-[var(--ease-out)] active:scale-95"
             >
               <ChevronRight className="h-4 w-4 text-body" />
             </button>
@@ -160,7 +160,7 @@ export function DatePicker({ value, onChange, className, placeholder = 'dd/mm/aa
                   type="button"
                   onClick={() => selectDay(day)}
                   className={cn(
-                    'h-8 w-full rounded-md text-sm transition-colors',
+                    'h-8 w-full rounded-md text-sm transition-[transform,background-color,color] duration-150 ease-[var(--ease-out)] active:scale-95',
                     isSelected
                       ? 'bg-primary text-primary-foreground font-semibold'
                       : isToday
@@ -179,7 +179,7 @@ export function DatePicker({ value, onChange, className, placeholder = 'dd/mm/aa
             <button
               type="button"
               onClick={() => { onChange(''); setOpen(false) }}
-              className="text-xs text-hint hover:text-body transition-colors"
+              className="text-xs text-hint hover:text-body transition-[transform,color] duration-150 ease-[var(--ease-out)] active:scale-[0.97]"
             >
               Limpiar
             </button>

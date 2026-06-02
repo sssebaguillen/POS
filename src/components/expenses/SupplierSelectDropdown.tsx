@@ -82,7 +82,7 @@ export default function SupplierSelectDropdown({ value, onChange, businessId, su
       <button
         type="button"
         onClick={() => setOpen(prev => !prev)}
-        className="w-full flex items-center justify-between h-9 px-3 rounded-lg border border-input bg-card text-sm text-body hover:bg-surface-alt transition-colors dark:bg-input/30"
+        className="w-full flex items-center justify-between h-9 px-3 rounded-lg border border-input bg-card text-sm text-body hover:bg-surface-alt transition-[transform,background-color] duration-150 ease-[var(--ease-out)] active:scale-[0.98] dark:bg-input/30"
       >
         <span className={selected ? 'text-heading' : 'text-hint'}>
           {selected ? selected.name : placeholder}
@@ -92,7 +92,7 @@ export default function SupplierSelectDropdown({ value, onChange, businessId, su
             <span
               role="button"
               onClick={e => { e.stopPropagation(); onChange(null) }}
-              className="p-0.5 rounded hover:bg-surface-alt transition-colors text-hint"
+              className="p-0.5 rounded hover:bg-surface-alt transition-[transform,background-color] duration-150 ease-[var(--ease-out)] active:scale-95 text-hint"
             >
               <X size={12} />
             </span>
@@ -102,7 +102,7 @@ export default function SupplierSelectDropdown({ value, onChange, businessId, su
       </button>
 
       {open && (
-        <div className="absolute z-50 top-full left-0 right-0 mt-1 surface-elevated overflow-hidden">
+        <div className="absolute z-50 top-full left-0 right-0 mt-1 surface-elevated overflow-hidden animate-in fade-in-0 zoom-in-95 origin-top duration-150">
           <div className="p-2 border-b border-edge/60">
             <Input
               autoFocus
@@ -122,7 +122,7 @@ export default function SupplierSelectDropdown({ value, onChange, businessId, su
                 key={s.id}
                 type="button"
                 onClick={() => { onChange(s.id); setOpen(false); setSearch('') }}
-                className="w-full flex items-center justify-between px-3 py-2 text-sm text-body hover:bg-hover-bg transition-colors"
+                className="w-full flex items-center justify-between px-3 py-2 text-sm text-body hover:bg-hover-bg transition-[transform,background-color] duration-150 ease-[var(--ease-out)] active:scale-[0.98]"
               >
                 {s.name}
                 {s.id === value && <Check size={14} className="text-primary" />}
@@ -135,7 +135,7 @@ export default function SupplierSelectDropdown({ value, onChange, businessId, su
               <button
                 type="button"
                 onClick={() => setShowInlineCreate(true)}
-                className="w-full flex items-center gap-2 px-2 py-1.5 text-sm text-primary hover:bg-primary/5 rounded-lg transition-colors"
+                className="w-full flex items-center gap-2 px-2 py-1.5 text-sm text-primary hover:bg-primary/5 rounded-lg transition-[transform,background-color] duration-150 ease-[var(--ease-out)] active:scale-[0.98]"
               >
                 <Plus size={14} />
                 Nuevo proveedor

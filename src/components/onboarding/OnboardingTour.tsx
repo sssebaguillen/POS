@@ -388,7 +388,7 @@ export default function OnboardingTour({ open, profileId, onboardingState }: Onb
         <button
           type="button"
           onClick={() => void completeTour()}
-          className="mt-3 text-xs text-hint hover:text-body transition-colors"
+          className="mt-3 text-xs text-hint hover:text-body transition-[transform,color] duration-150 ease-[var(--ease-out)] active:scale-[0.97]"
           disabled={saving}
         >
           Saltar tour

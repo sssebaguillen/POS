@@ -177,7 +177,7 @@ export default function MercaderiaOnboarding({
           <button
             type="button"
             onClick={advance}
-            className="h-7 px-3 rounded-lg bg-primary-foreground text-primary text-xs font-semibold hover:opacity-90 transition-opacity"
+            className="h-7 px-3 rounded-lg bg-primary-foreground text-primary text-xs font-semibold hover:opacity-90 transition-[transform,opacity] duration-150 ease-[var(--ease-out)] active:scale-[0.97]"
           >
             {currentStep.buttonLabel}
           </button>

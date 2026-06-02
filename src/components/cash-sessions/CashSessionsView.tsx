@@ -237,13 +237,12 @@ export default function CashSessionsView({ businessId, activeSession: initialAct
         </div>
       </div>
 
-      {showOpenModal && (
-        <OpenSessionModal
-          operatorId={operatorId}
-          onOpened={handleOpened}
-          onClose={() => setShowOpenModal(false)}
-        />
-      )}
+      <OpenSessionModal
+        open={showOpenModal}
+        operatorId={operatorId}
+        onOpened={handleOpened}
+        onClose={() => setShowOpenModal(false)}
+      />
 
       {selectedSession && (
         <SessionDetailPanel
@@ -257,8 +256,9 @@ export default function CashSessionsView({ businessId, activeSession: initialAct
         />
       )}
 
-      {showCloseModal && activeSession && (
+      {activeSession && (
         <CloseSessionModal
+          open={showCloseModal}
           sessionId={activeSession.id}
           operatorId={operatorId}
           onClosed={handleClosed}

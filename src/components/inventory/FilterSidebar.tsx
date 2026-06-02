@@ -178,7 +178,7 @@ export default function FilterSidebar({
           <button
             type="button"
             onClick={onClose}
-            className="text-subtle hover:text-body transition-colors rounded-lg p-1 hover:bg-hover-bg"
+            className="text-subtle hover:text-body transition-[transform,background-color,color] duration-150 ease-[var(--ease-out)] active:scale-95 rounded-lg p-1 hover:bg-hover-bg"
           >
             <X size={16} />
           </button>
@@ -201,7 +201,7 @@ export default function FilterSidebar({
                     key={field}
                     type="button"
                     onClick={() => handleSort(field)}
-                    className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm text-left transition-colors ${
+                    className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm text-left transition-[transform,background-color,color] duration-150 ease-[var(--ease-out)] active:scale-[0.98] ${
                       isActive ? 'bg-primary/10 text-primary font-medium' : 'text-body hover:bg-hover-bg'
                     }`}
                   >
@@ -227,7 +227,7 @@ export default function FilterSidebar({
             <button
               type="button"
               onClick={() => onShowInCatalogChange(!showInCatalogOnly)}
-              className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-left transition-colors ${
+              className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-left transition-[transform,background-color,color] duration-150 ease-[var(--ease-out)] active:scale-[0.98] ${
                 showInCatalogOnly ? 'bg-primary/10 text-primary font-medium' : 'text-body hover:bg-hover-bg'
               }`}
             >
@@ -264,7 +264,7 @@ export default function FilterSidebar({
                       key={cat.id}
                       type="button"
                       onClick={() => toggleCategory(cat.id)}
-                      className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-left transition-colors ${
+                      className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-left transition-[transform,background-color,color] duration-150 ease-[var(--ease-out)] active:scale-[0.98] ${
                         checked ? 'bg-primary/10 text-primary font-medium' : 'text-body hover:bg-hover-bg'
                       }`}
                     >
@@ -308,7 +308,7 @@ export default function FilterSidebar({
                       key={brand.id}
                       type="button"
                       onClick={() => toggleBrand(brand.id)}
-                      className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-left transition-colors ${
+                      className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-left transition-[transform,background-color,color] duration-150 ease-[var(--ease-out)] active:scale-[0.98] ${
                         checked ? 'bg-primary/10 text-primary font-medium' : 'text-body hover:bg-hover-bg'
                       }`}
                     >

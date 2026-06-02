@@ -115,7 +115,7 @@ export default function ProductGrid({
             type="button"
             onClick={onToggleFilter}
             className={[
-              'inline-flex shrink-0 items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors',
+              'inline-flex shrink-0 items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm font-medium transition-[transform,background-color,border-color,color] duration-150 ease-[var(--ease-out)] active:scale-[0.97]',
               isFilterOpen
                 ? 'bg-primary text-primary-foreground border-primary'
                 : 'border-border bg-background text-foreground hover:border-primary/40',
@@ -141,7 +141,7 @@ export default function ProductGrid({
               type="button"
               onClick={() => onViewModeChange('grid')}
               aria-label="Vista grilla"
-              className={`p-2 transition-colors ${
+              className={`p-2 transition-[transform,background-color,color] duration-150 ease-[var(--ease-out)] active:scale-95 ${
                 viewMode === 'grid'
                   ? 'bg-primary text-primary-foreground'
                   : 'bg-background text-muted-foreground hover:text-foreground'
@@ -153,7 +153,7 @@ export default function ProductGrid({
               type="button"
               onClick={() => onViewModeChange('list')}
               aria-label="Vista lista"
-              className={`p-2 transition-colors ${
+              className={`p-2 transition-[transform,background-color,color] duration-150 ease-[var(--ease-out)] active:scale-95 ${
                 viewMode === 'list'
                   ? 'bg-primary text-primary-foreground'
                   : 'bg-background text-muted-foreground hover:text-foreground'
@@ -209,7 +209,7 @@ export default function ProductGrid({
               <Link
                 key={product.id}
                 href={`/catalogo/${slug}/${product.id}`}
-                className={`flex items-center gap-3 rounded-xl border border-border/70 bg-card p-3 hover:border-primary/40 transition-colors ${isOutOfStock ? 'opacity-60' : ''}`}
+                className={`flex items-center gap-3 rounded-xl border border-border/70 bg-card p-3 hover:border-primary/40 transition-[transform,border-color] duration-150 ease-[var(--ease-out)] active:scale-[0.98] ${isOutOfStock ? 'opacity-60' : ''}`}
               >
                 <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-lg bg-muted/40">
                   {product.imageUrl ? (

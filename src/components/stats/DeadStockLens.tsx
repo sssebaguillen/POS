@@ -219,7 +219,7 @@ export default function DeadStockLens({ rows, summary, bucket: initialBucket, pa
             <button
               disabled={safePage <= 1}
               onClick={() => goToPage(safePage - 1)}
-              className="px-3 py-1.5 rounded-lg border border-edge text-body hover:bg-hover-bg disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              className="px-3 py-1.5 rounded-lg border border-edge text-body hover:bg-hover-bg disabled:opacity-40 disabled:cursor-not-allowed transition-[transform,background-color,color] duration-150 ease-[var(--ease-out)] active:scale-[0.97]"
             >
               Anterior
             </button>
@@ -227,7 +227,7 @@ export default function DeadStockLens({ rows, summary, bucket: initialBucket, pa
             <button
               disabled={safePage >= totalPages}
               onClick={() => goToPage(safePage + 1)}
-              className="px-3 py-1.5 rounded-lg border border-edge text-body hover:bg-hover-bg disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              className="px-3 py-1.5 rounded-lg border border-edge text-body hover:bg-hover-bg disabled:opacity-40 disabled:cursor-not-allowed transition-[transform,background-color,color] duration-150 ease-[var(--ease-out)] active:scale-[0.97]"
             >
               Siguiente
             </button>

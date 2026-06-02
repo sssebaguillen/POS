@@ -239,7 +239,7 @@ export default function ProductDetailView({
       {/* Back link */}
       <Link
         href={`/catalogo/${slug}`}
-        className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors mb-6"
+        className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-[transform,color] duration-150 ease-[var(--ease-out)] active:scale-[0.97] mb-6"
       >
         <ArrowLeft className="h-4 w-4" />
         Volver al catálogo
@@ -314,7 +314,7 @@ export default function ProductDetailView({
                           disabled={!isAvailable}
                           onClick={() => handleSelect(option.id, optValue.value)}
                           className={[
-                            'px-3 py-1.5 rounded-lg border text-sm font-medium transition-colors',
+                            'px-3 py-1.5 rounded-lg border text-sm font-medium transition-[transform,background-color,border-color,color] duration-150 ease-[var(--ease-out)] active:scale-[0.97]',
                             isSelected
                               ? 'bg-primary text-primary-foreground border-primary'
                               : isAvailable
@@ -340,7 +340,7 @@ export default function ProductDetailView({
             )}
             <Button
               type="button"
-              className={`w-full h-11 gap-2 transition-colors ${added ? 'bg-green-600 hover:bg-green-600 text-white' : ''}`}
+              className={`w-full h-11 gap-2 ${added ? 'bg-green-600 hover:bg-green-600 text-white' : ''}`}
               disabled={!canAdd}
               onClick={handleAddToCart}
             >

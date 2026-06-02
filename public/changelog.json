@@ -1,6 +1,17 @@
 {
-  "current": "0.0.6.10",
+  "current": "0.0.6.11",
   "releases": [
+    {
+      "version": "0.0.6.11",
+      "kind": "feature",
+      "date": "2026-06-02",
+      "label": "Tu precio base siempre manda",
+      "changes": [
+        { "type": "improvement", "text": "Cambiamos cómo funcionan los precios. El precio de venta de cada producto ahora sale siempre del que cargas a mano en Inventario (y en cada variante, si tiene). Las listas de precios dejaron de ser el cálculo central y pasaron a ser una herramienta opcional: aplican un multiplicador sobre el costo y solo entran en juego cuando eliges una lista en el POS o al exportar. Antes, tener una lista activa podía pisar el precio que habías puesto a mano; ahora tu precio base siempre manda." },
+        { "type": "improvement", "text": "Como una lista ya nunca cambia tu precio base, sacamos el aviso de 'conflicto de precio manual' que aparecía al crear o editar una lista. Crear una lista ahora es más simple: nombre, descripción y margen." },
+        { "type": "improvement", "text": "Pulimos las animaciones de toda la app: botones, filtros y menús ahora responden al toque con una leve reacción física, y las ventanas abren y cierran con una transición más suave." }
+      ]
+    },
     {
       "version": "0.0.6.10",
       "kind": "feature",

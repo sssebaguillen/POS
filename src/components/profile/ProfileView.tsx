@@ -182,7 +182,7 @@ export default function ProfileView({ profile, email, business }: Props) {
             ) : (
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium text-heading">{name}</span>
-                <button type="button" onClick={() => { setNameInput(name); setEditingName(true) }} className="text-sm text-hint hover:text-body transition-colors">
+                <button type="button" onClick={() => { setNameInput(name); setEditingName(true) }} className="text-sm text-hint hover:text-body transition-[transform,color] duration-150 ease-[var(--ease-out)] active:scale-[0.97]">
                   Editar
                 </button>
               </div>
@@ -230,7 +230,7 @@ export default function ProfileView({ profile, email, business }: Props) {
             ) : (
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium text-heading">{email}</span>
-                <button type="button" onClick={() => setEditingEmail(true)} className="text-sm text-hint hover:text-body transition-colors">
+                <button type="button" onClick={() => setEditingEmail(true)} className="text-sm text-hint hover:text-body transition-[transform,color] duration-150 ease-[var(--ease-out)] active:scale-[0.97]">
                   Editar
                 </button>
               </div>
@@ -295,7 +295,7 @@ export default function ProfileView({ profile, email, business }: Props) {
             ) : (
               <div className="flex items-center justify-between">
                 <span className="text-sm text-hint">••••••••</span>
-                <button type="button" onClick={() => setEditingPassword(true)} className="text-sm text-hint hover:text-body transition-colors">
+                <button type="button" onClick={() => setEditingPassword(true)} className="text-sm text-hint hover:text-body transition-[transform,color] duration-150 ease-[var(--ease-out)] active:scale-[0.97]">
                   Cambiar
                 </button>
               </div>

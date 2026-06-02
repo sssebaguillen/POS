@@ -115,7 +115,7 @@ export default function ProductSearchInput({
       </div>
 
       {open && query.trim() && (
-        <div className="absolute z-50 top-full left-0 right-0 mt-1 surface-elevated overflow-hidden">
+        <div className="absolute z-50 top-full left-0 right-0 mt-1 surface-elevated overflow-hidden animate-in fade-in-0 zoom-in-95 origin-top duration-150">
           {loading && (
             <p className="text-xs text-hint px-3 py-2">Buscando...</p>
           )}
@@ -131,7 +131,7 @@ export default function ProductSearchInput({
                   key={product.variant_id ?? product.product_id}
                   type="button"
                   onMouseDown={e => { e.preventDefault(); handleSelect(product) }}
-                  className="w-full flex items-center justify-between px-3 py-2 text-sm hover:bg-hover-bg transition-colors text-left gap-3"
+                  className="w-full flex items-center justify-between px-3 py-2 text-sm hover:bg-hover-bg transition-[transform,background-color] duration-150 ease-[var(--ease-out)] active:scale-[0.98] text-left gap-3"
                 >
                   <span className="text-body font-medium truncate">
                     {product.product_name}
@@ -151,7 +151,7 @@ export default function ProductSearchInput({
             <button
               type="button"
               onMouseDown={e => { e.preventDefault(); handleCreateNew() }}
-              className="w-full flex items-center gap-2 px-3 py-2.5 text-sm text-primary hover:bg-primary/5 transition-colors"
+              className="w-full flex items-center gap-2 px-3 py-2.5 text-sm text-primary hover:bg-primary/5 transition-[transform,background-color] duration-150 ease-[var(--ease-out)] active:scale-[0.98]"
             >
               <Plus size={14} />
               Crear producto nuevo

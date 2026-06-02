@@ -428,7 +428,7 @@ export default function SettingsForm({
                           <button
                             key={c.code}
                             type="button"
-                            className="w-full px-3 py-2 text-left text-sm hover:bg-muted/50 transition-colors"
+                            className="w-full px-3 py-2 text-left text-sm hover:bg-muted/50 transition-[transform,background-color] duration-150 ease-[var(--ease-out)] active:scale-[0.98]"
                             onMouseDown={event => {
                               event.preventDefault()
                               setForm(prev => ({ ...prev, currencyCode: c.code }))

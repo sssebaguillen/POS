@@ -5,6 +5,7 @@ import { CreditCard, Plus, Printer, X } from 'lucide-react'
 import ReceiptPreviewModal from '@/components/pos/ReceiptPreviewModal'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import SelectDropdown from '@/components/ui/SelectDropdown'
 import type { PaymentMethod } from '@/lib/constants/domain'
 import type { ReceiptData, ReceiptItemInput, SaleItemInput } from '@/lib/printer/types'
@@ -314,18 +315,24 @@ export default function PaymentModal({
           autoPrintOnOpen
         />
       ) : (
-        <div className="fixed inset-0 bg-foreground/40 g-black/40 dark:bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="surface-elevated rounded-2xl w-full max-w-sm max-h-[calc(100vh-2rem)] flex flex-col overflow-hidden">
+        <Dialog open onOpenChange={next => { if (!next) onClose() }}>
+          <DialogContent
+            showCloseButton={false}
+            onOpenAutoFocus={e => e.preventDefault()}
+            onEscapeKeyDown={e => e.preventDefault()}
+            onInteractOutside={e => e.preventDefault()}
+            className="flex flex-col p-0 overflow-hidden max-h-[calc(100vh-2rem)]"
+          >
           <>
             <div className="flex items-center justify-between px-5 pt-5 pb-4 border-b border-edge-soft">
               <div>
-                <h3 className="text-base font-bold text-heading">Confirmar pago</h3>
+                <DialogTitle className="text-base font-bold text-heading">Confirmar pago</DialogTitle>
                 <p className="text-xl font-bold text-heading mt-0.5">
                   {formatMoney(total)}
                 </p>
               </div>
-              <button onClick={onClose} className="text-hint hover:text-body transition-[transform,color] duration-150 ease-[var(--ease-out)] active:scale-90" type="button">
-                <X size={20} />
+              <button onClick={onClose} type="button" aria-label="Cerrar" className="p-1.5 rounded-lg hover:bg-hover-bg transition-[transform,background-color,color] duration-150 ease-[var(--ease-out)] active:scale-95 text-hint">
+                <X className="w-4 h-4" />
               </button>
             </div>
 
@@ -451,7 +458,7 @@ export default function PaymentModal({
                         <button
                           type="button"
                           onClick={exitMixedMode}
-                          className="text-hint hover:text-red-500 transition-[transform,color] duration-150 ease-[var(--ease-out)] active:scale-90"
+                          className="text-hint hover:text-red-500 transition-[transform,color] duration-150 ease-[var(--ease-out)] active:scale-95"
                         >
                           <X size={14} />
                         </button>
@@ -529,8 +536,8 @@ export default function PaymentModal({
               </div>
             </div>
           </>
-          </div>
-        </div>
+          </DialogContent>
+        </Dialog>
       )}
     </>
   )

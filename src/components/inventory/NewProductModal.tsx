@@ -495,7 +495,7 @@ export default function NewProductModal({
                             role="option"
                             id="category-option-0"
                             aria-selected={categoryNav.highlight === 0}
-                            className={`w-full px-3 py-2 text-left text-sm transition-colors ${categoryNav.highlight === 0 ? 'bg-surface-alt text-body' : 'text-body hover:bg-hover-bg'}`}
+                            className={`w-full px-3 py-2 text-left text-sm transition-[transform,background-color,color] duration-150 ease-[var(--ease-out)] active:scale-[0.98] ${categoryNav.highlight === 0 ? 'bg-surface-alt text-body' : 'text-body hover:bg-hover-bg'}`}
                             onMouseEnter={() => categoryNav.setHighlight(0)}
                             onMouseDown={event => {
                               event.preventDefault()
@@ -514,7 +514,7 @@ export default function NewProductModal({
                                 role="option"
                                 id={`category-option-${index}`}
                                 aria-selected={isHighlighted}
-                                className={`w-full px-3 py-2 text-left text-sm transition-colors ${isHighlighted ? 'bg-surface-alt text-body' : 'text-body hover:bg-hover-bg'}`}
+                                className={`w-full px-3 py-2 text-left text-sm transition-[transform,background-color,color] duration-150 ease-[var(--ease-out)] active:scale-[0.98] ${isHighlighted ? 'bg-surface-alt text-body' : 'text-body hover:bg-hover-bg'}`}
                                 onMouseEnter={() => categoryNav.setHighlight(index)}
                                 onMouseDown={event => {
                                   event.preventDefault()
@@ -595,7 +595,7 @@ export default function NewProductModal({
                                   role="option"
                                   id={`brand-option-${idx}`}
                                   aria-selected={isHighlighted}
-                                  className={`w-full px-3 py-2 text-left text-sm transition-colors ${isHighlighted ? 'bg-surface-alt text-body' : 'text-body hover:bg-hover-bg'}`}
+                                  className={`w-full px-3 py-2 text-left text-sm transition-[transform,background-color,color] duration-150 ease-[var(--ease-out)] active:scale-[0.98] ${isHighlighted ? 'bg-surface-alt text-body' : 'text-body hover:bg-hover-bg'}`}
                                   onMouseEnter={() => brandNav.setHighlight(idx)}
                                   onMouseDown={event => {
                                     event.preventDefault()
@@ -722,7 +722,7 @@ export default function NewProductModal({
                 <button
                   type="button"
                   onClick={() => setShowAdvanced(v => !v)}
-                  className="flex items-center gap-2 w-full px-3 py-2.5 hover:bg-hover-bg transition-colors text-left"
+                  className="flex items-center gap-2 w-full px-3 py-2.5 hover:bg-hover-bg transition-[transform,background-color] duration-150 ease-[var(--ease-out)] active:scale-[0.98] text-left"
                   aria-expanded={showAdvanced}
                 >
                   <ChevronRight className={`w-3.5 h-3.5 text-hint transition-transform shrink-0 ${showAdvanced ? 'rotate-90' : ''}`} />
@@ -817,7 +817,7 @@ export default function NewProductModal({
           <button
             type="button"
             onClick={handleClose}
-            className="p-1.5 rounded-lg hover:bg-hover-bg transition-[transform,background-color,color] duration-150 ease-[var(--ease-out)] active:scale-90 text-hint"
+            className="p-1.5 rounded-lg hover:bg-hover-bg transition-[transform,background-color,color] duration-150 ease-[var(--ease-out)] active:scale-95 text-hint"
             aria-label="Cerrar"
           >
             <X className="w-4 h-4" />

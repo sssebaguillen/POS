@@ -2,9 +2,11 @@
 
 import { useEffect, useState } from 'react'
 import { ExternalLink, FileSpreadsheet, FileText, ImageIcon, Loader2, X } from 'lucide-react'
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import type { ExpenseAttachmentType } from './types'
 
 interface Props {
+  open: boolean
   signedUrl: string
   type: ExpenseAttachmentType | null
   name: string | null
@@ -112,29 +114,20 @@ function PreviewContent({ signedUrl, type, name }: { signedUrl: string; type: Ex
   )
 }
 
-export default function ExpenseAttachmentModal({ signedUrl, type, name, onClose }: Props) {
-  useEffect(() => {
-    function handleKeyDown(e: KeyboardEvent) {
-      if (e.key === 'Escape') onClose()
-    }
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [onClose])
-
+export default function ExpenseAttachmentModal({ open, signedUrl, type, name, onClose }: Props) {
   return (
-    <div
-      className="fixed inset-0 bg-foreground/40 g-black/40 dark:bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4"
-      onClick={e => { if (e.target === e.currentTarget) onClose() }}
-    >
-      <div className="surface-elevated rounded-2xl w-full max-w-3xl flex flex-col overflow-hidden"
+    <Dialog open={open} onOpenChange={next => { if (!next) onClose() }}>
+      <DialogContent
+        showCloseButton={false}
+        className="flex flex-col p-0 overflow-hidden sm:max-w-3xl"
         style={{ height: type === 'image' ? 'auto' : '85vh', maxHeight: '85vh' }}
       >
         {/* Header */}
         <div className="flex items-center gap-3 px-5 py-4 border-b border-edge/60 shrink-0">
           <AttachmentIcon type={type} />
-          <p className="flex-1 text-sm font-medium text-heading truncate">
+          <DialogTitle className="flex-1 text-sm font-medium text-heading truncate">
             {name ?? 'Adjunto'}
-          </p>
+          </DialogTitle>
           <a
             href={signedUrl}
             target="_blank"
@@ -148,16 +141,17 @@ export default function ExpenseAttachmentModal({ signedUrl, type, name, onClose 
           <button
             type="button"
             onClick={onClose}
-            className="p-1 rounded-lg hover:bg-hover-bg transition-[transform,background-color,color] duration-150 ease-[var(--ease-out)] active:scale-90 text-hint hover:text-body"
+            aria-label="Cerrar"
+            className="p-1.5 rounded-lg hover:bg-hover-bg transition-[transform,background-color,color] duration-150 ease-[var(--ease-out)] active:scale-95 text-hint"
             title="Cerrar"
           >
-            <X size={18} />
+            <X className="w-4 h-4" />
           </button>
         </div>
 
         {/* Content */}
         <PreviewContent signedUrl={signedUrl} type={type} name={name} />
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   )
 }

@@ -53,7 +53,7 @@ export default function PriceOverrideIndicator({ selectedListIds, priceLists, on
         aria-label={`Precio personalizado, ${summary}. Click para configurar listas afectadas.`}
         aria-expanded={open}
         title={`Precio personalizado · ${summary}`}
-        className="inline-flex items-center gap-1 px-1 py-0.5 -mx-1 rounded transition-colors hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+        className="inline-flex items-center gap-1 px-1 py-0.5 -mx-1 rounded transition-[transform,background-color] duration-150 ease-[var(--ease-out)] active:scale-[0.97] hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
       >
         <span className="w-1.5 h-1.5 rounded-full bg-primary shrink-0" />
         <span className="text-[10px] font-medium normal-case tracking-normal text-primary/80">
@@ -65,7 +65,7 @@ export default function PriceOverrideIndicator({ selectedListIds, priceLists, on
         <div
           role="dialog"
           aria-label="Listas de precios afectadas"
-          className="absolute top-full left-0 mt-1.5 z-50 w-64 surface-elevated p-3 normal-case tracking-normal"
+          className="absolute top-full left-0 mt-1.5 z-50 w-64 surface-elevated p-3 normal-case tracking-normal animate-in fade-in-0 zoom-in-95 origin-top-left duration-150"
         >
           <p className="text-xs text-subtle mb-2">Aplicar este precio personalizado en:</p>
           {priceLists.length === 0 ? (

@@ -181,7 +181,7 @@ export default function VariantQuickSelector({
                     disabled={!allowOutOfStock && !inStock}
                     onClick={e => { e.preventDefault(); e.stopPropagation(); handleSelect(option.id, optValue.value) }}
                     className={[
-                      'px-2.5 py-0.5 rounded-md border text-xs font-medium transition-colors duration-150',
+                      'px-2.5 py-0.5 rounded-md border text-xs font-medium transition-[transform,background-color,border-color,color] duration-150 ease-[var(--ease-out)] active:scale-[0.97]',
                       isSelected
                         ? 'bg-primary text-primary-foreground border-primary'
                         : inStock

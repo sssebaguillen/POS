@@ -13,6 +13,7 @@ import ExpenseAttachmentUploader from './ExpenseAttachmentUploader'
 import SupplierSelectDropdown from './SupplierSelectDropdown'
 import MercaderiaItemsSection from './MercaderiaItemsSection'
 import MercaderiaOnboarding, { MERCADERIA_ONBOARDING_KEY } from '@/components/onboarding/MercaderiaOnboarding'
+import { useSlidePanelAnimation } from './useSlidePanelAnimation'
 import {
   EXPENSE_CATEGORY_LABELS,
   EXPENSE_CATEGORIES,
@@ -68,6 +69,7 @@ export default function NewExpensePanel({
   const searchInputRef = useRef<HTMLDivElement>(null)
   const firstItemCostRef = useRef<HTMLInputElement>(null)
   const totalRef = useRef<HTMLDivElement>(null)
+  const { visible, closePanel } = useSlidePanelAnimation({ onClose })
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -122,7 +124,7 @@ export default function NewExpensePanel({
           line_count: mercaderiaItems.length,
         })
         onCreated()
-        onClose()
+        closePanel()
       } catch {
         setError(ERR.EXP1)
       } finally {
@@ -163,7 +165,7 @@ export default function NewExpensePanel({
         line_count: 0,
       })
       onCreated()
-      onClose()
+      closePanel()
     } catch {
       setError(ERR.EXP1)
     } finally {
@@ -173,13 +175,18 @@ export default function NewExpensePanel({
 
   return (
     <>
-      <div className="fixed inset-y-0 right-0 z-40 w-full max-w-md surface-elevated border-l border-edge flex flex-col" style={{ borderRadius: 0 }}>
+      <div
+        className={`fixed inset-y-0 right-0 z-40 w-full max-w-md surface-elevated border-l border-edge flex flex-col transition-transform duration-200 ease-in-out ${
+          visible ? 'translate-x-0' : 'translate-x-full'
+        }`}
+        style={{ borderRadius: 0 }}
+      >
         <div className="h-14 border-b border-edge/60 flex items-center justify-between px-5 shrink-0">
           <h2 className="font-semibold text-heading">Nuevo gasto</h2>
           <button
             type="button"
-            onClick={onClose}
-            className="p-1.5 rounded-lg hover:bg-hover-bg transition-[transform,background-color,color] duration-150 ease-[var(--ease-out)] active:scale-90 text-hint"
+            onClick={closePanel}
+            className="p-1.5 rounded-lg hover:bg-hover-bg transition-[transform,background-color,color] duration-150 ease-[var(--ease-out)] active:scale-95 text-hint"
           >
             <X size={18} />
           </button>
@@ -290,7 +297,7 @@ export default function NewExpensePanel({
             type="button"
             variant="outline"
             className="flex-1 h-9 rounded-lg text-sm"
-            onClick={onClose}
+            onClick={closePanel}
             disabled={saving}
           >
             Cancelar
@@ -308,7 +315,7 @@ export default function NewExpensePanel({
 
       {showOnboarding && (
         <MercaderiaOnboarding
-          active={true}
+          active={visible}
           searchInputRef={searchInputRef}
           firstItemCostRef={firstItemCostRef}
           totalRef={totalRef}

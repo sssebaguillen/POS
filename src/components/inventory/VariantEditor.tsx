@@ -600,7 +600,7 @@ export default function VariantEditor({
                       <button
                         type="button"
                         onClick={() => removeOption(optIdx)}
-                        className="shrink-0 p-1.5 rounded-lg text-hint hover:text-destructive hover:bg-destructive/10 transition-[transform,background-color,color] duration-150 ease-[var(--ease-out)] active:scale-90"
+                        className="shrink-0 p-1.5 rounded-lg text-hint hover:text-destructive hover:bg-destructive/10 transition-[transform,background-color,color] duration-150 ease-[var(--ease-out)] active:scale-95"
                       >
                         <X className="w-3.5 h-3.5" />
                       </button>
@@ -618,7 +618,7 @@ export default function VariantEditor({
                         <button
                           type="button"
                           onClick={() => removeValue(optIdx, valIdx)}
-                          className="text-hint hover:text-destructive transition-[transform,color] duration-150 ease-[var(--ease-out)] active:scale-90 ml-0.5"
+                          className="text-hint hover:text-destructive transition-[transform,color] duration-150 ease-[var(--ease-out)] active:scale-95 ml-0.5"
                         >
                           <X className="w-2.5 h-2.5" />
                         </button>
@@ -638,7 +638,7 @@ export default function VariantEditor({
                       <button
                         type="button"
                         onClick={() => addValue(optIdx)}
-                        className="h-7 w-7 rounded-full border border-dashed border-edge bg-surface text-hint hover:text-primary hover:border-primary flex items-center justify-center transition-[transform,background-color,border-color,color] duration-150 ease-[var(--ease-out)] active:scale-90"
+                        className="h-7 w-7 rounded-full border border-dashed border-edge bg-surface text-hint hover:text-primary hover:border-primary flex items-center justify-center transition-[transform,background-color,border-color,color] duration-150 ease-[var(--ease-out)] active:scale-95"
                       >
                         <Plus className="w-3 h-3" />
                       </button>

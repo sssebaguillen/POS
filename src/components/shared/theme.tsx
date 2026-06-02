@@ -79,7 +79,7 @@ export function ThemeToggle() {
         bg-zinc-100 hover:bg-zinc-200 text-zinc-600
         dark:bg-accent dark:hover:bg-accent/80 dark:text-white/70 dark:hover:text-white
         border border-zinc-200 dark:border-edge
-        transition-colors duration-200
+        transition-[transform,background-color,color] duration-150 ease-[var(--ease-out)] active:scale-95
       "
     >
       {themeForUi === 'light' ? (

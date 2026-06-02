@@ -274,7 +274,7 @@ export default function CartPanel({
                       <button
                         type="button"
                         onClick={() => onRemoveItem(key)}
-                        className="shrink-0 rounded-md p-1 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+                        className="shrink-0 rounded-md p-1 text-muted-foreground transition-[transform,background-color,color] duration-150 ease-[var(--ease-out)] active:scale-95 hover:bg-destructive/10 hover:text-destructive"
                         aria-label={`Quitar ${item.product.name}`}
                       >
                         <Trash2 className="h-4 w-4" />
@@ -358,7 +358,7 @@ export default function CartPanel({
                 <button
                   type="button"
                   onClick={() => setDeliveryType('take-away')}
-                  className={`rounded-full border px-3 py-2 text-sm transition-colors ${
+                  className={`rounded-full border px-3 py-2 text-sm transition-[transform,background-color,border-color,color] duration-150 ease-[var(--ease-out)] active:scale-[0.97] ${
                     deliveryType === 'take-away'
                       ? 'border-primary bg-primary text-primary-foreground'
                       : 'border-border bg-background text-foreground hover:border-primary/40'
@@ -369,7 +369,7 @@ export default function CartPanel({
                 <button
                   type="button"
                   onClick={() => setDeliveryType('delivery')}
-                  className={`rounded-full border px-3 py-2 text-sm transition-colors ${
+                  className={`rounded-full border px-3 py-2 text-sm transition-[transform,background-color,border-color,color] duration-150 ease-[var(--ease-out)] active:scale-[0.97] ${
                     deliveryType === 'delivery'
                       ? 'border-primary bg-primary text-primary-foreground'
                       : 'border-border bg-background text-foreground hover:border-primary/40'

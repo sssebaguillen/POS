@@ -28,7 +28,7 @@ export default function ActivityRow({
   return (
     <>
       <tr
-        className="border-b border-edge/40 hover:bg-hover-bg/40 transition-colors cursor-pointer focus-visible:outline-none focus-visible:bg-hover-bg/60"
+        className="border-b border-edge/40 hover:bg-hover-bg/40 transition-[transform,background-color] duration-150 ease-[var(--ease-out)] active:scale-[0.99] cursor-pointer focus-visible:outline-none focus-visible:bg-hover-bg/60"
         onClick={onToggle}
         onKeyDown={(event) => {
           if (event.key === 'Enter' || event.key === ' ') {

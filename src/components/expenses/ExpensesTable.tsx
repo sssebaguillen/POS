@@ -52,6 +52,7 @@ export default function ExpensesTable({ expenses, businessId, operatorId, supaba
     type: ExpenseAttachmentType | null
     name: string | null
   } | null>(null)
+  const [attachmentOpen, setAttachmentOpen] = useState(false)
   const latestRequestRef = useRef(0)
 
   async function handleTrashClick(expense: Expense) {
@@ -107,6 +108,7 @@ export default function ExpensesTable({ expenses, businessId, operatorId, supaba
       return
     }
     setModal({ signedUrl: data.signedUrl, type, name })
+    setAttachmentOpen(true)
   }
 
   if (expenses.length === 0) {
@@ -169,7 +171,7 @@ export default function ExpensesTable({ expenses, businessId, operatorId, supaba
                       type="button"
                       onClick={() => handleOpenAttachment(expense.id, expense.attachment_url!, expense.attachment_type, expense.attachment_name)}
                       disabled={loadingAttachmentId === expense.id}
-                      className="inline-flex items-center justify-center text-primary hover:text-primary/70 transition-colors disabled:opacity-50"
+                      className="inline-flex items-center justify-center text-primary hover:text-primary/70 transition-[transform,color] duration-150 ease-[var(--ease-out)] active:scale-95 disabled:opacity-50"
                       title={expense.attachment_name ?? 'Ver adjunto'}
                     >
                       {loadingAttachmentId === expense.id
@@ -219,10 +221,11 @@ export default function ExpensesTable({ expenses, businessId, operatorId, supaba
 
       {modal && (
         <ExpenseAttachmentModal
+          open={attachmentOpen}
           signedUrl={modal.signedUrl}
           type={modal.type}
           name={modal.name}
-          onClose={() => setModal(null)}
+          onClose={() => setAttachmentOpen(false)}
         />
       )}
 

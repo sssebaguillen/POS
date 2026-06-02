@@ -24,7 +24,7 @@ export default function PageHeader({ title, breadcrumbs, children }: Props) {
       {/* Mobile: opens the drawer overlay */}
       <button
         onClick={toggle}
-        className="p-1.5 -ml-1 rounded-lg hover:bg-hover-bg transition-colors lg:hidden"
+        className="p-1.5 -ml-1 rounded-lg hover:bg-hover-bg transition-[transform,background-color] duration-150 ease-[var(--ease-out)] active:scale-95 lg:hidden"
         aria-label="Abrir menú"
       >
         <Menu size={20} className="text-body" />

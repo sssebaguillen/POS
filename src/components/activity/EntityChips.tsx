@@ -83,7 +83,7 @@ export default function EntityChips({ value, onChange }: EntityChipsProps) {
         {open && (
           <div
             role="listbox"
-            className="absolute left-0 top-full mt-1.5 z-30 min-w-[180px] surface-elevated rounded-xl p-1"
+            className="absolute left-0 top-full mt-1.5 z-30 min-w-[180px] surface-elevated rounded-xl p-1 animate-in fade-in-0 zoom-in-95 origin-top-left duration-150"
           >
             {ENTITY_OVERFLOW_OPTIONS.map(option => {
               const active = value === option.value
@@ -98,7 +98,7 @@ export default function EntityChips({ value, onChange }: EntityChipsProps) {
                     setOpen(false)
                   }}
                   className={cn(
-                    'w-full text-left px-3 py-1.5 rounded-lg text-sm transition-colors',
+                    'w-full text-left px-3 py-1.5 rounded-lg text-sm transition-[transform,background-color,color] duration-150 ease-[var(--ease-out)] active:scale-[0.98]',
                     active ? 'bg-primary/10 text-primary' : 'text-body hover:bg-muted hover:text-heading',
                   )}
                 >

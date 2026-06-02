@@ -51,7 +51,7 @@ export default function SettlePaymentFields({
               key={m}
               type="button"
               onClick={() => onMethodChange(m)}
-              className={`flex-1 rounded-lg border px-3 py-2 text-sm font-medium transition-colors ${
+              className={`flex-1 rounded-lg border px-3 py-2 text-sm font-medium transition-[transform,background-color,border-color,color] duration-150 ease-[var(--ease-out)] active:scale-[0.97] ${
                 method === m
                   ? 'bg-primary text-primary-foreground border-primary'
                   : 'bg-transparent text-body border-edge hover:bg-hover-bg'

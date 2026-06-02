@@ -1,13 +1,15 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
-import { X, ArrowRight } from 'lucide-react'
+import { ArrowRight, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { createClient } from '@/lib/supabase/client'
 import { useFormatMoney } from '@/lib/context/CurrencyContext'
 
 interface Props {
+  open: boolean
   operatorId: string | null
   onOpened: (sessionId: string) => void
   onClose: () => void
@@ -15,7 +17,7 @@ interface Props {
 
 const SUGGESTION_WINDOW_HOURS = 24
 
-export default function OpenSessionModal({ operatorId, onOpened, onClose }: Props) {
+export default function OpenSessionModal({ open, operatorId, onOpened, onClose }: Props) {
   const [amount, setAmount] = useState('')
   const [suggestedAmount, setSuggestedAmount] = useState<number | null>(null)
   const [loading, setLoading] = useState(false)
@@ -24,14 +26,7 @@ export default function OpenSessionModal({ operatorId, onOpened, onClose }: Prop
   const formatMoney = useFormatMoney()
 
   useEffect(() => {
-    function handleKeyDown(e: KeyboardEvent) {
-      if (e.key === 'Escape') onClose()
-    }
-    document.addEventListener('keydown', handleKeyDown)
-    return () => document.removeEventListener('keydown', handleKeyDown)
-  }, [onClose])
-
-  useEffect(() => {
+    if (!open) return
     async function fetchLastSession() {
       const { data } = await supabase
         .from('cash_sessions')
@@ -51,7 +46,7 @@ export default function OpenSessionModal({ operatorId, onOpened, onClose }: Prop
       }
     }
     void fetchLastSession()
-  }, [supabase])
+  }, [open, supabase])
 
   async function handleOpen() {
     setLoading(true)
@@ -78,12 +73,12 @@ export default function OpenSessionModal({ operatorId, onOpened, onClose }: Prop
   const isSuggested = suggestedAmount !== null && amount === String(suggestedAmount)
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/40 dark:bg-black/60 backdrop-blur-sm">
-      <div className="bg-background border border-border rounded-xl w-full max-w-sm mx-4 p-6 shadow-xl">
+    <Dialog open={open} onOpenChange={next => { if (!next) onClose() }}>
+      <DialogContent showCloseButton={false} className="block p-6">
         <div className="flex items-center justify-between mb-5">
-          <h2 className="text-base font-semibold">Abrir caja</h2>
-          <button onClick={onClose} className="text-muted-foreground hover:text-foreground">
-            <X size={18} />
+          <DialogTitle className="text-base font-semibold text-heading">Abrir caja</DialogTitle>
+          <button type="button" onClick={onClose} aria-label="Cerrar" className="p-1.5 rounded-lg hover:bg-hover-bg transition-[transform,background-color,color] duration-150 ease-[var(--ease-out)] active:scale-95 text-hint">
+            <X className="w-4 h-4" />
           </button>
         </div>
 
@@ -123,7 +118,7 @@ export default function OpenSessionModal({ operatorId, onOpened, onClose }: Prop
             </Button>
           </div>
         </div>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   )
 }

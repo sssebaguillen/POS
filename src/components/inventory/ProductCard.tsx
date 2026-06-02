@@ -209,7 +209,7 @@ const ProductCard = memo(function ProductCard({
                   type="button"
                   onClick={() => onToggleActive(product)}
                   disabled={loading}
-                  className="w-full text-left text-sm px-2.5 py-2 rounded-md text-body hover:bg-hover-bg transition-colors disabled:opacity-50 touch-manipulation"
+                  className="w-full text-left text-sm px-2.5 py-2 rounded-md text-body hover:bg-hover-bg transition-[transform,background-color] duration-150 ease-[var(--ease-out)] active:scale-[0.98] disabled:opacity-50 touch-manipulation"
                 >
                   {product.is_active ? 'Discontinuar' : 'Activar'}
                 </button>
@@ -217,7 +217,7 @@ const ProductCard = memo(function ProductCard({
                   type="button"
                   onClick={() => onDelete(product)}
                   disabled={loading}
-                  className="w-full text-left text-sm px-2.5 py-2 rounded-md text-destructive hover:bg-destructive/10 transition-colors disabled:opacity-50 touch-manipulation"
+                  className="w-full text-left text-sm px-2.5 py-2 rounded-md text-destructive hover:bg-destructive/10 transition-[transform,background-color,color] duration-150 ease-[var(--ease-out)] active:scale-[0.98] disabled:opacity-50 touch-manipulation"
                 >
                   Eliminar
                 </button>

@@ -28,7 +28,7 @@ type OperatorMode = 'amount' | 'transactions'
 
 function getWidgetToggleClass(isActive: boolean): string {
   return cn(
-    'pill-tab border border-transparent transition-colors',
+    'pill-tab border border-transparent transition-[transform,color,border-color] duration-150 ease-[var(--ease-out)]',
     isActive && 'bg-primary/10 text-primary border-primary/20 dark:bg-primary/15 dark:border-primary/30'
   )
 }
@@ -310,7 +310,7 @@ export default function StatsView({
             {isFetching && <span className="text-xs text-hint shrink-0">Actualizando...</span>}
             <Link
               href={`/stats/report?period=${period}${from ? `&from=${from}` : ''}${to ? `&to=${to}` : ''}`}
-              className="ml-auto inline-flex items-center gap-1.5 pill-tab border border-edge text-body hover:border-primary/30 hover:text-primary transition-colors shrink-0"
+              className="ml-auto inline-flex items-center gap-1.5 pill-tab border border-edge text-body hover:border-primary/30 hover:text-primary transition-[transform,color,border-color] duration-150 ease-[var(--ease-out)] shrink-0"
             >
               <FileText size={15} />
               Reporte PDF

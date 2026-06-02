@@ -187,7 +187,7 @@ export default function Sidebar({
           <button
             onClick={e => { onToggleCollapse(); e.currentTarget.blur() }}
             className={cn(
-              'p-1.5 rounded-lg hover:bg-hover-bg transition-[transform,background-color] duration-150 ease-[var(--ease-out)] active:scale-90 text-hint',
+              'p-1.5 rounded-lg hover:bg-hover-bg transition-[transform,background-color] duration-150 ease-[var(--ease-out)] active:scale-95 text-hint',
               collapsed && 'mx-auto'
             )}
             title={collapsed ? 'Expandir sidebar' : 'Colapsar sidebar'}
@@ -203,7 +203,7 @@ export default function Sidebar({
           <Link
             href="/dashboard"
             title="Retomar configuración inicial"
-            className="flex items-center justify-center p-2.5 rounded-xl text-primary hover:bg-primary/10 transition-[transform,background-color,color] duration-150 ease-[var(--ease-out)] active:scale-90 mb-2"
+            className="flex items-center justify-center p-2.5 rounded-xl text-primary hover:bg-primary/10 transition-[transform,background-color,color] duration-150 ease-[var(--ease-out)] active:scale-95 mb-2"
           >
             <Sparkles size={18} />
           </Link>
@@ -253,7 +253,7 @@ export default function Sidebar({
                       className={cn(
                         'relative flex items-center rounded-xl text-sm font-medium transition-[transform,background-color,color] duration-150 ease-[var(--ease-out)] active:scale-[0.98]',
                         collapsed && !isMobileDrawer
-                          ? 'justify-center p-2.5 active:scale-90'
+                          ? 'justify-center p-2.5 active:scale-95'
                           : 'gap-3 px-3 py-2.5',
                         isActive
                           ? 'bg-primary/10 text-[var(--primary-active-text)] font-semibold'
@@ -280,7 +280,7 @@ export default function Sidebar({
                     className={cn(
                       'flex items-center rounded-xl text-sm font-medium transition-[transform,background-color,color] duration-150 ease-[var(--ease-out)] active:scale-[0.98] text-body hover:bg-hover-bg hover:text-heading',
                       collapsed && !isMobileDrawer
-                        ? 'justify-center p-2.5 active:scale-90'
+                        ? 'justify-center p-2.5 active:scale-95'
                         : 'gap-3 px-3 py-2.5'
                     )}
                   >
@@ -323,7 +323,7 @@ export default function Sidebar({
               className={cn(
                 'rounded-lg text-sm text-body hover:bg-hover-bg transition-[transform,background-color,color] duration-150 ease-[var(--ease-out)] active:scale-[0.98]',
                 collapsed && !isMobileDrawer
-                  ? 'p-2.5 flex items-center justify-center w-full active:scale-90'
+                  ? 'p-2.5 flex items-center justify-center w-full active:scale-95'
                   : 'flex items-center gap-2 px-3 py-2 text-left w-full'
               )}
               onClick={e => { router.push('/profile'); if (isMobileDrawer) onClose(); e.currentTarget.blur() }}
@@ -339,7 +339,7 @@ export default function Sidebar({
               className={cn(
                 'rounded-lg text-red-500 hover:bg-red-50 hover:text-red-700 transition-[transform,background-color,color] duration-150 ease-[var(--ease-out)] active:scale-[0.98]',
                 collapsed && !isMobileDrawer
-                  ? 'p-2.5 flex items-center justify-center w-full active:scale-90'
+                  ? 'p-2.5 flex items-center justify-center w-full active:scale-95'
                   : 'flex items-center gap-2 px-3 py-2 text-left w-full text-sm'
               )}
               aria-label="Cerrar sesion"
@@ -359,7 +359,7 @@ export default function Sidebar({
           className={cn(
             'rounded-lg hover:bg-hover-bg transition-[transform,background-color,color] duration-150 ease-[var(--ease-out)] active:scale-[0.98] text-subtle',
             collapsed && !isMobileDrawer
-              ? 'p-2.5 flex items-center justify-center w-full active:scale-90'
+              ? 'p-2.5 flex items-center justify-center w-full active:scale-95'
               : 'flex items-center gap-2 px-3 py-2 text-sm w-full'
           )}
         >

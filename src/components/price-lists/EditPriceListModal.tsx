@@ -142,7 +142,7 @@ export default function EditPriceListModal({
             <button
               type="button"
               onClick={handleClose}
-              className="p-1.5 rounded-lg hover:bg-hover-bg transition-[transform,background-color,color] duration-150 ease-[var(--ease-out)] active:scale-90 text-hint"
+              className="p-1.5 rounded-lg hover:bg-hover-bg transition-[transform,background-color,color] duration-150 ease-[var(--ease-out)] active:scale-95 text-hint"
               aria-label="Cerrar modal"
             >
               <X className="w-4 h-4" />

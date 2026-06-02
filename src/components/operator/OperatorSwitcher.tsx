@@ -64,7 +64,7 @@ export default function OperatorSwitcher({ operatorName, operatorRole }: Operato
         <PopoverTrigger asChild>
           <button
             type="button"
-            className="w-full rounded-lg border border-edge px-3 py-2 text-left text-sm text-body hover:bg-hover-bg transition-colors"
+            className="w-full rounded-lg border border-edge px-3 py-2 text-left text-sm text-body hover:bg-hover-bg transition-[transform,background-color] duration-150 ease-[var(--ease-out)] active:scale-[0.98]"
           >
             <span className="block text-xs uppercase tracking-wide text-muted-foreground">Operador activo</span>
             <span className="mt-1 block font-medium text-heading">{operatorName}</span>
@@ -80,7 +80,7 @@ export default function OperatorSwitcher({ operatorName, operatorRole }: Operato
             <button
               type="button"
               onClick={navigateToOperatorProfile}
-              className="w-full rounded-lg px-3 py-2 text-left text-sm text-body transition-colors hover:bg-hover-bg"
+              className="w-full rounded-lg px-3 py-2 text-left text-sm text-body transition-[transform,background-color] duration-150 ease-[var(--ease-out)] active:scale-[0.98] hover:bg-hover-bg"
             >
               Mi perfil
             </button>
@@ -88,7 +88,7 @@ export default function OperatorSwitcher({ operatorName, operatorRole }: Operato
               type="button"
               onClick={handleSwitchOperator}
               disabled={loading}
-              className="w-full rounded-lg px-3 py-2 text-left text-sm text-red-600 transition-colors hover:bg-red-50 disabled:opacity-60 dark:hover:bg-red-500/10"
+              className="w-full rounded-lg px-3 py-2 text-left text-sm text-red-600 transition-[transform,background-color,color] duration-150 ease-[var(--ease-out)] active:scale-[0.98] hover:bg-red-50 disabled:opacity-60 dark:hover:bg-red-500/10"
             >
               {loading ? 'Cerrando sesion...' : 'Cerrar sesion de operario'}
             </button>

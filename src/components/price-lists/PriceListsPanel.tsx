@@ -573,7 +573,7 @@ function GroupedPriceRowsTable({
               return (
                 <Fragment key={`brand-${group.key}`}>
                   <TableRow
-                    className="bg-primary/[0.04] hover:bg-primary/[0.07] cursor-pointer select-none dark:bg-primary/[0.07] dark:hover:bg-primary/[0.10]"
+                    className="bg-primary/[0.04] hover:bg-primary/[0.07] cursor-pointer select-none dark:bg-primary/[0.07] dark:hover:bg-primary/[0.10] transition-[transform,background-color] duration-150 ease-[var(--ease-out)] active:scale-[0.99]"
                     onClick={() => toggleGroup(group.key)}
                   >
                     <TableCell>
@@ -639,7 +639,7 @@ function GroupedPriceRowsTable({
                               <button
                                 type="button"
                                 onClick={() => onVariantPreview(row.product.id)}
-                                className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-primary/10 dark:bg-primary/20 text-primary border border-primary/20 dark:border-primary/40 whitespace-nowrap hover:bg-primary/20 dark:hover:bg-primary/30 transition-colors cursor-pointer"
+                                className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-primary/10 dark:bg-primary/20 text-primary border border-primary/20 dark:border-primary/40 whitespace-nowrap hover:bg-primary/20 dark:hover:bg-primary/30 transition-[transform,background-color] duration-150 ease-[var(--ease-out)] active:scale-[0.97] cursor-pointer"
                               >
                                 por variante
                               </button>

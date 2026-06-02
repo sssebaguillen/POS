@@ -35,7 +35,7 @@ export default function Toast({ message, duration = 5500, variant = 'success', o
         <button
           type="button"
           onClick={() => { onUndo(); onDismiss() }}
-          className="rounded px-2 py-0.5 text-xs font-medium text-primary hover:bg-primary/10 transition-colors"
+          className="rounded px-2 py-0.5 text-xs font-medium text-primary hover:bg-primary/10 transition-[transform,background-color] duration-150 ease-[var(--ease-out)] active:scale-[0.97]"
         >
           Deshacer
         </button>
@@ -44,7 +44,7 @@ export default function Toast({ message, duration = 5500, variant = 'success', o
         type="button"
         onClick={onDismiss}
         aria-label="Cerrar notificación"
-        className="rounded p-0.5 hover:bg-muted transition-colors"
+        className="rounded p-0.5 hover:bg-muted transition-[transform,background-color] duration-150 ease-[var(--ease-out)] active:scale-95"
       >
         <X size={14} />
       </button>

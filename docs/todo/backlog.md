@@ -92,6 +92,35 @@ El negocio familiar de referencia tiene productos con márgenes calculados sobre
 
 No es bloqueante para beta. Es un nice-to-have que se vuelve must-have en cuanto el primer usuario activo tenga más de 50 productos con precios dinámicos. Implementar antes de lanzar pricing público.
 
+> **Nota (2026-06-02):** este diseño es PREVIO al rediseño de "precio base autoritativo" (ver sección siguiente). En el modelo viejo `calculateProductPrice` producía el precio de venta de todos los días, así que redondear ahí redondeaba todo. En el modelo nuevo el precio base es el campo `price` (que el usuario ya escribe redondo) y `calculateProductPrice` solo produce precios de **listas alternativas** (cost×mult). Por eso el redondeo hay que **re-analizarlo**: probablemente aplica al **generador de precios** y a las **listas alternativas**, no al precio base. Re-analizar junto con la Fase 3 de abajo.
+
+---
+
+## Listas de precios — Fase 3: generador "precios base desde costo" (post-beta, diferido)
+
+> Contexto: el rediseño de listas de precios (precio base autoritativo) se cerró en Fases 1 y 2 (desplegadas 2026-06-02). Esto es la Fase 3, **deliberadamente diferida**.
+
+### Qué es
+
+Una acción de **generar / recalcular en masa el precio base** de los productos a partir del costo: "generar precios base = costo × N (+ redondeo)", con un **preview/diff** de qué precios cambian antes de aplicar. Reemplaza la conveniencia masiva que se perdió al desacoplar el precio base de las listas.
+
+Implementación esperada cuando se retome: RPC guardada `generate_base_prices(p_business_id, p_multiplier, scope)` que setea `products.price = round(cost × mult)` para el scope elegido, con permiso `stock_write` + `log_audit_event` (regla 32), y UI con preview/diff (probablemente en Inventario).
+
+### Por qué se definió así
+
+En el modelo nuevo el **precio base** (`products.price` / `product_variants.price`) es la única fuente de verdad y es **manual** (el dueño lo fija). Eso resuelve el bug original (un cambio de costo ya no re-precia solo) pero quita la comodidad de "no escribir miles de precios uno por uno". La solución acordada fue mantener esa comodidad como una **acción explícita y puntual** (generar/recalcular), no como una fórmula viva — así el usuario controla cuándo recalcular y nada se mueve solo. Decisión de modelo tomada con el usuario el 2026-06-02 (manual + generador opcional).
+
+### Por qué se difirió
+
+1. **No es necesaria para la consistencia.** Fases 1+2 ya cerraron el bug y dejaron el sistema consistente. La Fase 3 es conveniencia net-new, no un arreglo.
+2. **Depende del redondeo (P7i), que hay que re-analizar** bajo el modelo nuevo (ver nota arriba): el generador sin redondeo produce precios "feos" (costo × 1.35 = 24,83), justo lo que P7i busca evitar. Conviene diseñarlos juntos.
+3. **Falta definir el default-markup.** El "precio sugerido desde costo ×N" en el form de producto quedó diferido por la misma razón: ya no hay "lista default" de donde sacar el N; hace falta una config de markup por defecto del negocio (encaja naturalmente con este generador).
+4. **No hay urgencia de datos hoy.** El único negocio real en beta (Cecilia) tiene pocos productos con precio cargado a mano; el dolor de "miles de precios" todavía no es real.
+
+### Prioridad
+
+Post-beta. Tratar como iniciativa propia (generador + redondeo P7i + default-markup, diseñados en conjunto), no como un add-on apurado. Planificar en serio antes de implementar.
+
 ---
 
 ## Ideas de producto — Nice-to-have / a evaluar (post-beta)

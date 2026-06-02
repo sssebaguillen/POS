@@ -106,7 +106,7 @@ export default function ActivityResults({
             type="button"
             onClick={() => onPageChange(page - 1)}
             disabled={page <= 1}
-            className="inline-flex items-center gap-1 h-8 px-2.5 rounded-lg border border-border bg-card text-sm text-body hover:bg-muted hover:text-heading transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-card disabled:hover:text-body"
+            className="inline-flex items-center gap-1 h-8 px-2.5 rounded-lg border border-border bg-card text-sm text-body hover:bg-muted hover:text-heading transition-[transform,background-color,color] duration-150 ease-[var(--ease-out)] active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-card disabled:hover:text-body"
             aria-label="Página anterior"
           >
             <ChevronLeft size={14} />
@@ -119,7 +119,7 @@ export default function ActivityResults({
             type="button"
             onClick={() => onPageChange(page + 1)}
             disabled={page >= totalPages}
-            className="inline-flex items-center gap-1 h-8 px-2.5 rounded-lg border border-border bg-card text-sm text-body hover:bg-muted hover:text-heading transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-card disabled:hover:text-body"
+            className="inline-flex items-center gap-1 h-8 px-2.5 rounded-lg border border-border bg-card text-sm text-body hover:bg-muted hover:text-heading transition-[transform,background-color,color] duration-150 ease-[var(--ease-out)] active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-card disabled:hover:text-body"
             aria-label="Página siguiente"
           >
             Siguiente
