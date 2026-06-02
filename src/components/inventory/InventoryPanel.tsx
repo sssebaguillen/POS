@@ -515,24 +515,37 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
     }
   }, [filtered.length, selectedIds.size, handleDeselectAll, handleSelectAll])
 
+  // Runs a bulk RPC and surfaces failures uniformly. The SECURITY DEFINER bulk RPCs return
+  // { success:false, error } on permission/context failures (NOT via the transport error), so
+  // checking only `error` would swallow them. Returns the parsed result on success, or null
+  // (after toasting the error) on any failure.
+  const runBulkAction = useCallback(async <T,>(
+    action: () => PromiseLike<{ data: unknown; error: { message: string } | null }>,
+  ): Promise<(T & { success: boolean }) | null> => {
+    setBulkLoading(true)
+    const { data, error } = await action()
+    setBulkLoading(false)
+    const result = data as ({ success?: boolean; error?: string } & T) | null
+    if (error || !result?.success) {
+      showToast({ message: result?.error ?? translateDbError(error?.message ?? '', ERR.INV1) })
+      return null
+    }
+    return result as T & { success: boolean }
+  }, [showToast])
+
   const handleBulkDelete = useCallback(async () => {
     if (!businessId) return
     trackFeatureUsed('bulk_action')
-    setBulkLoading(true)
     const ids = Array.from(selectedIds)
-    const { data, error } = await supabase.rpc('bulk_delete_products', {
-      p_operator_id: operatorId,
-      p_business_id: businessId,
-      p_product_ids: ids,
-    })
-    setBulkLoading(false)
-    if (error) {
-      showToast({ message: translateDbError(error.message, ERR.INV1) })
-      return
-    }
-    const result = data as { deleted: number; discontinued: number } | null
-    const deleted = result?.deleted ?? 0
-    const discontinued = result?.discontinued ?? 0
+    const result = await runBulkAction<{ deleted: number; discontinued: number }>(() =>
+      supabase.rpc('bulk_delete_products', {
+        p_operator_id: operatorId,
+        p_business_id: businessId,
+        p_product_ids: ids,
+      }))
+    if (!result) return
+    const deleted = result.deleted ?? 0
+    const discontinued = result.discontinued ?? 0
 
     if (discontinued > 0 && deleted > 0) {
       showToast({ message: `${deleted} eliminados, ${discontinued} discontinuados (tenían ventas)` })
@@ -550,94 +563,74 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
 
     handleCloseSelection()
     router.refresh()
-  }, [businessId, selectedIds, supabase, showToast, handleCloseSelection, router])
+  }, [businessId, operatorId, selectedIds, supabase, showToast, handleCloseSelection, router, runBulkAction])
 
   const handleBulkActivate = useCallback(async () => {
     if (!businessId) return
-    setBulkLoading(true)
     const ids = Array.from(selectedIds)
-    const { data, error } = await supabase.rpc('bulk_set_product_status', {
-      p_operator_id: operatorId,
-      p_business_id: businessId,
-      p_product_ids: ids,
-      p_is_active: true,
-    })
-    setBulkLoading(false)
-    if (error) {
-      showToast({ message: translateDbError(error.message, ERR.INV1) })
-      return
-    }
-    const result = data as { updated: number } | null
-    showToast({ message: `${result?.updated ?? 0} productos activados` })
+    const result = await runBulkAction<{ updated: number }>(() =>
+      supabase.rpc('bulk_set_product_status', {
+        p_operator_id: operatorId,
+        p_business_id: businessId,
+        p_product_ids: ids,
+        p_is_active: true,
+      }))
+    if (!result) return
+    showToast({ message: `${result.updated ?? 0} productos activados` })
     // Update local state directly — do not rely on router.refresh()
     setProducts(prev => prev.map(p => ids.includes(p.id) ? { ...p, is_active: true } : p))
     handleCloseSelection()
     router.refresh()
-  }, [businessId, selectedIds, supabase, showToast, handleCloseSelection, router])
+  }, [businessId, operatorId, selectedIds, supabase, showToast, handleCloseSelection, router, runBulkAction])
 
   const handleBulkDeactivate = useCallback(async () => {
     if (!businessId) return
-    setBulkLoading(true)
     const ids = Array.from(selectedIds)
-    const { data, error } = await supabase.rpc('bulk_set_product_status', {
-      p_operator_id: operatorId,
-      p_business_id: businessId,
-      p_product_ids: ids,
-      p_is_active: false,
-    })
-    setBulkLoading(false)
-    if (error) {
-      showToast({ message: translateDbError(error.message, ERR.INV1) })
-      return
-    }
-    const result = data as { updated: number } | null
-    showToast({ message: `${result?.updated ?? 0} productos discontinuados` })
+    const result = await runBulkAction<{ updated: number }>(() =>
+      supabase.rpc('bulk_set_product_status', {
+        p_operator_id: operatorId,
+        p_business_id: businessId,
+        p_product_ids: ids,
+        p_is_active: false,
+      }))
+    if (!result) return
+    showToast({ message: `${result.updated ?? 0} productos discontinuados` })
     // Update local state directly — do not rely on router.refresh()
     setProducts(prev => prev.map(p => ids.includes(p.id) ? { ...p, is_active: false } : p))
     handleCloseSelection()
     router.refresh()
-  }, [businessId, selectedIds, supabase, showToast, handleCloseSelection, router])
+  }, [businessId, operatorId, selectedIds, supabase, showToast, handleCloseSelection, router, runBulkAction])
 
   const handleBulkSetCatalog = useCallback(async (show: boolean) => {
     if (!businessId) return
-    setBulkLoading(true)
     const ids = Array.from(selectedIds)
-    const { data, error } = await supabase.rpc('bulk_set_product_catalog', {
-      p_operator_id: operatorId,
-      p_business_id: businessId,
-      p_product_ids: ids,
-      p_show_in_catalog: show,
-    })
-    setBulkLoading(false)
-    if (error) {
-      showToast({ message: translateDbError(error.message, ERR.INV1) })
-      return
-    }
-    const result = data as { updated: number } | null
-    showToast({ message: `${result?.updated ?? 0} productos ${show ? 'agregados al' : 'quitados del'} catálogo` })
+    const result = await runBulkAction<{ updated: number }>(() =>
+      supabase.rpc('bulk_set_product_catalog', {
+        p_operator_id: operatorId,
+        p_business_id: businessId,
+        p_product_ids: ids,
+        p_show_in_catalog: show,
+      }))
+    if (!result) return
+    showToast({ message: `${result.updated ?? 0} productos ${show ? 'agregados al' : 'quitados del'} catálogo` })
     setProducts(prev => prev.map(p => ids.includes(p.id) ? { ...p, show_in_catalog: show } : p))
     handleCloseSelection()
     router.refresh()
-  }, [businessId, selectedIds, supabase, showToast, handleCloseSelection, router])
+  }, [businessId, operatorId, selectedIds, supabase, showToast, handleCloseSelection, router, runBulkAction])
 
   const handleBulkChangeCategory = useCallback(async (categoryId: string | null) => {
     if (!businessId) return
-    setBulkLoading(true)
     const ids = Array.from(selectedIds)
-    const { data, error } = await supabase.rpc('bulk_update_product_category', {
-      p_operator_id: operatorId,
-      p_business_id: businessId,
-      p_product_ids: ids,
-      p_category_id: categoryId,
-    })
-    setBulkLoading(false)
-    if (error) {
-      showToast({ message: translateDbError(error.message, ERR.INV1) })
-      return
-    }
-    const result = data as { updated: number } | null
+    const result = await runBulkAction<{ updated: number }>(() =>
+      supabase.rpc('bulk_update_product_category', {
+        p_operator_id: operatorId,
+        p_business_id: businessId,
+        p_product_ids: ids,
+        p_category_id: categoryId,
+      }))
+    if (!result) return
     const catName = categoryId ? categories.find(c => c.id === categoryId)?.name ?? '' : 'ninguna'
-    showToast({ message: `${result?.updated ?? 0} productos → categoría: ${catName}` })
+    showToast({ message: `${result.updated ?? 0} productos → categoría: ${catName}` })
     // Update local state directly
     const nextCat = categoryId ? categories.find(c => c.id === categoryId) ?? null : null
     setProducts(prev => prev.map(p =>
@@ -647,26 +640,21 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
     ))
     handleCloseSelection()
     router.refresh()
-  }, [businessId, selectedIds, supabase, showToast, handleCloseSelection, router, categories])
+  }, [businessId, operatorId, selectedIds, supabase, showToast, handleCloseSelection, router, categories, runBulkAction])
 
   const handleBulkChangeBrand = useCallback(async (brandId: string | null) => {
     if (!businessId) return
-    setBulkLoading(true)
     const ids = Array.from(selectedIds)
-    const { data, error } = await supabase.rpc('bulk_update_product_brand', {
-      p_operator_id: operatorId,
-      p_business_id: businessId,
-      p_product_ids: ids,
-      p_brand_id: brandId,
-    })
-    setBulkLoading(false)
-    if (error) {
-      showToast({ message: translateDbError(error.message, ERR.INV1) })
-      return
-    }
-    const result = data as { updated: number } | null
+    const result = await runBulkAction<{ updated: number }>(() =>
+      supabase.rpc('bulk_update_product_brand', {
+        p_operator_id: operatorId,
+        p_business_id: businessId,
+        p_product_ids: ids,
+        p_brand_id: brandId,
+      }))
+    if (!result) return
     const brandName = brandId ? brands.find(b => b.id === brandId)?.name ?? '' : 'ninguna'
-    showToast({ message: `${result?.updated ?? 0} productos → marca: ${brandName}` })
+    showToast({ message: `${result.updated ?? 0} productos → marca: ${brandName}` })
     // Update local state directly
     const nextBrand = brandId ? brands.find(b => b.id === brandId) ?? null : null
     setProducts(prev => prev.map(p =>
@@ -676,7 +664,7 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
     ))
     handleCloseSelection()
     router.refresh()
-  }, [businessId, selectedIds, supabase, showToast, handleCloseSelection, router, brands])
+  }, [businessId, operatorId, selectedIds, supabase, showToast, handleCloseSelection, router, brands, runBulkAction])
 
   if (!businessId) {
     return (

@@ -16,6 +16,7 @@ export interface CatalogProduct {
   brandId: string | null
   brandName: string | null
   hasVariants: boolean
+  variantCount: number
 }
 
 export interface CatalogCategory {

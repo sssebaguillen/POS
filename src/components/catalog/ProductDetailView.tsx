@@ -180,6 +180,7 @@ export default function ProductDetailView({
       brandId: null,
       brandName: null,
       hasVariants: product.has_variants,
+      variantCount: variants.filter(v => v.is_active).length,
     }
 
     const itemKey = `${product.id}:${variantId ?? ''}`

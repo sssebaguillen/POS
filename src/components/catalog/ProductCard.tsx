@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { ImageIcon, Layers, Plus } from 'lucide-react'
@@ -30,19 +30,6 @@ interface RpcResult {
 
 const currencyFormatter = new Intl.NumberFormat('es-AR')
 
-function getVariantDisplayImageUrl(
-  variants: CatalogProductVariant[],
-  fallbackImageUrl: string | null
-): string | null {
-  return (
-    variants.find(variant => variant.is_active && variant.is_in_stock && Boolean(variant.image_url))?.image_url ??
-    variants.find(variant => variant.is_active && Boolean(variant.image_url))?.image_url ??
-    variants.find(variant => variant.is_in_stock && Boolean(variant.image_url))?.image_url ??
-    variants.find(variant => Boolean(variant.image_url))?.image_url ??
-    fallbackImageUrl
-  )
-}
-
 function CardImage({ imageUrl, name, sizes }: { imageUrl: string; name: string; sizes: string }) {
   const [loaded, setLoaded] = useState(false)
   return (
@@ -69,7 +56,6 @@ export interface ProductCardProps {
 
 export default function ProductCard({ product, slug, onAddToCart }: ProductCardProps) {
   const [variantData, setVariantData] = useState<VariantData | null>(null)
-  const [loadedVariantCount, setLoadedVariantCount] = useState<number | null>(null)
   const [isLoadingVariants, setIsLoadingVariants] = useState(false)
   const [hoveredVariantImage, setHoveredVariantImage] = useState<string | null>(null)
   const fetchedRef = useRef(false)
@@ -77,17 +63,17 @@ export default function ProductCard({ product, slug, onAddToCart }: ProductCardP
   const isOutOfStock = product.hasVariants ? false : product.stock <= 0
   const detailUrl = `/catalogo/${slug}/${product.id}`
 
-  const defaultVariantImageUrl = getVariantDisplayImageUrl(variantData?.variants ?? [], product.imageUrl)
-  const displayImageUrl = hoveredVariantImage ?? defaultVariantImageUrl
+  // Default image comes from get_catalog_products (the default-variant image for variant
+  // products, mirroring how price/stock are resolved). On hover, swap to the image of the
+  // variant the user is previewing in the selector.
+  const displayImageUrl = hoveredVariantImage ?? product.imageUrl
 
   const fetchVariants = useCallback(async () => {
     if (fetchedRef.current) return
     fetchedRef.current = true
 
     if (variantCache.has(product.id)) {
-      const cached = variantCache.get(product.id) ?? null
-      setVariantData(cached)
-      if (cached) setLoadedVariantCount(cached.variants.length)
+      setVariantData(variantCache.get(product.id) ?? null)
       return
     }
 
@@ -111,7 +97,6 @@ export default function ProductCard({ product, slug, onAddToCart }: ProductCardP
           const result: VariantData = { options: rpc.options ?? [], variants: rpc.variants ?? [] }
           variantCache.set(product.id, result)
           setVariantData(result)
-          setLoadedVariantCount(result.variants.length)
           return
         }
       }
@@ -125,11 +110,6 @@ export default function ProductCard({ product, slug, onAddToCart }: ProductCardP
     }
   }, [product.id, slug])
 
-  useEffect(() => {
-    if (!product.hasVariants) return
-    void fetchVariants()
-  }, [fetchVariants, product.hasVariants])
-
   function handleAddSimple(e: React.MouseEvent) {
     e.preventDefault()
     onAddToCart(product, null, null)
@@ -140,9 +120,7 @@ export default function ProductCard({ product, slug, onAddToCart }: ProductCardP
   }
 
   const variantBadgeText =
-    loadedVariantCount != null && loadedVariantCount > 1
-      ? `${loadedVariantCount} variantes`
-      : 'Variantes'
+    product.variantCount > 1 ? `${product.variantCount} variantes` : 'Variantes'
 
   if (!product.hasVariants) {
     // Simple product — no hover panel, just a link card

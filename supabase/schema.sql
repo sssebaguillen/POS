@@ -226,7 +226,7 @@ BEGIN
   PERFORM log_audit_event(p_business_id, v_stored_op_id, v_actor_role,
     'product_bulk_deleted', 'product', p_business_id, NULL,
     jsonb_build_object('product_ids', to_jsonb(p_product_ids), 'count', v_deleted + v_discontinued), NULL);
-  RETURN jsonb_build_object('deleted', v_deleted, 'discontinued', v_discontinued);
+  RETURN jsonb_build_object('success', true, 'deleted', v_deleted, 'discontinued', v_discontinued);
 END;
 $$;
 
@@ -270,7 +270,7 @@ BEGIN
     'product_bulk_status', 'product', p_business_id, NULL,
     jsonb_build_object('product_ids', to_jsonb(v_ids), 'count', v_count, 'products', v_products),
     jsonb_build_object('is_active', p_is_active));
-  RETURN jsonb_build_object('updated', v_count);
+  RETURN jsonb_build_object('success', true, 'updated', v_count);
 END;
 $$;
 
@@ -314,7 +314,7 @@ BEGIN
     'product_bulk_catalog', 'product', p_business_id, NULL,
     jsonb_build_object('product_ids', to_jsonb(v_ids), 'count', v_count, 'products', v_products),
     jsonb_build_object('show_in_catalog', p_show_in_catalog));
-  RETURN jsonb_build_object('updated', v_count);
+  RETURN jsonb_build_object('success', true, 'updated', v_count);
 END;
 $$;
 
@@ -360,7 +360,7 @@ BEGIN
     'product_bulk_brand', 'product', p_business_id, NULL,
     jsonb_build_object('product_ids', to_jsonb(v_ids), 'count', v_count, 'products', v_products),
     jsonb_build_object('brand_id', p_brand_id));
-  RETURN jsonb_build_object('updated', v_count);
+  RETURN jsonb_build_object('success', true, 'updated', v_count);
 END;
 $$;
 
@@ -406,7 +406,7 @@ BEGIN
     'product_bulk_category', 'product', p_business_id, NULL,
     jsonb_build_object('product_ids', to_jsonb(v_ids), 'count', v_count, 'products', v_products),
     jsonb_build_object('category_id', p_category_id));
-  RETURN jsonb_build_object('updated', v_count);
+  RETURN jsonb_build_object('success', true, 'updated', v_count);
 END;
 $$;
 
@@ -2772,7 +2772,7 @@ $$;
 ALTER FUNCTION "public"."get_catalog_product_with_variants"("p_slug" "text", "p_product_id" "uuid") OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."get_catalog_products"("p_slug" "text") RETURNS TABLE("id" "uuid", "category_id" "uuid", "name" "text", "sale_price" numeric, "stock" integer, "image_url" "text", "has_variants" boolean, "brand_id" "uuid", "brand_name" "text")
+CREATE OR REPLACE FUNCTION "public"."get_catalog_products"("p_slug" "text") RETURNS TABLE("id" "uuid", "category_id" "uuid", "name" "text", "sale_price" numeric, "stock" integer, "image_url" "text", "has_variants" boolean, "brand_id" "uuid", "brand_name" "text", "variant_count" integer)
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public', 'extensions'
     AS $$
@@ -2818,10 +2818,20 @@ BEGIN
       WHEN p.has_variants AND pv_def.id IS NOT NULL THEN pv_def.stock
       ELSE p.stock::integer
     END AS stock,
-    p.image_url,
+    CASE
+      WHEN p.has_variants AND pv_def.id IS NOT NULL THEN COALESCE(pv_def.image_url, p.image_url)
+      ELSE p.image_url
+    END AS image_url,
     p.has_variants,
     p.brand_id,
-    b_brand.name AS brand_name
+    b_brand.name AS brand_name,
+    CASE
+      WHEN p.has_variants THEN (
+        SELECT count(*)::int FROM product_variants pv
+        WHERE pv.product_id = p.id AND pv.is_active = true
+      )
+      ELSE 0
+    END AS variant_count
   FROM products p
   LEFT JOIN product_variants pv_def ON pv_def.id = p.default_variant_id
   LEFT JOIN brands b_brand ON b_brand.id = p.brand_id

@@ -26,6 +26,7 @@ interface ProductRow {
   has_variants: boolean
   brand_id: string | null
   brand_name: string | null
+  variant_count: number | null
 }
 
 interface CategoryRow {
@@ -135,6 +136,7 @@ export default async function CatalogSlugPage({ params }: CatalogPageProps) {
           hasVariants: product.has_variants ?? false,
           brandId: product.brand_id ?? null,
           brandName: product.brand_name ?? null,
+          variantCount: product.variant_count ?? 0,
         }))}
         categories={categories.map(category => ({
           id: category.id,
