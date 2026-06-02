@@ -215,9 +215,10 @@ src/
 │   ├── auth/
 │   │   ├── callback/route.ts             # PKCE: exchangeCodeForSession → redirect by type
 │   │   └── update-password/page.tsx      # New password form (session already set by callback)
+│   ├── (standalone)/                     # Route group WITHOUT the heavy (app) layout — inherits only root layout (html/body/theme)
+│   │   └── operator-select/page.tsx      # edge — operator selection with PIN; full-screen, NO sidebar/AppShell (kept lean for fast cold load)
 │   ├── (app)/
 │   │   ├── layout.tsx                    # Reads collapsed cookie → AppShell, theme, QueryProvider, FlashToast
-│   │   ├── operator-select/page.tsx      # edge — operator selection with PIN
 │   │   ├── settings/page.tsx             # ⚠️ uses getUser() + try/catch instead of requireAuthenticatedBusinessId
 │   │   ├── inventory/page.tsx
 │   │   ├── products/page.tsx

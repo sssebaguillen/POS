@@ -211,8 +211,8 @@ export default function OperatorSelectView({
   }
 
   return (
-    <div className="min-h-screen bg-background px-4 pb-8 pt-10 sm:px-6 lg:px-8">
-      <div className="mx-auto max-w-4xl rounded-2xl border border-border/60 bg-card p-6 shadow-sm sm:p-8">
+    <div className="flex h-full flex-col items-center overflow-y-auto bg-background px-4 pb-8 pt-10 sm:px-6 lg:px-8">
+      <div className="w-full max-w-4xl rounded-2xl border border-border/60 bg-card p-6 shadow-sm sm:p-8">
 
         {step === 'select' && (
           <div className="animate-fade-in">

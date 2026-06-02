@@ -82,6 +82,10 @@ interface Props {
   showOnboardingResume?: boolean
   showChangelog?: boolean
   initialLastSeenChangelogVersion?: string | null
+  // Renders header + footer only (no nav links). For shell-less entry screens
+  // like /operator-select, where navigation isn't available until an operator
+  // authenticates.
+  minimal?: boolean
 }
 
 export default function Sidebar({
@@ -97,6 +101,7 @@ export default function Sidebar({
   showOnboardingResume = false,
   showChangelog = false,
   initialLastSeenChangelogVersion = null,
+  minimal = false,
 }: Props) {
   const pathname = usePathname()
   const { theme, toggle } = useTheme()
@@ -143,7 +148,7 @@ export default function Sidebar({
   const isRestricted = (check: (p: Permissions) => boolean): boolean =>
     mounted && permissions !== null && !check(permissions)
 
-  const canSeeOrders = mounted && (permissions === null || permissions.sales === true)
+  const canSeeOrders = !minimal && mounted && (permissions === null || permissions.sales === true)
   const { data: unreadOrdersCount = 0 } = useUnreadOrdersCount(canSeeOrders)
 
   function handleRestrictedClick(label: string) {
@@ -198,6 +203,24 @@ export default function Sidebar({
       </div>
 
       {/* Nav */}
+      {minimal ? (
+        <div className="flex flex-1 flex-col items-center justify-center px-4 text-center">
+          <div
+            className={cn(
+              'flex items-center justify-center rounded-full bg-hover-bg text-hint',
+              collapsed && !isMobileDrawer ? 'h-10 w-10' : 'mb-3 h-12 w-12'
+            )}
+          >
+            <UserCircle size={collapsed && !isMobileDrawer ? 18 : 22} />
+          </div>
+          {(!collapsed || isMobileDrawer) && (
+            <>
+              <p className="text-sm font-medium text-body">Inicia tu turno</p>
+              <p className="mt-1 text-xs text-hint">Selecciona un operador para comenzar.</p>
+            </>
+          )}
+        </div>
+      ) : (
       <nav className={cn('flex-1 py-3 overflow-y-auto', collapsed && !isMobileDrawer ? 'px-2' : 'px-3')}>
         {collapsed && !isMobileDrawer && showOnboardingResume && (
           <Link
@@ -304,6 +327,7 @@ export default function Sidebar({
           </div>
         )}
       </nav>
+      )}
 
       {/* Footer */}
       <div

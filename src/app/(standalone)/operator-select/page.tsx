@@ -3,15 +3,10 @@ export const runtime = 'edge'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import OperatorSelectView from '@/components/operator/OperatorSelectView'
-import { getBusinessIdByUserId } from '@/lib/business'
+import AppShell from '@/components/shared/AppShell'
+import QueryProvider from '@/providers/query-provider'
 import { OPERATOR_ROLES } from '@/lib/constants/domain'
 import type { UserRole } from '@/lib/types'
-
-interface Profile {
-  id: string
-  name: string
-  business_id: string
-}
 
 interface OperatorRow {
   id: string
@@ -46,38 +41,55 @@ export default async function OperatorSelectPage() {
 
   const { data: ownerProfile, error: profileError } = await supabase
     .from('profiles')
-    .select('id, name')
+    .select('id, name, business_id')
     .eq('id', user.id)
-    .single<Pick<Profile, 'id' | 'name'>>()
+    .single<{ id: string; name: string; business_id: string | null }>()
 
   if (profileError || !ownerProfile) {
     throw new Error(profileError?.message ?? 'No se pudo obtener el perfil del usuario autenticado.')
   }
 
-  const businessId = await getBusinessIdByUserId(supabase, user.id)
-
-  if (!businessId) {
+  if (!ownerProfile.business_id) {
     throw new Error('No se pudo obtener el negocio asociado al usuario autenticado.')
   }
 
-  const { data: operators, error: operatorsError } = await supabase
-    .from('operators')
-    .select('id, name, role')
-    .eq('business_id', businessId)
-    .eq('is_active', true)
-    .order('name')
+  const [{ data: business }, { data: operators, error: operatorsError }] = await Promise.all([
+    supabase
+      .from('businesses')
+      .select('name')
+      .eq('id', ownerProfile.business_id)
+      .maybeSingle<{ name: string | null }>(),
+    supabase
+      .from('operators')
+      .select('id, name, role')
+      .eq('business_id', ownerProfile.business_id)
+      .eq('is_active', true)
+      .order('name'),
+  ])
 
   if (operatorsError) {
     throw new Error(operatorsError.message)
   }
 
+  const businessName = business?.name?.trim() || 'Mi negocio'
   const visibleOperators: OperatorRow[] = (operators ?? []).filter(isOperatorRow)
 
   return (
-    <OperatorSelectView
-      ownerProfile={ownerProfile}
-      operators={visibleOperators}
-      availableOperatorsCount={visibleOperators.length}
-    />
+    <QueryProvider>
+      <AppShell
+        minimal
+        activeOperatorName={null}
+        activeOperatorRole={null}
+        businessId={ownerProfile.business_id}
+        businessName={businessName}
+        businessSlug=""
+      >
+        <OperatorSelectView
+          ownerProfile={{ id: ownerProfile.id, name: ownerProfile.name }}
+          operators={visibleOperators}
+          availableOperatorsCount={visibleOperators.length}
+        />
+      </AppShell>
+    </QueryProvider>
   )
 }

@@ -23,6 +23,7 @@ interface AppShellProps {
   initialLastSeenChangelogVersion?: string | null
   showChangelog?: boolean
   showOnboardingResume?: boolean
+  minimal?: boolean
 }
 
 const SidebarContext = createContext<SidebarContextValue | undefined>(undefined)
@@ -48,6 +49,7 @@ export default function AppShell({
   initialLastSeenChangelogVersion = null,
   showChangelog = false,
   showOnboardingResume = false,
+  minimal = false,
 }: AppShellProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [collapsed, setCollapsed] = useState(initialCollapsed)
@@ -88,6 +90,7 @@ export default function AppShell({
           showOnboardingResume={showOnboardingResume}
           showChangelog={showChangelog}
           initialLastSeenChangelogVersion={initialLastSeenChangelogVersion}
+          minimal={minimal}
         />
         {/* Desktop: static offset matching sidebar width. Mobile: no offset (drawer overlay). */}
         <main
