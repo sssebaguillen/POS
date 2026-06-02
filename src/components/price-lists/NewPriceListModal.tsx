@@ -15,8 +15,7 @@ interface NewPriceListModalProps {
   onClose: () => void
   businessId: string
   operatorId: string | null
-  products: { id: string; name: string; price: number; cost: number; has_variants?: boolean }[]
-  onCreated: (list: PriceList, newOverrides: { price_list_id: string; product_id: string; brand_id: null; multiplier: number }[]) => void
+  onCreated: (list: PriceList) => void
 }
 
 export default function NewPriceListModal({
@@ -24,7 +23,6 @@ export default function NewPriceListModal({
   onClose,
   businessId,
   operatorId,
-  products,
   onCreated,
 }: NewPriceListModalProps) {
   const [name, setName] = useState('')
@@ -32,28 +30,14 @@ export default function NewPriceListModal({
   const [percentage, setPercentage] = useState('0')
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
-  const [overwriteManual, setOverwriteManual] = useState<boolean | null>(null)
-  const [accordionOpen, setAccordionOpen] = useState(false)
 
   const supabase = useMemo(() => createClient(), [])
-
-  const affectedProducts = useMemo(() => {
-    const parsedPercentage = Number(percentage)
-    if (!percentage.trim() || !Number.isFinite(parsedPercentage) || parsedPercentage <= 0) return []
-    const newMultiplier = 1 + parsedPercentage / 100
-    return products.filter(p =>
-      p.cost > 0 && p.price > 0 &&
-      Math.abs(p.price - p.cost * newMultiplier) > 0.01
-    )
-  }, [products, percentage])
 
   function resetForm() {
     setName('')
     setDescription('')
     setPercentage('0')
     setError(null)
-    setOverwriteManual(null)
-    setAccordionOpen(false)
   }
 
   function handleClose() {
@@ -74,29 +58,10 @@ export default function NewPriceListModal({
       return
     }
 
-    if (affectedProducts.length > 0 && overwriteManual === null) {
-      setError(ERR.PRL43)
-      return
-    }
-
     setSaving(true)
     setError(null)
 
     const newMultiplier = 1 + parsedPercentage / 100
-
-    // Non-variant "Respetar" → create override that locks the current price ratio (price / cost).
-    // Non-variant "Sobrescribir" → no override; list multiplier applies via calculateProductPrice.
-    // Variants always use their explicit prices in the cart; overrides are not created for them.
-    let overridesPayload: { product_id: string; multiplier: number }[] | null = null
-    if (affectedProducts.length > 0) {
-      const entries: { product_id: string; multiplier: number }[] = []
-      for (const p of affectedProducts) {
-        if (overwriteManual === false && !p.has_variants) {
-          entries.push({ product_id: p.id, multiplier: p.price / p.cost })
-        }
-      }
-      if (entries.length > 0) overridesPayload = entries
-    }
 
     try {
       const { data: rpcResult, error: rpcError } = await supabase.rpc('create_price_list', {
@@ -105,7 +70,7 @@ export default function NewPriceListModal({
         p_name: name.trim(),
         p_description: description.trim() || null,
         p_multiplier: newMultiplier,
-        p_overrides: overridesPayload,
+        p_overrides: null,
       })
 
       type CreateResult = {
@@ -119,7 +84,6 @@ export default function NewPriceListModal({
           multiplier: number | string
           created_at: string
         }
-        overrides?: { id: string; price_list_id: string; product_id: string; brand_id: string | null; multiplier: number | string }[]
       }
 
       const result = rpcResult as CreateResult | null
@@ -130,24 +94,15 @@ export default function NewPriceListModal({
       }
 
       const createdList = result.list
-      const createdOverrides = (result.overrides ?? []).map(o => ({
-        price_list_id: o.price_list_id,
-        product_id: o.product_id,
-        brand_id: null as null,
-        multiplier: Number(o.multiplier),
-      }))
 
-      onCreated(
-        {
-          id: createdList.id,
-          business_id: createdList.business_id,
-          name: createdList.name,
-          description: createdList.description,
-          multiplier: Number(createdList.multiplier),
-          created_at: createdList.created_at,
-        },
-        createdOverrides
-      )
+      onCreated({
+        id: createdList.id,
+        business_id: createdList.business_id,
+        name: createdList.name,
+        description: createdList.description,
+        multiplier: Number(createdList.multiplier),
+        created_at: createdList.created_at,
+      })
 
       resetForm()
       onClose()
@@ -224,7 +179,6 @@ export default function NewPriceListModal({
                 onChange={event => {
                   setPercentage(event.target.value)
                   setError(null)
-                  setOverwriteManual(null)
                 }}
                 placeholder="Ej: 60"
                 className="h-9 rounded-xl text-sm bg-surface border-edge focus-visible:ring-ring/50 focus-visible:border-ring pr-8"
@@ -235,68 +189,9 @@ export default function NewPriceListModal({
             <p className="text-caption text-hint">10% = +10% sobre el costo · 60% = +60% sobre el costo</p>
           </div>
 
-          {affectedProducts.length > 0 && (
-            <div className="rounded-xl border border-amber-200 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-800 px-3 py-2.5 flex flex-col gap-2">
-              <div className="flex flex-col gap-1.5">
-                <p className="text-xs text-amber-700 dark:text-amber-400">
-                  <span className="font-semibold">
-                    {affectedProducts.length} {affectedProducts.length === 1 ? 'producto tiene' : 'productos tienen'} un precio de venta que no coincide con este margen.
-                  </span>
-                  {' '}¿Qué quieres hacer con {affectedProducts.length === 1 ? 'ese producto' : 'ellos'}?
-                </p>
-
-                <button
-                  type="button"
-                  onClick={() => setAccordionOpen(prev => !prev)}
-                  className="text-left text-xs text-amber-600 dark:text-amber-400 underline underline-offset-2 w-fit"
-                >
-                  {accordionOpen ? 'Ocultar productos ▴' : 'Ver productos afectados ▾'}
-                </button>
-
-                {accordionOpen && (
-                  <div className="mt-1 rounded-lg border border-amber-200 dark:border-amber-800 overflow-hidden">
-                    <div className="max-h-40 overflow-y-auto divide-y divide-amber-100 dark:divide-amber-900">
-                      {affectedProducts.map(p => {
-                        const currentMargin = Math.round((p.price / p.cost - 1) * 100)
-                        return (
-                          <div key={p.id} className="flex items-center justify-between px-2.5 py-1.5 bg-white/60 dark:bg-amber-950/20">
-                            <span className="text-xs text-amber-800 dark:text-amber-300 truncate mr-2">{p.name}</span>
-                            <span className="text-xs font-semibold text-amber-700 dark:text-amber-400 shrink-0">
-                              {currentMargin}% margen actual
-                            </span>
-                          </div>
-                        )
-                      })}
-                    </div>
-                  </div>
-                )}
-              </div>
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => { setOverwriteManual(true); setError(null) }}
-                  className={`flex-1 rounded-lg border px-3 py-1.5 text-xs font-medium transition-[transform,background-color,border-color,color] duration-150 ease-[var(--ease-out)] active:scale-[0.97] ${
-                    overwriteManual === true
-                      ? 'bg-amber-600 border-amber-600 text-white'
-                      : 'border-amber-300 text-amber-700 hover:bg-amber-100 dark:border-amber-700 dark:text-amber-400 dark:hover:bg-amber-900/40'
-                  }`}
-                >
-                  Sobreescribir con el margen de la lista
-                </button>
-                <button
-                  type="button"
-                  onClick={() => { setOverwriteManual(false); setError(null) }}
-                  className={`flex-1 rounded-lg border px-3 py-1.5 text-xs font-medium transition-[transform,background-color,border-color,color] duration-150 ease-[var(--ease-out)] active:scale-[0.97] ${
-                    overwriteManual === false
-                      ? 'bg-amber-600 border-amber-600 text-white'
-                      : 'border-amber-300 text-amber-700 hover:bg-amber-100 dark:border-amber-700 dark:text-amber-400 dark:hover:bg-amber-900/40'
-                  }`}
-                >
-                  Respetar precios actuales
-                </button>
-              </div>
-            </div>
-          )}
+          <p className="rounded-lg border border-edge/70 bg-surface px-3 py-2 text-caption text-hint">
+            Esta lista calcula precios desde el costo y <span className="text-body font-medium">no cambia el precio base</span> de tus productos. Se aplica al elegirla en el POS o al exportarla. Después podés ajustar productos puntuales desde la tabla.
+          </p>
 
           <div className="pt-1 flex items-center justify-end gap-2.5">
             <Button

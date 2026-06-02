@@ -2,7 +2,6 @@
 
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import { ChevronRight, Download, Pencil, Plus, Search, X } from 'lucide-react'
-import { createClient } from '@/lib/supabase/client'
 import PageHeader from '@/components/shared/PageHeader'
 import { Button } from '@/components/ui/button'
 import {
@@ -77,8 +76,6 @@ export default function PriceListsPanel({
   const [search, setSearch] = useState('')
   const [variantPreviewProductId, setVariantPreviewProductId] = useState<string | null>(null)
 
-  const supabase = useMemo(() => createClient(), [])
-
   const activeList = useMemo(
     () => lists.find(list => list.id === activeListId) ?? null,
     [lists, activeListId]
@@ -98,11 +95,6 @@ export default function PriceListsPanel({
     if (!activeList) return []
     return overrides.filter(override => override.price_list_id === activeList.id)
   }, [overrides, activeList])
-
-  const editingListOverrides = useMemo(() => {
-    if (!editingListId) return []
-    return overrides.filter(o => o.price_list_id === editingListId)
-  }, [overrides, editingListId])
 
   const selectedBrandOverride = useMemo(() => {
     if (!overrideBrandId) return null
@@ -204,49 +196,14 @@ export default function PriceListsPanel({
     }))
   }, [productRows])
 
-  function handleCreated(
-    list: PriceList,
-    newOverrides: { price_list_id: string; product_id: string; brand_id: null; multiplier: number }[]
-  ) {
+  function handleCreated(list: PriceList) {
     setLists(prev => [...prev, list])
-
-    if (newOverrides.length > 0) {
-      setOverrides(prev => [
-        ...prev,
-        ...newOverrides.map((o, i) => ({
-          id: `auto-${list.id}-${i}`,  // temp id — replaced on next page load
-          price_list_id: o.price_list_id,
-          product_id: o.product_id,
-          brand_id: o.brand_id,
-          multiplier: o.multiplier,
-        })),
-      ])
-    }
-
     setActiveListId(list.id)
     setShowNewListModal(false)
   }
 
-  function handleSaved(
-    updated: PriceList,
-    upsertedOverrides: PriceListOverride[],
-    deletedOverrideIds: string[]
-  ) {
+  function handleSaved(updated: PriceList) {
     setLists(prev => prev.map(list => (list.id === updated.id ? updated : list)))
-
-    setOverrides(prev => {
-      let next = prev.filter(o => !deletedOverrideIds.includes(o.id))
-      for (const upserted of upsertedOverrides) {
-        const idx = next.findIndex(o => o.id === upserted.id)
-        if (idx >= 0) {
-          next = next.map(o => (o.id === upserted.id ? upserted : o))
-        } else {
-          next = [...next, upserted]
-        }
-      }
-      return next
-    })
-
     setEditingListId(null)
   }
 
@@ -315,9 +272,12 @@ export default function PriceListsPanel({
       </PageHeader>
 
       <div className="bg-surface border-b border-edge/60 px-5 py-3">
+        <p className="mb-2.5 text-caption text-hint">
+          Precios alternativos (ej. mayorista) calculados desde el costo. El precio de venta habitual se edita en <span className="text-body font-medium">Inventario</span>.
+        </p>
         {lists.length === 0 ? (
           <div className="rounded-xl border border-dashed border-edge bg-surface-alt px-4 py-3 text-sm text-hint">
-            No hay listas de precios creadas. Crea la primera lista para comenzar.
+            No hay listas de precios creadas. Creá una lista (ej. mayorista) para aplicar otro margen sin cambiar el precio base.
           </div>
         ) : (
           <div className="pill-tabs overflow-x-auto flex-nowrap pb-1">
@@ -446,7 +406,6 @@ export default function PriceListsPanel({
           onClose={() => setShowNewListModal(false)}
           businessId={businessId}
           operatorId={operatorId}
-          products={products}
           onCreated={handleCreated}
         />
       )}
@@ -459,8 +418,6 @@ export default function PriceListsPanel({
           list={editingList}
           businessId={businessId}
           operatorId={operatorId}
-          products={products}
-          existingOverrides={editingListOverrides}
           onSaved={handleSaved}
           onDeleted={handleDeleted}
         />
