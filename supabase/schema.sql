@@ -507,15 +507,17 @@ CREATE OR REPLACE FUNCTION "public"."compute_effective_price"("p_cost" numeric, 
 DECLARE
   v_mult numeric;
 BEGIN
-  IF p_variant_price IS NOT NULL AND p_variant_price > 0 THEN
-    RETURN ROUND(p_variant_price, 2);
-  END IF;
-
-  IF COALESCE(p_cost, 0) <= 0 THEN
+  IF p_list_id IS NULL THEN
+    IF p_variant_price IS NOT NULL AND p_variant_price > 0 THEN
+      RETURN ROUND(p_variant_price, 2);
+    END IF;
     RETURN ROUND(COALESCE(p_price, 0), 2);
   END IF;
 
-  IF p_list_id IS NULL THEN
+  IF COALESCE(p_cost, 0) <= 0 THEN
+    IF p_variant_price IS NOT NULL AND p_variant_price > 0 THEN
+      RETURN ROUND(p_variant_price, 2);
+    END IF;
     RETURN ROUND(COALESCE(p_price, 0), 2);
   END IF;
 
@@ -617,8 +619,8 @@ BEGIN
      AND status = 'recibido' AND created_at > now() - interval '1 hour';
   IF v_pending_count >= 3 THEN RETURN jsonb_build_object('success', false, 'error', 'too_many_pending'); END IF;
 
-  SELECT pl.id, pl.multiplier INTO v_list_id, v_list_mult
-   FROM price_lists pl WHERE pl.business_id = v_business_id AND pl.is_default = true LIMIT 1;
+  v_list_id := NULL;
+  v_list_mult := NULL;
 
   INSERT INTO catalog_order_counters (business_id, last_number) VALUES (v_business_id, 1)
    ON CONFLICT (business_id) DO UPDATE SET last_number = catalog_order_counters.last_number + 1
@@ -1156,7 +1158,7 @@ $$;
 ALTER FUNCTION "public"."create_operator"("p_actor_operator_id" "uuid", "p_business_id" "uuid", "p_name" "text", "p_role" "text", "p_pin" "text", "p_permissions" "jsonb") OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."create_price_list"("p_operator_id" "uuid", "p_business_id" "uuid", "p_name" "text", "p_description" "text", "p_multiplier" numeric, "p_is_default" boolean, "p_overrides" "jsonb" DEFAULT NULL::"jsonb") RETURNS "jsonb"
+CREATE OR REPLACE FUNCTION "public"."create_price_list"("p_operator_id" "uuid", "p_business_id" "uuid", "p_name" "text", "p_description" "text", "p_multiplier" numeric, "p_overrides" "jsonb" DEFAULT NULL::"jsonb") RETURNS "jsonb"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public', 'extensions'
     AS $$
@@ -1201,18 +1203,12 @@ BEGIN
     v_actor_role := 'owner';
   END IF;
 
-  IF p_is_default THEN
-    UPDATE price_lists SET is_default = false
-    WHERE business_id = v_caller_business_id AND is_default = true;
-  END IF;
-
-  INSERT INTO price_lists (business_id, name, description, multiplier, is_default)
+  INSERT INTO price_lists (business_id, name, description, multiplier)
   VALUES (
     v_caller_business_id,
     btrim(p_name),
     NULLIF(btrim(p_description), ''),
-    p_multiplier,
-    COALESCE(p_is_default, false)
+    p_multiplier
   )
   RETURNING id, to_jsonb(price_lists.*) INTO v_list_id, v_list;
 
@@ -1252,7 +1248,7 @@ END;
 $$;
 
 
-ALTER FUNCTION "public"."create_price_list"("p_operator_id" "uuid", "p_business_id" "uuid", "p_name" "text", "p_description" "text", "p_multiplier" numeric, "p_is_default" boolean, "p_overrides" "jsonb") OWNER TO "postgres";
+ALTER FUNCTION "public"."create_price_list"("p_operator_id" "uuid", "p_business_id" "uuid", "p_name" "text", "p_description" "text", "p_multiplier" numeric, "p_overrides" "jsonb") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."create_product"("p_operator_id" "uuid", "p_business_id" "uuid", "p_data" "jsonb") RETURNS "jsonb"
@@ -2168,7 +2164,6 @@ DECLARE
   v_actor_role         text;
   v_old_data           jsonb;
   v_old_name           text;
-  v_is_default         boolean;
 BEGIN
   IF p_operator_id IS NULL THEN
     RETURN jsonb_build_object('success', false, 'error', '403: Sesión de operador no encontrada');
@@ -2195,17 +2190,13 @@ BEGIN
     v_actor_role := 'owner';
   END IF;
 
-  SELECT to_jsonb(pl.*), pl.name, pl.is_default
-    INTO v_old_data, v_old_name, v_is_default
+  SELECT to_jsonb(pl.*), pl.name
+    INTO v_old_data, v_old_name
   FROM price_lists pl
   WHERE pl.id = p_price_list_id AND pl.business_id = v_caller_business_id;
 
   IF v_old_data IS NULL THEN
     RETURN jsonb_build_object('success', false, 'error', 'Lista de precios no encontrada');
-  END IF;
-
-  IF v_is_default THEN
-    RETURN jsonb_build_object('success', false, 'error', 'No se puede eliminar la lista predeterminada. Definí otra lista como predeterminada primero.');
   END IF;
 
   DELETE FROM price_lists
@@ -2666,8 +2657,6 @@ DECLARE
   v_business_id     uuid;
   v_product         record;
   v_computed_price  numeric;
-  v_default_list_id uuid;
-  v_default_mult    numeric;
   v_options_json    json;
   v_variants_json   json;
 BEGIN
@@ -2692,19 +2681,12 @@ BEGIN
     RETURN json_build_object('success', false, 'error', 'Producto no encontrado');
   END IF;
 
-  SELECT id, multiplier
-  INTO v_default_list_id, v_default_mult
-  FROM public.price_lists
-  WHERE business_id = v_business_id
-    AND is_default = true
-  LIMIT 1;
-
   v_computed_price := public.compute_effective_price(
     v_product.cost::numeric,
     v_product.price::numeric,
     NULL,
-    v_default_list_id,
-    v_default_mult,
+    NULL,
+    NULL,
     v_product.id,
     v_product.brand_id
   );
@@ -2740,8 +2722,8 @@ BEGIN
                        pv.cost::numeric,
                        pv.price::numeric,
                        pv.price::numeric,
-                       v_default_list_id,
-                       v_default_mult,
+                       NULL,
+                       NULL,
                        v_product.id,
                        v_product.brand_id
                      ),
@@ -2796,8 +2778,6 @@ CREATE OR REPLACE FUNCTION "public"."get_catalog_products"("p_slug" "text") RETU
     AS $$
 DECLARE
   v_business_id uuid;
-  v_list_id     uuid;
-  v_list_mult   numeric;
 BEGIN
   SELECT b.id INTO v_business_id
   FROM businesses b
@@ -2806,13 +2786,6 @@ BEGIN
   IF v_business_id IS NULL THEN
     RETURN;
   END IF;
-
-  SELECT pl.id, pl.multiplier
-  INTO v_list_id, v_list_mult
-  FROM price_lists pl
-  WHERE pl.business_id = v_business_id
-    AND pl.is_default = true
-  LIMIT 1;
 
   RETURN QUERY
   SELECT
@@ -2825,8 +2798,8 @@ BEGIN
           pv_def.cost::numeric,
           pv_def.price::numeric,
           pv_def.price::numeric,
-          v_list_id,
-          v_list_mult,
+          NULL,
+          NULL,
           p.id,
           p.brand_id
         )
@@ -2835,8 +2808,8 @@ BEGIN
           p.cost::numeric,
           p.price::numeric,
           NULL,
-          v_list_id,
-          v_list_mult,
+          NULL,
+          NULL,
           p.id,
           p.brand_id
         )
@@ -5304,72 +5277,6 @@ $$;
 ALTER FUNCTION "public"."settle_customer_credit"("p_customer_id" "uuid", "p_amount" numeric, "p_method" "text", "p_operator_id" "uuid") OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."swap_default_price_list"("p_operator_id" "uuid", "p_business_id" "uuid", "p_price_list_id" "uuid") RETURNS "void"
-    LANGUAGE "plpgsql" SECURITY DEFINER
-    SET "search_path" TO 'public', 'extensions'
-    AS $$
-DECLARE
-  v_caller_business_id uuid;
-  v_perm               text;
-  v_actor_role         text;
-  v_old_default_id     uuid;
-  v_new_name           text;
-BEGIN
-  IF p_operator_id IS NULL THEN
-    RAISE EXCEPTION '403: Sesión de operador no encontrada';
-  END IF;
-
-  v_caller_business_id := get_business_id();
-
-  IF v_caller_business_id IS NULL OR p_business_id IS DISTINCT FROM v_caller_business_id THEN
-    RAISE EXCEPTION 'Contexto de negocio inválido';
-  END IF;
-
-  SELECT permissions->>'price_lists_write', role INTO v_perm, v_actor_role
-  FROM operators
-  WHERE id = p_operator_id AND business_id = v_caller_business_id AND is_active = true;
-
-  IF FOUND THEN
-    IF v_perm <> 'true' THEN
-      RAISE EXCEPTION '403: Permisos de listas de precios insuficientes';
-    END IF;
-  ELSE
-    IF NOT EXISTS (SELECT 1 FROM profiles WHERE id = p_operator_id AND business_id = v_caller_business_id) THEN
-      RAISE EXCEPTION '403: Sesión inválida';
-    END IF;
-    v_actor_role := 'owner';
-  END IF;
-
-  SELECT id INTO v_old_default_id
-  FROM price_lists
-  WHERE business_id = p_business_id AND is_default = true
-  LIMIT 1;
-
-  SELECT name INTO v_new_name
-  FROM price_lists
-  WHERE id = p_price_list_id AND business_id = p_business_id;
-
-  UPDATE price_lists SET is_default = false
-  WHERE business_id = p_business_id AND is_default = true;
-
-  UPDATE price_lists SET is_default = true
-  WHERE id = p_price_list_id AND business_id = p_business_id;
-
-  PERFORM log_audit_event(
-    p_business_id,
-    CASE WHEN v_actor_role = 'owner' THEN NULL ELSE p_operator_id END,
-    v_actor_role,
-    'price_list_default_changed', 'price_list', p_price_list_id, v_new_name,
-    jsonb_build_object('previous_default_id', v_old_default_id),
-    jsonb_build_object('new_default_id', p_price_list_id)
-  );
-END;
-$$;
-
-
-ALTER FUNCTION "public"."swap_default_price_list"("p_operator_id" "uuid", "p_business_id" "uuid", "p_price_list_id" "uuid") OWNER TO "postgres";
-
-
 CREATE OR REPLACE FUNCTION "public"."update_brand"("p_operator_id" "uuid", "p_business_id" "uuid", "p_brand_id" "uuid", "p_name" "text") RETURNS "jsonb"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public', 'extensions'
@@ -7470,7 +7377,6 @@ CREATE TABLE IF NOT EXISTS "public"."price_lists" (
     "name" "text" NOT NULL,
     "description" "text",
     "multiplier" numeric(6,4) DEFAULT 1.0 NOT NULL,
-    "is_default" boolean DEFAULT false NOT NULL,
     "created_at" timestamp with time zone DEFAULT "now"() NOT NULL
 );
 
@@ -8198,8 +8104,6 @@ CREATE INDEX "session_digital_balances_session_id_idx" ON "public"."session_digi
 CREATE INDEX "subscriptions_status_idx" ON "public"."subscriptions" USING "btree" ("status");
 
 
-
-CREATE UNIQUE INDEX "unique_default_price_list_per_business" ON "public"."price_lists" USING "btree" ("business_id") WHERE ("is_default" = true);
 
 
 
@@ -11371,9 +11275,9 @@ GRANT ALL ON FUNCTION "public"."create_operator"("p_actor_operator_id" "uuid", "
 
 
 
-REVOKE ALL ON FUNCTION "public"."create_price_list"("p_operator_id" "uuid", "p_business_id" "uuid", "p_name" "text", "p_description" "text", "p_multiplier" numeric, "p_is_default" boolean, "p_overrides" "jsonb") FROM PUBLIC;
-GRANT ALL ON FUNCTION "public"."create_price_list"("p_operator_id" "uuid", "p_business_id" "uuid", "p_name" "text", "p_description" "text", "p_multiplier" numeric, "p_is_default" boolean, "p_overrides" "jsonb") TO "authenticated";
-GRANT ALL ON FUNCTION "public"."create_price_list"("p_operator_id" "uuid", "p_business_id" "uuid", "p_name" "text", "p_description" "text", "p_multiplier" numeric, "p_is_default" boolean, "p_overrides" "jsonb") TO "service_role";
+REVOKE ALL ON FUNCTION "public"."create_price_list"("p_operator_id" "uuid", "p_business_id" "uuid", "p_name" "text", "p_description" "text", "p_multiplier" numeric, "p_overrides" "jsonb") FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."create_price_list"("p_operator_id" "uuid", "p_business_id" "uuid", "p_name" "text", "p_description" "text", "p_multiplier" numeric, "p_overrides" "jsonb") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."create_price_list"("p_operator_id" "uuid", "p_business_id" "uuid", "p_name" "text", "p_description" "text", "p_multiplier" numeric, "p_overrides" "jsonb") TO "service_role";
 
 
 
@@ -16577,10 +16481,6 @@ GRANT ALL ON FUNCTION "public"."skip"("why" "text", "how_many" integer) TO "auth
 GRANT ALL ON FUNCTION "public"."skip"("why" "text", "how_many" integer) TO "service_role";
 
 
-
-REVOKE ALL ON FUNCTION "public"."swap_default_price_list"("p_operator_id" "uuid", "p_business_id" "uuid", "p_price_list_id" "uuid") FROM PUBLIC;
-GRANT ALL ON FUNCTION "public"."swap_default_price_list"("p_operator_id" "uuid", "p_business_id" "uuid", "p_price_list_id" "uuid") TO "authenticated";
-GRANT ALL ON FUNCTION "public"."swap_default_price_list"("p_operator_id" "uuid", "p_business_id" "uuid", "p_price_list_id" "uuid") TO "service_role";
 
 
 
