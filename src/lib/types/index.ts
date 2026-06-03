@@ -129,6 +129,9 @@ export interface PriceList {
   description: string | null
   multiplier: number
   created_at: string
+  // Redondeo aplicado al precio de esta lista (costo × mult). null = sin redondeo.
+  rounding_step: number | null
+  rounding_up: boolean
 }
 
 export interface PriceListOverride {

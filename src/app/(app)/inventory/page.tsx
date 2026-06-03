@@ -34,7 +34,7 @@ export default async function InventoryPage() {
       .order('name'),
     supabase
       .from('price_lists')
-      .select('id, business_id, name, description, multiplier, created_at')
+      .select('id, business_id, name, description, multiplier, created_at, rounding_step, rounding_up')
       .eq('business_id', businessId)
       .order('created_at'),
   ])

@@ -5,8 +5,10 @@ import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { X } from 'lucide-react'
-import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogPortal, DialogTitle } from '@/components/ui/dialog'
 import { VisuallyHidden } from '@radix-ui/react-visually-hidden'
+import RoundingField from '@/components/price-lists/RoundingField'
+import { normalizePriceList } from '@/lib/mappers'
 import type { PriceList } from '@/lib/types'
 import { ERR } from '@/lib/errors'
 
@@ -28,6 +30,8 @@ export default function NewPriceListModal({
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [percentage, setPercentage] = useState('0')
+  const [roundingStep, setRoundingStep] = useState<number | null>(null)
+  const [roundingUp, setRoundingUp] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
 
@@ -37,6 +41,8 @@ export default function NewPriceListModal({
     setName('')
     setDescription('')
     setPercentage('0')
+    setRoundingStep(null)
+    setRoundingUp(false)
     setError(null)
   }
 
@@ -71,6 +77,8 @@ export default function NewPriceListModal({
         p_description: description.trim() || null,
         p_multiplier: newMultiplier,
         p_overrides: null,
+        p_round_step: roundingStep,
+        p_round_up: roundingUp,
       })
 
       type CreateResult = {
@@ -83,6 +91,8 @@ export default function NewPriceListModal({
           description: string | null
           multiplier: number | string
           created_at: string
+          rounding_step: number | string | null
+          rounding_up: boolean | null
         }
       }
 
@@ -93,16 +103,7 @@ export default function NewPriceListModal({
         return
       }
 
-      const createdList = result.list
-
-      onCreated({
-        id: createdList.id,
-        business_id: createdList.business_id,
-        name: createdList.name,
-        description: createdList.description,
-        multiplier: Number(createdList.multiplier),
-        created_at: createdList.created_at,
-      })
+      onCreated(normalizePriceList(result.list))
 
       resetForm()
       onClose()
@@ -114,7 +115,10 @@ export default function NewPriceListModal({
   }
 
   return (
-    <Dialog open={open} onOpenChange={nextOpen => !nextOpen && handleClose()}>
+    <Dialog open={open} onOpenChange={nextOpen => !nextOpen && handleClose()} modal={false}>
+      <DialogPortal>
+        <div className="fixed inset-0 z-50 bg-foreground/40 dark:bg-black/60 backdrop-blur-sm" />
+      </DialogPortal>
       <DialogContent className="sm:max-w-[560px] p-0 gap-0 overflow-hidden bg-card" showCloseButton={false}>
         <VisuallyHidden><DialogTitle>Nueva lista de precios</DialogTitle></VisuallyHidden>
         <div className="flex items-center justify-between px-5 py-4 border-b border-edge">
@@ -188,6 +192,12 @@ export default function NewPriceListModal({
             </div>
             <p className="text-caption text-hint">10% = +10% sobre el costo · 60% = +60% sobre el costo</p>
           </div>
+
+          <RoundingField
+            step={roundingStep}
+            up={roundingUp}
+            onChange={(step, up) => { setRoundingStep(step); setRoundingUp(up) }}
+          />
 
           <p className="rounded-lg border border-edge/70 bg-surface px-3 py-2 text-caption text-hint">
             Esta lista calcula precios desde el costo y <span className="text-body font-medium">no cambia el precio base</span> de tus productos. Se aplica al elegirla en el POS o al exportarla. Después podés ajustar productos puntuales desde la tabla.

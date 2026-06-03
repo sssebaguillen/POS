@@ -28,6 +28,7 @@ export function PriceListSummary({ data, deleted = false }: PriceListSummaryProp
       <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
         {data.name && <Stat label="Nombre" value={String(data.name)} />}
         {data.multiplier !== undefined && <Stat label="Margen" value={multiplierToMarginText(data.multiplier)} />}
+        {toNumber(data.rounding_step) > 0 && <Stat label="Redondeo" value={roundingToText(data.rounding_step, data.rounding_up)} />}
         {data.is_default !== undefined && <Stat label="Predeterminada" value={data.is_default ? 'Sí' : 'No'} />}
         {data.description && <Stat label="Descripción" value={String(data.description)} />}
       </div>
@@ -56,6 +57,11 @@ export function PriceListDiff({ oldData, newData }: PriceListDiffProps) {
       before: multiplierToMarginText(oldData.multiplier),
       after: multiplierToMarginText(newData.multiplier),
     })
+  }
+  const oldRounding = roundingToText(oldData.rounding_step, oldData.rounding_up)
+  const newRounding = roundingToText(newData.rounding_step, newData.rounding_up)
+  if (oldRounding !== newRounding) {
+    rows.push({ label: 'Redondeo', before: oldRounding, after: newRounding })
   }
 
   if (rows.length === 0) {
@@ -156,6 +162,16 @@ function multiplierToMarginText(value: unknown): string {
   if (!Number.isFinite(number) || number <= 0) return '—'
   const percentage = (number - 1) * 100
   return `${percentage.toFixed(0)}% (×${number})`
+}
+
+function roundingToText(step: unknown, up: unknown): string {
+  const n = toNumber(step)
+  if (!Number.isFinite(n) || n <= 0) return 'Sin redondeo'
+  let base: string
+  if (n === 0.1) base = 'A 1 decimal'
+  else if (n === 1) base = 'Sin decimales'
+  else base = `Al múltiplo de ${n}`
+  return up === true || up === 'true' ? `${base} (hacia arriba)` : base
 }
 
 function formatSettingsValue(key: string, value: unknown): string {

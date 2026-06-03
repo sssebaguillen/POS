@@ -39,6 +39,8 @@
 
 > El nombre quedó dentro de la familia P7 por historia, pero conceptualmente no pertenece a P7. Es una feature de pricing independiente.
 
+> **ESTADO (2026-06-03): re-diseñado e implementado en código como redondeo POR LISTA (no global).** El diseño de abajo (config global en `businesses.settings`, aplicado en `compute_effective_price`) quedó **OBSOLETO** tras el rediseño de precio base autoritativo. Lo que se implementó: columnas `price_lists.rounding_step` (NULL = sin redondeo; M ∈ 0.1/1/5/10/50/100) + `rounding_up` (toggle hacia arriba); fórmula única `round(x/M)*M` aplicada **solo en el cliente** (`calculateProductPrice`, último paso sobre el precio de lista — el mirror SQL `compute_effective_price` se llama siempre con `list_id=NULL` así que no se tocó, solo se comentó); UI = selector + checkbox + preview en `RoundingField.tsx` dentro de New/EditPriceListModal. Mig `20260603_03_price_list_rounding.sql`. **Pendiente: aplicar la migración al remoto + test end-to-end.** Feature futuro relacionado: elegir desde `/settings` qué lista mostrar en el catálogo público. Lo de abajo se conserva solo como registro histórico del diseño viejo.
+
 Feature crítica para el contexto LATAM con alta inflación y precios cambiantes. Los precios calculados por listas de precios generan valores como $847,50 o $1.233,33 que en la práctica nadie cobra — el mercado redondea a $850 o $1.250. Sin esta feature, el dueño tiene que crear overrides manuales para cada producto.
 
 ### Motivación real

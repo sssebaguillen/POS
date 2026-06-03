@@ -5,9 +5,10 @@ import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { X } from 'lucide-react'
-import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogPortal, DialogTitle } from '@/components/ui/dialog'
 import { VisuallyHidden } from '@radix-ui/react-visually-hidden'
 import ConfirmModal from '@/components/shared/ConfirmModal'
+import RoundingField from '@/components/price-lists/RoundingField'
 import type { PriceList } from '@/lib/types'
 import { normalizePriceList } from '@/lib/mappers'
 import { translateDbError, ERR } from '@/lib/errors'
@@ -36,6 +37,8 @@ export default function EditPriceListModal({
   const [name, setName] = useState(list.name)
   const [description, setDescription] = useState(list.description ?? '')
   const [percentage, setPercentage] = useState(((list.multiplier - 1) * 100).toFixed(2))
+  const [roundingStep, setRoundingStep] = useState<number | null>(list.rounding_step)
+  const [roundingUp, setRoundingUp] = useState(list.rounding_up)
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [deleting, setDeleting] = useState(false)
@@ -76,6 +79,8 @@ export default function EditPriceListModal({
         p_multiplier: newMultiplier,
         p_overrides_upsert: null,
         p_overrides_delete_ids: null,
+        p_round_step: roundingStep,
+        p_round_up: roundingUp,
       })
 
       const result = rpcResult as { success: boolean; error?: string } | null
@@ -93,6 +98,8 @@ export default function EditPriceListModal({
           description: description.trim() || null,
           multiplier: newMultiplier,
           created_at: list.created_at,
+          rounding_step: roundingStep,
+          rounding_up: roundingUp,
         })
       )
       onClose()
@@ -134,7 +141,10 @@ export default function EditPriceListModal({
 
   return (
     <>
-      <Dialog open={open} onOpenChange={nextOpen => !nextOpen && handleClose()}>
+      <Dialog open={open} onOpenChange={nextOpen => !nextOpen && handleClose()} modal={false}>
+        <DialogPortal>
+          <div className="fixed inset-0 z-50 bg-foreground/40 dark:bg-black/60 backdrop-blur-sm" />
+        </DialogPortal>
         <DialogContent className="sm:max-w-[560px] p-0 gap-0 overflow-hidden bg-card" showCloseButton={false}>
           <VisuallyHidden><DialogTitle>Editar lista de precios</DialogTitle></VisuallyHidden>
           <div className="flex items-center justify-between px-5 py-4 border-b border-edge shrink-0">
@@ -206,6 +216,12 @@ export default function EditPriceListModal({
               </div>
               <p className="text-caption text-hint">10% = +10% sobre el costo · 60% = +60% sobre el costo</p>
             </div>
+
+            <RoundingField
+              step={roundingStep}
+              up={roundingUp}
+              onChange={(step, up) => { setRoundingStep(step); setRoundingUp(up) }}
+            />
 
             <p className="rounded-lg border border-edge/70 bg-surface px-3 py-2 text-caption text-hint">
               El margen se aplica sobre el costo. Para precios distintos en productos puntuales, usá los ajustes por producto o marca en la tabla.

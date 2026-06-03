@@ -1,5 +1,14 @@
 import type { CartItem, PriceList, PriceListOverride } from '@/lib/types'
 
+// Redondea al múltiplo más cercano de `step` (0.1, 1, 5, 10, 50, 100…).
+// `up` = siempre hacia arriba (ceil); si no, redondeo matemático. El precio base
+// (manual, ya redondo) nunca pasa por acá — solo el precio derivado de una lista.
+export function applyRounding(value: number, step: number | null, up: boolean): number {
+  if (step == null || step <= 0) return value
+  const rounded = (up ? Math.ceil(value / step) : Math.round(value / step)) * step
+  return Math.round(rounded * 100) / 100
+}
+
 // Precio bajo una LISTA ALTERNATIVA (mayorista, etc.). La lista es un tier de markup
 // sobre el costo, así que acá el costo manda incluso para variantes:
 // - cost > 0  → cost × multiplier (override producto > override marca > lista)
@@ -25,7 +34,7 @@ export function calculateProductPrice(
       ? null
       : (listOverrides.find(o => o.product_id === null && o.brand_id === brandId) ?? null)
   const multiplier = productOverride?.multiplier ?? brandOverride?.multiplier ?? priceList.multiplier
-  return cost * multiplier
+  return applyRounding(cost * multiplier, priceList.rounding_step, priceList.rounding_up)
 }
 
 // Display-side wrapper around calculateProductPrice. When priceList is null (no active list),

@@ -188,6 +188,8 @@ export interface PriceListData {
   description?: string | null
   multiplier?: number | string
   is_default?: boolean
+  rounding_step?: number | string | null
+  rounding_up?: boolean | null
 }
 
 export interface PriceListCreateData {

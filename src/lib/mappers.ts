@@ -18,6 +18,8 @@ export function normalizePriceList(row: {
   description: string | null
   multiplier: number | string
   created_at: string
+  rounding_step?: number | string | null
+  rounding_up?: boolean | null
 }): PriceList {
   return {
     id: row.id,
@@ -26,6 +28,9 @@ export function normalizePriceList(row: {
     description: row.description,
     multiplier: Number(row.multiplier),
     created_at: row.created_at,
+    rounding_step:
+      row.rounding_step == null || row.rounding_step === '' ? null : Number(row.rounding_step),
+    rounding_up: row.rounding_up ?? false,
   }
 }
 

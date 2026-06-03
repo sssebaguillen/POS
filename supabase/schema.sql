@@ -504,6 +504,12 @@ CREATE OR REPLACE FUNCTION "public"."compute_effective_price"("p_cost" numeric, 
     LANGUAGE "plpgsql" STABLE
     SET "search_path" TO 'public', 'extensions'
     AS $$
+-- NOTA redondeo por lista: el redondeo configurable es una propiedad de la LISTA
+-- (price_lists.rounding_step / rounding_up) y se aplica donde la lista se aplica.
+-- Hoy las listas SOLO se aplican en el cliente (calculateProductPrice); esta función
+-- se llama siempre con p_list_id = NULL (catálogo y create_catalog_order = precio base),
+-- así que la rama de lista no corre y no hay nada que redondear aquí. Si en el futuro
+-- algún caller SQL pasa una lista activa, replicar el redondeo del cliente en esta rama.
 DECLARE
   v_mult numeric;
 BEGIN
@@ -1177,7 +1183,7 @@ $$;
 ALTER FUNCTION "public"."create_operator"("p_actor_operator_id" "uuid", "p_business_id" "uuid", "p_name" "text", "p_role" "text", "p_pin" "text", "p_permissions" "jsonb") OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."create_price_list"("p_operator_id" "uuid", "p_business_id" "uuid", "p_name" "text", "p_description" "text", "p_multiplier" numeric, "p_overrides" "jsonb" DEFAULT NULL::"jsonb") RETURNS "jsonb"
+CREATE OR REPLACE FUNCTION "public"."create_price_list"("p_operator_id" "uuid", "p_business_id" "uuid", "p_name" "text", "p_description" "text", "p_multiplier" numeric, "p_overrides" "jsonb" DEFAULT NULL::"jsonb", "p_round_step" numeric DEFAULT NULL::numeric, "p_round_up" boolean DEFAULT false) RETURNS "jsonb"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public', 'extensions'
     AS $$
@@ -1207,6 +1213,10 @@ BEGIN
     RETURN jsonb_build_object('success', false, 'error', 'El margen debe ser mayor a 0');
   END IF;
 
+  IF p_round_step IS NOT NULL AND p_round_step <= 0 THEN
+    RETURN jsonb_build_object('success', false, 'error', 'El redondeo debe ser mayor a 0');
+  END IF;
+
   SELECT permissions->>'price_lists_write', role INTO v_perm, v_actor_role
   FROM operators
   WHERE id = p_operator_id AND business_id = v_caller_business_id AND is_active = true;
@@ -1222,12 +1232,14 @@ BEGIN
     v_actor_role := 'owner';
   END IF;
 
-  INSERT INTO price_lists (business_id, name, description, multiplier)
+  INSERT INTO price_lists (business_id, name, description, multiplier, rounding_step, rounding_up)
   VALUES (
     v_caller_business_id,
     btrim(p_name),
     NULLIF(btrim(p_description), ''),
-    p_multiplier
+    p_multiplier,
+    p_round_step,
+    COALESCE(p_round_up, false)
   )
   RETURNING id, to_jsonb(price_lists.*) INTO v_list_id, v_list;
 
@@ -1267,7 +1279,7 @@ END;
 $$;
 
 
-ALTER FUNCTION "public"."create_price_list"("p_operator_id" "uuid", "p_business_id" "uuid", "p_name" "text", "p_description" "text", "p_multiplier" numeric, "p_overrides" "jsonb") OWNER TO "postgres";
+ALTER FUNCTION "public"."create_price_list"("p_operator_id" "uuid", "p_business_id" "uuid", "p_name" "text", "p_description" "text", "p_multiplier" numeric, "p_overrides" "jsonb", "p_round_step" numeric, "p_round_up" boolean) OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."create_product"("p_operator_id" "uuid", "p_business_id" "uuid", "p_data" "jsonb") RETURNS "jsonb"
@@ -6620,7 +6632,7 @@ $$;
 ALTER FUNCTION "public"."update_operator"("p_actor_operator_id" "uuid", "p_business_id" "uuid", "p_target_operator_id" "uuid", "p_name" "text", "p_new_pin" "text", "p_permissions" "jsonb") OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."update_price_list"("p_operator_id" "uuid", "p_business_id" "uuid", "p_price_list_id" "uuid", "p_name" "text", "p_description" "text", "p_multiplier" numeric, "p_overrides_upsert" "jsonb" DEFAULT NULL::"jsonb", "p_overrides_delete_ids" "uuid"[] DEFAULT NULL::"uuid"[]) RETURNS "jsonb"
+CREATE OR REPLACE FUNCTION "public"."update_price_list"("p_operator_id" "uuid", "p_business_id" "uuid", "p_price_list_id" "uuid", "p_name" "text", "p_description" "text", "p_multiplier" numeric, "p_overrides_upsert" "jsonb" DEFAULT NULL::"jsonb", "p_overrides_delete_ids" "uuid"[] DEFAULT NULL::"uuid"[], "p_round_step" numeric DEFAULT NULL::numeric, "p_round_up" boolean DEFAULT false) RETURNS "jsonb"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public', 'extensions'
     AS $$
@@ -6652,6 +6664,10 @@ BEGIN
     RETURN jsonb_build_object('success', false, 'error', 'El margen debe ser mayor a 0');
   END IF;
 
+  IF p_round_step IS NOT NULL AND p_round_step <= 0 THEN
+    RETURN jsonb_build_object('success', false, 'error', 'El redondeo debe ser mayor a 0');
+  END IF;
+
   SELECT permissions->>'price_lists_write', role INTO v_perm, v_actor_role
   FROM operators
   WHERE id = p_operator_id AND business_id = v_caller_business_id AND is_active = true;
@@ -6676,9 +6692,11 @@ BEGIN
   END IF;
 
   UPDATE price_lists SET
-    name        = btrim(p_name),
-    description = NULLIF(btrim(p_description), ''),
-    multiplier  = p_multiplier
+    name          = btrim(p_name),
+    description   = NULLIF(btrim(p_description), ''),
+    multiplier    = p_multiplier,
+    rounding_step = p_round_step,
+    rounding_up   = COALESCE(p_round_up, false)
   WHERE id = p_price_list_id AND business_id = v_caller_business_id
   RETURNING to_jsonb(price_lists.*) INTO v_new_data;
 
@@ -6737,7 +6755,7 @@ END;
 $$;
 
 
-ALTER FUNCTION "public"."update_price_list"("p_operator_id" "uuid", "p_business_id" "uuid", "p_price_list_id" "uuid", "p_name" "text", "p_description" "text", "p_multiplier" numeric, "p_overrides_upsert" "jsonb", "p_overrides_delete_ids" "uuid"[]) OWNER TO "postgres";
+ALTER FUNCTION "public"."update_price_list"("p_operator_id" "uuid", "p_business_id" "uuid", "p_price_list_id" "uuid", "p_name" "text", "p_description" "text", "p_multiplier" numeric, "p_overrides_upsert" "jsonb", "p_overrides_delete_ids" "uuid"[], "p_round_step" numeric, "p_round_up" boolean) OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."update_product"("p_operator_id" "uuid", "p_business_id" "uuid", "p_product_id" "uuid", "p_changes" "jsonb") RETURNS "jsonb"
@@ -7900,7 +7918,9 @@ CREATE TABLE IF NOT EXISTS "public"."price_lists" (
     "name" "text" NOT NULL,
     "description" "text",
     "multiplier" numeric(6,4) DEFAULT 1.0 NOT NULL,
-    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "rounding_step" numeric,
+    "rounding_up" boolean DEFAULT false NOT NULL
 );
 
 
@@ -11831,9 +11851,9 @@ GRANT ALL ON FUNCTION "public"."create_operator"("p_actor_operator_id" "uuid", "
 
 
 
-REVOKE ALL ON FUNCTION "public"."create_price_list"("p_operator_id" "uuid", "p_business_id" "uuid", "p_name" "text", "p_description" "text", "p_multiplier" numeric, "p_overrides" "jsonb") FROM PUBLIC;
-GRANT ALL ON FUNCTION "public"."create_price_list"("p_operator_id" "uuid", "p_business_id" "uuid", "p_name" "text", "p_description" "text", "p_multiplier" numeric, "p_overrides" "jsonb") TO "authenticated";
-GRANT ALL ON FUNCTION "public"."create_price_list"("p_operator_id" "uuid", "p_business_id" "uuid", "p_name" "text", "p_description" "text", "p_multiplier" numeric, "p_overrides" "jsonb") TO "service_role";
+REVOKE ALL ON FUNCTION "public"."create_price_list"("p_operator_id" "uuid", "p_business_id" "uuid", "p_name" "text", "p_description" "text", "p_multiplier" numeric, "p_overrides" "jsonb", "p_round_step" numeric, "p_round_up" boolean) FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."create_price_list"("p_operator_id" "uuid", "p_business_id" "uuid", "p_name" "text", "p_description" "text", "p_multiplier" numeric, "p_overrides" "jsonb", "p_round_step" numeric, "p_round_up" boolean) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."create_price_list"("p_operator_id" "uuid", "p_business_id" "uuid", "p_name" "text", "p_description" "text", "p_multiplier" numeric, "p_overrides" "jsonb", "p_round_step" numeric, "p_round_up" boolean) TO "service_role";
 
 
 
@@ -17635,9 +17655,9 @@ GRANT ALL ON FUNCTION "public"."update_operator"("p_actor_operator_id" "uuid", "
 
 
 
-REVOKE ALL ON FUNCTION "public"."update_price_list"("p_operator_id" "uuid", "p_business_id" "uuid", "p_price_list_id" "uuid", "p_name" "text", "p_description" "text", "p_multiplier" numeric, "p_overrides_upsert" "jsonb", "p_overrides_delete_ids" "uuid"[]) FROM PUBLIC;
-GRANT ALL ON FUNCTION "public"."update_price_list"("p_operator_id" "uuid", "p_business_id" "uuid", "p_price_list_id" "uuid", "p_name" "text", "p_description" "text", "p_multiplier" numeric, "p_overrides_upsert" "jsonb", "p_overrides_delete_ids" "uuid"[]) TO "authenticated";
-GRANT ALL ON FUNCTION "public"."update_price_list"("p_operator_id" "uuid", "p_business_id" "uuid", "p_price_list_id" "uuid", "p_name" "text", "p_description" "text", "p_multiplier" numeric, "p_overrides_upsert" "jsonb", "p_overrides_delete_ids" "uuid"[]) TO "service_role";
+REVOKE ALL ON FUNCTION "public"."update_price_list"("p_operator_id" "uuid", "p_business_id" "uuid", "p_price_list_id" "uuid", "p_name" "text", "p_description" "text", "p_multiplier" numeric, "p_overrides_upsert" "jsonb", "p_overrides_delete_ids" "uuid"[], "p_round_step" numeric, "p_round_up" boolean) FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."update_price_list"("p_operator_id" "uuid", "p_business_id" "uuid", "p_price_list_id" "uuid", "p_name" "text", "p_description" "text", "p_multiplier" numeric, "p_overrides_upsert" "jsonb", "p_overrides_delete_ids" "uuid"[], "p_round_step" numeric, "p_round_up" boolean) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."update_price_list"("p_operator_id" "uuid", "p_business_id" "uuid", "p_price_list_id" "uuid", "p_name" "text", "p_description" "text", "p_multiplier" numeric, "p_overrides_upsert" "jsonb", "p_overrides_delete_ids" "uuid"[], "p_round_step" numeric, "p_round_up" boolean) TO "service_role";
 
 
 
