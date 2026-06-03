@@ -80,6 +80,7 @@ export default async function OperatorSelectPage() {
         minimal
         activeOperatorName={null}
         activeOperatorRole={null}
+        permissions={null}
         businessId={ownerProfile.business_id}
         businessName={businessName}
         businessSlug=""

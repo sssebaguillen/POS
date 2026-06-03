@@ -1,6 +1,19 @@
 {
-  "current": "0.0.7",
+  "current": "0.0.7.1",
   "releases": [
+    {
+      "version": "0.0.7.1",
+      "kind": "patch",
+      "date": "2026-06-03",
+      "label": "Menú lateral más ordenado",
+      "changes": [
+        { "type": "improvement", "text": "Reorganizamos el menú lateral para que encuentres todo más rápido. Ahora las secciones van en este orden: Ventas, Análisis, Gestión y Finanzas. Arriba quedó lo que usas todos los días (vender y revisar cómo va el negocio) y debajo lo más periódico (inventario, listas de precios, gastos y caja)." },
+        { "type": "improvement", "text": "El 'Dashboard' pasó a llamarse 'Resumen', para que quede claro de un vistazo qué vas a encontrar ahí. Y el enlace a tu Catálogo online ahora vive dentro de la sección Ventas." },
+        { "type": "improvement", "text": "Tu cuenta, la Configuración y el cierre de sesión ahora están todos dentro del botón de operador, al pie del menú. Al tocarlo se despliega con todo a mano: Mi perfil, Cuenta, Configuración, Cambiar de operador y Cerrar sesión. Así el menú lateral queda mucho más limpio. Lo que antes era 'Cerrar sesión de operario' ahora se llama 'Cambiar de operador'." },
+        { "type": "improvement", "text": "Si un operador no tiene permiso para una sección, ahora esa sección directamente no aparece, en lugar de mostrarse en gris. Queda más claro qué puede usar cada uno y el menú se ve más ordenado." },
+        { "type": "fix", "text": "Corregimos un parpadeo al iniciar sesión con un operador de permisos limitados: por un instante se veían todas las secciones antes de ocultarse. Ahora se muestran directamente las correctas." }
+      ]
+    },
     {
       "version": "0.0.7",
       "kind": "feature",

@@ -2,7 +2,7 @@
 
 import { createContext, useCallback, useContext, useMemo, useState } from 'react'
 import Sidebar from '@/components/sidebar'
-import type { UserRole } from '@/lib/operator'
+import type { Permissions, UserRole } from '@/lib/operator'
 
 interface SidebarContextValue {
   open: boolean
@@ -16,6 +16,7 @@ interface AppShellProps {
   children: React.ReactNode
   activeOperatorName: string | null
   activeOperatorRole: UserRole | null
+  permissions: Permissions | null
   businessId: string | null
   businessName: string
   businessSlug: string
@@ -42,6 +43,7 @@ export default function AppShell({
   children,
   activeOperatorName,
   activeOperatorRole,
+  permissions,
   businessId,
   businessName,
   businessSlug,
@@ -82,6 +84,7 @@ export default function AppShell({
           onClose={() => setSidebarOpen(false)}
           activeOperatorName={activeOperatorName}
           activeOperatorRole={activeOperatorRole}
+          permissions={permissions}
           businessId={businessId}
           businessName={businessName}
           businessSlug={businessSlug}

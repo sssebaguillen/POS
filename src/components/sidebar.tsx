@@ -13,7 +13,7 @@ import OperatorSwitcher from '@/components/operator/OperatorSwitcher'
 import OnboardingChecklist from '@/components/onboarding/OnboardingChecklist'
 import ChangelogBanner from '@/components/shared/ChangelogBanner'
 import FeedbackButton from '@/components/shared/FeedbackButton'
-import { parsePermissions, type Permissions, type UserRole } from '@/lib/operator'
+import { type Permissions, type UserRole } from '@/lib/operator'
 import { resetTracking } from '@/lib/analytics'
 import UnreadBadge, { useUnreadOrdersCount } from '@/components/orders/UnreadBadge'
 
@@ -29,7 +29,7 @@ const NAV_LINKS: NavLink[] = [
   { href: '/pos',           label: 'Vender',            icon: ShoppingCart,  check: () => true },
   { href: '/customers',     label: 'Clientes',          icon: Users,         check: () => true },
   { href: '/orders',        label: 'Pedidos online',    icon: Inbox,         check: (p) => p.sales === true },
-  { href: '/dashboard',     label: 'Dashboard',         icon: BarChart2,     check: (p) => p.analysis === true },
+  { href: '/dashboard',     label: 'Resumen',           icon: BarChart2,     check: (p) => p.analysis === true },
   { href: '/stats',         label: 'Estadísticas',      icon: LineChart,     check: (p) => p.analysis === true },
   { href: '/activity',      label: 'Actividad',         icon: History,       check: (p) => p.analysis === true },
   { href: '/expenses',      label: 'Gastos',            icon: Receipt,       check: (p) => p.expenses === true },
@@ -45,20 +45,16 @@ const NAV_SECTIONS = [
     hrefs: ['/pos', '/customers', '/orders'],
   },
   {
+    label: 'Análisis',
+    hrefs: ['/dashboard', '/stats', '/activity'],
+  },
+  {
     label: 'Gestión',
     hrefs: ['/inventory', '/price-lists'],
   },
   {
     label: 'Finanzas',
     hrefs: ['/expenses', '/cash-sessions'],
-  },
-  {
-    label: 'Análisis',
-    hrefs: ['/dashboard', '/stats', '/activity'],
-  },
-  {
-    label: 'Sistema',
-    hrefs: ['/settings'],
   },
 ]
 
@@ -74,6 +70,11 @@ interface Props {
   onClose: () => void
   activeOperatorName: string | null
   activeOperatorRole: UserRole | null
+  // Server-resolved from the signed operator_session cookie. null = owner / no
+  // session → everything visible. Passed as a prop (not read from op_perms
+  // client-side) so the first SSR render already hides restricted items —
+  // otherwise they flash in before hydration hides them.
+  permissions: Permissions | null
   businessId: string | null
   businessName: string
   businessSlug: string
@@ -93,6 +94,7 @@ export default function Sidebar({
   onClose,
   activeOperatorName,
   activeOperatorRole,
+  permissions,
   businessId,
   businessName,
   businessSlug,
@@ -107,32 +109,8 @@ export default function Sidebar({
   const { theme, toggle } = useTheme()
   const router = useRouter()
   const supabase = useMemo(() => createClient(), [])
-  const [toast, setToast] = useState<string | null>(null)
   const [mounted, setMounted] = useState(false)
   const [themeToggleMounted, setThemeToggleMounted] = useState(false)
-  const permissions: Permissions | null = (() => {
-    if (typeof document === 'undefined') {
-      return null
-    }
-
-    const match = document.cookie.match(/(?:^|;)\s*op_perms=([^;]+)/)
-    if (!match) {
-      return null
-    }
-
-    try {
-      const parsed = JSON.parse(decodeURIComponent(match[1])) as unknown
-      return parsePermissions(parsed)
-    } catch {
-      return null
-    }
-  })()
-
-  useEffect(() => {
-    if (!toast) return
-    const timer = setTimeout(() => setToast(null), 3000)
-    return () => clearTimeout(timer)
-  }, [toast])
 
   useEffect(() => {
     setMounted(true)
@@ -146,15 +124,10 @@ export default function Sidebar({
   }
 
   const isRestricted = (check: (p: Permissions) => boolean): boolean =>
-    mounted && permissions !== null && !check(permissions)
+    permissions !== null && !check(permissions)
 
-  const canSeeOrders = !minimal && mounted && (permissions === null || permissions.sales === true)
+  const canSeeOrders = !minimal && (permissions === null || permissions.sales === true)
   const { data: unreadOrdersCount = 0 } = useUnreadOrdersCount(canSeeOrders)
-
-  function handleRestrictedClick(label: string) {
-    setToast(`No tienes permisos para acceder a ${label}`)
-    onClose()
-  }
 
   const isOwnerSessionActive = activeOperatorRole === 'owner'
   const hasActiveOperatorSession =
@@ -232,37 +205,18 @@ export default function Sidebar({
           </Link>
         )}
         {NAV_SECTIONS.map(section => {
-          const links = NAV_LINKS.filter(l => section.hrefs.includes(l.href))
+          const links = NAV_LINKS.filter(l => section.hrefs.includes(l.href) && !isRestricted(l.check))
+          const showCatalog = section.label === 'Ventas' && businessSlug
+          if (links.length === 0 && !showCatalog) return null
           return (
             <div key={section.label} className="mb-4">
               {(!collapsed || isMobileDrawer) && (
                 <p className="text-label text-hint px-3 mb-1">{section.label}</p>
               )}
               <div className="space-y-0.5">
-                {links.map(({ href, label, icon: Icon, check }) => {
-                  const restricted = isRestricted(check)
+                {links.map(({ href, label, icon: Icon }) => {
                   const isActive = pathname === href
                   const tourTarget = TOUR_ATTR_BY_HREF[href]
-
-                  if (restricted) {
-                    return (
-                      <span
-                        key={href}
-                        role="button"
-                        onClick={() => { handleRestrictedClick(label); }}
-                        title={collapsed && !isMobileDrawer ? label : undefined}
-                        className={cn(
-                          'flex items-center rounded-lg text-sm font-medium opacity-50 cursor-not-allowed select-none text-body',
-                          collapsed && !isMobileDrawer
-                            ? 'justify-center p-2.5'
-                            : 'gap-3 px-3 py-2.5'
-                        )}
-                      >
-                        <Icon size={18} />
-                        {(!collapsed || isMobileDrawer) && label}
-                      </span>
-                    )
-                  }
 
                   const isOrdersLink = href === '/orders'
                   const showBadge = isOrdersLink && unreadOrdersCount > 0
@@ -294,7 +248,7 @@ export default function Sidebar({
                     </Link>
                   )
                 })}
-                {section.label === 'Sistema' && businessSlug && (
+                {showCatalog && (
                   <a
                     href={`/catalogo/${businessSlug}`}
                     target="_blank"
@@ -336,42 +290,52 @@ export default function Sidebar({
           collapsed && !isMobileDrawer ? 'px-2 py-3 items-center' : 'px-3 py-3'
         )}
       >
-        {hasActiveOperatorSession && activeOperatorName && activeOperatorRole !== null && (!collapsed || isMobileDrawer) && (
-          <OperatorSwitcher operatorName={activeOperatorName} operatorRole={activeOperatorRole} />
-        )}
+        {hasActiveOperatorSession && activeOperatorName && activeOperatorRole !== null ? (
+          <OperatorSwitcher
+            operatorName={activeOperatorName}
+            operatorRole={activeOperatorRole}
+            permissions={permissions}
+            showAccountActions={showBusinessSessionActions}
+            collapsed={collapsed}
+            isMobileDrawer={isMobileDrawer}
+            onLogout={handleLogout}
+          />
+        ) : (
+          // Lock screen (/operator-select): no active-operator card to host these,
+          // so the owner's account actions render flat.
+          showBusinessSessionActions && (
+            <>
+              <button
+                title={collapsed && !isMobileDrawer ? 'Cuenta' : undefined}
+                className={cn(
+                  'rounded-lg text-sm text-body hover:bg-hover-bg transition-[transform,background-color,color] duration-150 ease-[var(--ease-out)] active:scale-[0.98]',
+                  collapsed && !isMobileDrawer
+                    ? 'p-2.5 flex items-center justify-center w-full active:scale-95'
+                    : 'flex items-center gap-2 px-3 py-2 text-left w-full'
+                )}
+                onClick={e => { router.push('/profile'); if (isMobileDrawer) onClose(); e.currentTarget.blur() }}
+              >
+                <UserCircle size={18} />
+                {(!collapsed || isMobileDrawer) && 'Cuenta'}
+              </button>
 
-        {showBusinessSessionActions && (
-          <>
-            <button
-              title={collapsed && !isMobileDrawer ? 'Cuenta' : undefined}
-              className={cn(
-                'rounded-lg text-sm text-body hover:bg-hover-bg transition-[transform,background-color,color] duration-150 ease-[var(--ease-out)] active:scale-[0.98]',
-                collapsed && !isMobileDrawer
-                  ? 'p-2.5 flex items-center justify-center w-full active:scale-95'
-                  : 'flex items-center gap-2 px-3 py-2 text-left w-full'
-              )}
-              onClick={e => { router.push('/profile'); if (isMobileDrawer) onClose(); e.currentTarget.blur() }}
-            >
-              <UserCircle size={18} />
-              {(!collapsed || isMobileDrawer) && 'Cuenta'}
-            </button>
-
-            <button
-              type="button"
-              onClick={handleLogout}
-              title={collapsed && !isMobileDrawer ? 'Cerrar sesion' : undefined}
-              className={cn(
-                'rounded-lg text-red-500 hover:bg-red-50 hover:text-red-700 transition-[transform,background-color,color] duration-150 ease-[var(--ease-out)] active:scale-[0.98]',
-                collapsed && !isMobileDrawer
-                  ? 'p-2.5 flex items-center justify-center w-full active:scale-95'
-                  : 'flex items-center gap-2 px-3 py-2 text-left w-full text-sm'
-              )}
-              aria-label="Cerrar sesion"
-            >
-              <LogOut size={18} />
-              {(!collapsed || isMobileDrawer) && 'Cerrar sesion'}
-            </button>
-          </>
+              <button
+                type="button"
+                onClick={handleLogout}
+                title={collapsed && !isMobileDrawer ? 'Cerrar sesión' : undefined}
+                className={cn(
+                  'rounded-lg text-destructive hover:bg-destructive/10 transition-[transform,background-color,color] duration-150 ease-[var(--ease-out)] active:scale-[0.98]',
+                  collapsed && !isMobileDrawer
+                    ? 'p-2.5 flex items-center justify-center w-full active:scale-95'
+                    : 'flex items-center gap-2 px-3 py-2 text-left w-full text-sm'
+                )}
+                aria-label="Cerrar sesión"
+              >
+                <LogOut size={18} />
+                {(!collapsed || isMobileDrawer) && 'Cerrar sesión'}
+              </button>
+            </>
+          )
         )}
 
         {/* Theme toggle */}
@@ -442,15 +406,6 @@ export default function Sidebar({
       >
         {sidebarContent(false)}
       </aside>
-
-      {toast && (
-        <div
-          role="alert"
-          className="fixed bottom-4 left-4 z-[60] rounded-lg border border-amber-200 bg-white px-4 py-2.5 shadow-lg text-sm text-amber-800 dark:border-amber-500/30 dark:bg-amber-950/80 dark:text-amber-200"
-        >
-          {toast}
-        </div>
-      )}
     </>
   )
 }

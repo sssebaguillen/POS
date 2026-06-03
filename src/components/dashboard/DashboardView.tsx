@@ -295,7 +295,7 @@ export default function DashboardView({
           }}
         />
       )}
-      <PageHeader title="Dashboard" />
+      <PageHeader title="Resumen" />
 
       <div className="flex-1 overflow-y-auto">
         <div className="px-6 pt-4 pb-6 space-y-5">

@@ -166,6 +166,7 @@ export default async function AppLayout({
         <AppShell
           activeOperatorName={activeOperator?.name ?? null}
           activeOperatorRole={activeOperator?.role ?? null}
+          permissions={activeOperator?.permissions ?? null}
           businessId={businessId}
           businessName={businessName}
           businessSlug={businessSlug}
