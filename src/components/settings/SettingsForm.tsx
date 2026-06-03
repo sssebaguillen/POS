@@ -41,6 +41,7 @@ interface FormState {
   primaryColor: string
   currencyCode: SupportedCurrencyCode
   freeLineEnabled: boolean
+  aiInsightsEnabled: boolean
 }
 
 function isValidHttpUrl(value: string): boolean {
@@ -91,6 +92,7 @@ export default function SettingsForm({
     primaryColor: business.settings?.primary_color ?? '#7a3e10',
     currencyCode: initialCurrency,
     freeLineEnabled: business.settings?.free_line_enabled === true,
+    aiInsightsEnabled: business.settings?.ai_insights_enabled === true,
   })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -207,6 +209,8 @@ export default function SettingsForm({
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: ['profile'] }),
       queryClient.invalidateQueries({ queryKey: ['business'] }),
+      // Refleja el toggle de IA proactiva sin esperar a la navegación.
+      queryClient.invalidateQueries({ queryKey: ['ai_insights'] }),
     ])
     router.refresh()
   }
@@ -236,6 +240,7 @@ export default function SettingsForm({
           primary_color: form.primaryColor,
           currency: form.currencyCode,
           free_line_enabled: form.freeLineEnabled,
+          ai_insights_enabled: form.aiInsightsEnabled,
         },
       })
 
@@ -464,6 +469,26 @@ export default function SettingsForm({
                 >
                   <span
                     className={`absolute top-1 left-1 h-4 w-4 rounded-full bg-white shadow-sm transition-transform ${form.freeLineEnabled ? 'translate-x-5' : 'translate-x-0'}`}
+                  />
+                </button>
+              </div>
+
+              <div className="flex items-center justify-between rounded-lg border border-border px-4 py-3">
+                <div>
+                  <p className="text-sm font-medium text-foreground">Sugerencias con IA</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Analiza tu negocio cada noche y te sugiere mejoras de precios, stock y más. Puedes descartar las que no te sirvan.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={form.aiInsightsEnabled}
+                  onClick={() => setField('aiInsightsEnabled', !form.aiInsightsEnabled)}
+                  className={`relative h-6 w-11 rounded-full transition-colors shrink-0 ml-4 ${form.aiInsightsEnabled ? 'bg-primary' : 'bg-muted-foreground'}`}
+                >
+                  <span
+                    className={`absolute top-1 left-1 h-4 w-4 rounded-full bg-white shadow-sm transition-transform ${form.aiInsightsEnabled ? 'translate-x-5' : 'translate-x-0'}`}
                   />
                 </button>
               </div>

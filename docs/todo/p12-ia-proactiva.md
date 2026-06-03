@@ -110,13 +110,47 @@ source_model        -- proveedor/modelo que lo generó
 1. ~~**Confirmar margen** — verificar el matiz de costo y crear `get_margin_analysis`.~~ ✅ **Hecho** (2026-06-02, mig. `20260602_05`, schema.sql en sync).
 2. ~~**Tabla `ai_insights`** + opt-in en settings.~~ ✅ **Hecho** (2026-06-02, mig. `20260602_06`, schema.sql en sync). Falta cablear el toggle `ai_insights_enabled` en la UI de settings (parte del paso 5).
 3. **RPCs de retrieval** — detección (N1) ✅ **3 hechas** (`get_product_demand_shifts`, `get_payment_mix_shift`, `get_channel_signals`; mig. `20260602_07`) · historial profundo (N2) ✅ producto hecho (`get_product_history`; mig. `20260602_08`); cliente/proveedor diferidos a backlog.
-4. **Assembler + Edge Function + cron** — dos niveles, proveedor abstraído, anti-repetición.
-5. **Superficie anclada** — render inline por `surface`/`target` + nudge ambiente.
-6. **Polish** — sonido + animación suave.
+4. ~~**Assembler + Edge Function + cron** — dos niveles, proveedor abstraído, anti-repetición.~~ ✅ **Hecho** (2026-06-03, verificado en vivo contra `tienda de seba`). Detalle abajo.
+5. ~~**Superficie anclada** — render inline por `surface`/`target` + nudge ambiente.~~ ✅ **Hecho** (2026-06-03). Detalle abajo.
+6. ~~**Polish** — sonido + animación suave.~~ ✅ **Hecho** (2026-06-03). Detalle abajo.
 
-## Pendiente de decidir al implementar
+> **P12 completo (pasos 1–6).** Falta solo, como iniciativa aparte, una eventual **vista propia del Asistente** (resumen/historial central) — ver backlog.
 
-- Modelo concreto por nivel para beta (Gemini Flash free-tier vs Haiku) — validar límites/calidad reales.
-- Umbrales de detección del Nivel 1 (qué cuenta como anomalía/deriva).
-- Frecuencia: nocturno fijo vs disparado por eventos (ej. cambio de precio).
+## Paso 4 — implementado (2026-06-03)
+
+- **Edge Function `generate-insights`** (`supabase/functions/generate-insights/`, modular: `index.ts` / `llm.ts` / `prompts.ts` / `assembler.ts` / `types.ts`). Auth `CRON_SECRET` (Bearer), cliente `service_role`. Itera negocios con `settings.ai_insights_enabled = true`. `verify_jwt=false` (auth propia). Body opcional `{businessId, dryRun}` para debug.
+- **Assembler dos niveles**: N1 corre las 6 señales en paralelo (`get_product_demand_shifts`, `get_payment_mix_shift`, `get_channel_signals`, `get_margin_analysis`, `get_dead_stock`, `get_overstock`) → un LLM barato prioriza productos a profundizar + emite insights de dominios pago/canal/stock/global. N2 trae `get_product_history` (6 meses) de los productos marcados (tope 4) → un LLM fuerte narra el insight de producto. `surface`/`target_entity_type` se asignan **determinísticamente** (no se confían al LLM); el LLM solo da `severity/title/body/rationale` (+`kind` en N1).
+- **Proveedor abstraído** (`generateInsight()` vía interfaz `LlmProvider`): hoy **Groq** (free-tier global $0, sin BYOK), Gemini queda implementado como alternativa. Modelo por nivel via env, default **N1 `llama-3.1-8b-instant` / N2 `llama-3.3-70b-versatile`** — sigue el plan (N1 barato / N2 fuerte) **y** reparte el límite TPM en buckets separados. Selector por string en `makeProvider` (`gemini*`→Gemini, resto→Groq). Retry único ante 429 honrando `Retry-After`.
+  - **Por qué Groq y no Gemini:** el free-tier de Gemini da `limit: 0` en la región del usuario (Argentina) — `generateContent` rechaza con 429 aunque la key autentique. Groq free-tier funciona global sin facturación.
+- **Anti-repetición doble**: (a) se le pasan al modelo los últimos 25 insights + su `status` (respeta `dismissed`); (b) **dedup estructural** — no se inserta si ya hay un insight activo (`new|seen`) para esa misma entidad dentro de 14 días. Verificado: 2ª corrida consecutiva generó 0.
+- **Guardrail de stock**: el system prompt prohíbe tratar stock negativo/escaso como anomalía (stock negativo es estado permitido — el POS nunca bloquea la venta). Detectado y corregido en la 1ª corrida de prueba.
+- **Cron**: `generate-insights-nightly` (`30 6 * * *` UTC = 03:30 ART), encadenado 20 min después de `refresh-daily-snapshots-nightly`. Bearer desde Vault (reusa `cron_secret_refresh_daily_snapshots`, mismo `CRON_SECRET`). Patrón calcado de snapshots.
+- **Prep DB — migración `20260603_01`**: `get_margin_analysis` / `get_dead_stock` / `get_overstock` pasaron al guard **dual-use** (`if auth.uid() is not null then assert_tenant`) para que el cron `service_role` pueda reusarlas como dice el plan (antes tenían `assert_tenant` incondicional → lanzaban para el cron). Además REVOKE `anon` colgado de `get_margin_analysis`. schema.sql en sync.
+- **Secrets**: `GROQ_API_KEY` (Edge Functions secret). `CRON_SECRET`/`SUPABASE_*` ya existían.
+
+## Paso 5 — UI anclada (2026-06-03)
+
+- **Componentes** (`src/components/insights/`): `useInsights.ts` (hooks React Query: `useActiveInsights` gateado por `useAiInsightsEnabled`, `useInsightsForSurface`, `useUpdateInsightStatus`, `useMarkInsightsSeen`), `InsightCard.tsx` (severidad en paleta cálida — oportunidad→primary, atención→destructive, nota→secondary; rationale colapsable "Por qué"; acción "Marcar como hecho" o "Ver producto" si hay entidad abrible), `InsightAnchor.tsx` (glyph con pulso + popover), `InsightSurfaceAnchor.tsx` (wrapper por superficie), `sound.ts`, `NewInsightNotifier.tsx`.
+- **Toggle opt-in** `ai_insights_enabled` cableado en `/settings` (`SettingsForm`, vía `update_business_settings` spread-merge; auditado). **Gating de display:** la UI lee el setting (`useAiInsightsEnabled`, RLS sobre `businesses`) y si está apagado no muestra nada (apagar el toggle oculta las sugerencias al instante; antes solo frenaba la generación nocturna).
+- **Superficies ancladas (glyph ambiente, principio 3 — no una tab):** `/dashboard` (header, surfaces `dashboard`+`global`), `/stats` (PageHeader, surface `stats`), `/inventory` (junto al toggle grid/lista, surfaces `inventory_row`+`inventory`). Las sugerencias de producto traen **"Ver producto"** que abre el `EditProductModal` (vía `target_entity_id` → `handleEdit`).
+- **Lectura/mutación de status** directo por RLS (sin RPC): el dueño lee y cambia `status` (seen/dismissed/acted) como `authenticated`.
+- **Diseño:** pasado por critique (`/impeccable`) y por la skill de Emil Kowalski. Se quitó el side-stripe (prohibido en DESIGN.md), tooltip en el glyph, paleta cálida en chips, popover compacto on-brand. Pulso lento en `--primary` (keyframe `insight-pulse` en globals.css), no hardcodeado por severidad.
+
+## Paso 6 — sonido + animación (2026-06-03)
+
+- **Pulso condicional:** el glyph pulsa SOLO si hay sugerencias sin ver (`status 'new'`); al abrir el popover se marcan `seen` (`useMarkInsightsSeen`, optimista) y el glyph se aquieta. Fade-in al montar.
+- **Sonido opt-in:** toggle 🔊/🔇 en el header del popover (apagado por defecto, persistido en localStorage `ai-insights-sound`). Chime suave (2 notas, Web Audio) una vez por sesión en `/dashboard` (nunca en `/pos`) vía `NewInsightNotifier` (montado en `(app)/layout.tsx`). Dedup por `sessionStorage 'ai-insights-chimed'`. Best-effort por políticas de autoplay.
+
+## Calidad del copy (iterado 2026-06-03)
+
+Reglas del system prompt afinadas tras feedback real: español neutro **sin voseo NI imperativo** (todo en posibilidad "podrías/puedes"), **acción con dirección** (no "revisa el precio" vago), **rationale en lenguaje natural con marco relativo** (no "métrica: valor"), **variedad** (no plantilla), **few-shot** con un insight modelo (Tori) para emparejar consistencia, anti-ruido (no "no hubo cambios"), guardrail de stock negativo, "canal"→"mostrador/catálogo". **Modelo: Groq Llama 3.3 70b en ambos niveles** (el 8b no seguía las reglas de copy). Ver [[project_p12_llm_provider]].
+
+## Pendiente de decidir / hacer
+
+- **Vista propia del Asistente (idea, no decidido):** una pantalla central (`/insights` o "Asistente" en sidebar, owner/`analysis`-gated) con resumen + historial de sugerencias (activas, descartadas, accionadas) que complemente — no reemplace — los glyphs anclados. Útil a medida que crece la feature y se suman dominios (cliente, proveedor, **operarios** con detección de patrones). NO debe vivir en `/operator/me` (ahí van las stats propias del dueño). Ver backlog.
+
+- **Paso 5 (próximo): UI anclada** por `surface`/`target` + nudge ambiente + toggle `ai_insights_enabled` en `/settings` (parte pendiente del paso 2). Sin UI, los insights se insertan pero no se ven.
+- Umbrales de detección N1: hoy se usan los **defaults** de las RPCs (demand: 5 uds base / 20% Δ; pago/canal: 5pp). Recalibrar mirando volumen de output real cuando haya más negocios.
+- Frecuencia: nocturno fijo (elegido). Reevaluar disparo por eventos si hay demanda.
 - ¿Margen exacto forward-only (snapshot de `cost` en `sale_items`) o seguir con aproximado?
+- Diferidos a backlog: detectores N1 + historia N2 de **cliente** (RFM/deuda) y **proveedor** (cost creep).

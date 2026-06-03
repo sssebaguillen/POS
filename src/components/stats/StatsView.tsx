@@ -6,6 +6,7 @@ import { useQuery } from '@tanstack/react-query'
 import { TrendingDown, TrendingUp, DollarSign, ShoppingBag, Receipt, Hash, FileText, PackageX, ChevronRight } from 'lucide-react'
 import Link from 'next/link'
 import PageHeader from '@/components/shared/PageHeader'
+import InsightSurfaceAnchor from '@/components/insights/InsightSurfaceAnchor'
 import DateRangeFilter from '@/components/shared/DateRangeFilter'
 import { buildDateParams, periodNeedsCustomDates, resolveDateRange, type DateRangePeriod } from '@/lib/date-utils'
 import { isPaymentMethod, normalizePayment, PAYMENT_BAR_COLORS } from '@/lib/payments'
@@ -295,7 +296,9 @@ export default function StatsView({
 
   return (
     <div className="flex flex-col h-screen overflow-hidden">
-      <PageHeader title="Estadísticas" />
+      <PageHeader title="Estadísticas">
+        <InsightSurfaceAnchor surfaces={['stats']} />
+      </PageHeader>
 
       <div className="flex-1 overflow-y-auto">
         <div className="px-5 pt-4 pb-6 space-y-5">

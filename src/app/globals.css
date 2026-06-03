@@ -410,6 +410,20 @@
   .animate-fade-in {
     animation: fade-in 0.25s ease-out both;
   }
+
+  /* Pulso ambiente del indicador de IA (P12). Lento y en primary; el guard global
+     de prefers-reduced-motion lo detiene. El anillo nace en opacity 0 y rampa hasta
+     el pico (no aparece de golpe), lo que suaviza cada ciclo y la primera aparición. */
+  @keyframes insight-pulse {
+    0%   { transform: scale(0.8);  opacity: 0; }
+    25%  { opacity: 0.35; }
+    100% { transform: scale(1.85); opacity: 0; }
+  }
+
+  .animate-insight-pulse {
+    /* delay corto: deja que el header asiente antes del primer pulso */
+    animation: insight-pulse 2.6s cubic-bezier(0.16, 1, 0.3, 1) 200ms infinite;
+  }
 }
 
 /* ─── Catalog card hover (variant products) ───────────────────────────────────

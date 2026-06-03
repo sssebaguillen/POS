@@ -12,6 +12,7 @@ import { CurrencyProvider } from '@/lib/context/CurrencyContext'
 import { parseOnboardingState } from '@/components/onboarding/onboarding-types'
 import OnboardingTour from '@/components/onboarding/OnboardingTour'
 import NewOrderNotifier from '@/components/orders/NewOrderNotifier'
+import NewInsightNotifier from '@/components/insights/NewInsightNotifier'
 
 function luminance(hex: string): number {
   const r = parseInt(hex.slice(1, 3), 16) / 255
@@ -180,6 +181,7 @@ export default async function AppLayout({
           <CurrencyProvider currency={currencyCode}>
             {children}
             <NewOrderNotifier />
+            <NewInsightNotifier />
           </CurrencyProvider>
         </AppShell>
       </QueryProvider>

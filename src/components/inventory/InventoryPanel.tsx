@@ -24,6 +24,7 @@ import BulkActionBar from '@/components/inventory/BulkActionBar'
 import QuickEditCategoryModal from '@/components/inventory/QuickEditCategoryModal'
 import QuickEditBrandModal from '@/components/inventory/QuickEditBrandModal'
 import ProductCard, { SelectionCheckbox } from '@/components/inventory/ProductCard'
+import InsightSurfaceAnchor from '@/components/insights/InsightSurfaceAnchor'
 import ProductListRow from '@/components/inventory/ProductListRow'
 import ProductStockModal from '@/components/inventory/ProductStockModal'
 import type { PriceList, PriceListOverride } from '@/lib/types'
@@ -943,7 +944,17 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
           </div>
 
 
-          <div className="relative flex items-center gap-1 shrink-0 border border-edge rounded-lg p-1 ml-auto">
+          <div className="ml-auto flex items-center gap-2">
+          <InsightSurfaceAnchor
+            surfaces={['inventory_row', 'inventory']}
+            size="sm"
+            openLabel="Ver producto"
+            onOpenEntity={(insight) => {
+              const target = products.find(p => p.id === insight.target_entity_id)
+              if (target) handleEdit(target)
+            }}
+          />
+          <div className="relative flex items-center gap-1 shrink-0 border border-edge rounded-lg p-1">
             {viewIndicator && (
               <span
                 className="absolute inset-y-1 bg-primary rounded-md pointer-events-none"
@@ -975,6 +986,7 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
             >
               <LayoutGrid size={15} />
             </button>
+          </div>
           </div>
         </div>
       </div>

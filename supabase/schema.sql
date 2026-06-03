@@ -2957,7 +2957,7 @@ DECLARE
   v_limit     integer := LEAST(GREATEST(COALESCE(p_limit, 50), 1), 500);
   v_offset    integer := GREATEST(COALESCE(p_offset, 0), 0);
 BEGIN
-  PERFORM public.assert_tenant(p_business_id);
+  IF auth.uid() IS NOT NULL THEN PERFORM public.assert_tenant(p_business_id); END IF;
 
   RETURN (
     WITH sales_agg AS (
@@ -3338,7 +3338,7 @@ DECLARE
   v_limit      integer := LEAST(GREATEST(COALESCE(p_limit, 500), 1), 500);
   v_offset     integer := GREATEST(COALESCE(p_offset, 0), 0);
 BEGIN
-  PERFORM public.assert_tenant(p_business_id);
+  IF auth.uid() IS NOT NULL THEN PERFORM public.assert_tenant(p_business_id); END IF;
 
   RETURN (
     WITH sales_agg AS (
@@ -12840,7 +12840,7 @@ declare
   v_total   int;
   v_totals  jsonb;
 begin
-  perform public.assert_tenant(p_business_id);
+  if auth.uid() is not null then perform public.assert_tenant(p_business_id); end if;
 
   select count(distinct si.product_id) into v_total
   from sale_items si
@@ -12919,6 +12919,7 @@ end;
 $$;
 ALTER FUNCTION "public"."get_margin_analysis"("p_business_id" "uuid", "p_from" "date", "p_to" "date", "p_limit" integer, "p_offset" integer) OWNER TO "postgres";
 REVOKE ALL ON FUNCTION "public"."get_margin_analysis"("p_business_id" "uuid", "p_from" "date", "p_to" "date", "p_limit" integer, "p_offset" integer) FROM PUBLIC;
+REVOKE ALL ON FUNCTION "public"."get_margin_analysis"("p_business_id" "uuid", "p_from" "date", "p_to" "date", "p_limit" integer, "p_offset" integer) FROM "anon";
 GRANT ALL ON FUNCTION "public"."get_margin_analysis"("p_business_id" "uuid", "p_from" "date", "p_to" "date", "p_limit" integer, "p_offset" integer) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."get_margin_analysis"("p_business_id" "uuid", "p_from" "date", "p_to" "date", "p_limit" integer, "p_offset" integer) TO "service_role";
 

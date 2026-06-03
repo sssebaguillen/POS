@@ -11,6 +11,7 @@ const SETTINGS_FIELD_LABELS: Record<string, string> = {
   primary_color: 'Color principal',
   currency: 'Moneda',
   free_line_enabled: 'Producto libre',
+  ai_insights_enabled: 'Sugerencias con IA',
 }
 
 interface PriceListSummaryProps {

@@ -1,6 +1,18 @@
 {
-  "current": "0.0.6.11",
+  "current": "0.0.7",
   "releases": [
+    {
+      "version": "0.0.7",
+      "kind": "feature",
+      "date": "2026-06-03",
+      "label": "Sugerencias con IA",
+      "changes": [
+        { "type": "new", "text": "Llegan las Sugerencias con IA. Si las activas, Pulsar analiza tu negocio cada noche (tus ventas, precios, costos y stock de los últimos 30 días) y te deja recomendaciones concretas donde te sirven. Aparece un pequeño ícono junto al título en el Dashboard, el Inventario y las Estadísticas, y solo cuando hay algo que vale la pena mirar. Al tocarlo ves la sugerencia con el porqué explicado con tus propios números." },
+        { "type": "new", "text": "Las sugerencias son accionables, no solo datos. Por ejemplo, si un producto se empieza a vender mucho más sin que hayas subido el precio, te avisa que tienes margen para subirlo sin perder ventas. Cada sugerencia la puedes descartar, marcar como hecha, o si es sobre un producto, abrirlo directo para ajustar el precio desde ahí." },
+        { "type": "new", "text": "La activas o desactivas cuando quieras desde Configuración, con el interruptor 'Sugerencias con IA'. Si la apagas, las sugerencias dejan de aparecer al instante." },
+        { "type": "improvement", "text": "Opcional: puedes activar un aviso sonoro suave para enterarte cuando hay una sugerencia nueva, desde el mismo panel de sugerencias. Viene apagado por defecto." }
+      ]
+    },
     {
       "version": "0.0.6.11",
       "kind": "feature",

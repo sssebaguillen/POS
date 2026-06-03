@@ -9,6 +9,7 @@ import Link from 'next/link'
 import SalesHistoryTable from '@/components/dashboard/SalesHistoryTable'
 import BalanceWidget from '@/components/dashboard/BalanceWidget'
 import RecentActivityWidget from '@/components/dashboard/RecentActivityWidget'
+import InsightSurfaceAnchor from '@/components/insights/InsightSurfaceAnchor'
 import { usePillIndicator } from '@/hooks/usePillIndicator'
 import { useQuery, keepPreviousData } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
@@ -312,33 +313,38 @@ export default function DashboardView({
               }}
             />
 
-            <div className="pill-tabs">
-              {indicator && (
-                <span
-                  className="pill-tab-indicator"
-                  style={{
-                    transform: `translateX(${indicator.left}px)`,
-                    width: indicator.width,
-                  }}
-                />
-              )}
-              <button
-                type="button"
-                ref={setRef('overview')}
-                onClick={() => setShowHistory(false)}
-                className={`pill-tab${!showHistory ? ' pill-tab-active' : ''}`}
-              >
-                Resumen
-              </button>
-              <button
-                type="button"
-                ref={setRef('history')}
-                onClick={() => setShowHistory(true)}
-                className={`pill-tab${showHistory ? ' pill-tab-active' : ''}`}
-              >
-                <span className="lg:hidden">Historial</span>
-                <span className="hidden lg:inline">Historial de ventas</span>
-              </button>
+            <div className="flex items-center gap-2">
+              {/* Glyph ambiente de IA: sugerencias de canal/globales del dashboard */}
+              <InsightSurfaceAnchor surfaces={['dashboard', 'global']} />
+
+              <div className="pill-tabs">
+                {indicator && (
+                  <span
+                    className="pill-tab-indicator"
+                    style={{
+                      transform: `translateX(${indicator.left}px)`,
+                      width: indicator.width,
+                    }}
+                  />
+                )}
+                <button
+                  type="button"
+                  ref={setRef('overview')}
+                  onClick={() => setShowHistory(false)}
+                  className={`pill-tab${!showHistory ? ' pill-tab-active' : ''}`}
+                >
+                  Resumen
+                </button>
+                <button
+                  type="button"
+                  ref={setRef('history')}
+                  onClick={() => setShowHistory(true)}
+                  className={`pill-tab${showHistory ? ' pill-tab-active' : ''}`}
+                >
+                  <span className="lg:hidden">Historial</span>
+                  <span className="hidden lg:inline">Historial de ventas</span>
+                </button>
+              </div>
             </div>
           </div>
 
