@@ -3,8 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import {
   OWNER_PERMISSIONS,
   type ActiveOperator,
-  isUserRole,
-  normalizePermissions,
+  parseActiveOperator,
   signOperatorSession,
 } from '@/lib/operator'
 import { getBusinessIdByUserId } from '@/lib/business'
@@ -68,55 +67,11 @@ function isOperatorSwitchPayload(payload: SwitchPayload): payload is OperatorSwi
   return payload.isOwner === false
 }
 
+// El resultado de verify_operator_pin puede venir como fila única o array; tras
+// el unwrap, la validación/normalización de permisos es idéntica a la de la cookie,
+// así que se delega en parseActiveOperator (única fuente de verdad, regla #16).
 function parseVerifyResult(value: unknown): ActiveOperator | null {
-  const record = Array.isArray(value) ? value[0] : value
-
-  if (!record || typeof record !== 'object') {
-    return null
-  }
-
-  const operator = record as Record<string, unknown>
-  const permissions = operator.permissions
-
-  if (!permissions || typeof permissions !== 'object') {
-    return null
-  }
-
-  const permissionRecord = permissions as Record<string, unknown>
-  if (
-    typeof operator.profile_id !== 'string' ||
-    typeof operator.name !== 'string' ||
-    !isUserRole(operator.role) ||
-    typeof permissionRecord.sales !== 'boolean' ||
-    typeof permissionRecord.stock !== 'boolean' ||
-    typeof permissionRecord.stock_write !== 'boolean' ||
-    typeof permissionRecord.analysis !== 'boolean' ||
-    typeof permissionRecord.price_lists !== 'boolean' ||
-    typeof permissionRecord.price_lists_write !== 'boolean' ||
-    typeof permissionRecord.settings !== 'boolean' ||
-    typeof permissionRecord.expenses !== 'boolean'
-  ) {
-    return null
-  }
-
-  return {
-    profile_id: operator.profile_id,
-    name: operator.name,
-    role: operator.role,
-    permissions: normalizePermissions({
-      sales: permissionRecord.sales,
-      stock: permissionRecord.stock,
-      stock_write: permissionRecord.stock_write,
-      analysis: permissionRecord.analysis,
-      price_lists: permissionRecord.price_lists,
-      price_lists_write: permissionRecord.price_lists_write,
-      settings: permissionRecord.settings,
-      expenses: permissionRecord.expenses,
-      operators_write: permissionRecord.operators_write === true,
-      price_override: permissionRecord.price_override === true,
-      free_line: permissionRecord.free_line === true,
-    }),
-  }
+  return parseActiveOperator(Array.isArray(value) ? value[0] : value)
 }
 
 export async function POST(request: Request) {

@@ -64,7 +64,7 @@ export default function MercaderiaItemsSection({
     const [plResult, catResult, brandResult] = await Promise.all([
       supabaseClient
         .from('price_lists')
-        .select('id, business_id, name, description, multiplier, created_at')
+        .select('id, business_id, name, description, multiplier, created_at, rounding_step, rounding_up')
         .eq('business_id', businessId)
         .order('name'),
       supabaseClient
