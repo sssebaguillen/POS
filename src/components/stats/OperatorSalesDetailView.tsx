@@ -3,6 +3,7 @@
 import { useMemo } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import DateRangeFilter from '@/components/shared/DateRangeFilter'
+import PopNumber from '@/components/shared/PopNumber'
 import { periodNeedsCustomDates, type DateRangePeriod } from '@/lib/date-utils'
 import ExportCSVButton from '@/components/shared/ExportCSVButton'
 import PageHeader from '@/components/shared/PageHeader'
@@ -71,15 +72,15 @@ export default function OperatorSalesDetailView({ rows, period, from, to }: Prop
           <div className="grid grid-cols-3 gap-3">
             <div className="surface-card p-4 space-y-1">
               <p className="text-label text-hint">Ingresos del período</p>
-              <p className="text-xl font-bold text-heading leading-none">{formatMoney(periodRevenue)}</p>
+              <PopNumber className="text-xl font-bold text-heading leading-none" value={formatMoney(periodRevenue)} />
             </div>
             <div className="surface-card p-4 space-y-1">
               <p className="text-label text-hint">Total transacciones</p>
-              <p className="text-xl font-bold text-heading leading-none">{periodTransactions.toLocaleString('es-AR')}</p>
+              <PopNumber className="text-xl font-bold text-heading leading-none" value={periodTransactions.toLocaleString('es-AR')} />
             </div>
             <div className="surface-card p-4 space-y-1">
               <p className="text-label text-hint">Operadores activos</p>
-              <p className="text-xl font-bold text-heading leading-none">{sorted.length}</p>
+              <PopNumber className="text-xl font-bold text-heading leading-none" value={String(sorted.length)} />
             </div>
           </div>
 

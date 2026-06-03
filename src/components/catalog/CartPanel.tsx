@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import type { CatalogCartItem } from '@/components/catalog/types'
 import posthog from 'posthog-js'
+import PopNumber from '@/components/shared/PopNumber'
 
 function CartItemImage({ imageUrl, name }: { imageUrl: string; name: string }) {
   const [loaded, setLoaded] = useState(false)
@@ -268,7 +269,7 @@ export default function CartPanel({
                           <p className="mt-0.5 text-xs text-muted-foreground">{item.variantLabel}</p>
                         )}
                         <p className="mt-0.5 text-sm text-muted-foreground">
-                          ${currencyFormatter.format(item.product.salePrice * item.quantity)}
+                          <PopNumber value={`$${currencyFormatter.format(item.product.salePrice * item.quantity)}`} />
                         </p>
                       </div>
                       <button
@@ -323,7 +324,7 @@ export default function CartPanel({
             </div>
             <div className="mt-2 flex items-center justify-between text-base font-bold text-foreground">
               <span>Total</span>
-              <span>${currencyFormatter.format(total)}</span>
+              <PopNumber value={`$${currencyFormatter.format(total)}`} />
             </div>
           </div>
 

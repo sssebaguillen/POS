@@ -7,6 +7,7 @@ import { useQuery, keepPreviousData } from '@tanstack/react-query'
 import { ArrowLeft, Printer } from 'lucide-react'
 import PageHeader from '@/components/shared/PageHeader'
 import DateRangeFilter from '@/components/shared/DateRangeFilter'
+import PopNumber from '@/components/shared/PopNumber'
 import { Button } from '@/components/ui/button'
 import { useFormatMoney } from '@/lib/context/CurrencyContext'
 import { normalizePayment } from '@/lib/payments'
@@ -501,7 +502,7 @@ function SummaryTile({
     <div className={`bg-white px-4 py-3 ${emphasis ? 'bg-zinc-50' : ''}`}>
       <p className="text-[11px] text-zinc-400 leading-tight">{label}</p>
       <p className={`mt-1 font-bold tabular-nums leading-none ${emphasis ? 'text-lg text-zinc-900' : 'text-base text-zinc-900'}`}>
-        {value}
+        <PopNumber value={value} />
       </p>
       {children && <div className="mt-1">{children}</div>}
     </div>

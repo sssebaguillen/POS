@@ -8,6 +8,7 @@ import Link from 'next/link'
 import PageHeader from '@/components/shared/PageHeader'
 import InsightSurfaceAnchor from '@/components/insights/InsightSurfaceAnchor'
 import DateRangeFilter from '@/components/shared/DateRangeFilter'
+import PopNumber from '@/components/shared/PopNumber'
 import { buildDateParams, periodNeedsCustomDates, resolveDateRange, type DateRangePeriod } from '@/lib/date-utils'
 import { isPaymentMethod, normalizePayment, PAYMENT_BAR_COLORS } from '@/lib/payments'
 import { useFormatMoney } from '@/lib/context/CurrencyContext'
@@ -369,7 +370,7 @@ export default function StatsView({
                 </div>
                 <div>
                   <p className="text-label text-hint mb-1">Ingresos totales</p>
-                  <p className="text-2xl font-bold text-heading leading-none">{formatMoney(totalRevenue)}</p>
+                  <PopNumber className="text-2xl font-bold text-heading leading-none" value={formatMoney(totalRevenue)} />
                 </div>
               </div>
               <div className="surface-card p-5 flex flex-col gap-3">
@@ -381,7 +382,7 @@ export default function StatsView({
                 </div>
                 <div>
                   <p className="text-label text-hint mb-1">Unidades vendidas</p>
-                  <p className="text-2xl font-bold text-heading leading-none">{totalUnits}</p>
+                  <PopNumber className="text-2xl font-bold text-heading leading-none" value={String(totalUnits)} />
                 </div>
               </div>
               <div className="surface-card p-5 flex flex-col gap-3">
@@ -393,7 +394,7 @@ export default function StatsView({
                 </div>
                 <div>
                   <p className="text-label text-hint mb-1">Ticket promedio</p>
-                  <p className="text-2xl font-bold text-heading leading-none">{formatMoney(avgTicket)}</p>
+                  <PopNumber className="text-2xl font-bold text-heading leading-none" value={formatMoney(avgTicket)} />
                 </div>
               </div>
               <div className="surface-card p-5 flex flex-col gap-3">
@@ -404,7 +405,7 @@ export default function StatsView({
                 </div>
                 <div>
                   <p className="text-label text-hint mb-1">Total transacciones</p>
-                  <p className="text-2xl font-bold text-heading leading-none">{totalSales.toLocaleString('es-AR')}</p>
+                  <PopNumber className="text-2xl font-bold text-heading leading-none" value={totalSales.toLocaleString('es-AR')} />
                 </div>
               </div>
             </div>

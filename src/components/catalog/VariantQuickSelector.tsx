@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { ShoppingCart } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import type { CatalogProduct, CatalogVariantOption, CatalogProductVariant } from '@/components/catalog/types'
+import PopNumber from '@/components/shared/PopNumber'
 
 const currencyFormatter = new Intl.NumberFormat('es-AR')
 
@@ -126,9 +127,7 @@ export default function VariantQuickSelector({
     <div className="space-y-2.5">
       {/* Dynamic price */}
       <div className="flex items-center justify-between">
-        <span className="text-sm font-bold text-foreground">
-          ${currencyFormatter.format(displayPrice)}
-        </span>
+        <PopNumber className="text-sm font-bold text-foreground" value={`$${currencyFormatter.format(displayPrice)}`} />
         {!allowOutOfStock && displayStock > 0 && displayStock <= 5 && (
           <span className="text-xs text-amber-600 dark:text-amber-400">
             Últimas {displayStock}

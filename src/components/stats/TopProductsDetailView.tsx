@@ -4,6 +4,7 @@ import { useState, useMemo } from 'react'
 import { ArrowUp, ArrowDown, ArrowUpDown } from 'lucide-react'
 import { useRouter, usePathname } from 'next/navigation'
 import DateRangeFilter from '@/components/shared/DateRangeFilter'
+import PopNumber from '@/components/shared/PopNumber'
 import { periodNeedsCustomDates, type DateRangePeriod } from '@/lib/date-utils'
 import ExportCSVButton from '@/components/shared/ExportCSVButton'
 import PageHeader from '@/components/shared/PageHeader'
@@ -127,21 +128,15 @@ export default function TopProductsDetailView({ rows, total, kpis, period, from,
           <div className="grid grid-cols-3 gap-3">
             <div className="surface-card p-4 space-y-1">
               <p className="text-label text-hint">Ingresos del período</p>
-              <p className="text-xl font-bold text-heading leading-none">
-                {formatMoney(kpis?.total_revenue ?? 0)}
-              </p>
+              <PopNumber className="text-xl font-bold text-heading leading-none" value={formatMoney(kpis?.total_revenue ?? 0)} />
             </div>
             <div className="surface-card p-4 space-y-1">
               <p className="text-label text-hint">Unidades vendidas</p>
-              <p className="text-xl font-bold text-heading leading-none">
-                {(kpis?.total_units ?? 0).toLocaleString('es-AR')}
-              </p>
+              <PopNumber className="text-xl font-bold text-heading leading-none" value={(kpis?.total_units ?? 0).toLocaleString('es-AR')} />
             </div>
             <div className="surface-card p-4 space-y-1">
               <p className="text-label text-hint">Productos con ventas</p>
-              <p className="text-xl font-bold text-heading leading-none">
-                {total.toLocaleString('es-AR')}
-              </p>
+              <PopNumber className="text-xl font-bold text-heading leading-none" value={total.toLocaleString('es-AR')} />
             </div>
           </div>
 

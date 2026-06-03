@@ -19,6 +19,7 @@ import type { Permissions } from '@/lib/operator'
 import { useToast } from '@/hooks/useToast'
 import { useFormatMoney } from '@/lib/context/CurrencyContext'
 import Toast from '@/components/shared/Toast'
+import PopNumber from '@/components/shared/PopNumber'
 
 function getStockIndicator(
   quantity: number,
@@ -499,7 +500,7 @@ const CartPanel = forwardRef<CartPanelHandle, Props>(function CartPanel({ busine
                             />
                           ) : (
                             <p className={`text-sm font-semibold tabular-nums ${item.priceIsManual || isFreeLine ? 'text-primary' : 'text-heading'}`}>
-                              {formatMoney(effectiveTotal)}
+                              <PopNumber value={formatMoney(effectiveTotal)} />
                             </p>
                           )}
                           <div className="flex items-center justify-end gap-1.5 mt-1">
@@ -548,7 +549,7 @@ const CartPanel = forwardRef<CartPanelHandle, Props>(function CartPanel({ busine
                 )}
                 <div className="flex justify-between font-semibold text-heading text-2xl pt-2 border-t border-edge-soft leading-none">
                   <span>Total</span>
-                  <span className="tabular-nums">{formatMoney(adjustedTotal)}</span>
+                  <PopNumber className="tabular-nums" value={formatMoney(adjustedTotal)} />
                 </div>
               </div>
 

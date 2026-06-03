@@ -1,6 +1,7 @@
 import { memo, useId, type ReactNode } from 'react'
 import { TrendingDown, TrendingUp } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import PopNumber from '@/components/shared/PopNumber'
 
 interface Trend {
   percent: number
@@ -102,7 +103,7 @@ function KPICard({ label, value, trend, subtitle, sparkline, children }: Props) 
   return (
     <div className="surface-card p-5 flex flex-col h-full">
       <p className="text-xs font-medium text-hint mb-2.5">{label}</p>
-      <p className="text-3xl font-bold text-heading leading-none tracking-tight">{value}</p>
+      <PopNumber className="text-3xl font-bold text-heading leading-none tracking-tight" value={value} />
 
       {trend ? (
         <p className="flex items-center gap-1.5 text-xs mt-2">

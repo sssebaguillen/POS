@@ -7,6 +7,7 @@ import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
 } from 'recharts'
 import DateRangeFilter from '@/components/shared/DateRangeFilter'
+import PopNumber from '@/components/shared/PopNumber'
 import ExportCSVButton from '@/components/shared/ExportCSVButton'
 import PageHeader from '@/components/shared/PageHeader'
 import { useFormatMoney } from '@/lib/context/CurrencyContext'
@@ -339,7 +340,7 @@ function SummaryCard({
   return (
     <div className="surface-card p-4 space-y-1">
       <p className="text-label text-hint">{label}</p>
-      <p className="text-xl font-bold text-heading leading-none">{value}</p>
+      <PopNumber className="text-xl font-bold text-heading leading-none" value={value} />
       <div className="flex items-baseline gap-2 pt-1">
         <span className={`text-xs font-medium ${deltaClass}`}>{deltaText}</span>
         <span className="text-[11px] text-hint">vs {prevValue}</span>

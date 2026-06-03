@@ -3,6 +3,7 @@
 import { useMemo } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import DateRangeFilter from '@/components/shared/DateRangeFilter'
+import PopNumber from '@/components/shared/PopNumber'
 import { periodNeedsCustomDates, type DateRangePeriod } from '@/lib/date-utils'
 import ExportCSVButton from '@/components/shared/ExportCSVButton'
 import type { PaymentMethod } from '@/lib/constants/domain'
@@ -96,7 +97,7 @@ export default function PaymentMethodDetailView({ rows, collections, period, fro
                   <span className={`h-2.5 w-2.5 rounded-full ${isPaymentMethod(row.method) ? PAYMENT_COLORS[row.method] : 'bg-hint'}`} />
                   <span className="text-sm font-medium text-body">{normalizePayment(row.method)}</span>
                 </div>
-                <p className="text-xl font-bold text-heading">{formatMoney(row.total_amount ?? 0)}</p>
+                <PopNumber className="text-xl font-bold text-heading" value={formatMoney(row.total_amount ?? 0)} />
                 <p className="text-xs text-hint">
                   {grandTotal > 0 ? `${(((row.total_amount ?? 0) / grandTotal) * 100).toFixed(1)}% del total` : '—'}
                 </p>

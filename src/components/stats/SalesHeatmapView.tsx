@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react'
 import { usePathname } from 'next/navigation'
 import { useQuery, keepPreviousData } from '@tanstack/react-query'
 import DateRangeFilter from '@/components/shared/DateRangeFilter'
+import PopNumber from '@/components/shared/PopNumber'
 import ExportCSVButton from '@/components/shared/ExportCSVButton'
 import PageHeader from '@/components/shared/PageHeader'
 import SalesHeatmap, { type HeatmapMetric } from '@/components/stats/SalesHeatmap'
@@ -303,7 +304,7 @@ function SummaryCard({ label, value, hint }: { label: string; value: string; hin
   return (
     <div className="surface-card p-4 space-y-1">
       <p className="text-label text-hint">{label}</p>
-      <p className="text-xl font-bold text-heading leading-none">{value}</p>
+      <PopNumber className="text-xl font-bold text-heading leading-none" value={value} />
       <p className="text-[11px] text-hint pt-1">{hint}</p>
     </div>
   )

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Sparkles, Volume2, VolumeX } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
@@ -30,6 +30,12 @@ interface InsightAnchorProps {
 export default function InsightAnchor({ insights, onActed, onOpenEntity, openLabel, size = 'md', align = 'end', className, label }: InsightAnchorProps) {
   const [open, setOpen] = useState(false)
   const [soundOn, setSoundOn] = useState(false)
+  // Pop the glyph+count in (notification-badge transition) on appearance.
+  const [shown, setShown] = useState(false)
+  useEffect(() => {
+    const id = requestAnimationFrame(() => setShown(true))
+    return () => cancelAnimationFrame(id)
+  }, [])
   const markSeen = useMarkInsightsSeen()
 
   if (insights.length === 0) return null
@@ -70,7 +76,7 @@ export default function InsightAnchor({ insights, onActed, onOpenEntity, openLab
           aria-label={label ?? `${count} sugerencia${count > 1 ? 's' : ''} de IA`}
           title={label ?? 'Sugerencias de IA'}
           className={cn(
-            'animate-fade-in relative inline-flex items-center justify-center rounded-full text-primary transition-transform active:scale-95',
+            'relative inline-flex items-center justify-center rounded-full text-primary transition-transform active:scale-95',
             dim,
             className,
           )}
@@ -79,12 +85,17 @@ export default function InsightAnchor({ insights, onActed, onOpenEntity, openLab
           {hasNew && <span className="absolute inset-0 rounded-full bg-primary animate-insight-pulse" aria-hidden />}
           {/* Halo estático tenue: el glyph tiene cuerpo aun sin pulso (reduced-motion / ya vistas) */}
           <span className="absolute inset-0 rounded-full bg-primary/10" aria-hidden />
-          <Sparkles size={icon} className="relative" />
-          {count > 1 && (
-            <span className="absolute -right-0.5 -top-0.5 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-primary px-1 text-[9px] font-bold text-primary-foreground">
-              {count}
+          {/* Glyph + número entran con la transición notification-badge (slide-in + pop) */}
+          <span className="t-badge" data-open={shown ? 'true' : 'false'}>
+            <span className="t-badge-dot relative inline-flex! items-center justify-center">
+              <Sparkles size={icon} className="relative" />
+              {count > 1 && (
+                <span className="absolute -right-0.5 -top-0.5 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-primary px-1 text-[9px] font-bold text-primary-foreground">
+                  {count}
+                </span>
+              )}
             </span>
-          )}
+          </span>
         </button>
       </PopoverTrigger>
       <PopoverContent align={align} className="w-96 overflow-hidden p-0">

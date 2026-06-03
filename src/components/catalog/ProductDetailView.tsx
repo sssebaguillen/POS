@@ -11,6 +11,7 @@ import type {
   CatalogProductVariant,
   CatalogCartItem,
 } from '@/components/catalog/types'
+import PopNumber from '@/components/shared/PopNumber'
 
 const CART_TTL_MS = 8 * 60 * 60 * 1000
 
@@ -270,7 +271,7 @@ export default function ProductDetailView({
           <div>
             <h1 className="text-2xl font-bold text-foreground">{product.name}</h1>
             <p className="mt-2 text-3xl font-bold text-foreground">
-              ${currencyFormatter.format(displayPrice)}
+              <PopNumber value={`$${currencyFormatter.format(displayPrice)}`} />
             </p>
           </div>
 

@@ -3,6 +3,7 @@
 import { useMemo } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import DateRangeFilter from '@/components/shared/DateRangeFilter'
+import PopNumber from '@/components/shared/PopNumber'
 import { periodNeedsCustomDates, type DateRangePeriod } from '@/lib/date-utils'
 import ExportCSVButton from '@/components/shared/ExportCSVButton'
 import PageHeader from '@/components/shared/PageHeader'
@@ -112,11 +113,11 @@ export default function BreakdownDetailView({ rows, period, from, to, tab }: Pro
           <div className="grid grid-cols-3 gap-3">
             <div className="surface-card p-4 space-y-1">
               <p className="text-label text-hint">Ingresos del período</p>
-              <p className="text-xl font-bold text-heading leading-none">{formatMoney(total)}</p>
+              <PopNumber className="text-xl font-bold text-heading leading-none" value={formatMoney(total)} />
             </div>
             <div className="surface-card p-4 space-y-1">
               <p className="text-label text-hint">{tab === 'category' ? 'Categorías' : 'Marcas'} con ventas</p>
-              <p className="text-xl font-bold text-heading leading-none">{sorted.length}</p>
+              <PopNumber className="text-xl font-bold text-heading leading-none" value={String(sorted.length)} />
             </div>
             <div className="surface-card p-4 space-y-1">
               <p className="text-label text-hint">{tab === 'category' ? 'Categoría líder' : 'Marca líder'}</p>

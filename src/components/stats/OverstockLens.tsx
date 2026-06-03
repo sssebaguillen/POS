@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { PackageCheck } from 'lucide-react'
 import ExportCSVButton from '@/components/shared/ExportCSVButton'
+import PopNumber from '@/components/shared/PopNumber'
 import { useFormatMoney } from '@/lib/context/CurrencyContext'
 import { cn } from '@/lib/utils'
 import type { OverstockRow, OverstockSummary } from '@/lib/types'
@@ -69,16 +70,12 @@ export default function OverstockLens({ rows, summary, page: initialPage, pageSi
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div className="surface-card p-4 space-y-1">
           <p className="text-label text-hint">Capital comprado de más</p>
-          <p className="text-2xl font-bold text-heading leading-none">
-            {formatMoney(summary?.total_excess_capital ?? 0)}
-          </p>
+          <PopNumber className="text-2xl font-bold text-heading leading-none" value={formatMoney(summary?.total_excess_capital ?? 0)} />
           <p className="text-xs text-hint">Lo que excede 6 meses de cobertura</p>
         </div>
         <div className="surface-card p-4 space-y-1">
           <p className="text-label text-hint">Productos con sobrestock</p>
-          <p className="text-2xl font-bold text-heading leading-none">
-            {productsCount.toLocaleString('es-AR')}
-          </p>
+          <PopNumber className="text-2xl font-bold text-heading leading-none" value={productsCount.toLocaleString('es-AR')} />
         </div>
       </div>
 

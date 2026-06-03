@@ -1,8 +1,9 @@
 'use client'
 
-import { useEffect, useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
+import { cn } from '@/lib/utils'
 
 /**
  * Mark the catalog-order badge as read for the whole business. Called by
@@ -52,18 +53,30 @@ interface BadgeProps {
 }
 
 export default function UnreadBadge({ count, collapsed = false }: BadgeProps) {
+  // Pop the badge in (notification-badge transition) once it mounts: start
+  // data-open="false" (dot at scale 0), then flip to "true" on the next frame.
+  const [shown, setShown] = useState(false)
+  useEffect(() => {
+    const id = requestAnimationFrame(() => setShown(true))
+    return () => cancelAnimationFrame(id)
+  }, [])
+
   if (count <= 0) return null
   const label = count > 99 ? '99+' : String(count)
   return (
     <span
       aria-label={`${count} pedidos sin atender`}
-      className={
-        collapsed
-          ? 'absolute -top-1 -right-1 min-w-[16px] h-4 px-1 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center'
-          : 'ml-auto inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-red-500 text-white text-[11px] font-bold'
-      }
+      data-open={shown ? 'true' : 'false'}
+      className={cn('t-badge pointer-events-none', collapsed ? 'absolute -top-1 -right-1' : 'ml-auto')}
     >
-      {label}
+      <span
+        className={cn(
+          't-badge-dot inline-flex! items-center justify-center rounded-full bg-red-500 text-white font-bold',
+          collapsed ? 'min-w-[16px] h-4 px-1 text-[10px]' : 'min-w-[20px] h-5 px-1.5 text-[11px]',
+        )}
+      >
+        {label}
+      </span>
     </span>
   )
 }

@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { AlertTriangle, PackageX } from 'lucide-react'
 import ExportCSVButton from '@/components/shared/ExportCSVButton'
+import PopNumber from '@/components/shared/PopNumber'
 import { useFormatMoney } from '@/lib/context/CurrencyContext'
 import { cn } from '@/lib/utils'
 import type { DeadStockRow, DeadStockSummary, DeadStockBucket } from '@/lib/types'
@@ -103,15 +104,11 @@ export default function DeadStockLens({ rows, summary, bucket: initialBucket, pa
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div className="surface-card p-4 space-y-1">
           <p className="text-label text-hint">Capital inmovilizado</p>
-          <p className="text-2xl font-bold text-heading leading-none">
-            {formatMoney(summary?.total_frozen_capital ?? 0)}
-          </p>
+          <PopNumber className="text-2xl font-bold text-heading leading-none" value={formatMoney(summary?.total_frozen_capital ?? 0)} />
         </div>
         <div className="surface-card p-4 space-y-1">
           <p className="text-label text-hint">Productos sin rotación</p>
-          <p className="text-2xl font-bold text-heading leading-none">
-            {flagged.toLocaleString('es-AR')}
-          </p>
+          <PopNumber className="text-2xl font-bold text-heading leading-none" value={flagged.toLocaleString('es-AR')} />
         </div>
       </div>
 
