@@ -154,6 +154,8 @@ export interface BulkData {
 export interface ExpenseLineItem {
   product_id?: string | null
   product_name?: string | null
+  variant_id?: string | null
+  variant_label?: string | null
   quantity?: number | string
   unit_cost?: number | string
   update_cost?: boolean

@@ -1054,7 +1054,26 @@ BEGIN
       'description', p_description,
       'date',        p_date,
       'supplier_id', p_supplier_id,
-      'item_count',  jsonb_array_length(p_items)
+      'item_count',  jsonb_array_length(p_items),
+      'items',
+      COALESCE((
+        SELECT jsonb_agg(jsonb_build_object(
+          'product_id',   ei.product_id,
+          'product_name', ei.product_name,
+          'variant_id',   ei.variant_id,
+          'variant_label', CASE WHEN ei.variant_id IS NOT NULL THEN (
+            SELECT string_agg(pov.value, ' / ' ORDER BY po.position)
+            FROM public.product_variant_option_values pvov
+            JOIN public.product_option_values pov ON pov.id = pvov.option_value_id
+            JOIN public.product_options po        ON po.id  = pov.option_id
+            WHERE pvov.variant_id = ei.variant_id
+          ) END,
+          'quantity',     ei.quantity,
+          'unit_cost',    ei.unit_cost,
+          'update_cost',  ei.update_cost
+        ) ORDER BY ei.id)
+        FROM public.expense_items ei WHERE ei.expense_id = v_expense_id
+      ), '[]'::jsonb)
     )
   );
 
@@ -1986,6 +2005,13 @@ BEGIN
         SELECT jsonb_agg(jsonb_build_object(
           'product_id',   ei.product_id,
           'variant_id',   ei.variant_id,
+          'variant_label', CASE WHEN ei.variant_id IS NOT NULL THEN (
+            SELECT string_agg(pov.value, ' / ' ORDER BY po.position)
+            FROM public.product_variant_option_values pvov
+            JOIN public.product_option_values pov ON pov.id = pvov.option_value_id
+            JOIN public.product_options po        ON po.id  = pov.option_id
+            WHERE pvov.variant_id = ei.variant_id
+          ) END,
           'product_name', ei.product_name,
           'quantity',     ei.quantity,
           'unit_cost',    ei.unit_cost,
@@ -6251,6 +6277,13 @@ BEGIN
       SELECT jsonb_agg(jsonb_build_object(
         'product_id',   ei.product_id,
         'variant_id',   ei.variant_id,
+        'variant_label', CASE WHEN ei.variant_id IS NOT NULL THEN (
+          SELECT string_agg(pov.value, ' / ' ORDER BY po.position)
+          FROM public.product_variant_option_values pvov
+          JOIN public.product_option_values pov ON pov.id = pvov.option_value_id
+          JOIN public.product_options po        ON po.id  = pov.option_id
+          WHERE pvov.variant_id = ei.variant_id
+        ) END,
         'product_name', ei.product_name,
         'quantity',     ei.quantity,
         'unit_cost',    ei.unit_cost,
@@ -6459,6 +6492,13 @@ BEGIN
       SELECT jsonb_agg(jsonb_build_object(
         'product_id',   ei.product_id,
         'variant_id',   ei.variant_id,
+        'variant_label', CASE WHEN ei.variant_id IS NOT NULL THEN (
+          SELECT string_agg(pov.value, ' / ' ORDER BY po.position)
+          FROM public.product_variant_option_values pvov
+          JOIN public.product_option_values pov ON pov.id = pvov.option_value_id
+          JOIN public.product_options po        ON po.id  = pov.option_id
+          WHERE pvov.variant_id = ei.variant_id
+        ) END,
         'product_name', ei.product_name,
         'quantity',     ei.quantity,
         'unit_cost',    ei.unit_cost,

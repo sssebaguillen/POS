@@ -50,6 +50,9 @@ export function ExpenseSummary({ data, deleted = false }: ExpenseSummaryProps) {
                   <tr key={index} className="border-b border-edge/40 last:border-0">
                     <td className="px-3 py-2 align-middle text-body">
                       {item.product_name ?? <span className="text-hint italic">Sin nombre</span>}
+                      {item.variant_label && (
+                        <span className="text-hint font-normal"> — {item.variant_label}</span>
+                      )}
                     </td>
                     <td className="px-3 py-2 align-middle text-right text-hint tabular-nums">
                       {toNumber(item.quantity)} × {formatMoney(toNumber(item.unit_cost))}
