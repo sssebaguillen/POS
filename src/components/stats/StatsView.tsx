@@ -2,7 +2,7 @@
 
 import { useMemo, useState, memo } from 'react'
 import { usePathname } from 'next/navigation'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, keepPreviousData } from '@tanstack/react-query'
 import { TrendingDown, TrendingUp, DollarSign, ShoppingBag, Receipt, Hash, FileText, PackageX, ChevronRight } from 'lucide-react'
 import Link from 'next/link'
 import PageHeader from '@/components/shared/PageHeader'
@@ -189,6 +189,7 @@ export default function StatsView({
         }
       : undefined,
     initialDataUpdatedAt: isInitialPeriod ? mountedAt : undefined,
+    placeholderData: keepPreviousData,
     staleTime: 30_000,
   })
 

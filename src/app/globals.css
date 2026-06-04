@@ -421,18 +421,19 @@
     animation: fade-in 0.25s ease-out both;
   }
 
-  /* Pulso ambiente del indicador de IA (P12). Lento y en primary; el guard global
-     de prefers-reduced-motion lo detiene. El anillo nace en opacity 0 y rampa hasta
-     el pico (no aparece de golpe), lo que suaviza cada ciclo y la primera aparición. */
+  /* Pulso ambiente del indicador de IA (P12). En primary; el guard global de
+     prefers-reduced-motion lo detiene. Mismo carácter que el punto del cash widget
+     (animate-ping): un solo tramo ease-out, nace con cuerpo y se va quedando sin
+     fuerza a medida que se expande. Sin keyframe intermedio para evitar el "codo"
+     en la curva (la timing function se aplica entre cada par de keyframes). */
   @keyframes insight-pulse {
-    0%   { transform: scale(0.8);  opacity: 0; }
-    25%  { opacity: 0.35; }
-    100% { transform: scale(1.85); opacity: 0; }
+    0%   { transform: scale(0.9); opacity: 0.45; }
+    100% { transform: scale(2);   opacity: 0; }
   }
 
   .animate-insight-pulse {
     /* delay corto: deja que el header asiente antes del primer pulso */
-    animation: insight-pulse 2.6s cubic-bezier(0.16, 1, 0.3, 1) 200ms infinite;
+    animation: insight-pulse 2.2s cubic-bezier(0, 0, 0.2, 1) 200ms infinite;
   }
 }
 
