@@ -25,6 +25,8 @@ export interface SaleRow {
   total: number
   status: string | null
   payment_method: PaymentMethod | null
+  item_count?: number               // suma de cantidades (preview en fila colapsada)
+  item_icons?: { icon: string | null; color: string | null }[] // íconos de categoría de los primeros items
 }
 
 export interface SaleItem {

@@ -2,6 +2,7 @@
 
 import type { BusinessBalance } from './types'
 import { useFormatMoney } from '@/lib/context/CurrencyContext'
+import PopNumber from '@/components/shared/PopNumber'
 
 interface Props {
   balance: BusinessBalance
@@ -17,23 +18,17 @@ export default function ExpenseSummaryCards({ balance, isFiltered }: Props) {
       <div className="grid grid-cols-2 lg:grid-cols-4">
         <div className="px-6 py-5 border-r border-b lg:border-b-0 border-edge/40">
           <p className="text-label text-hint mb-2">Ingresos del período</p>
-          <p className="font-display text-xl font-bold text-foreground leading-none tabular-nums">
-            {formatMoney(balance.income)}
-          </p>
+          <PopNumber value={formatMoney(balance.income)} className="font-display text-xl font-bold text-foreground leading-none tabular-nums" />
         </div>
 
         <div className="px-6 py-5 border-b lg:border-b-0 lg:border-r border-edge/40">
           <p className="text-label text-hint mb-2">Egresos del período</p>
-          <p className="font-display text-xl font-bold text-destructive leading-none tabular-nums">
-            {formatMoney(balance.expenses)}
-          </p>
+          <PopNumber value={formatMoney(balance.expenses)} className="font-display text-xl font-bold text-destructive leading-none tabular-nums" />
         </div>
 
         <div className="px-6 py-5 border-r border-edge/40">
           <p className="text-label text-hint mb-2">Ganancia neta</p>
-          <p className={`font-display text-xl font-bold leading-none tabular-nums ${isPositive ? 'text-foreground' : 'text-destructive'}`}>
-            {isPositive ? '' : '-'}{formatMoney(Math.abs(balance.profit))}
-          </p>
+          <PopNumber value={`${isPositive ? '' : '-'}${formatMoney(Math.abs(balance.profit))}`} className={`font-display text-xl font-bold leading-none tabular-nums ${isPositive ? 'text-foreground' : 'text-destructive'}`} />
         </div>
 
         <div className="px-6 py-5">
@@ -41,9 +36,7 @@ export default function ExpenseSummaryCards({ balance, isFiltered }: Props) {
           {isFiltered ? (
             <p className="font-display text-xl font-bold leading-none text-hint">—</p>
           ) : (
-            <p className={`font-display text-xl font-bold leading-none ${isPositive ? 'text-foreground' : 'text-destructive'}`}>
-              {balance.margin.toFixed(1)}%
-            </p>
+            <PopNumber value={`${balance.margin.toFixed(1)}%`} className={`font-display text-xl font-bold leading-none ${isPositive ? 'text-foreground' : 'text-destructive'}`} />
           )}
         </div>
       </div>

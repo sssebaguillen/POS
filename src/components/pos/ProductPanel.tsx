@@ -8,6 +8,7 @@ import type { Product, ProductWithVariants, ProductVariant } from '@/lib/types'
 import type { ProductWithCategory, ActiveFilter } from '@/components/pos/types'
 import type { PriceList, PriceListOverride } from '@/lib/types'
 import { useFormatMoney } from '@/lib/context/CurrencyContext'
+import PopNumber from '@/components/shared/PopNumber'
 import { createClient } from '@/lib/supabase/client'
 import {
   Popover,
@@ -263,6 +264,19 @@ function VariantSelectorContent({
     ) ?? null
   }, [data, allSelected, selectedValues])
 
+  const matchedPrice = useMemo(() => {
+    if (!matchedVariant) return null
+    return resolveDisplayPrice({
+      cost: Number(matchedVariant.cost),
+      price: Number(matchedVariant.price),
+      productId: product.id,
+      brandId: product.brand_id,
+      priceList: activePriceList,
+      overrides: priceListOverrides,
+      variantPrice: Number(matchedVariant.price),
+    })
+  }, [matchedVariant, product.id, product.brand_id, activePriceList, priceListOverrides])
+
   const minVariantPrice = useMemo(() => {
     if (!data) return null
     const prices = data.variants
@@ -359,22 +373,12 @@ function VariantSelectorContent({
         </div>
       ))}
 
-      <p className="text-sm font-semibold text-heading tabular-nums">
-        {matchedVariant
-          ? formatMoney(
-              resolveDisplayPrice({
-                cost: Number(matchedVariant.cost),
-                price: Number(matchedVariant.price),
-                productId: product.id,
-                brandId: product.brand_id,
-                priceList: activePriceList,
-                overrides: priceListOverrides,
-                variantPrice: Number(matchedVariant.price),
-              })
-            )
-          : minVariantPrice != null
-            ? `Desde ${formatMoney(minVariantPrice)}`
-            : ''}
+      <p className="text-sm font-semibold text-heading tabular-nums min-h-5">
+        {matchedPrice != null ? (
+          <PopNumber value={formatMoney(matchedPrice)} />
+        ) : minVariantPrice != null ? (
+          `Desde ${formatMoney(minVariantPrice)}`
+        ) : ''}
       </p>
 
       <button

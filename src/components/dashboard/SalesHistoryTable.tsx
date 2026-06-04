@@ -18,6 +18,7 @@ import { ACCENT_CHIP } from '@/lib/accent-colors'
 import { useToast } from '@/hooks/useToast'
 import Toast from '@/components/shared/Toast'
 import SelectDropdown from '@/components/ui/SelectDropdown'
+import PopNumber from '@/components/shared/PopNumber'
 import { DynamicIcon } from '@/components/inventory/CategoryIconPreview'
 import type { SalesHistoryRow, SalesHistoryPage, SalesHistoryOperator } from '@/lib/types'
 
@@ -117,6 +118,7 @@ function SalesHistoryTable({ businessId, businessName, operatorId, from, to, ope
   const firstPage = data?.pages[0]
   const total = firstPage?.total ?? visibleRows.length
   const summary = firstPage?.summary ?? null
+  const summaryLoaded = summary !== null  // false solo en la carga inicial (evita el flash 0→real de PopNumber)
   const deletedVisibleCount = allRows.length - visibleRows.length
   const summaryCount = Math.max((summary?.count ?? total) - deletedVisibleCount, 0)
 
@@ -385,12 +387,20 @@ function SalesHistoryTable({ businessId, businessName, operatorId, from, to, ope
         <div className="flex flex-wrap items-stretch gap-x-5 gap-y-2 px-4 py-2.5 bg-muted/50 rounded-xl">
           <div className="flex flex-col gap-0.5">
             <span className="text-label text-hint">Ventas</span>
-            <span className="text-base font-semibold text-heading tabular-nums leading-tight">{summaryCount}</span>
+            {summaryLoaded ? (
+              <PopNumber value={String(summaryCount)} className="text-base font-semibold text-heading tabular-nums leading-tight" />
+            ) : (
+              <span className="block h-5 w-10 rounded bg-faint/50 animate-pulse" aria-hidden />
+            )}
           </div>
           <div className="w-px bg-border self-stretch hidden sm:block" />
           <div className="flex flex-col gap-0.5">
             <span className="text-label text-hint">Recaudado</span>
-            <span className="text-base font-semibold text-heading tabular-nums leading-tight">{fmt(summary?.total_revenue ?? 0)}</span>
+            {summaryLoaded ? (
+              <PopNumber value={fmt(summary?.total_revenue ?? 0)} className="text-base font-semibold text-heading tabular-nums leading-tight" />
+            ) : (
+              <span className="block h-5 w-20 rounded bg-faint/50 animate-pulse" aria-hidden />
+            )}
           </div>
           {summary?.top_method && (
             <>
@@ -435,7 +445,7 @@ function SalesHistoryTable({ businessId, businessName, operatorId, from, to, ope
               const isExpanded = expandedSaleId === sale.id
               const detail = saleDetails[sale.id]
               const isLoadingDetail = loadingDetailId === sale.id
-              const totalQty = detail ? detail.items.reduce((sum, i) => sum + i.quantity, 0) : 0
+              const itemCount = sale.item_count ?? 0
               const methodLabel = sale.method ? normalizePayment(sale.method) : 'sin dato'
 
               return (
@@ -492,14 +502,14 @@ function SalesHistoryTable({ businessId, businessName, operatorId, from, to, ope
                           Reembolsada
                         </span>
                       )}
-                      {detail && (
+                      {itemCount > 0 && (
                         <>
                           <span className="text-[11px] text-hint">
-                            {totalQty} item{totalQty !== 1 ? 's' : ''}
+                            {itemCount} item{itemCount !== 1 ? 's' : ''}
                           </span>
-                          {detail.items.slice(0, 4).map(item =>
-                            item.product_icon ? (
-                              <DynamicIcon key={item.id} name={item.product_icon} size={13} color={item.product_icon_color ?? undefined} />
+                          {(sale.item_icons ?? []).map((ic, i) =>
+                            ic.icon ? (
+                              <DynamicIcon key={i} name={ic.icon} size={13} color={ic.color ?? undefined} />
                             ) : null
                           )}
                         </>

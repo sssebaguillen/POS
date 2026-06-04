@@ -4634,7 +4634,19 @@ BEGIN
     SELECT
       s.id, s.created_at, s.subtotal, s.discount, s.total, s.status,
       (SELECT p.method FROM payments p WHERE p.sale_id = s.id ORDER BY p.created_at ASC LIMIT 1) AS method,
-      o.name AS operator_name
+      o.name AS operator_name,
+      (SELECT COALESCE(SUM(si.quantity), 0)::int
+         FROM sale_items si WHERE si.sale_id = s.id) AS item_count,
+      (SELECT COALESCE(jsonb_agg(ic.obj ORDER BY ic.ord), '[]'::jsonb)
+         FROM (
+           SELECT jsonb_build_object('icon', cat.icon, 'color', cat.icon_color) AS obj, si.id AS ord
+           FROM sale_items si
+           LEFT JOIN products pr   ON pr.id  = si.product_id
+           LEFT JOIN categories cat ON cat.id = pr.category_id
+           WHERE si.sale_id = s.id
+           ORDER BY si.id
+           LIMIT 4
+         ) ic) AS item_icons
     FROM sales s
     LEFT JOIN operators o ON o.id = s.operator_id
     WHERE s.business_id = p_business_id

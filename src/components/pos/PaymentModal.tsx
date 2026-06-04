@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import SelectDropdown from '@/components/ui/SelectDropdown'
+import PopNumber from '@/components/shared/PopNumber'
 import type { PaymentMethod } from '@/lib/constants/domain'
 import type { ReceiptData, ReceiptItemInput, SaleItemInput } from '@/lib/printer/types'
 import type { CustomerSelection } from '@/lib/types/pos'
@@ -327,9 +328,7 @@ export default function PaymentModal({
             <div className="flex items-center justify-between px-5 pt-5 pb-4 border-b border-edge-soft">
               <div>
                 <DialogTitle className="text-base font-bold text-heading">Confirmar pago</DialogTitle>
-                <p className="text-xl font-bold text-heading mt-0.5">
-                  {formatMoney(total)}
-                </p>
+                <PopNumber value={formatMoney(total)} className="block text-xl font-bold text-heading tabular-nums mt-0.5" />
               </div>
               <button onClick={onClose} type="button" aria-label="Cerrar" className="p-1.5 rounded-lg hover:bg-hover-bg transition-[transform,background-color,color] duration-150 ease-[var(--ease-out)] active:scale-95 text-hint">
                 <X className="w-4 h-4" />

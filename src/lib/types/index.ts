@@ -357,6 +357,8 @@ export interface SalesHistoryRow {
   status: string | null
   method: PaymentMethod | null      // método del pago más temprano; null si no hay pago
   operator_name: string | null      // null = dueño
+  item_count?: number               // suma de cantidades de la venta (preview en fila colapsada)
+  item_icons?: { icon: string | null; color: string | null }[] // íconos de categoría de los primeros items
 }
 
 export interface SalesHistorySummary {

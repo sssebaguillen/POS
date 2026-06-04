@@ -20,6 +20,8 @@ import type { SupportedCurrencyCode } from '@/lib/constants/currencies'
 import OnboardingWizard, { type OnboardingWizardProfile } from '@/components/onboarding/OnboardingWizard'
 import { useFormatMoney } from '@/lib/context/CurrencyContext'
 import { ResponsiveContainer, BarChart, Bar, XAxis, Tooltip } from 'recharts'
+import { Check } from 'lucide-react'
+import { cn } from '@/lib/utils'
 
 interface ChartPoint {
   label: string
@@ -232,6 +234,16 @@ export default function DashboardView({
     () => lowStockProducts.filter(p => p.stock > 0).sort((a, b) => a.stock - b.stock),
     [lowStockProducts]
   )
+  // Compact peek for the "Stock crítico" KPI: a faithful 2-item miniature of the
+  // alerts widget — same priority order (sin stock first, then stock bajo) and the
+  // same severity tokens, so glance and detail read as one system.
+  const alertPreview = useMemo(() => {
+    const rows = [
+      ...outOfStock.map(p => ({ id: p.id, name: p.name, tone: 'out' as const })),
+      ...lowStock.map(p => ({ id: p.id, name: p.name, tone: 'low' as const })),
+    ]
+    return { rows: rows.slice(0, 2), remaining: Math.max(0, rows.length - 2) }
+  }, [outOfStock, lowStock])
 
   const historyRange = useMemo(
     () => ({ from: periodRange.from.toISOString(), to: periodRange.to.toISOString() }),
@@ -379,17 +391,22 @@ export default function DashboardView({
                   value={String(lowStockProducts.length)}
                   subtitle={`${outOfStockCount} sin stock · ${lowStockCount} stock bajo`}
                 >
-                  {outOfStock.length > 0 && (
+                  {alertPreview.rows.length > 0 && (
                     <div className="mt-3 space-y-1.5">
-                      {outOfStock.slice(0, 2).map(p => (
+                      {alertPreview.rows.map(p => (
                         <div key={p.id} className="flex items-center gap-2">
-                          <span className="shrink-0 w-1.5 h-1.5 rounded-full bg-red-400/70" />
+                          <span
+                            className={cn(
+                              'shrink-0 w-1.5 h-1.5 rounded-full',
+                              p.tone === 'out' ? 'bg-destructive/70' : 'bg-warning/70'
+                            )}
+                          />
                           <span className="text-xs text-hint truncate">{p.name}</span>
                         </div>
                       ))}
-                      {outOfStock.length > 2 && (
+                      {alertPreview.remaining > 0 && (
                         <p className="text-xs text-hint pl-3.5">
-                          +{outOfStock.length - 2} más
+                          +{alertPreview.remaining} más
                         </p>
                       )}
                     </div>
@@ -463,7 +480,7 @@ export default function DashboardView({
                 <div className="surface-card p-6">
                   <div className="flex items-center justify-between mb-4">
                     <div>
-                      <p className="font-semibold text-heading font-display">Alertas de stock</p>
+                      <h2 className="font-semibold text-heading font-display">Alertas de stock</h2>
                       <p className="text-xs text-hint mt-0.5">En tiempo real · no afectado por el filtro</p>
                     </div>
                     <Link href="/inventory" className="text-xs text-primary font-medium hover:underline shrink-0">
@@ -471,31 +488,46 @@ export default function DashboardView({
                     </Link>
                   </div>
                   {lowStockProducts.length === 0 ? (
-                    <p className="text-sm text-hint">No hay alertas activas</p>
+                    <div className="flex flex-col items-center justify-center text-center py-8 gap-2">
+                      <span className="flex items-center justify-center w-9 h-9 rounded-full bg-primary/10 text-primary">
+                        <Check size={18} strokeWidth={2.5} />
+                      </span>
+                      <p className="text-sm font-medium text-heading">Todo tu stock está en orden</p>
+                      <p className="text-xs text-hint">No hay productos por reponer</p>
+                    </div>
                   ) : (
                     <div className="max-h-80 overflow-y-auto space-y-4 pr-1">
                       {outOfStock.length > 0 && (
                         <div>
-                          <p className="text-xs font-semibold text-red-600 dark:text-red-400 mb-2">Sin stock ({outOfStock.length})</p>
+                          <p className="text-xs font-semibold text-destructive mb-2">Sin stock ({outOfStock.length})</p>
                           <div className="space-y-1.5">
                             {outOfStock.map(product => (
-                              <div key={product.id} className="rounded-xl px-4 py-2.5 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800/50">
+                              <Link
+                                key={product.id}
+                                href={`/inventory?product=${product.id}`}
+                                className="block rounded-xl px-4 py-2.5 bg-destructive/10 border border-destructive/20 transition-colors hover:bg-destructive/15 focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+                              >
                                 <p className="text-sm font-medium text-heading">{product.name}</p>
-                                <p className="text-xs text-red-600 dark:text-red-400">Sin stock · mín. {product.min_stock}</p>
-                              </div>
+                                <p className="text-xs text-destructive">Sin stock · mín. {product.min_stock}</p>
+                              </Link>
                             ))}
                           </div>
                         </div>
                       )}
                       {lowStock.length > 0 && (
                         <div>
-                          <p className="text-xs font-semibold text-amber-600 dark:text-amber-400 mb-2">Stock bajo ({lowStock.length})</p>
-                          <div className="space-y-1.5">
+                          <p className="text-xs font-semibold text-warning mb-2">Stock bajo ({lowStock.length})</p>
+                          <div className="space-y-0.5">
                             {lowStock.map(product => (
-                              <div key={product.id} className="rounded-xl px-4 py-2.5 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/50">
-                                <p className="text-sm font-medium text-heading">{product.name}</p>
-                                <p className="text-xs text-amber-600 dark:text-amber-400">{product.stock} uds · mín. {product.min_stock}</p>
-                              </div>
+                              <Link
+                                key={product.id}
+                                href={`/inventory?product=${product.id}`}
+                                className="flex items-center gap-2.5 rounded-lg px-2 py-1.5 transition-colors hover:bg-warning/10 focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+                              >
+                                <span className="shrink-0 w-1.5 h-1.5 rounded-full bg-warning/70" />
+                                <p className="text-sm font-medium text-heading flex-1 min-w-0 truncate">{product.name}</p>
+                                <p className="text-xs text-warning shrink-0">{product.stock} uds · mín. {product.min_stock}</p>
+                              </Link>
                             ))}
                           </div>
                         </div>

@@ -25,6 +25,8 @@
   --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
@@ -75,6 +77,10 @@
   /* Semantic */
   --destructive: #c0392b;
   --destructive-foreground: #ffffff;
+  /* Warning — golden ochre, oklch(54% 0.115 70). Warmer + more gold than
+     the espresso --primary so caution reads distinct from the brand accent. */
+  --warning: #9a5e0e;
+  --warning-foreground: #ffffff;
 
   /* Borders & inputs */
   --border: #e0d4c0;
@@ -152,6 +158,10 @@
   /* Semantic */
   --destructive: #e05a40;
   --destructive-foreground: #ffffff;
+  /* Warning — gold-amber, oklch(77% 0.13 76). Pushed yellow-gold so it stays
+     distinct from the orange --primary that carries brand warmth in dark mode. */
+  --warning: #e6a93a;
+  --warning-foreground: #1a0800;
 
   /* Borders & inputs — very subtle, just enough to separate layers */
   --border: #2a2926;

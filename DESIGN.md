@@ -17,6 +17,8 @@ colors:
   foreground: "#1c1008"
   destructive: "#c0392b"
   destructive-foreground: "#ffffff"
+  warning: "#9a5e0e"
+  warning-foreground: "#ffffff"
   # Dark mode overrides (document as alternates)
   primary-dark: "#c8843a"
   background-dark: "#0e0e0d"
@@ -25,6 +27,7 @@ colors:
   body-dark: "#a89880"
   border-dark: "#2a2926"
   destructive-dark: "#e05a40"
+  warning-dark: "#e6a93a"
 typography:
   display:
     fontFamily: "Sora, ui-sans-serif, system-ui, sans-serif"
@@ -168,6 +171,8 @@ A monochromatic warm-brown family from near-black to ivory, with one accent per 
 ### Semantic
 - **Ember Red** (`#c0392b` / oklch(48% 0.18 25)): Destructive actions in light mode. Used at 10% opacity for destructive button backgrounds, full opacity for text and borders.
 - **Coral Warning** (`#e05a40` / oklch(58% 0.16 28)): Destructive in dark mode — lighter for contrast.
+- **Golden Ochre** (`#9a5e0e` / oklch(54% 0.115 70)): Warning state in light mode — the "caution / non-urgent" tier (e.g. low-but-present stock). Used as `text-warning` + `bg-warning/10` + `border-warning/20`, mirroring the destructive opacity pattern. Pushed warmer and more gold than the espresso `--primary` so caution never reads as the brand accent.
+- **Amber Gold** (`#e6a93a` / oklch(77% 0.13 76)): Warning state in dark mode. Pushed yellow-gold to stay distinct from the orange `--primary` (`#e08535`) that carries brand warmth on near-black surfaces.
 
 ### Named Rules
 **The One Accent Rule.** Burnt Espresso (or Amber Ember in dark) is used on ≤10% of any given screen. It appears on: the single primary CTA, active navigation items, focus rings, toggle-on state. Nowhere else. If a second element needs emphasis, use weight, size, or the body/hint color step — never a second accent color.

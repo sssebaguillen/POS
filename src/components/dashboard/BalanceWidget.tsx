@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
 import { useFormatMoney } from '@/lib/context/CurrencyContext'
+import PopNumber from '@/components/shared/PopNumber'
 import { ACCENT_FILL } from '@/lib/accent-colors'
 import { EXPENSE_CATEGORY_LABELS, EXPENSE_CATEGORY_COLORS, type ExpenseCategory } from '@/components/expenses/types'
 
@@ -64,23 +65,19 @@ export default function BalanceWidget({
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-6 gap-y-3 pb-4 border-b border-edge/40">
         <div>
           <p className="text-xs text-hint uppercase tracking-wide mb-1">Ingresos</p>
-          <p className="text-xl font-semibold text-heading">{fmt(income)}</p>
+          <PopNumber value={fmt(income)} className="block text-xl font-semibold text-heading tabular-nums" />
         </div>
         <div>
           <p className="text-xs text-hint uppercase tracking-wide mb-1">Egresos</p>
-          <p className="text-xl font-semibold text-heading">{fmt(expenses)}</p>
+          <PopNumber value={fmt(expenses)} className="block text-xl font-semibold text-heading tabular-nums" />
         </div>
         <div>
           <p className="text-xs text-hint uppercase tracking-wide mb-1">Ganancia neta</p>
-          <p className={`text-xl font-semibold ${isPositive ? positiveClass : negativeClass}`}>
-            {isPositive ? '' : '-'}{fmt(Math.abs(profit))}
-          </p>
+          <PopNumber value={`${isPositive ? '' : '-'}${fmt(Math.abs(profit))}`} className={`block text-xl font-semibold tabular-nums ${isPositive ? positiveClass : negativeClass}`} />
         </div>
         <div>
           <p className="text-xs text-hint uppercase tracking-wide mb-1">Margen</p>
-          <p className={`text-xl font-semibold ${isPositive ? positiveClass : negativeClass}`}>
-            {margin.toFixed(1)}%
-          </p>
+          <PopNumber value={`${margin.toFixed(1)}%`} className={`block text-xl font-semibold tabular-nums ${isPositive ? positiveClass : negativeClass}`} />
         </div>
       </div>
 

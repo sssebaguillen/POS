@@ -104,6 +104,23 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
 
   const supabase = useMemo(() => createClient(), [])
 
+  // Deep-link from the dashboard stock alerts: /inventory?product={id} opens that
+  // product's edit modal on arrival (the only product detail/action surface today),
+  // then strips the param so back/refresh doesn't reopen it. Read-only operators
+  // just land on the list — no modal, no error toast.
+  const deepLinkHandledRef = useRef(false)
+  useEffect(() => {
+    if (deepLinkHandledRef.current) return
+    deepLinkHandledRef.current = true
+    const targetId = new URLSearchParams(window.location.search).get('product')
+    if (!targetId) return
+    if (!readOnly) {
+      const target = products.find(p => p.id === targetId)
+      if (target) setEditingProduct(target)
+    }
+    window.history.replaceState(null, '', '/inventory')
+  }, [products, readOnly])
+
   // Single source of truth for the status filter: filterValue.stockStatus.
   // Pills (desktop) and the sidebar "Estado" section both read/write this one
   // field, so they can never desync. effectiveStatusFilter is the pill-key view

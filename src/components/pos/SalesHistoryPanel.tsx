@@ -8,6 +8,8 @@ import { Input } from '@/components/ui/input'
 import ReceiptPreviewModal from '@/components/pos/ReceiptPreviewModal'
 import EditSalePanel from '@/components/pos/EditSalePanel'
 import { DynamicIcon } from '@/components/inventory/CategoryIconPreview'
+import PopNumber from '@/components/shared/PopNumber'
+import { unwrapRelation } from '@/lib/mappers'
 import { buildReceiptData } from '@/lib/printer/receipt'
 import type { ReceiptData } from '@/lib/printer/types'
 import { createClient } from '@/lib/supabase/client'
@@ -18,6 +20,12 @@ import { useCurrency, useFormatMoney } from '@/lib/context/CurrencyContext'
 import { useToast } from '@/hooks/useToast'
 import Toast from '@/components/shared/Toast'
 import type { SaleRow, SaleDetail } from '@/components/pos/types'
+
+type CategoryIcon = { icon: string | null; icon_color: string | null }
+type ProductIconRelation =
+  | { categories: CategoryIcon | CategoryIcon[] | null }
+  | { categories: CategoryIcon | CategoryIcon[] | null }[]
+  | null
 
 interface SaleItemQueryRow {
   id: string
@@ -84,17 +92,39 @@ export default function SalesHistoryPanel({ businessId, businessName, operatorId
 
       const saleIds = (sales ?? []).map(sale => sale.id)
       let paymentsBySaleId: Record<string, PaymentMethod> = {}
+      let itemsBySaleId: Record<string, { count: number; icons: { icon: string | null; color: string | null }[] }> = {}
 
       if (saleIds.length > 0) {
-        const { data: payments } = await supabase
-          .from('payments')
-          .select('sale_id, method, created_at')
-          .in('sale_id', saleIds)
-          .order('created_at', { ascending: false })
+        const [{ data: payments }, { data: saleItems }] = await Promise.all([
+          supabase
+            .from('payments')
+            .select('sale_id, method, created_at')
+            .in('sale_id', saleIds)
+            .order('created_at', { ascending: false }),
+          // Preview de items para la fila colapsada: ícono de categoría (vía products)
+          // + suma de cantidades. Ordenado por id para tomar los primeros 4 estable.
+          supabase
+            .from('sale_items')
+            .select('sale_id, quantity, products(categories(icon, icon_color))')
+            .in('sale_id', saleIds)
+            .order('id', { ascending: true }),
+        ])
 
         paymentsBySaleId = (payments ?? []).reduce<Record<string, PaymentMethod>>((acc, payment) => {
           if (!acc[payment.sale_id] && isPaymentMethod(payment.method)) {
             acc[payment.sale_id] = payment.method
+          }
+          return acc
+        }, {})
+
+        itemsBySaleId = (saleItems ?? []).reduce<Record<string, { count: number; icons: { icon: string | null; color: string | null }[] }>>((acc, rawRow) => {
+          const row = rawRow as unknown as { sale_id: string; quantity: number; products: ProductIconRelation }
+          const entry = (acc[row.sale_id] ??= { count: 0, icons: [] })
+          entry.count += row.quantity
+          if (entry.icons.length < 4) {
+            const product = unwrapRelation(row.products)
+            const category = product ? unwrapRelation(product.categories) : null
+            entry.icons.push({ icon: category?.icon ?? null, color: category?.icon_color ?? null })
           }
           return acc
         }, {})
@@ -108,6 +138,8 @@ export default function SalesHistoryPanel({ businessId, businessName, operatorId
         total: Number(sale.total),
         status: sale.status,
         payment_method: paymentsBySaleId[sale.id] ?? null,
+        item_count: itemsBySaleId[sale.id]?.count ?? 0,
+        item_icons: itemsBySaleId[sale.id]?.icons ?? [],
       }))
     },
     enabled: !!businessId,
@@ -421,6 +453,7 @@ export default function SalesHistoryPanel({ businessId, businessName, operatorId
                 const detail = saleDetails[sale.id]
                 const isLoadingDetail = loadingDetailId === sale.id
                 const isDeleting = deletingId === sale.id
+                const itemCount = sale.item_count ?? 0
 
                 return (
                   <li
@@ -465,14 +498,14 @@ export default function SalesHistoryPanel({ businessId, businessName, operatorId
                         }`}>
                           {normalizePayment(sale.payment_method)}
                         </span>
-                        {detail && (
+                        {itemCount > 0 && (
                           <>
                             <span className="text-[11px] text-hint">
-                              {detail.items.reduce((sum, i) => sum + i.quantity, 0)} item{detail.items.reduce((sum, i) => sum + i.quantity, 0) !== 1 ? 's' : ''}
+                              {itemCount} item{itemCount !== 1 ? 's' : ''}
                             </span>
-                            {detail.items.slice(0, 4).map(item =>
-                              item.product_icon ? (
-                                <DynamicIcon key={item.id} name={item.product_icon} size={13} color={item.product_icon_color ?? undefined} />
+                            {(sale.item_icons ?? []).map((ic, i) =>
+                              ic.icon ? (
+                                <DynamicIcon key={i} name={ic.icon} size={13} color={ic.color ?? undefined} />
                               ) : null
                             )}
                           </>
@@ -556,19 +589,15 @@ export default function SalesHistoryPanel({ businessId, businessName, operatorId
           <div className="border-t border-edge-soft px-4 py-3 grid grid-cols-3 gap-2 text-center shrink-0">
             <div>
               <p className="text-xs text-hint">Ventas hoy</p>
-              <p className="text-sm font-semibold text-heading tabular-nums">{filteredHistory.length}</p>
+              <PopNumber value={String(filteredHistory.length)} className="block text-sm font-semibold text-heading tabular-nums" />
             </div>
             <div>
               <p className="text-xs text-hint">Ticket promedio</p>
-              <p className="text-sm font-semibold text-heading tabular-nums">
-                {formatMoney(Math.round(historyTotal / filteredHistory.length))}
-              </p>
+              <PopNumber value={formatMoney(Math.round(historyTotal / filteredHistory.length))} className="block text-sm font-semibold text-heading tabular-nums" />
             </div>
             <div>
               <p className="text-xs text-hint">Total del día</p>
-              <p className="text-sm font-semibold text-heading tabular-nums">
-                {formatMoney(historyTotal)}
-              </p>
+              <PopNumber value={formatMoney(historyTotal)} className="block text-sm font-semibold text-heading tabular-nums" />
             </div>
           </div>
         )}
