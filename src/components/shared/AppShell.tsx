@@ -20,6 +20,7 @@ interface AppShellProps {
   businessId: string | null
   businessName: string
   businessSlug: string
+  currencyCode?: string
   initialCollapsed?: boolean
   initialLastSeenChangelogVersion?: string | null
   showChangelog?: boolean
@@ -47,6 +48,7 @@ export default function AppShell({
   businessId,
   businessName,
   businessSlug,
+  currencyCode = 'ARS',
   initialCollapsed = false,
   initialLastSeenChangelogVersion = null,
   showChangelog = false,
@@ -88,6 +90,7 @@ export default function AppShell({
           businessId={businessId}
           businessName={businessName}
           businessSlug={businessSlug}
+          currencyCode={currencyCode}
           collapsed={collapsed}
           onToggleCollapse={toggleCollapse}
           showOnboardingResume={showOnboardingResume}

@@ -10,6 +10,7 @@ import { cn } from '@/lib/utils'
 import { useTheme } from '@/components/shared/theme'
 import { runThemeToggleTransition } from '@/lib/theme'
 import OperatorSwitcher from '@/components/operator/OperatorSwitcher'
+import CashSessionWidget from '@/components/cash-sessions/CashSessionWidget'
 import OnboardingChecklist from '@/components/onboarding/OnboardingChecklist'
 import ChangelogBanner from '@/components/shared/ChangelogBanner'
 import FeedbackButton from '@/components/shared/FeedbackButton'
@@ -78,6 +79,7 @@ interface Props {
   businessId: string | null
   businessName: string
   businessSlug: string
+  currencyCode: string
   collapsed: boolean
   onToggleCollapse: () => void
   showOnboardingResume?: boolean
@@ -98,6 +100,7 @@ export default function Sidebar({
   businessId,
   businessName,
   businessSlug,
+  currencyCode,
   collapsed,
   onToggleCollapse,
   showOnboardingResume = false,
@@ -290,6 +293,16 @@ export default function Sidebar({
           collapsed && !isMobileDrawer ? 'px-2 py-3 items-center' : 'px-3 py-3'
         )}
       >
+        {hasActiveOperatorSession && (
+          <CashSessionWidget
+            canSeeAmount={permissions === null || permissions.analysis === true}
+            currencyCode={currencyCode}
+            collapsed={collapsed}
+            isMobileDrawer={isMobileDrawer}
+            onNavigate={onClose}
+          />
+        )}
+
         {hasActiveOperatorSession && activeOperatorName && activeOperatorRole !== null ? (
           <OperatorSwitcher
             operatorName={activeOperatorName}

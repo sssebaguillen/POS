@@ -14,7 +14,7 @@ import ExpenseScanCard, { type ExpenseSuggestion } from './ExpenseScanCard'
 import SupplierSelectDropdown from './SupplierSelectDropdown'
 import MercaderiaItemsSection from './MercaderiaItemsSection'
 import MercaderiaOnboarding, { MERCADERIA_ONBOARDING_KEY } from '@/components/onboarding/MercaderiaOnboarding'
-import { useSlidePanelAnimation } from './useSlidePanelAnimation'
+import { useSlidePanelAnimation } from '@/components/shared/useSlidePanelAnimation'
 import {
   EXPENSE_CATEGORY_LABELS,
   EXPENSE_CATEGORIES,

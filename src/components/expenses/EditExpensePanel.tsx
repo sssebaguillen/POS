@@ -10,7 +10,7 @@ import { DatePicker } from '@/components/ui/DatePicker'
 import SupplierSelectDropdown from './SupplierSelectDropdown'
 import ExpenseAttachmentUploader from './ExpenseAttachmentUploader'
 import MercaderiaItemsSection from './MercaderiaItemsSection'
-import { useSlidePanelAnimation } from './useSlidePanelAnimation'
+import { useSlidePanelAnimation } from '@/components/shared/useSlidePanelAnimation'
 import {
   EXPENSE_CATEGORY_LABELS,
   type Expense,

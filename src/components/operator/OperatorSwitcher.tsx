@@ -168,7 +168,7 @@ export default function OperatorSwitcher({
         type="button"
         onClick={() => setOpen(o => !o)}
         aria-expanded={open}
-        className="flex w-full items-center justify-between rounded-lg border border-edge px-3 py-2 text-left transition-[transform,background-color] duration-150 ease-[var(--ease-out)] active:scale-[0.98] hover:bg-hover-bg"
+        className="relative z-10 flex w-full items-center justify-between rounded-lg border border-edge bg-card px-3 py-2 text-left shadow-sm transition-[transform,background-color] duration-150 ease-[var(--ease-out)] active:scale-[0.98] hover:bg-hover-bg"
       >
         <span className="min-w-0">
           <span className="block text-xs uppercase tracking-wide text-muted-foreground">Operador activo</span>
@@ -178,7 +178,7 @@ export default function OperatorSwitcher({
           size={16}
           className={cn(
             'shrink-0 text-hint transition-transform duration-200 ease-[var(--ease-out)]',
-            open ? '' : 'rotate-180'
+            open ? 'rotate-180' : ''
           )}
         />
       </button>

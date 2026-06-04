@@ -10,6 +10,7 @@ import type { SessionRow } from '@/app/(app)/cash-sessions/page'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { useSlidePanelAnimation } from '@/components/shared/useSlidePanelAnimation'
 
 const DIGITAL_METHODS = ['mercadopago', 'transfer'] as const
 type DigitalMethod = typeof DIGITAL_METHODS[number]
@@ -79,6 +80,7 @@ function DiffLabel({ diff }: { diff: number | null }) {
 export default function SessionDetailPanel({ session, operatorId, onClose, onCloseSession }: Props) {
   const formatMoney = useFormatMoney()
   const supabase = useMemo(() => createClient(), [])
+  const { visible, closePanel } = useSlidePanelAnimation({ onClose })
   const [detail, setDetail] = useState<SessionDetail | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
@@ -123,11 +125,11 @@ export default function SessionDetailPanel({ session, operatorId, onClose, onClo
 
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
-      if (e.key === 'Escape') onClose()
+      if (e.key === 'Escape') closePanel()
     }
     document.addEventListener('keydown', handleKeyDown)
     return () => document.removeEventListener('keydown', handleKeyDown)
-  }, [onClose])
+  }, [closePanel])
 
   const isDirty = useMemo(() => {
     if (!detail) return false
@@ -201,11 +203,20 @@ export default function SessionDetailPanel({ session, operatorId, onClose, onClo
 
   return (
     <div className="fixed inset-0 z-50 flex justify-end">
-      <div className="absolute inset-0 bg-foreground/40 dark:bg-black/60 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative w-full max-w-md bg-background border-l border-border flex flex-col shadow-xl">
+      <div
+        className={`absolute inset-0 bg-foreground/40 dark:bg-black/60 backdrop-blur-sm transition-opacity duration-200 ease-in-out ${
+          visible ? 'opacity-100' : 'opacity-0'
+        }`}
+        onClick={closePanel}
+      />
+      <div
+        className={`relative w-full max-w-md bg-background border-l border-border flex flex-col shadow-xl transition-transform duration-200 ease-in-out ${
+          visible ? 'translate-x-0' : 'translate-x-full'
+        }`}
+      >
         <div className="flex items-center justify-between p-5 border-b border-border shrink-0">
           <h2 className="text-base font-semibold">Detalle de sesión</h2>
-          <button onClick={onClose} className="text-muted-foreground hover:text-foreground">
+          <button onClick={closePanel} className="text-muted-foreground hover:text-foreground">
             <X size={18} />
           </button>
         </div>

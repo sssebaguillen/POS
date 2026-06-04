@@ -1,6 +1,22 @@
 {
-  "current": "0.0.7.1",
+  "current": "0.0.7.2",
   "releases": [
+    {
+      "version": "0.0.7.2",
+      "kind": "feature",
+      "date": "2026-06-04",
+      "label": "Escaneo de comprobantes con IA",
+      "changes": [
+        { "type": "new", "text": "Llega el Escaneo con IA en los gastos. Al cargar un gasto que no sea de mercadería, puedes subir la factura o comprobante en PDF, Excel o CSV y tocar 'Escanear con IA': Pulsar lee el documento y te sugiere el proveedor, la fecha, el monto, la categoría y una descripción. Revisas la sugerencia y la aplicas con un toque, o la descartas. Siempre confirmas tú antes de guardar." },
+        { "type": "new", "text": "Si el proveedor del comprobante ya existe en tu lista de proveedores, se selecciona solo aunque el nombre venga con pequeñas diferencias (por ejemplo 'S.R.L.' o 'S.A.'). La categoría también se completa con la mejor estimación, que siempre puedes cambiar." },
+        { "type": "improvement", "text": "Por ahora el escaneo funciona con documentos de texto: facturas en PDF y planillas de Excel o CSV. La foto de un ticket de papel todavía no — llega más adelante. Si un PDF está escaneado como imagen y no tiene texto seleccionable, te avisamos para que completes los datos a mano." },
+        { "type": "new", "text": "El menú lateral ahora muestra un widget de caja cuando tienes una caja abierta: ves de un vistazo cuánto tiempo lleva abierta y el total vendido en el turno, y lo tocas para ir directo a Caja." },
+        { "type": "improvement", "text": "El widget de caja se actualiza al instante: al abrir o cerrar la caja, y con cada venta que registras, el estado y el monto se reflejan enseguida sin esperar." },
+        { "type": "improvement", "text": "En Mi perfil, los números de tus estadísticas (ventas, monto total y las tablas de productos e historial) ahora aparecen con una animación suave, igual que en el resto de la app." },
+        { "type": "improvement", "text": "El detalle de una sesión de caja ahora abre con una transición lateral suave, en lugar de aparecer de golpe." },
+        { "type": "improvement", "text": "Las Sugerencias con IA ahora solo se muestran a operarios con permiso de análisis. Si un operario no tiene ese permiso, no verá las sugerencias aunque la función esté activada para el negocio." }
+      ]
+    },
     {
       "version": "0.0.7.1",
       "kind": "patch",

@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { X, ChevronRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -30,6 +31,7 @@ interface Props {
 export default function CloseSessionModal({ open, sessionId, operatorId, onClosed, onClose }: Props) {
   const formatMoney = useFormatMoney()
   const supabase = useMemo(() => createClient(), [])
+  const queryClient = useQueryClient()
 
   const [summary, setSummary] = useState<SessionSummary | null>(null)
   const [loadingSummary, setLoadingSummary] = useState(true)
@@ -85,6 +87,7 @@ export default function CloseSessionModal({ open, sessionId, operatorId, onClose
       setClosing(false)
       return
     }
+    void queryClient.invalidateQueries({ queryKey: ['active_cash_session'] })
     onClosed()
   }
 

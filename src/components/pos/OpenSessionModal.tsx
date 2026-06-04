@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { ArrowRight, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -23,6 +24,7 @@ export default function OpenSessionModal({ open, operatorId, onOpened, onClose }
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const supabase = useMemo(() => createClient(), [])
+  const queryClient = useQueryClient()
   const formatMoney = useFormatMoney()
 
   useEffect(() => {
@@ -67,6 +69,7 @@ export default function OpenSessionModal({ open, operatorId, onOpened, onClose }
       setLoading(false)
       return
     }
+    void queryClient.invalidateQueries({ queryKey: ['active_cash_session'] })
     onOpened(result.session!.id)
   }
 

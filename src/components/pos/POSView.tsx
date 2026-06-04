@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect, useMemo, useCallback } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { Search, Menu, ChevronDown, Check, ScanBarcode, X } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
@@ -74,6 +75,7 @@ export default function POSView({ products, businessId, businessName, freeLineEn
   const addItem = useCartStore(s => s.addItem)
   const addVariantItem = useCartStore(s => s.addVariantItem)
   const supabase = useMemo(() => createClient(), [])
+  const queryClient = useQueryClient()
   const [confirmingNewSale, setConfirmingNewSale] = useState(false)
   confirmingNewSaleRef.current = confirmingNewSale
   const [drawerOpen, setDrawerOpen] = useState(false)
@@ -97,7 +99,8 @@ export default function POSView({ products, businessId, businessName, freeLineEn
   const fetchActiveSession = useCallback(async () => {
     const { data } = await supabase.rpc('get_active_session')
     setActiveSession((data as ActiveSession | null) ?? null)
-  }, [supabase])
+    void queryClient.invalidateQueries({ queryKey: ['active_cash_session'] })
+  }, [supabase, queryClient])
 
   useEffect(() => {
     void fetchActiveSession()

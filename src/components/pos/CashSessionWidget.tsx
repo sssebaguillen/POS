@@ -4,6 +4,7 @@ import { useMemo } from 'react'
 import { Vault, AlertTriangle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useFormatMoney } from '@/lib/context/CurrencyContext'
+import PopNumber from '@/components/shared/PopNumber'
 
 interface ActiveSession {
   id: string
@@ -53,7 +54,9 @@ export default function CashSessionWidget({ session, onOpenClick, onCloseClick }
           <span className="text-xs text-muted-foreground">· {formatTime(session.opened_at)}</span>
         </div>
         <p className="text-xs text-muted-foreground truncate">
-          {session.sales_count} {session.sales_count === 1 ? 'venta' : 'ventas'} · {formatMoney(session.sales_total)}
+          <PopNumber value={String(session.sales_count)} />{' '}
+          {session.sales_count === 1 ? 'venta' : 'ventas'} ·{' '}
+          <PopNumber value={formatMoney(session.sales_total)} />
         </p>
       </div>
       <Button

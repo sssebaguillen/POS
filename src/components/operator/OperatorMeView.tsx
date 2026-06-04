@@ -12,6 +12,7 @@ import Toast from '@/components/shared/Toast'
 import { useToast } from '@/hooks/useToast'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import SalesHeatmap from '@/components/stats/SalesHeatmap'
+import PopNumber from '@/components/shared/PopNumber'
 import type { UserRole } from '@/lib/operator'
 import { OPERATOR_ROLE_LABELS, PROFILE_ROLE_LABELS } from '@/lib/constants/domain'
 import { useFormatMoney } from '@/lib/context/CurrencyContext'
@@ -356,15 +357,17 @@ export default function OperatorMeView({
                 <div className="grid grid-cols-1 divide-y divide-border sm:grid-cols-2 sm:divide-x sm:divide-y-0">
                   <div className="pb-4 sm:pb-0 sm:pr-5">
                     <p className="text-xs uppercase tracking-wide text-muted-foreground">Ventas realizadas</p>
-                    <p className="mt-2 text-3xl font-semibold text-foreground font-display tracking-tight">
-                      {totalSales.toLocaleString('es-AR')}
-                    </p>
+                    <PopNumber
+                      value={totalSales.toLocaleString('es-AR')}
+                      className="mt-2 block text-3xl font-semibold text-foreground font-display tracking-tight tabular-nums"
+                    />
                   </div>
                   <div className="pt-4 sm:pt-0 sm:pl-5">
                     <p className="text-xs uppercase tracking-wide text-muted-foreground">Monto total</p>
-                    <p className="mt-2 text-3xl font-semibold text-foreground font-display tracking-tight">
-                      {formatMoney(totalRevenue)}
-                    </p>
+                    <PopNumber
+                      value={formatMoney(totalRevenue)}
+                      className="mt-2 block text-3xl font-semibold text-foreground font-display tracking-tight tabular-nums"
+                    />
                     {avgTicket !== null && (
                       <p className="mt-1 text-xs text-muted-foreground">
                         ticket promedio {formatMoney(avgTicket)}
@@ -417,12 +420,14 @@ export default function OperatorMeView({
                               <TableCell className="text-xs font-medium text-muted-foreground tabular-nums">
                                 {index + 1}
                               </TableCell>
-                              <TableCell className="max-w-[200px] truncate font-medium text-foreground" title={product.product_name}>
+                              <TableCell className="max-w-[120px] truncate font-medium text-foreground" title={product.product_name}>
                                 {product.product_name}
                               </TableCell>
-                              <TableCell className="text-right">{product.total_quantity.toLocaleString('es-AR')}</TableCell>
+                              <TableCell className="text-right">
+                                <PopNumber value={product.total_quantity.toLocaleString('es-AR')} className="tabular-nums" />
+                              </TableCell>
                               <TableCell className="text-right font-medium text-foreground">
-                                {formatMoney(product.total_revenue)}
+                                <PopNumber value={formatMoney(product.total_revenue)} className="tabular-nums" />
                               </TableCell>
                             </TableRow>
                           ))
@@ -464,9 +469,11 @@ export default function OperatorMeView({
                                     <span className="text-xs text-muted-foreground">{statusLabel(sale.status)}</span>
                                   </div>
                                 </TableCell>
-                                <TableCell className="text-right">{sale.items_count.toLocaleString('es-AR')}</TableCell>
+                                <TableCell className="text-right">
+                                  <PopNumber value={sale.items_count.toLocaleString('es-AR')} className="tabular-nums" />
+                                </TableCell>
                                 <TableCell className={`text-right font-medium ${isVoid ? 'line-through text-muted-foreground' : 'text-foreground'}`}>
-                                  {formatMoney(sale.total)}
+                                  <PopNumber value={formatMoney(sale.total)} className="tabular-nums" />
                                 </TableCell>
                               </TableRow>
                             )

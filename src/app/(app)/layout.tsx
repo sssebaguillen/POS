@@ -170,6 +170,7 @@ export default async function AppLayout({
           businessId={businessId}
           businessName={businessName}
           businessSlug={businessSlug}
+          currencyCode={currencyCode}
           initialCollapsed={sidebarCollapsed}
           initialLastSeenChangelogVersion={lastSeenChangelogVersion}
           showChangelog={isOwner}

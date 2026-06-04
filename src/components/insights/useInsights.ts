@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
 import {
@@ -39,14 +39,39 @@ export function useAiInsightsEnabled() {
 }
 
 /**
+ * Lee el flag `analysis` del operario activo desde la cookie `op_perms` (espejo non-httpOnly
+ * de los permisos, lo mismo que consume el sidebar). El dueño siempre la trae en true
+ * (proxy escribe OWNER_PERMISSIONS). Patrón `mounted` para evitar mismatch de hidratación y
+ * fail-closed (false hasta poder leer la cookie en el cliente): los insights son contenido de
+ * análisis de negocio (capital inmovilizado, márgenes, anomalías de pago) → solo `analysis`.
+ */
+function useHasInsightsPermission(): boolean {
+  const [granted, setGranted] = useState(false)
+  useEffect(() => {
+    const match = document.cookie.match(/(?:^|; )op_perms=([^;]*)/)
+    if (!match) return
+    try {
+      const perms = JSON.parse(decodeURIComponent(match[1])) as { analysis?: boolean }
+      setGranted(perms?.analysis === true)
+    } catch {
+      // cookie corrupta → fail-closed (granted queda false)
+    }
+  }, [])
+  return granted
+}
+
+/**
  * Insights activos (status new|seen) del negocio del usuario. RLS (business isolation)
  * scopea por get_business_id() — no hace falta pasar business_id. Volumen chico (un
  * puñado por noche): se traen todos y los consumidores filtran por surface en memoria.
- * Sólo consulta si la feature está activada (gating por el opt-in del negocio).
+ * Sólo consulta si la feature está activada (opt-in del negocio) Y el operario tiene `analysis`
+ * (los operarios montan sobre la sesión Supabase del dueño, así que el gate por rol es
+ * client-side vía cookie — RLS no distingue operario).
  */
 export function useActiveInsights(enabled = true) {
   const supabase = useMemo(() => createClient(), [])
   const { data: aiEnabled } = useAiInsightsEnabled()
+  const hasPermission = useHasInsightsPermission()
 
   return useQuery({
     queryKey: INSIGHTS_QUERY_KEY,
@@ -59,7 +84,7 @@ export function useActiveInsights(enabled = true) {
       if (error) throw error
       return (data ?? []) as AiInsight[]
     },
-    enabled: enabled && aiEnabled === true,
+    enabled: enabled && aiEnabled === true && hasPermission,
     staleTime: 60_000,
   })
 }
