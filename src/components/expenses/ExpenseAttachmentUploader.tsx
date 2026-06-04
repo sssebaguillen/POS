@@ -25,6 +25,8 @@ interface UploadResult {
   url: string
   type: ExpenseAttachmentType
   name: string
+  /** Archivo original — efímero, NO se persiste. Lo usa el escaneo IA para parsear Excel/CSV client-side. */
+  file?: File
 }
 
 interface Props {
@@ -80,6 +82,7 @@ export default function ExpenseAttachmentUploader({ businessId, onUpload, onRemo
       url: data.path,
       type: getMimeAttachmentType(file.type),
       name: file.name,
+      file,
     })
   }
 

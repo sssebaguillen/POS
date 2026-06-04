@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input'
 import { DatePicker } from '@/components/ui/DatePicker'
 import SelectDropdown from '@/components/ui/SelectDropdown'
 import ExpenseAttachmentUploader from './ExpenseAttachmentUploader'
+import ExpenseScanCard, { type ExpenseSuggestion } from './ExpenseScanCard'
 import SupplierSelectDropdown from './SupplierSelectDropdown'
 import MercaderiaItemsSection from './MercaderiaItemsSection'
 import MercaderiaOnboarding, { MERCADERIA_ONBOARDING_KEY } from '@/components/onboarding/MercaderiaOnboarding'
@@ -26,6 +27,18 @@ interface AttachmentState {
   url: string
   type: ExpenseAttachmentType
   name: string
+  file?: File
+}
+
+// Normaliza un nombre de proveedor para el match difuso: minúsculas, sin acentos, sin sufijos
+// societarios (S.R.L./S.A./SAS) ni puntuación.
+function normalizeSupplierName(x: string): string {
+  return x
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/\b(s\.?r\.?l\.?|s\.?a\.?s\.?|s\.?a\.?|srl|sas|sa)\b/g, '')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim()
 }
 
 interface Props {
@@ -173,6 +186,38 @@ export default function NewExpensePanel({
     }
   }
 
+  async function findSupplierMatch(name: string): Promise<string | null> {
+    const target = normalizeSupplierName(name)
+    if (target.length < 3) return null
+    const { data } = await supabase
+      .from('suppliers')
+      .select('id, name')
+      .eq('business_id', businessId)
+      .eq('is_active', true)
+    if (!data) return null
+    let best: { id: string; len: number } | null = null
+    for (const sup of data as { id: string; name: string }[]) {
+      const n = normalizeSupplierName(sup.name)
+      if (n.length < 3) continue
+      if (target.includes(n) || n.includes(target)) {
+        if (!best || n.length > best.len) best = { id: sup.id, len: n.length }
+      }
+    }
+    return best?.id ?? null
+  }
+
+  async function handleApplySuggestion(s: ExpenseSuggestion) {
+    setCategory(s.category)
+    if (s.amount != null) setAmount(String(s.amount))
+    if (s.description) setDescription(s.description)
+    if (s.date) setDate(s.date)
+    setError(null)
+    if (s.supplier_name) {
+      const id = await findSupplierMatch(s.supplier_name)
+      if (id) setSupplierId(id)
+    }
+  }
+
   return (
     <>
       <div
@@ -282,6 +327,13 @@ export default function NewExpensePanel({
                 onRemove={() => setAttachment(null)}
                 current={attachment}
               />
+              {attachment && (
+                <ExpenseScanCard
+                  attachment={attachment}
+                  supabaseClient={supabase}
+                  onApply={handleApplySuggestion}
+                />
+              )}
             </div>
           )}
 
