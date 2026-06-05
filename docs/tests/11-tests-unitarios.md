@@ -1,9 +1,9 @@
-# 11 — Tests unitarios (Vitest)
+# 11 — Tests unitarios y de componentes (Vitest)
 
-> Suite de tests automatizados sobre la lógica de negocio (`src/lib/`) y los API routes (`src/app/api/`).
-> Última corrida: **305 tests en 21 archivos, todos en verde.**
+> Suite de tests automatizados sobre la lógica de negocio (`src/lib/`), los API routes (`src/app/api/`) y los componentes del flujo de cobro (`src/components/pos/`).
+> Última corrida: **325 tests en 23 archivos, todos en verde.**
 
-Esta suite complementa los tests manuales (`01`–`04`) y los SQL/seguridad (`05`–`10`): cubre la **capa de lógica TypeScript** que hasta ahora dependía 100% de revisión manual. Antes de esta suite el repo tenía **0 tests automatizados**.
+Esta suite complementa los tests manuales (`01`–`04`) y los SQL/seguridad (`05`–`10`): cubre la **capa de lógica TypeScript + el flujo de cobro en React** que hasta ahora dependía 100% de revisión manual. Antes de esta suite el repo tenía **0 tests automatizados**.
 
 ---
 
@@ -19,7 +19,8 @@ Esta suite complementa los tests manuales (`01`–`04`) y los SQL/seguridad (`05
 ## 2. Infraestructura
 
 - **Runner:** [Vitest](https://vitest.dev) (`vitest.config.ts` en la raíz). Elegido sobre Jest por arranque más rápido, ESM nativo y API compatible con Jest — encaja con Next 16 + TS sin transformaciones extra.
-- **Environment:** `node`. La capa testeada no toca el DOM. Cuando se agreguen tests de componentes habrá que sumar `jsdom` + React Testing Library (ver §6).
+- **Environment:** `node` por defecto (la lógica no toca el DOM). Los tests de **componentes** declaran `// @vitest-environment jsdom` en la primera línea + `import '@/test/dom'` (helper compartido que registra los matchers de `@testing-library/jest-dom` y el `cleanup()` de RTL). Se evitó un `setupFiles` global a propósito para que los tests node nunca carguen `react-dom`/`jest-dom`.
+- **Testing de componentes:** [React Testing Library](https://testing-library.com/) + `@testing-library/user-event`, sobre `jsdom`.
 - **Alias `@/`:** resuelto en `vitest.config.ts` vía `resolve.alias` apuntando a `./src` (espeja `tsconfig.json`).
 - **Timezone fijada:** `process.env.TZ = 'America/Argentina/Buenos_Aires'` en el config. Hace deterministas los tests de fechas/locale (mercado primario, UTC-3 sin DST). Sin esto, los tests de `date-utils` y `format` darían distinto según la máquina/CI.
 - **Cobertura:** provider `v8`, scope `src/lib/**` + `src/app/api/**` (los componentes UI quedan fuera hasta tener jsdom). El directorio `coverage/` ya está en `.gitignore`.
@@ -88,6 +89,28 @@ Los operadores montan sobre la sesión Supabase del dueño: la cookie firmada es
 
 El endpoint público `/api/catalog/orders` se valida en profundidad porque es la única superficie **anónima** que escribe: UUIDs mal formados, nombres/notas sobre el límite, carrito vacío, cantidades fuera de rango, y el rate-limiter in-memory (5 req/hora por `slug+IP`, 6ª → 429).
 
+### Componentes — flujo de cobro (jsdom + RTL)
+
+| Archivo | Tests | Foco |
+|---|---|---|
+| `src/components/pos/__tests__/PaymentModal.test.tsx` | 12 | Modal de cobro: efectivo/tarjeta/crédito, pago mixto, confirmación |
+| `src/components/pos/__tests__/CartPanel.test.tsx` | 8 | Carrito: descuento, override de precio por línea, cantidad |
+
+**PaymentModal** (la acción más consecuente del POS — cerrar una venta):
+- Efectivo: el botón confirmar queda deshabilitado hasta que el monto cubre el total; muestra "Falta" / "Vuelto"; al confirmar manda `[{ method:'cash', amount }]`.
+- Tarjeta/transferencia: habilita confirmar sin monto y manda el total completo.
+- Crédito: oculto si el cliente no es apto; habilitado dentro del límite; bloqueado si el total lo supera.
+- Pago mixto: exige ambos montos y que sumen ≥ total; manda dos pagos.
+- Error del RPC → muestra el mensaje y **no** completa la venta (`onSaleCompleted` no se llama).
+
+**CartPanel** (descuento + override de precio, lo que el usuario pidió cubrir):
+- Descuento fijo y porcentual reflejados en el store y en los totales; el `%` se clampa a 100.
+- El trigger de descuento y el de override de precio están **gateados por `permissions.price_override`** (no aparecen sin el permiso).
+- Override de precio por línea → marca `priceIsManual` y recalcula el total de la línea.
+- Controles de cantidad (+/−) actualizan el store.
+
+Los componentes se testean con sus dependencias pesadas mockeadas (`createSaleTransaction`, `trackSale`, `supabase/client`, `next/navigation`, y los hijos `ReceiptPreviewModal`/`SalesHistoryPanel`), de modo que el test ejerce la **lógica del componente**, no la red ni la impresora.
+
 ## 4. Cobertura
 
 Scope: `src/lib/**` + `src/app/api/**` (excluye componentes UI y tipos).
@@ -115,6 +138,8 @@ Archivos **con tests** y su cobertura de líneas:
 | `app/api/operator/switch/route.ts` | 89.5% |
 | `lib/analytics.ts` | 45% (solo el gating + eventos clave; el resto son wrappers idénticos) |
 
+> Los **componentes** se miden por archivo, no en el agregado anterior (el scope de cobertura es `lib` + `api`). Cobertura de los dos componentes testeados: `PaymentModal.tsx` ≈ **70% líneas**, `CartPanel.tsx` ≈ **57% líneas**. Lo no cubierto en ellos es periférico al cobro: preview/impresión de ticket, búsqueda de cliente, producto libre y atajos de teclado.
+
 ## 5. Hallazgos durante el testeo
 
 1. **Quirk de timezone en rangos custom de `getDateRange`.** Un string `YYYY-MM-DD` se parsea como **medianoche UTC** y luego `startOfDay`/`endOfDay` lo corren a la zona local (UTC-3), así que un rango que arranca "2026-01-01" en realidad empieza el **31/12/2025** local. Queda fijado en un test explícito (`date-utils.test.ts`). La versión basada en strings (`resolveDateRange`) **no** tiene este problema, por lo que el impacto se limita a rangos personalizados client-side. **Decisión pendiente del equipo:** ¿se considera bug a corregir (parsear como local) o comportamiento aceptado? No se modificó el código — la tarea era escribir tests.
@@ -125,14 +150,14 @@ Archivos **con tests** y su cobertura de líneas:
 
 Intencionalmente fuera del scope de esta tanda:
 
-- **Componentes React** (`PaymentModal`, `CartPanel`, `InventoryPanel`, etc.) — requieren `jsdom` + React Testing Library. Es el próximo paso de mayor valor: el flujo de cobro y el override de precio por línea viven ahí.
+- **Componentes React grandes** todavía sin tests: `InventoryPanel`, `NewProductModal`/`EditProductModal`, `VariantEditor`, `ImportProductsModal`, vistas de `stats`. El flujo de cobro (`PaymentModal`, `CartPanel`) **ya está cubierto** (§3).
 - **Wrappers finos sobre SDKs/DOM** sin lógica propia: `lib/supabase/{client,server}.ts`, `lib/posthog-server.ts`, `lib/theme.ts` (View Transition sobre el DOM), `lib/context/CurrencyContext.tsx`.
 - **Integraciones externas:** `lib/feedback/{github,telegram}.ts` y `app/api/feedback/route.ts` — candidatos a tests de integración con los servicios mockeados, no a unit tests puros.
 - **Capa DB / RLS / RPC SECURITY DEFINER** — ya cubierta por los scripts SQL `05`–`10` y la auditoría `08`.
 
 ## 7. Próximos pasos sugeridos
 
-1. **Tests de componentes** para el flujo de cobro: agregar `jsdom` + `@testing-library/react`, empezar por `PaymentModal` (split de pagos, validación de monto) y `CartPanel` (override de precio, descuento).
+1. **Más componentes** del catálogo/inventario: `InventoryPanel` (CRUD + bulk) y los modales de producto/variantes, reusando el harness jsdom ya montado.
 2. **`app/api/feedback/route.ts`** con GitHub/Telegram mockeados.
 3. **Integrar `npm test` en CI** (GitHub Actions) como gate de merge.
 4. Definir qué hacer con el quirk de UTC-3 en rangos custom (§5.1).

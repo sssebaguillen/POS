@@ -16,7 +16,7 @@ Tests de regresión manual + scripts SQL automatizables + **suite de tests unita
 | `08-auditoria-seguridad.md` | Auditoría RLS + RPC SECURITY DEFINER + GRANTs + Storage + API/frontend | Resultados |
 | `09-auditoria-calidad.md` | Auditoría de calidad de código (deuda, duplicación, dead code, tipos, convenciones) | Resultados |
 | `10-stress-gastos.md` | Stress de gastos operativos + mercadería (mueven stock) + reconciliación E1–E5/R11 | Resultados |
-| `11-tests-unitarios.md` | Suite Vitest: lógica de negocio (`lib/`) + API routes — cobertura, casos y hallazgos | Automatizado (Vitest) |
+| `11-tests-unitarios.md` | Suite Vitest: lógica de negocio (`lib/`) + API routes + flujo de cobro (`components/pos/`) — cobertura, casos y hallazgos | Automatizado (Vitest + RTL) |
 
 ## Cómo ejecutar los tests unitarios (Vitest)
 
