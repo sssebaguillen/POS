@@ -13,5 +13,13 @@ export default defineConfig({
   },
   test: {
     environment: 'node',
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'json-summary'],
+      // Scope coverage to the layers that have unit tests today (logic + API routes).
+      // UI components are excluded until a jsdom/RTL setup lands.
+      include: ['src/lib/**', 'src/app/api/**'],
+      exclude: ['**/__tests__/**', '**/*.d.ts', 'src/lib/types/**'],
+    },
   },
 })
