@@ -1,6 +1,7 @@
 # Escaneo de documentos en Gastos — extracción automática (plan MVP)
 
-> Estado: **backend deployado+validado; frontend implementado (typecheck+lint OK), falta test en navegador.** (2026-06-04)
+> Estado: **✅ MVP CERRADO (2026-06-06)** — backend deployado+validado, frontend implementado y
+> probado en navegador (flujo subir→escanear→aplicar + PDF end-to-end funcionando).
 > - Edge Function `extract-expense` desplegada en prod (`zrnthcznbrplzpmxmkwk`) y probada
 >   contra Groq: modo `text` extrae bien proveedor/fecha/monto/categoría/descripción de facturas
 >   AR (total vs subtotal/IVA, formato de miles/decimales, `DD/MM/AAAA`→ISO); guards de seguridad OK
@@ -9,8 +10,9 @@
 >   `NewExpensePanel` (rama no-mercadería). PDF→modo `pdf`; Excel/CSV→parseo client-side (SheetJS
 >   dynamic import) → modo `text`. Match difuso de proveedor contra `suppliers`. Si la IA clasifica
 >   `mercaderia`, se remapea a `proveedores` (header-only no itemiza; ver fase 2).
-> - **Pendiente:** test en navegador del flujo subir→escanear→aplicar; modo `pdf` end-to-end con un
->   PDF real; (luego) replicar en `EditExpensePanel` si se valida.
+> - **Fase 2 (diferida, recorte de scope — no es deuda):** visión/foto de ticket térmico
+>   (`completeJsonWithImage`, Groq Llama-4); auto-completado de mercadería con line-items + match al
+>   catálogo; replicar el scan en `EditExpensePanel`; límites por plan + throttle por negocio.
 
 ## Context
 

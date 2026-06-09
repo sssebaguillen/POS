@@ -39,7 +39,7 @@
 
 > El nombre quedó dentro de la familia P7 por historia, pero conceptualmente no pertenece a P7. Es una feature de pricing independiente.
 
-> **ESTADO (2026-06-03): re-diseñado e implementado en código como redondeo POR LISTA (no global).** El diseño de abajo (config global en `businesses.settings`, aplicado en `compute_effective_price`) quedó **OBSOLETO** tras el rediseño de precio base autoritativo. Lo que se implementó: columnas `price_lists.rounding_step` (NULL = sin redondeo; M ∈ 0.1/1/5/10/50/100) + `rounding_up` (toggle hacia arriba); fórmula única `round(x/M)*M` aplicada **solo en el cliente** (`calculateProductPrice`, último paso sobre el precio de lista — el mirror SQL `compute_effective_price` se llama siempre con `list_id=NULL` así que no se tocó, solo se comentó); UI = selector + checkbox + preview en `RoundingField.tsx` dentro de New/EditPriceListModal. Mig `20260603_03_price_list_rounding.sql`. **Pendiente: aplicar la migración al remoto + test end-to-end.** Feature futuro relacionado: elegir desde `/settings` qué lista mostrar en el catálogo público. Lo de abajo se conserva solo como registro histórico del diseño viejo.
+> **ESTADO (2026-06-06): ✅ CERRADO.** Re-diseñado e implementado como redondeo POR LISTA (no global). El diseño de abajo (config global en `businesses.settings`) quedó **OBSOLETO** tras el rediseño de precio base autoritativo. Lo implementado: columnas `price_lists.rounding_step` (NULL = sin redondeo; M ∈ 0.1/1/5/10/50/100) + `rounding_up` (toggle hacia arriba); fórmula única `round(x/M)*M` (`applyRounding` en `lib/price-lists.ts`) aplicada como último paso sobre el precio de lista, en cliente y POS (`calculateProductPrice` ← `resolveDisplayPrice`); UI = selector + checkbox + preview en `RoundingField.tsx` dentro de New/EditPriceListModal. Migs `20260603_03_price_list_rounding.sql` (aplicada al remoto) + `20260606_01_compute_effective_price_rounding.sql`. Probado end-to-end en UI. **Paridad SQL cerrada:** el mirror `compute_effective_price` ahora también aplica el redondeo en su rama de lista (busca `rounding_step`/`rounding_up` por `p_list_id`). Hoy es inerte (el catálogo llama con `list_id=NULL` = precio base, sin redondeo), pero el día que se implemente el **feature futuro "elegir qué lista mostrar en el catálogo público"** el catálogo redondeará igual que el POS desde el arranque, sin reabrir esto. Lo de abajo se conserva solo como registro histórico del diseño viejo.
 
 Feature crítica para el contexto LATAM con alta inflación y precios cambiantes. Los precios calculados por listas de precios generan valores como $847,50 o $1.233,33 que en la práctica nadie cobra — el mercado redondea a $850 o $1.250. Sin esta feature, el dueño tiene que crear overrides manuales para cada producto.
 
@@ -151,7 +151,15 @@ Observación al comparar con Cobrando.app (2026-05-28): en un mismo viewport ell
 
 ### Escaneo de factura → autocompletar gasto (OCR/IA)
 
-El owner sube un PDF o foto de la factura de una compra recién hecha y el sistema extrae los datos (proveedor, items, costos, cantidades) y prerellena el gasto de mercadería automáticamente; el owner sólo verifica y guarda. Encaja con el flujo de `/expenses` mercadería (`create_mercaderia_expense`, line-items por producto, update de stock/costo). Cobrando.app ya tiene algo así ("Escanear factura" con límite de escaneos/mes — 12/400). A definir: proveedor de OCR/extracción (modelo multimodal vía Edge Function), matching de items extraídos contra `products` existentes, manejo de productos no encontrados, límites por plan, y formatos/validaciones de input (JPG/PNG/WEBP/PDF, tamaño máx). Feature grande, alto valor percibido.
+> **MVP ✅ CERRADO (2026-06-06).** Solo-texto, solo-encabezado: el owner sube un PDF (capa de texto) o Excel/CSV y la IA pre-llena proveedor (match difuso contra `suppliers`), fecha, monto, categoría y descripción del gasto **no-mercadería**; el owner valida y guarda con el flujo actual (`create_expense`, sin cambios). Edge Function `extract-expense` (JWT del dueño + `assert_tenant`, Groq vía `makeProvider`), frontend `ExpenseScanCard` en `NewExpensePanel`. PDF→`unpdf` server-side; Excel/CSV→SheetJS client-side. Probado en UI. Plan completo en [`expense-document-scan.md`](expense-document-scan.md).
+>
+> **Fase 2 (diferida, no es deuda — recorte de scope):**
+> - **Visión / foto de ticket térmico** — requiere método de visión (`completeJsonWithImage`, Groq Llama-4).
+> - **Mercadería con line-items** — extraer items + match de cada uno al catálogo (`products`) con aliases por proveedor + update de stock/costo vía `create_mercaderia_expense`. La parte cara; se retoma con productos reales en la DB y un documento de ejemplo. Hoy si la IA clasifica `mercaderia` se remapea a `proveedores` (header-only no itemiza).
+> - **Replicar el scan en `EditExpensePanel`** — hoy solo al crear; sumarlo si se valida demanda.
+> - A definir cuando se retome: límites de escaneos por plan, throttle por negocio (comparte TPM free-tier de Groq con P12).
+
+El owner sube un PDF o foto de la factura de una compra recién hecha y el sistema extrae los datos (proveedor, items, costos, cantidades) y prerellena el gasto de mercadería automáticamente; el owner sólo verifica y guarda. Encaja con el flujo de `/expenses` mercadería (`create_mercaderia_expense`, line-items por producto, update de stock/costo). Cobrando.app ya tiene algo así ("Escanear factura" con límite de escaneos/mes — 12/400).
 
 ---
 
@@ -209,7 +217,7 @@ El owner sube un PDF o foto de la factura de una compra recién hecha y el siste
 | `update_product_variants` RPC | No documentada | Existe — firma: `(p_operator_id, p_business_id, p_product_id, p_options, p_variants)` |
 | `create_product_with_variants` RPC | No documentada | Existe — firma: `(p_operator_id, p_business_id, p_product, p_options, p_variants)` |
 | `compute_effective_price` SQL function | No documentada | Existe — espejo SQL de `calculateProductPrice` para las RPCs del catálogo |
-| Permissions count | "9 campos" | 11 campos — `price_override` (10º) y `free_line` (11º) |
+| Permissions count | "9 campos" | **8 capacidades en 4 áreas** (rediseño 2026-06-09: `online_orders`, `pos_pricing`, `inventory_read`, `inventory_write`, `reports`, `expenses`, `settings`, `manage_operators`). Normalizador canónico `normalize_permissions` SQL ↔ TS, bi-shape. Ver `docs/todo/permisos-operario-redesign.md` |
 | `stats` permission | Listada como `stats` | Renombrada a `analysis` el 2026-05-16 (cubre dashboard, stats, /activity) |
 | `audit_log` table | No documentada | Existe — append-only, P7h Fase 1+2 |
 | Inventory mutation RPCs | Documentadas con escritura directa a tabla | Todas pasan por RPCs `SECURITY DEFINER` con audit log |
