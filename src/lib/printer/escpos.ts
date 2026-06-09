@@ -130,6 +130,14 @@ function buildReceiptBuffer(receipt: ReceiptData) {
 
     pushText(padRight(`   ${formatMoney(item.unit_price, receipt.currency ?? 'ARS')} c/u`, DEFAULT_COLUMNS))
     lineBreak()
+
+    if (item.promo_label) {
+      const discountSuffix = item.promo_discount > 0
+        ? ` (-${formatMoney(item.promo_discount, receipt.currency ?? 'ARS')})`
+        : ''
+      pushText(padRight(`   Promo ${item.promo_label}${discountSuffix}`, DEFAULT_COLUMNS))
+      lineBreak()
+    }
   }
 
   separator()

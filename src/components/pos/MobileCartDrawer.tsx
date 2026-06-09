@@ -3,6 +3,7 @@
 import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet'
 import CartPanel from '@/components/pos/CartPanel'
 import type { PriceList, PriceListOverride } from '@/lib/types'
+import type { Promotion } from '@/lib/promotions'
 import type { Permissions } from '@/lib/operator'
 
 interface Props {
@@ -13,6 +14,7 @@ interface Props {
   freeLineEnabled: boolean
   activePriceList: PriceList | null
   priceListOverrides: PriceListOverride[]
+  promotions: Promotion[]
   operatorId: string | null
   permissions: Permissions
   sessionId?: string | null
@@ -29,6 +31,7 @@ export default function MobileCartDrawer({
   freeLineEnabled,
   activePriceList,
   priceListOverrides,
+  promotions,
   operatorId,
   permissions,
   sessionId = null,
@@ -54,6 +57,7 @@ export default function MobileCartDrawer({
             freeLineEnabled={freeLineEnabled}
             activePriceList={activePriceList}
             priceListOverrides={priceListOverrides}
+            promotions={promotions}
             operatorId={operatorId}
             permissions={permissions}
             sessionId={sessionId}

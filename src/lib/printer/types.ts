@@ -11,12 +11,15 @@ export interface SaleItemInput {
   unit_price_override: number | null
   override_reason: string | null
   free_line_description: string | null
+  promotion_id: string | null
+  promo_discount: number
 }
 
 export interface ReceiptItemInput extends SaleItemInput {
   name: string
   icon: string | null
   variant_label: string | null
+  promo_label: string | null
 }
 
 export interface ReceiptData {

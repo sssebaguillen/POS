@@ -18,6 +18,7 @@ import CloseSessionModal from '@/components/pos/CloseSessionModal'
 import ProductFilter, { EMPTY_FILTER, type ProductFilterValue } from '@/components/shared/ProductFilter'
 import type { ProductWithCategory, ActiveFilter } from '@/components/pos/types'
 import type { PriceList, PriceListOverride, ProductVariant, ProductWithVariants } from '@/lib/types'
+import type { Promotion } from '@/lib/promotions'
 import { getCartItemId, type CartItem } from '@/lib/types/cart'
 import type { ActiveOperator } from '@/lib/operator'
 import { OWNER_PERMISSIONS } from '@/lib/operator'
@@ -40,6 +41,7 @@ interface Props {
   freeLineEnabled: boolean
   priceLists: PriceList[]
   priceListOverrides: PriceListOverride[]
+  promotions: Promotion[]
   activeOperator: ActiveOperator | null
 }
 
@@ -54,7 +56,7 @@ function formatDate(date: Date) {
   })
 }
 
-export default function POSView({ products, businessId, businessName, freeLineEnabled, priceLists, priceListOverrides, activeOperator }: Props) {
+export default function POSView({ products, businessId, businessName, freeLineEnabled, priceLists, priceListOverrides, promotions, activeOperator }: Props) {
   const { toggle } = useSidebar()
   const [filterValue, setFilterValue] = useState<ProductFilterValue>(EMPTY_FILTER)
   const [scanFeedback, setScanFeedback] = useState<ScanFeedback>(null)
@@ -572,6 +574,7 @@ export default function POSView({ products, businessId, businessName, freeLineEn
               }
               activePriceList={activePriceList}
               priceListOverrides={priceListOverrides}
+              promotions={promotions}
             />
           </div>
         </div>
@@ -594,6 +597,7 @@ export default function POSView({ products, businessId, businessName, freeLineEn
             freeLineEnabled={freeLineEnabled}
             activePriceList={activePriceList}
             priceListOverrides={priceListOverrides}
+            promotions={promotions}
             operatorId={operatorId}
             permissions={activeOperator?.role === 'owner' || !activeOperator ? OWNER_PERMISSIONS : activeOperator.permissions}
             sessionId={activeSession?.id ?? null}
@@ -615,6 +619,7 @@ export default function POSView({ products, businessId, businessName, freeLineEn
           freeLineEnabled={freeLineEnabled}
           activePriceList={activePriceList}
           priceListOverrides={priceListOverrides}
+          promotions={promotions}
           operatorId={operatorId}
           permissions={activeOperator?.role === 'owner' || !activeOperator ? OWNER_PERMISSIONS : activeOperator.permissions}
           sessionId={activeSession?.id ?? null}

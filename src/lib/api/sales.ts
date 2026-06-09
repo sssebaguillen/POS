@@ -42,6 +42,8 @@ export interface CreateSaleItem {
   unit_price_override: number | null
   override_reason: string | null
   free_line_description: string | null
+  promotion_id: string | null
+  promo_discount: number
 }
 
 export interface CreateSalePayment {

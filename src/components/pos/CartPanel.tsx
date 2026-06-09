@@ -13,6 +13,7 @@ import type { ProductWithCategory } from '@/components/pos/types'
 import type { ReceiptItemInput } from '@/lib/printer/types'
 import { createClient } from '@/lib/supabase/client'
 import { resolveCartItemPrice, resolveDisplayPrice } from '@/lib/price-lists'
+import { findApplicablePromo, promoBadgeLabel, resolvePromoLine, type Promotion } from '@/lib/promotions'
 import type { PriceList, PriceListOverride } from '@/lib/types'
 import type { CustomerSelection } from '@/lib/types/pos'
 import type { Permissions } from '@/lib/operator'
@@ -51,6 +52,7 @@ interface Props {
   freeLineEnabled: boolean
   activePriceList: PriceList | null
   priceListOverrides: PriceListOverride[]
+  promotions: Promotion[]
   operatorId: string | null
   permissions: Permissions | null
   sessionId?: string | null
@@ -59,7 +61,7 @@ interface Props {
   onSaleCompleted?: () => void
 }
 
-const CartPanel = forwardRef<CartPanelHandle, Props>(function CartPanel({ businessId, businessName, freeLineEnabled, activePriceList, priceListOverrides, operatorId, permissions, sessionId = null, confirmingClear: externalConfirming, onVaciar, onSaleCompleted }: Props, ref) {
+const CartPanel = forwardRef<CartPanelHandle, Props>(function CartPanel({ businessId, businessName, freeLineEnabled, activePriceList, priceListOverrides, promotions, operatorId, permissions, sessionId = null, confirmingClear: externalConfirming, onVaciar, onSaleCompleted }: Props, ref) {
   const formatMoney = useFormatMoney()
   const router = useRouter()
   const { items, removeItem, updateQuantity, updatePrice, addFreeLineItem, discountMode, discountValue, setDiscount, clearDiscount, clearCart, restoreCart } = useCartStore()
@@ -100,29 +102,61 @@ const CartPanel = forwardRef<CartPanelHandle, Props>(function CartPanel({ busine
           unit_price_override: item.unit_price,
           override_reason: 'free_line',
           free_line_description: item.free_line_description,
+          promotion_id: null,
+          promo_discount: 0,
+          original_unit_price: item.unit_price,
+          promo_label: null,
         }
       }
-      const unitPrice = resolveCartItemPrice({ item, priceList: activePriceList, overrides: priceListOverrides })
+      const baseUnitPrice = resolveCartItemPrice({ item, priceList: activePriceList, overrides: priceListOverrides })
+      // El override manual gana sobre todo: excluye la línea de listas Y de promos.
+      const promo = item.priceIsManual
+        ? null
+        : findApplicablePromo({
+            promotions,
+            productId: item.product.id,
+            categoryId: item.product.category_id,
+            brandId: item.product.brand_id,
+          })
+      const line = resolvePromoLine({ promo, unitPrice: baseUnitPrice, quantity: item.quantity })
       return {
         product_id: item.product.id,
         variant_id: item.variant_id ?? null,
         quantity: item.quantity,
-        unit_price: unitPrice,
-        total: item.quantity * unitPrice,
-        unit_price_override: item.priceIsManual ? unitPrice : null,
+        unit_price: line.unitPrice,
+        total: Math.round((item.quantity * line.unitPrice - (promo?.kind === 'quantity' ? line.promoDiscount : 0)) * 100) / 100,
+        unit_price_override: item.priceIsManual ? baseUnitPrice : null,
         override_reason: null,
         free_line_description: null,
+        promotion_id: line.promotionId,
+        promo_discount: line.promoDiscount,
+        original_unit_price: line.originalUnitPrice,
+        promo_label: line.promotionId && promo ? promoBadgeLabel(promo) : null,
       }
     })
-  }, [items, activePriceList, priceListOverrides])
+  }, [items, activePriceList, priceListOverrides, promotions])
 
   // Key is variant_id when present, otherwise product_id
   const adjustedByItemKey = useMemo(() => {
-    const map = new Map<string, { unit_price: number; total: number }>()
+    const map = new Map<string, {
+      unit_price: number
+      total: number
+      original_unit_price: number
+      promo_label: string | null
+      promo_discount: number
+      promotion_id: string | null
+    }>()
     for (const ai of adjustedItems) {
       if (ai.product_id !== null) {
         const key = ai.variant_id ?? ai.product_id
-        map.set(key, { unit_price: ai.unit_price, total: ai.total })
+        map.set(key, {
+          unit_price: ai.unit_price,
+          total: ai.total,
+          original_unit_price: ai.original_unit_price,
+          promo_label: ai.promo_label,
+          promo_discount: ai.promo_discount,
+          promotion_id: ai.promotion_id,
+        })
       }
     }
     return map
@@ -146,6 +180,9 @@ const CartPanel = forwardRef<CartPanelHandle, Props>(function CartPanel({ busine
           override_reason: 'free_line',
           free_line_description: item.free_line_description,
           variant_label: null,
+          promotion_id: null,
+          promo_discount: 0,
+          promo_label: null,
         }
       }
       const itemKey = item.variant_id ?? item.product.id
@@ -163,6 +200,9 @@ const CartPanel = forwardRef<CartPanelHandle, Props>(function CartPanel({ busine
         override_reason: null,
         free_line_description: null,
         variant_label: item.variant_label ?? null,
+        promotion_id: adjusted?.promotion_id ?? null,
+        promo_discount: adjusted?.promo_discount ?? 0,
+        promo_label: adjusted?.promo_label ?? null,
       }
     })
   }, [adjustedByItemKey, items])
@@ -360,12 +400,14 @@ const CartPanel = forwardRef<CartPanelHandle, Props>(function CartPanel({ busine
                     const itemId = getCartItemId(item)
                     const isFreeLine = item.product === null
                     const adjustedKey = isFreeLine ? '' : (item.variant_id ?? item.product!.id)
+                    const adjusted = isFreeLine ? undefined : adjustedByItemKey.get(adjustedKey)
                     const effectivePrice = isFreeLine
                       ? item.unit_price
-                      : (adjustedByItemKey.get(adjustedKey)?.unit_price ?? item.unit_price)
+                      : (adjusted?.unit_price ?? item.unit_price)
                     const effectiveTotal = isFreeLine
                       ? item.quantity * item.unit_price
-                      : (adjustedByItemKey.get(adjustedKey)?.total ?? item.total)
+                      : (adjusted?.total ?? item.total)
+                    const promoLabel = adjusted?.promo_label ?? null
                     const isEditingUnit = editingPrice?.productId === itemId && editingPrice.mode === 'unit'
                     const isEditingTotal = editingPrice?.productId === itemId && editingPrice.mode === 'total'
                     const canOverridePrice = !isFreeLine && permissions?.pos_pricing === true
@@ -380,7 +422,9 @@ const CartPanel = forwardRef<CartPanelHandle, Props>(function CartPanel({ busine
                           overrides: priceListOverrides,
                           variantPrice: item.variant_id ? (item.variant_base_price ?? item.unit_price) : null,
                         })
-                      : null
+                      : promoLabel && adjusted
+                        ? adjusted.original_unit_price
+                        : null
 
                     return (
                       <li key={itemId} className="px-4 py-3 flex items-start gap-3">
@@ -424,11 +468,16 @@ const CartPanel = forwardRef<CartPanelHandle, Props>(function CartPanel({ busine
                                   <>
                                     <p
                                       className={`text-xs tabular-nums ${
-                                        item.priceIsManual || isFreeLine ? 'text-primary font-medium' : 'text-hint'
+                                        item.priceIsManual || isFreeLine ? 'text-primary font-medium' : promoLabel ? 'text-emerald-600 dark:text-emerald-400 font-medium' : 'text-hint'
                                       }`}
                                     >
                                       {formatMoney(effectivePrice)} c/u
                                     </p>
+                                    {promoLabel && (
+                                      <span className="text-[9px] font-semibold leading-none px-1 py-0.5 rounded bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300 whitespace-nowrap">
+                                        {promoLabel}
+                                      </span>
+                                    )}
                                     {canOverridePrice && (
                                       <button
                                         type="button"

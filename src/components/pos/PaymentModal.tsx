@@ -193,6 +193,8 @@ export default function PaymentModal({
             unit_price_override: item.unit_price_override,
             override_reason: item.override_reason,
             free_line_description: item.free_line_description,
+            promotion_id: item.promotion_id ?? null,
+            promo_discount: item.promo_discount ?? 0,
           })),
           payments,
           customerId: customer?.id ?? null,

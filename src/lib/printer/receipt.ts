@@ -42,6 +42,9 @@ export function buildReceiptData({ businessName, sale, items, currency }: BuildR
     override_reason: null,
     free_line_description: null,
     variant_label: null,
+    promotion_id: null,
+    promo_discount: 0,
+    promo_label: null,
   }))
 
   return {

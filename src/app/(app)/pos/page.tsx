@@ -7,6 +7,7 @@ import type { PriceListOverride } from '@/lib/types'
 import POSView from '@/components/pos/POSView'
 import { requireAuthenticatedBusinessId } from '@/lib/business'
 import { normalizePriceList, normalizePriceListOverride, unwrapRelation } from '@/lib/mappers'
+import { normalizePromotion } from '@/lib/promotions'
 
 export default async function POSPage() {
   const supabase = await createClient()
@@ -19,6 +20,7 @@ export default async function POSPage() {
     { data: business, error: businessError },
     { data: products, error: productsError },
     { data: priceLists, error: priceListsError },
+    { data: promotions, error: promotionsError },
   ] = await Promise.all([
     supabase
       .from('businesses')
@@ -37,6 +39,12 @@ export default async function POSPage() {
       .select('id, business_id, name, description, multiplier, created_at, rounding_step, rounding_up')
       .eq('business_id', businessId)
       .order('name', { ascending: true }),
+    supabase
+      .from('promotions')
+      .select('id, business_id, name, kind, percent, offer_price, group_size, affected_units, pay_percent, product_id, category_id, brand_id, starts_at, ends_at, is_active, show_in_catalog, archived_at, created_at')
+      .eq('business_id', businessId)
+      .eq('is_active', true)
+      .is('archived_at', null),
   ])
 
   if (businessError) {
@@ -49,6 +57,10 @@ export default async function POSPage() {
 
   if (priceListsError) {
     throw new Error(priceListsError.message)
+  }
+
+  if (promotionsError) {
+    throw new Error(promotionsError.message)
   }
 
   // Fetch default variant data for variant products
@@ -143,6 +155,7 @@ export default async function POSPage() {
       freeLineEnabled={(business?.settings as Record<string, unknown> | null)?.free_line_enabled === true}
       priceLists={(priceLists ?? []).map(normalizePriceList)}
       priceListOverrides={priceListOverrides}
+      promotions={(promotions ?? []).map(normalizePromotion)}
       activeOperator={activeOperator}
     />
   )

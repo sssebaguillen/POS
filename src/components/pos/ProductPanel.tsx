@@ -4,6 +4,7 @@ import Image from 'next/image'
 import { memo, startTransition, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useCartStore } from '@/lib/store/cart.store'
 import { resolveDisplayPrice } from '@/lib/price-lists'
+import { applyUnitPromo, findApplicablePromo, promoBadgeLabel, type Promotion } from '@/lib/promotions'
 import type { Product, ProductWithVariants, ProductVariant } from '@/lib/types'
 import type { ProductWithCategory, ActiveFilter } from '@/components/pos/types'
 import type { PriceList, PriceListOverride } from '@/lib/types'
@@ -35,9 +36,10 @@ interface Props {
   activeFilter: ActiveFilter
   activePriceList: PriceList | null
   priceListOverrides: PriceListOverride[]
+  promotions: Promotion[]
 }
 
-export default function ProductPanel({ products, search, activeFilter, activePriceList, priceListOverrides }: Props) {
+export default function ProductPanel({ products, search, activeFilter, activePriceList, priceListOverrides, promotions }: Props) {
   const addItem = useCartStore(s => s.addItem)
   const addVariantItem = useCartStore(s => s.addVariantItem)
   const formatMoney = useFormatMoney()
@@ -95,6 +97,7 @@ export default function ProductPanel({ products, search, activeFilter, activePri
                   index={index}
                   activePriceList={activePriceList}
                   priceListOverrides={priceListOverrides}
+                  promotions={promotions}
                   onAdd={handleAdd}
                   onAddVariant={handleAddVariant}
                   formatMoney={formatMoney}
@@ -123,6 +126,7 @@ export default function ProductPanel({ products, search, activeFilter, activePri
             products={sortedProducts}
             activePriceList={activePriceList}
             priceListOverrides={priceListOverrides}
+            promotions={promotions}
             onAdd={handleAdd}
             onAddVariant={handleAddVariant}
             formatMoney={formatMoney}
@@ -137,6 +141,7 @@ interface PaginatedProductGridProps {
   products: ProductWithCategory[]
   activePriceList: PriceList | null
   priceListOverrides: PriceListOverride[]
+  promotions: Promotion[]
   onAdd: (product: Product) => void
   onAddVariant: (product: ProductWithCategory, variant: ProductVariant, label: string) => void
   formatMoney: (v: number) => string
@@ -146,6 +151,7 @@ function PaginatedProductGrid({
   products,
   activePriceList,
   priceListOverrides,
+  promotions,
   onAdd,
   onAddVariant,
   formatMoney,
@@ -186,6 +192,7 @@ function PaginatedProductGrid({
             index={index}
             activePriceList={activePriceList}
             priceListOverrides={priceListOverrides}
+            promotions={promotions}
             onAdd={onAdd}
             onAddVariant={onAddVariant}
             formatMoney={formatMoney}
@@ -224,6 +231,7 @@ function VariantSelectorContent({
   product,
   activePriceList,
   priceListOverrides,
+  promo,
   onAdd,
   onClose,
   onVariantImageChange,
@@ -232,6 +240,7 @@ function VariantSelectorContent({
   product: ProductWithCategory
   activePriceList: PriceList | null
   priceListOverrides: PriceListOverride[]
+  promo: Promotion | null
   onAdd: (variant: ProductVariant, label: string) => void
   onClose: () => void
   onVariantImageChange: (imageUrl: string | null) => void
@@ -266,7 +275,7 @@ function VariantSelectorContent({
 
   const matchedPrice = useMemo(() => {
     if (!matchedVariant) return null
-    return resolveDisplayPrice({
+    const base = resolveDisplayPrice({
       cost: Number(matchedVariant.cost),
       price: Number(matchedVariant.price),
       productId: product.id,
@@ -275,7 +284,8 @@ function VariantSelectorContent({
       overrides: priceListOverrides,
       variantPrice: Number(matchedVariant.price),
     })
-  }, [matchedVariant, product.id, product.brand_id, activePriceList, priceListOverrides])
+    return promo ? applyUnitPromo(promo, base) : base
+  }, [matchedVariant, product.id, product.brand_id, activePriceList, priceListOverrides, promo])
 
   const minVariantPrice = useMemo(() => {
     if (!data) return null
@@ -284,7 +294,7 @@ function VariantSelectorContent({
       .map(v => {
         const variantPrice = Number(v.price)
         const variantCost = Number(v.cost)
-        return resolveDisplayPrice({
+        const base = resolveDisplayPrice({
           cost: variantCost,
           price: variantPrice,
           productId: product.id,
@@ -293,10 +303,11 @@ function VariantSelectorContent({
           overrides: priceListOverrides,
           variantPrice,
         })
+        return promo ? applyUnitPromo(promo, base) : base
       })
       .filter(p => Number.isFinite(p) && p > 0)
     return prices.length > 0 ? Math.min(...prices) : null
-  }, [data, activePriceList, priceListOverrides, product.id, product.brand_id])
+  }, [data, activePriceList, priceListOverrides, product.id, product.brand_id, promo])
 
   const displayImage = useMemo(() => {
     if (!data) return null
@@ -400,6 +411,7 @@ const ProductCard = memo(function ProductCard({
   index,
   activePriceList,
   priceListOverrides,
+  promotions,
   onAdd,
   onAddVariant,
   formatMoney,
@@ -408,6 +420,7 @@ const ProductCard = memo(function ProductCard({
   index: number
   activePriceList: PriceList | null
   priceListOverrides: PriceListOverride[]
+  promotions: Promotion[]
   onAdd: (p: Product) => void
   onAddVariant: (p: ProductWithCategory, v: ProductVariant, label: string) => void
   formatMoney: (v: number) => string
@@ -423,7 +436,17 @@ const ProductCard = memo(function ProductCard({
     priceList: activePriceList,
     overrides: priceListOverrides,
   })
-  const displayPrice = Number.isFinite(rawPrice) ? rawPrice : (product.price ?? 0)
+  const basePrice = Number.isFinite(rawPrice) ? rawPrice : (product.price ?? 0)
+  const promo = findApplicablePromo({
+    promotions,
+    productId: product.id,
+    categoryId: product.category_id,
+    brandId: product.brand_id,
+  })
+  const promoUnitPrice = promo ? applyUnitPromo(promo, basePrice) : basePrice
+  const hasUnitPromo = promo !== null && promoUnitPrice < basePrice
+  const displayPrice = hasUnitPromo ? promoUnitPrice : basePrice
+  const promoLabel = promo ? promoBadgeLabel(promo) : null
 
   const displayName = product.name || 'Sin nombre'
 
@@ -489,8 +512,24 @@ const ProductCard = memo(function ProductCard({
 
       {/* Price */}
       <p className="text-sm font-medium text-body tabular-nums">
-        {product.has_variants ? 'Desde ' : ''}{formatMoney(displayPrice)}
+        {hasUnitPromo && (
+          <span className="text-xs text-muted-foreground line-through mr-1.5">
+            {formatMoney(basePrice)}
+          </span>
+        )}
+        <span className={hasUnitPromo ? 'text-emerald-600 dark:text-emerald-400 font-semibold' : undefined}>
+          {product.has_variants ? 'Desde ' : ''}{formatMoney(displayPrice)}
+        </span>
       </p>
+
+      {promoLabel && (
+        <span
+          aria-hidden="true"
+          className="absolute top-2 left-2 text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/60 dark:text-emerald-300"
+        >
+          {promoLabel}
+        </span>
+      )}
 
       {stockLabel && (
         <span
@@ -549,6 +588,7 @@ const ProductCard = memo(function ProductCard({
           product={product}
           activePriceList={activePriceList}
           priceListOverrides={priceListOverrides}
+          promo={promo}
           onAdd={(variant, label) => onAddVariant(product, variant, label)}
           onClose={() => setPopoverOpen(false)}
           onVariantImageChange={setHoveredVariantImage}

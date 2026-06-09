@@ -40,6 +40,8 @@ function ReceiptContent({ receipt, formatMoney }: { receipt: ReceiptData; format
             )}
             <div style={{ fontSize: '11px', opacity: 0.75 }}>
               {formatMoney(item.unit_price)} c/u
+              {item.promo_label ? ` · Promo ${item.promo_label}` : ''}
+              {item.promo_label && item.promo_discount > 0 ? ` (-${formatMoney(item.promo_discount)})` : ''}
             </div>
           </div>
         ))}
