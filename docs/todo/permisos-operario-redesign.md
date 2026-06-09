@@ -1,6 +1,6 @@
 # Rediseño de permisos de operario — 11 flags → 8 agrupados en 4 áreas
 
-> **Estado:** 📐 diseño acordado 2026-06-04 · plan de implementación faseado agregado 2026-06-09 — **NO implementado** (arrancando por Fase 0).
+> **Estado:** ✅ **COMPLETO y commiteado (2026-06-09).** F0-F4 aplicadas al remoto. El modelo de 8 capacidades vive en `lib/operator.ts` (TS) + `normalize_permissions` (SQL); las 24 guardas leen vía el helper; modal con 8 toggles agrupados (`components/settings/operatorPermissions.tsx`). F4 = `parsePermissions` estricto (rechaza cookies de shape viejo → re-login una vez). Detalle de cada fase en §5-7.
 >
 > **Motivación:** los 11 flags planos actuales son demasiados, algunos confusos y mal etiquetados. Objetivo: un modelo más claro, agrupado por área de la app, con nombres en lenguaje llano. No es bug ni seguridad — es UX/claridad.
 >

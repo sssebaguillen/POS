@@ -216,9 +216,9 @@ src/
 │   │   ├── callback/route.ts             # PKCE: exchangeCodeForSession → redirect by type
 │   │   └── update-password/page.tsx      # New password form (session already set by callback)
 │   ├── (standalone)/                     # Route group WITHOUT the heavy (app) layout — inherits only root layout (html/body/theme)
-│   │   └── operator-select/page.tsx      # edge — operator selection with PIN; full-screen, NO sidebar/AppShell (kept lean for fast cold load)
+│   │   └── operator-select/page.tsx      # edge — operator selection with PIN. ⚠️ SÍ renderiza AppShell/Sidebar (y por ende FeedbackButton) aunque está en (standalone), FUERA del ToastProvider de (app)/layout → hooks de contexto consumidos por el Sidebar deben degradar (no lanzar) si no hay provider
 │   ├── (app)/
-│   │   ├── layout.tsx                    # Reads collapsed cookie → AppShell, theme, QueryProvider, FlashToast
+│   │   ├── layout.tsx                    # Reads collapsed cookie → AppShell, theme, QueryProvider, ToastProvider, FlashToast
 │   │   ├── settings/page.tsx             # ⚠️ uses getUser() + try/catch instead of requireAuthenticatedBusinessId
 │   │   ├── inventory/page.tsx
 │   │   ├── products/page.tsx
@@ -252,13 +252,14 @@ src/
 └── components/
     ├── shared/
     │   ├── AppShell.tsx                  # Layout shell with SidebarContext
-    │   ├── FlashToast.tsx                # Toast from cookie flash_toast (maxAge 5s)
+    │   ├── ToastProvider.tsx             # Global toast (context + único <Toast>). useToast() lee del context; no-op fuera del provider. Montado en (app)/layout
+    │   ├── FlashToast.tsx                # Lee cookie flash_toast y dispara el toast global vía useToast (no renderiza)
     │   ├── PageHeader.tsx                # breadcrumbs?: { label: string; href: string }[]
     │   ├── DateRangeFilter.tsx           # today/week/month/quarter/year/custom
     │   ├── ExportCSVButton.tsx
     │   ├── KPICard.tsx
     │   ├── ConfirmModal.tsx
-    │   ├── Toast.tsx                     # Imperative toast (separate from FlashToast)
+    │   ├── Toast.tsx                     # Visual del toast (renderizado centralmente por ToastProvider); variant warning usa token --warning
     │   └── theme.tsx                     # useTheme hook (mounted pattern for SSR)
     ├── ui/                               # shadcn/ui primitives
     │   ├── SelectDropdown.tsx            # Replaces all native <select> elements

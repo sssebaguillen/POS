@@ -139,9 +139,13 @@ Al exportar listas de precio desde `/price-lists` (`ExportPriceListModal`), perm
 
 Comprobar si vale la pena (y qué tan sencillo es) soportar productos vendidos por peso o medida — Kg, gramos, litros, metros — en lugar de unidades enteras. Impacta: `products` (unidad de medida), input de cantidad en POS (decimales), stock (decimal), cálculo de precio (precio por Kg × cantidad). Spike de viabilidad antes de comprometer.
 
-### Descuentos y promociones
+### Ofertas y descuentos en el catálogo ⭐ (PRÓXIMA SESIÓN — acordado 2026-06-09)
 
-Modelo de descuentos y promociones e integración en la app. Por definir: alcance (descuento por línea, por venta total, por producto, por categoría, 2x1, % temporal), dónde se configura, cómo se persiste en `sale_items`/`sales`, y cómo se refleja en el catálogo público. Feature grande — requiere diseño dedicado.
+**Próximo feature grande.** Al usuario le interesa mucho un sistema de **ofertas/promos con lugar especial en el catálogo online** (sección de ofertas, productos destacados) **+ captura de interacción de los clientes** con esa sección/productos (vistas, clics) para **medir impacto** — lo ve como diferenciador y palanca de marketing, no solo utilidad interna. Encarar en fases: (1) modelo de promos, (2) sección de ofertas en el catálogo, (3) analytics de engagement anónimo. Por definir: alcance (descuento por línea/venta/producto/categoría, 2x1, % temporal), dónde se configura, cómo se persiste en `sale_items`/`sales`, cómo se refleja en el catálogo. Requiere diseño dedicado — armar plan antes de implementar. Base: el v1 de descuento de carrito del POS ya existe (`cart.store.ts`, gated por `pos_pricing`).
+
+### Lista de precios del catálogo configurable (DESPUÉS de ofertas)
+
+Hoy el catálogo público **no aplica ninguna lista** — `get_catalog_products`/`get_catalog_product_with_variants` llaman `compute_effective_price(..., p_list_id := NULL, ...)` → muestran el precio base/variante. La función **ya acepta** `p_list_id`/`p_list_multiplier` (+ redondeo por lista, ver nota P7i). Feature: elegir desde `/settings` qué lista usa el catálogo (ej. `businesses.settings.catalog_price_list_id`) y pasársela a las RPCs en vez de NULL. Cambio acotado. Mismo dominio que ofertas (pricing del catálogo) → encararlos en secuencia.
 
 ### Densidad de UI configurable (scale)
 
@@ -228,15 +232,16 @@ El owner sube un PDF o foto de la factura de una compra recién hecha y el siste
 
 | Item | Notas |
 |------|-------|
-| `InventoryPanel.tsx` (~1400L) | Aún grande pese a extracciones. Pendiente: extraer el **dropdown responsive del header** (Import/Export + Categorías/Marcas, ~140L casi idénticas, L683-826) a un `<HeaderActionDropdown>`; memoizar las stats del footer (L229-240). Diferido 2026-05-29 porque la extracción del dropdown (portales + getBoundingClientRect + outside-click) necesita smoke-test en viewport mobile. Ver `docs/tests/09-auditoria-calidad.md` §2.3. |
+| ~~`InventoryPanel.tsx` dropdown del header + footer stats~~ ✅ (2026-06-09, commit `ea562d6`) | Dropdown responsive del header extraído a `src/components/inventory/HeaderActionDropdown.tsx` (mide posición al abrir → estado, sin leer ref en render); footer stats memoizadas sobre `products`. InventoryPanel bajó de 1456 a 1327 líneas. Smoke-test desktop+mobile OK. |
 | ~~`CartPanel.tsx` (~920L)~~ ✅ | `EditSalePanel` ya extraído a `src/components/pos/EditSalePanel.tsx`; `CartPanel` bajó a ~761L. |
 | ~~Radix `DialogTitle` warnings~~ ✅ (2026-05-28) | Todos los `DialogContent` tienen `DialogTitle`. Faltaban 5 (`NewOperatorModal`, `EditOperatorModal`, `ExportPriceListModal`, `EditSupplierModal`, `ExpensesTable`); resueltos con `<VisuallyHidden><DialogTitle>` siguiendo la convención de `price-lists`. |
 | `useEffect` para sales history en `CartPanel` | Patrón pre-React Query, no migrado |
 | ~~`theme.tsx` FOUC~~ ✅ (2026-05-28) | Resuelto con script inline bloqueante en `<head>` (`ThemeScript.tsx`) que aplica la clase `dark` antes del primer paint, leyendo `localStorage` + `prefers-color-scheme`. Constante única `THEME_STORAGE_KEY` en `lib/theme.ts`. El efecto de círculo del toggle (View Transition) se extrajo a `runThemeToggleTransition` en `lib/theme.ts` y ahora lo usan tanto el sidebar como el toggle del catálogo público. |
 | `!` assertions en env vars | En `client.ts` y `server.ts` |
 | `protobufjs <=7.5.7` (npm audit, HIGH) | Transitiva vía `@sentry/nextjs` → `@opentelemetry/otlp-transformer`. **Riesgo real bajo**: es el transporte OTel de Sentry (serializa telemetría propia, no input de atacante), así que los CVE de DoS/inyección por protobuf malicioso no aplican. `npm audit fix` NO es quirúrgico (cambia 12 paquetes + warning de downgrade breaking de next). Si se ataca: `overrides` forzando solo protobufjs a 7.5.8+ y verificar con build. Decidido 2026-05-29: dejar, no urgente. |
-| `react-hooks/refs` en InventoryPanel/POSView (lint, 19 errores) | Refs leídos/mutados en render (dropdowns del header de InventoryPanel L729-804; refs de POSView). No es bug hoy; único hotspot real de lint. Limpieza post-beta. Ver `docs/tests/09-auditoria-calidad.md` §1.7. |
-| `CartItem` en `lib/types/index.ts` | Tipo client-only mezclado con tipos del server |
+| ~~`react-hooks/refs` en InventoryPanel/POSView (19 errores)~~ ✅ (2026-06-09, commit `ea562d6`) | Resueltos los 19: los 16 de InventoryPanel desaparecieron al extraer `HeaderActionDropdown` (mide al abrir → estado); los 3 de POSView (`itemCountRef`/`itemsRef`/`confirmingNewSaleRef` sincronizados en render) movidos a un `useEffect` de sync. Quedan `set-state-in-effect` (otra regla, deuda aparte: deep-link/scroll de InventoryPanel, patrón mounted del sidebar). |
+| ~~`CartItem` en `lib/types/index.ts`~~ ✅ (2026-06-09, commit `0716e08`) | Movido a `src/lib/types/cart.ts` (CartItem + getCartItemId). Separado del modelo de entidades del server; consumidores (cart.store, price-lists, POSView, CartPanel) importan de `@/lib/types/cart`. |
+| ~~Consolidación de toasts~~ ✅ (2026-06-09, commit `fab5ddd`) | `ToastProvider` global único (un solo `<Toast>` en `(app)/layout`); `useToast()` degrada a no-op fuera del provider (Sidebar también se monta en operator-select); ~14 call sites migrados; `FlashToast`/`NewOrderNotifier` unificados; variant `warning` tokenizado a `--warning`. |
 | `categories.public_read_categories` policy | Permite SELECT anon — OK para catálogo pero amplio |
 | `DateRangeFilter.tsx` | `QUARTER_RANGES` recalcula en cada render. No-issue en práctica. |
 | ~~`daily_snapshots` agrupa en UTC~~ ✅ (2026-05-28) | Resuelto en `20260528_05_daily_snapshots_tz_fix.sql`: las agregaciones de ventas ahora castean `(s.created_at AT TIME ZONE b.timezone)::date` (mirror de `get_sales_heatmap`). `refresh_daily_snapshot` / `refresh_all_daily_snapshots` resuelven "ayer" en la TZ local de cada negocio (default param → NULL). Re-backfill completo (DELETE + rebuild, tabla derivada) para evitar filas huérfanas del bucket UTC viejo. Verificado: 2 ventas nocturnas ART reasignadas al día local correcto; snapshots == agregado local-day exacto. |
