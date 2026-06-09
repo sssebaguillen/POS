@@ -39,7 +39,7 @@ export default async function SettingsPage() {
 
   const parsedOperators: SettingsOperator[] = (operators ?? []).filter(isSettingsOperator)
   const isOwner = activeOperator?.role === 'owner'
-  const canManageOperators = isOwner || activeOperator?.permissions.operators_write === true
+  const canManageOperators = isOwner || activeOperator?.permissions.manage_operators === true
 
   return (
     <div className="flex flex-col h-screen overflow-hidden">

@@ -169,7 +169,7 @@ export async function proxy(request: NextRequest) {
     pathname === '/activity' ||
     pathname.startsWith('/activity/')
 
-  if (isStatsRoute && !hasPermission(operator, 'analysis')) {
+  if (isStatsRoute && !hasPermission(operator, 'reports')) {
     return flashRedirect(new URL('/pos', request.url), cspHeader)
   }
 
@@ -177,7 +177,7 @@ export async function proxy(request: NextRequest) {
     pathname === '/inventory' ||
     pathname.startsWith('/inventory/')
 
-  if (isInventoryRoute && !hasPermission(operator, 'stock')) {
+  if (isInventoryRoute && !hasPermission(operator, 'inventory_read')) {
     return flashRedirect(new URL('/pos', request.url), cspHeader)
   }
 
@@ -185,7 +185,7 @@ export async function proxy(request: NextRequest) {
     pathname === '/price-lists' ||
     pathname.startsWith('/price-lists/')
 
-  if (isPriceListsRoute && !hasPermission(operator, 'price_lists')) {
+  if (isPriceListsRoute && !hasPermission(operator, 'inventory_read')) {
     return flashRedirect(new URL('/pos', request.url), cspHeader)
   }
 
@@ -195,7 +195,7 @@ export async function proxy(request: NextRequest) {
   }
 
   const isOrdersRoute = pathname === '/orders' || pathname.startsWith('/orders/')
-  if (isOrdersRoute && !hasPermission(operator, 'sales')) {
+  if (isOrdersRoute && !hasPermission(operator, 'online_orders')) {
     return flashRedirect(new URL('/pos', request.url), cspHeader)
   }
 

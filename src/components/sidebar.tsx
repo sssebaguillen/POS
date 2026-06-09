@@ -25,18 +25,18 @@ interface NavLink {
   check: (p: Permissions) => boolean
 }
 
-// price_override is intentionally absent — it controls per-line price editing in the POS, not route access.
+// pos_pricing is intentionally absent — it controls per-line price editing / free line in the POS, not route access.
 const NAV_LINKS: NavLink[] = [
   { href: '/pos',           label: 'Vender',            icon: ShoppingCart,  check: () => true },
   { href: '/customers',     label: 'Clientes',          icon: Users,         check: () => true },
-  { href: '/orders',        label: 'Pedidos online',    icon: Inbox,         check: (p) => p.sales === true },
-  { href: '/dashboard',     label: 'Resumen',           icon: BarChart2,     check: (p) => p.analysis === true },
-  { href: '/stats',         label: 'Estadísticas',      icon: LineChart,     check: (p) => p.analysis === true },
-  { href: '/activity',      label: 'Actividad',         icon: History,       check: (p) => p.analysis === true },
+  { href: '/orders',        label: 'Pedidos online',    icon: Inbox,         check: (p) => p.online_orders === true },
+  { href: '/dashboard',     label: 'Resumen',           icon: BarChart2,     check: (p) => p.reports === true },
+  { href: '/stats',         label: 'Estadísticas',      icon: LineChart,     check: (p) => p.reports === true },
+  { href: '/activity',      label: 'Actividad',         icon: History,       check: (p) => p.reports === true },
   { href: '/expenses',      label: 'Gastos',            icon: Receipt,       check: (p) => p.expenses === true },
-  { href: '/cash-sessions', label: 'Caja',              icon: Vault,         check: (p) => p.analysis === true },
-  { href: '/inventory',   label: 'Inventario',        icon: Package,       check: (p) => p.stock === true },
-  { href: '/price-lists', label: 'Listas de precios', icon: ClipboardList, check: (p) => p.price_lists === true },
+  { href: '/cash-sessions', label: 'Caja',              icon: Vault,         check: (p) => p.reports === true },
+  { href: '/inventory',   label: 'Inventario',        icon: Package,       check: (p) => p.inventory_read === true },
+  { href: '/price-lists', label: 'Listas de precios', icon: ClipboardList, check: (p) => p.inventory_read === true },
   { href: '/settings',    label: 'Configuración',     icon: Settings,      check: (p) => p.settings === true },
 ]
 
@@ -129,7 +129,7 @@ export default function Sidebar({
   const isRestricted = (check: (p: Permissions) => boolean): boolean =>
     permissions !== null && !check(permissions)
 
-  const canSeeOrders = !minimal && (permissions === null || permissions.sales === true)
+  const canSeeOrders = !minimal && (permissions === null || permissions.online_orders === true)
   const { data: unreadOrdersCount = 0 } = useUnreadOrdersCount(canSeeOrders)
 
   const isOwnerSessionActive = activeOperatorRole === 'owner'
@@ -295,7 +295,7 @@ export default function Sidebar({
       >
         {hasActiveOperatorSession && (
           <CashSessionWidget
-            canSeeAmount={permissions === null || permissions.analysis === true}
+            canSeeAmount={permissions === null || permissions.reports === true}
             currencyCode={currencyCode}
             collapsed={collapsed}
             isMobileDrawer={isMobileDrawer}

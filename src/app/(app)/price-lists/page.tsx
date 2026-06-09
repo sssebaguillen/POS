@@ -55,7 +55,7 @@ export default async function PriceListsPage() {
     <PriceListsPanel
       businessId={businessId}
       operatorId={activeOperator?.profile_id ?? null}
-      readOnly={activeOperator !== null && activeOperator.permissions.price_lists_write !== true}
+      readOnly={activeOperator !== null && activeOperator.permissions.inventory_write !== true}
       initialLists={(lists ?? []).map(normalizePriceList)}
       products={(products ?? []).map(product => {
         const variantData = product.has_variants ? variantCostByProduct.get(product.id) : null

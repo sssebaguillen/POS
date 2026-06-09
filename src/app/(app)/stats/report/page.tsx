@@ -49,7 +49,7 @@ export default async function StatsReportPage({
 
   const cookieStore = await cookies()
   const activeOperator = await getActiveOperator(cookieStore)
-  if (activeOperator && !hasPermission(activeOperator, 'analysis')) {
+  if (activeOperator && !hasPermission(activeOperator, 'reports')) {
     redirect('/pos')
   }
 

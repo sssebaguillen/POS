@@ -51,7 +51,7 @@ export default async function InventoryHealthPage({
 
   const cookieStore = await cookies()
   const activeOperator = await getActiveOperator(cookieStore)
-  if (activeOperator && !hasPermission(activeOperator, 'analysis')) {
+  if (activeOperator && !hasPermission(activeOperator, 'reports')) {
     redirect('/pos')
   }
 

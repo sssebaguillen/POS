@@ -8,34 +8,18 @@ import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { VisuallyHidden } from '@radix-ui/react-visually-hidden'
 import { X } from 'lucide-react'
 import { isSettingsOperator, type SettingsOperator } from '@/components/settings/types'
-import { OPERATOR_ROLES, OPERATOR_ROLE_LABELS, type OperatorRole } from '@/lib/constants/domain'
+import { OPERATOR_ROLE_LABELS } from '@/lib/constants/domain'
 import type { Permissions } from '@/lib/operator'
+import {
+  ROLE_DEFAULTS,
+  type RolePreset,
+  presetForPermissions,
+  applyPermissionToggle,
+  PermissionsFields,
+} from '@/components/settings/operatorPermissions'
 import { ERR } from '@/lib/errors'
 
-// Sub-toggles are shown nested under their parent; standalone permissions are shown directly
-type VisiblePermissionKey = Exclude<keyof Permissions, 'operators_write' | 'stock_write' | 'price_lists_write' | 'price_override'>
-type BaseRole = Exclude<OperatorRole, 'custom'>
-
-const PERMISSION_LABELS: { key: VisiblePermissionKey; label: string }[] = [
-  { key: 'sales',       label: 'Ventas' },
-  { key: 'stock',       label: 'Ver inventario' },
-  { key: 'analysis',    label: 'Análisis' },
-  { key: 'expenses',    label: 'Gastos' },
-  { key: 'price_lists', label: 'Ver listas de precios' },
-  { key: 'settings',    label: 'Configuración' },
-  { key: 'free_line',   label: 'Producto Libre' },
-]
-
-const ROLE_DEFAULTS: Record<BaseRole, Permissions> = {
-  manager: { sales: true, stock: true, stock_write: true,  analysis: true,  expenses: true,  price_lists: true,  price_lists_write: true,  settings: false, operators_write: false, price_override: true,  free_line: true  },
-  cashier: { sales: true, stock: true, stock_write: false, analysis: false, expenses: false, price_lists: false, price_lists_write: false, settings: false, operators_write: false, price_override: false, free_line: false },
-}
-
-const BASE_ROLES: BaseRole[] = OPERATOR_ROLES.filter((role): role is BaseRole => role !== 'custom')
-
-function permissionsMatch(a: Permissions, b: Permissions): boolean {
-  return (Object.keys(a) as (keyof Permissions)[]).every(key => a[key] === b[key])
-}
+const BASE_ROLES: RolePreset[] = ['cashier', 'manager']
 
 interface NewOperatorModalProps {
   /** When true, renders only the form (no Dialog). */
@@ -58,7 +42,6 @@ export default function NewOperatorModal({
   onSuccess,
 }: NewOperatorModalProps) {
   const [name, setName] = useState('')
-  const [baseRole, setBaseRole] = useState<BaseRole>('cashier')
   const [permissions, setPermissions] = useState<Permissions>(ROLE_DEFAULTS.cashier)
   const [pin, setPin] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -70,60 +53,19 @@ export default function NewOperatorModal({
     if (embedded) return
     if (!open) return
     setName('')
-    setBaseRole('cashier')
     setPermissions(ROLE_DEFAULTS.cashier)
     setPin('')
     setError(null)
   }, [open, embedded])
 
-  function handleRoleSelect(role: BaseRole) {
-    setBaseRole(role)
+  const activePreset = presetForPermissions(permissions)
+
+  function handleRoleSelect(role: RolePreset) {
     setPermissions(ROLE_DEFAULTS[role])
   }
 
   function togglePermission(key: keyof Permissions) {
-    setPermissions(prev => {
-      if (key === 'sales') {
-        const nextSales = !prev.sales
-        return {
-          ...prev,
-          sales: nextSales,
-          price_override: nextSales ? prev.price_override : false,
-        }
-      }
-
-      if (key === 'stock') {
-        const nextStock = !prev.stock
-
-        return {
-          ...prev,
-          stock: nextStock,
-          stock_write: nextStock ? prev.stock_write : false,
-        }
-      }
-
-      if (key === 'price_lists') {
-        const nextPriceLists = !prev.price_lists
-
-        return {
-          ...prev,
-          price_lists: nextPriceLists,
-          price_lists_write: nextPriceLists ? prev.price_lists_write : false,
-        }
-      }
-
-      if (key === 'settings') {
-        const nextSettings = !prev.settings
-
-        return {
-          ...prev,
-          settings: nextSettings,
-          operators_write: nextSettings ? prev.operators_write : false,
-        }
-      }
-
-      return { ...prev, [key]: !prev[key] }
-    })
+    setPermissions(prev => applyPermissionToggle(prev, key))
   }
 
   function normalizePin(value: string): string {
@@ -144,11 +86,7 @@ export default function NewOperatorModal({
       return
     }
 
-    const roleToSend = permissionsMatch(permissions, ROLE_DEFAULTS.manager)
-      ? 'manager'
-      : permissionsMatch(permissions, ROLE_DEFAULTS.cashier)
-      ? 'cashier'
-      : 'custom'
+    const roleToSend = activePreset
 
     setLoading(true)
     setError(null)
@@ -225,7 +163,7 @@ export default function NewOperatorModal({
                   type="button"
                   onClick={() => handleRoleSelect(role)}
                   className={`flex-1 rounded-lg border px-3 py-2 text-sm font-medium transition-[transform,background-color,border-color,color] duration-150 ease-[var(--ease-out)] active:scale-[0.97] ${
-                    baseRole === role
+                    activePreset === role
                       ? 'bg-primary text-primary-foreground border-primary'
                       : 'bg-transparent text-body border-edge hover:bg-hover-bg'
                   }`}
@@ -238,94 +176,7 @@ export default function NewOperatorModal({
 
           <div className="space-y-1.5">
             <p className="text-label text-subtle">Permisos</p>
-            <div className="rounded-lg border border-edge divide-y divide-edge">
-              {PERMISSION_LABELS.map(({ key, label }) => (
-                <div key={key}>
-                  <div className="flex items-center justify-between px-3 py-2.5">
-                    <span className="text-sm text-body">{label}</span>
-                    <button
-                      type="button"
-                      role="switch"
-                      aria-checked={permissions[key]}
-                      onClick={() => togglePermission(key)}
-                      className={`relative w-9 h-5 rounded-full transition-colors cursor-pointer ${permissions[key] ? 'bg-primary' : 'bg-muted-foreground'}`}
-                    >
-                      <span
-                        className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-card shadow-sm transition-transform ${permissions[key] ? 'translate-x-4' : 'translate-x-0'}`}
-                      />
-                    </button>
-                  </div>
-
-                  {key === 'sales' && permissions.sales && (
-                    <div className="flex items-center justify-between border-t border-edge px-3 py-2.5 pl-8">
-                      <span className="text-sm text-subtle">Editar precio en venta</span>
-                      <button
-                        type="button"
-                        role="switch"
-                        aria-checked={permissions.price_override}
-                        onClick={() => togglePermission('price_override')}
-                        className={`relative h-5 w-9 rounded-full transition-colors cursor-pointer ${permissions.price_override ? 'bg-primary' : 'bg-muted-foreground'}`}
-                      >
-                        <span
-                          className={`absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-card shadow-sm transition-transform ${permissions.price_override ? 'translate-x-4' : 'translate-x-0'}`}
-                        />
-                      </button>
-                    </div>
-                  )}
-
-                  {key === 'stock' && permissions.stock && (
-                    <div className="flex items-center justify-between border-t border-edge px-3 py-2.5 pl-8">
-                      <span className="text-sm text-subtle">Modificar inventario</span>
-                      <button
-                        type="button"
-                        role="switch"
-                        aria-checked={permissions.stock_write}
-                        onClick={() => togglePermission('stock_write')}
-                        className={`relative h-5 w-9 rounded-full transition-colors cursor-pointer ${permissions.stock_write ? 'bg-primary' : 'bg-muted-foreground'}`}
-                      >
-                        <span
-                          className={`absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-card shadow-sm transition-transform ${permissions.stock_write ? 'translate-x-4' : 'translate-x-0'}`}
-                        />
-                      </button>
-                    </div>
-                  )}
-
-                  {key === 'price_lists' && permissions.price_lists && (
-                    <div className="flex items-center justify-between border-t border-edge px-3 py-2.5 pl-8">
-                      <span className="text-sm text-subtle">Modificar listas de precios</span>
-                      <button
-                        type="button"
-                        role="switch"
-                        aria-checked={permissions.price_lists_write}
-                        onClick={() => togglePermission('price_lists_write')}
-                        className={`relative h-5 w-9 rounded-full transition-colors cursor-pointer ${permissions.price_lists_write ? 'bg-primary' : 'bg-muted-foreground'}`}
-                      >
-                        <span
-                          className={`absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-card shadow-sm transition-transform ${permissions.price_lists_write ? 'translate-x-4' : 'translate-x-0'}`}
-                        />
-                      </button>
-                    </div>
-                  )}
-
-                  {key === 'settings' && permissions.settings && (
-                    <div className="flex items-center justify-between border-t border-edge px-3 py-2.5 pl-8">
-                      <span className="text-sm text-subtle">Gestionar operarios</span>
-                      <button
-                        type="button"
-                        role="switch"
-                        aria-checked={permissions.operators_write}
-                        onClick={() => togglePermission('operators_write')}
-                        className={`relative h-5 w-9 rounded-full transition-colors cursor-pointer ${permissions.operators_write ? 'bg-primary' : 'bg-muted-foreground'}`}
-                      >
-                        <span
-                          className={`absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-card shadow-sm transition-transform ${permissions.operators_write ? 'translate-x-4' : 'translate-x-0'}`}
-                        />
-                      </button>
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
+            <PermissionsFields permissions={permissions} onToggle={togglePermission} />
           </div>
 
           <div className="space-y-1.5">

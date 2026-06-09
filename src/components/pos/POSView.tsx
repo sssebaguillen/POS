@@ -153,7 +153,7 @@ export default function POSView({ products, businessId, businessName, freeLineEn
   const listDropdownRef = useRef<HTMLDivElement>(null)
 
   const activePriceList = priceLists.find(pl => pl.id === activePriceListId) ?? null
-  const canSelectList = activeOperator?.permissions.stock === true
+  const canSelectList = activeOperator?.permissions.inventory_read === true
 
   useEffect(() => {
     searchRef.current?.focus()

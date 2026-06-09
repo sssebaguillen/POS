@@ -199,7 +199,7 @@ BEGIN
   v_caller_business_id := get_business_id();
   IF v_caller_business_id IS NULL OR p_business_id IS DISTINCT FROM v_caller_business_id THEN
     RETURN jsonb_build_object('success', false, 'error', 'Contexto de negocio inválido'); END IF;
-  SELECT permissions->>'stock_write', role INTO v_stock_write, v_actor_role
+  SELECT normalize_permissions(permissions)->>'inventory_write', role INTO v_stock_write, v_actor_role
   FROM operators WHERE id = p_operator_id AND business_id = v_caller_business_id AND is_active = true;
   IF FOUND THEN
     IF v_stock_write <> 'true' THEN RETURN jsonb_build_object('success', false, 'error', '403: Permisos de inventario insuficientes'); END IF;
@@ -246,7 +246,7 @@ BEGIN
   v_caller_business_id := get_business_id();
   IF v_caller_business_id IS NULL OR p_business_id IS DISTINCT FROM v_caller_business_id THEN
     RETURN jsonb_build_object('success', false, 'error', 'Contexto de negocio inválido'); END IF;
-  SELECT permissions->>'stock_write', role INTO v_stock_write, v_actor_role
+  SELECT normalize_permissions(permissions)->>'inventory_write', role INTO v_stock_write, v_actor_role
   FROM operators WHERE id = p_operator_id AND business_id = v_caller_business_id AND is_active = true;
   IF FOUND THEN
     IF v_stock_write <> 'true' THEN RETURN jsonb_build_object('success', false, 'error', '403: Permisos de inventario insuficientes'); END IF;
@@ -290,7 +290,7 @@ BEGIN
   v_caller_business_id := get_business_id();
   IF v_caller_business_id IS NULL OR p_business_id IS DISTINCT FROM v_caller_business_id THEN
     RETURN jsonb_build_object('success', false, 'error', 'Contexto de negocio inválido'); END IF;
-  SELECT permissions->>'stock_write', role INTO v_stock_write, v_actor_role
+  SELECT normalize_permissions(permissions)->>'inventory_write', role INTO v_stock_write, v_actor_role
   FROM operators WHERE id = p_operator_id AND business_id = v_caller_business_id AND is_active = true;
   IF FOUND THEN
     IF v_stock_write <> 'true' THEN RETURN jsonb_build_object('success', false, 'error', '403: Permisos de inventario insuficientes'); END IF;
@@ -334,7 +334,7 @@ BEGIN
   v_caller_business_id := get_business_id();
   IF v_caller_business_id IS NULL OR p_business_id IS DISTINCT FROM v_caller_business_id THEN
     RETURN jsonb_build_object('success', false, 'error', 'Contexto de negocio inválido'); END IF;
-  SELECT permissions->>'stock_write', role INTO v_stock_write, v_actor_role
+  SELECT normalize_permissions(permissions)->>'inventory_write', role INTO v_stock_write, v_actor_role
   FROM operators WHERE id = p_operator_id AND business_id = v_caller_business_id AND is_active = true;
   IF FOUND THEN
     IF v_stock_write <> 'true' THEN RETURN jsonb_build_object('success', false, 'error', '403: Permisos de inventario insuficientes'); END IF;
@@ -380,7 +380,7 @@ BEGIN
   v_caller_business_id := get_business_id();
   IF v_caller_business_id IS NULL OR p_business_id IS DISTINCT FROM v_caller_business_id THEN
     RETURN jsonb_build_object('success', false, 'error', 'Contexto de negocio inválido'); END IF;
-  SELECT permissions->>'stock_write', role INTO v_stock_write, v_actor_role
+  SELECT normalize_permissions(permissions)->>'inventory_write', role INTO v_stock_write, v_actor_role
   FROM operators WHERE id = p_operator_id AND business_id = v_caller_business_id AND is_active = true;
   IF FOUND THEN
     IF v_stock_write <> 'true' THEN RETURN jsonb_build_object('success', false, 'error', '403: Permisos de inventario insuficientes'); END IF;
@@ -505,13 +505,17 @@ CREATE OR REPLACE FUNCTION "public"."compute_effective_price"("p_cost" numeric, 
     SET "search_path" TO 'public', 'extensions'
     AS $$
 -- NOTA redondeo por lista: el redondeo configurable es una propiedad de la LISTA
--- (price_lists.rounding_step / rounding_up) y se aplica donde la lista se aplica.
--- Hoy las listas SOLO se aplican en el cliente (calculateProductPrice); esta función
--- se llama siempre con p_list_id = NULL (catálogo y create_catalog_order = precio base),
--- así que la rama de lista no corre y no hay nada que redondear aquí. Si en el futuro
--- algún caller SQL pasa una lista activa, replicar el redondeo del cliente en esta rama.
+-- (price_lists.rounding_step / rounding_up). Esta función es el espejo SQL de
+-- calculateProductPrice (src/lib/price-lists.ts) y replica applyRounding en la rama de
+-- lista. Hoy es inerte: todos los callers SQL pasan p_list_id = NULL (catálogo y
+-- create_catalog_order = precio base), así que la rama de lista no corre. Queda listo
+-- para cuando un caller pase una lista activa (ej. mostrar una lista en el catálogo),
+-- evitando divergencia POS↔catálogo. Mig. 20260606_01.
 DECLARE
   v_mult numeric;
+  v_raw  numeric;
+  v_step numeric;
+  v_up   boolean;
 BEGIN
   IF p_list_id IS NULL THEN
     IF p_variant_price IS NOT NULL AND p_variant_price > 0 THEN
@@ -543,8 +547,21 @@ BEGIN
   END IF;
 
   v_mult := COALESCE(v_mult, p_list_multiplier);
+  v_raw  := p_cost * v_mult;
 
-  RETURN ROUND(p_cost * v_mult, 2);
+  SELECT pl.rounding_step, pl.rounding_up INTO v_step, v_up
+  FROM public.price_lists pl
+  WHERE pl.id = p_list_id;
+
+  IF v_step IS NULL OR v_step <= 0 THEN
+    RETURN ROUND(v_raw, 2);
+  END IF;
+
+  IF COALESCE(v_up, false) THEN
+    RETURN ROUND(CEIL(v_raw / v_step) * v_step, 2);
+  ELSE
+    RETURN ROUND(ROUND(v_raw / v_step) * v_step, 2);
+  END IF;
 END;
 $$;
 
@@ -565,7 +582,7 @@ BEGIN
     RETURN jsonb_build_object('success', false, 'error', 'Contexto de negocio inválido'); END IF;
   IF p_name IS NULL OR btrim(p_name) = '' THEN
     RETURN jsonb_build_object('success', false, 'error', 'El nombre es obligatorio'); END IF;
-  SELECT permissions->>'stock_write', role INTO v_stock_write, v_actor_role
+  SELECT normalize_permissions(permissions)->>'inventory_write', role INTO v_stock_write, v_actor_role
   FROM operators WHERE id = p_operator_id AND business_id = v_caller_business_id AND is_active = true;
   IF FOUND THEN
     IF v_stock_write <> 'true' THEN RETURN jsonb_build_object('success', false, 'error', '403: Permisos de inventario insuficientes'); END IF;
@@ -738,7 +755,7 @@ BEGIN
     RETURN jsonb_build_object('success', false, 'error', 'Contexto de negocio inválido'); END IF;
   IF p_name IS NULL OR btrim(p_name) = '' THEN
     RETURN jsonb_build_object('success', false, 'error', 'El nombre es obligatorio'); END IF;
-  SELECT permissions->>'stock_write', role INTO v_stock_write, v_actor_role
+  SELECT normalize_permissions(permissions)->>'inventory_write', role INTO v_stock_write, v_actor_role
   FROM operators WHERE id = p_operator_id AND business_id = v_caller_business_id AND is_active = true;
   IF FOUND THEN
     IF v_stock_write <> 'true' THEN RETURN jsonb_build_object('success', false, 'error', '403: Permisos de inventario insuficientes'); END IF;
@@ -1091,6 +1108,26 @@ $$;
 ALTER FUNCTION "public"."create_mercaderia_expense"("p_business_id" "uuid", "p_description" "text", "p_date" "date", "p_supplier_id" "uuid", "p_operator_id" "uuid", "p_notes" "text", "p_items" "jsonb", "p_update_stock" boolean) OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."normalize_permissions"("p" "jsonb") RETURNS "jsonb"
+    LANGUAGE "sql" IMMUTABLE
+    SET "search_path" TO 'public'
+    AS $$
+  SELECT jsonb_build_object(
+    'online_orders',    COALESCE((p->>'online_orders')::boolean, false),
+    'pos_pricing',      COALESCE((p->>'pos_pricing')::boolean, false),
+    'inventory_read',   COALESCE((p->>'inventory_read')::boolean, false),
+    'inventory_write',  COALESCE((p->>'inventory_write')::boolean, false),
+    'reports',          COALESCE((p->>'reports')::boolean, false),
+    'expenses',         COALESCE((p->>'expenses')::boolean, false),
+    'settings',         COALESCE((p->>'settings')::boolean, false),
+    'manage_operators', COALESCE((p->>'manage_operators')::boolean, false)
+  );
+$$;
+
+
+ALTER FUNCTION "public"."normalize_permissions"("p" "jsonb") OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."create_operator"("p_actor_operator_id" "uuid", "p_business_id" "uuid", "p_name" "text", "p_role" "text", "p_pin" "text", "p_permissions" "jsonb" DEFAULT NULL::"jsonb") RETURNS json
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public', 'extensions'
@@ -1110,7 +1147,7 @@ BEGIN
   END IF;
 
   IF p_actor_operator_id IS NOT NULL THEN
-    SELECT permissions->>'operators_write', role INTO v_perm, v_actor_role
+    SELECT normalize_permissions(permissions)->>'manage_operators', role INTO v_perm, v_actor_role
     FROM operators
     WHERE id = p_actor_operator_id AND business_id = v_caller_business_id AND is_active = true;
 
@@ -1133,21 +1170,14 @@ BEGIN
 
   v_default_permissions := CASE p_role
     WHEN 'manager' THEN
-      '{"sales": true, "stock": true, "stock_write": true, "analysis": true, "price_lists": true, "price_lists_write": true, "settings": false, "operators_write": false, "expenses": false}'::jsonb
+      '{"online_orders": true, "pos_pricing": true, "inventory_read": true, "inventory_write": true, "reports": true, "expenses": true, "settings": false, "manage_operators": false}'::jsonb
     WHEN 'cashier' THEN
-      '{"sales": true, "stock": true, "stock_write": false, "analysis": false, "price_lists": false, "price_lists_write": false, "settings": false, "operators_write": false, "expenses": false}'::jsonb
+      '{"online_orders": true, "pos_pricing": false, "inventory_read": true, "inventory_write": false, "reports": false, "expenses": false, "settings": false, "manage_operators": false}'::jsonb
     ELSE
-      '{"sales": true, "stock": false, "stock_write": false, "analysis": false, "price_lists": false, "price_lists_write": false, "settings": false, "operators_write": false, "expenses": false}'::jsonb
+      '{"online_orders": true, "pos_pricing": false, "inventory_read": false, "inventory_write": false, "reports": false, "expenses": false, "settings": false, "manage_operators": false}'::jsonb
   END;
 
-  v_final_permissions := COALESCE(p_permissions, v_default_permissions);
-
-  IF (v_final_permissions->>'expenses') IS NULL THEN
-    v_final_permissions := v_final_permissions || '{"expenses": false}'::jsonb;
-  END IF;
-  IF (v_final_permissions->>'operators_write') IS NULL THEN
-    v_final_permissions := v_final_permissions || '{"operators_write": false}'::jsonb;
-  END IF;
+  v_final_permissions := normalize_permissions(COALESCE(p_permissions, v_default_permissions));
 
   INSERT INTO operators (business_id, name, role, pin, permissions)
   VALUES (
@@ -1217,7 +1247,7 @@ BEGIN
     RETURN jsonb_build_object('success', false, 'error', 'El redondeo debe ser mayor a 0');
   END IF;
 
-  SELECT permissions->>'price_lists_write', role INTO v_perm, v_actor_role
+  SELECT normalize_permissions(permissions)->>'inventory_write', role INTO v_perm, v_actor_role
   FROM operators
   WHERE id = p_operator_id AND business_id = v_caller_business_id AND is_active = true;
 
@@ -1310,7 +1340,7 @@ BEGIN
   IF v_name IS NULL OR v_name = '' THEN
     RETURN jsonb_build_object('success', false, 'error', 'El nombre es obligatorio');
   END IF;
-  SELECT permissions->>'stock_write', role INTO v_stock_write, v_actor_role
+  SELECT normalize_permissions(permissions)->>'inventory_write', role INTO v_stock_write, v_actor_role
   FROM operators WHERE id = p_operator_id AND business_id = v_caller_business_id AND is_active = true;
   IF FOUND THEN
     IF v_stock_write <> 'true' THEN
@@ -1392,7 +1422,7 @@ BEGIN
     RETURN jsonb_build_object('success', false, 'error', 'Contexto de negocio inválido');
   END IF;
 
-  SELECT permissions->>'stock_write', role
+  SELECT normalize_permissions(permissions)->>'inventory_write', role
   INTO v_stock_write, v_actor_role
   FROM operators
   WHERE id = p_operator_id AND business_id = v_caller_business_id AND is_active = true;
@@ -1595,7 +1625,7 @@ BEGIN
     END IF;
   END LOOP;
   IF v_has_price_override AND v_actor_role <> 'owner' THEN
-    IF v_actor_permissions IS NULL OR (v_actor_permissions->>'price_override') <> 'true' THEN
+    IF v_actor_permissions IS NULL OR (normalize_permissions(v_actor_permissions)->>'pos_pricing') <> 'true' THEN
       RETURN jsonb_build_object('success', false, 'error', '403: Permiso de override de precio requerido');
     END IF;
   END IF;
@@ -1845,7 +1875,7 @@ BEGIN
   v_caller_business_id := get_business_id();
   IF v_caller_business_id IS NULL OR p_business_id IS DISTINCT FROM v_caller_business_id THEN
     RETURN jsonb_build_object('success', false, 'error', 'Contexto de negocio inválido'); END IF;
-  SELECT permissions->>'stock_write', role INTO v_stock_write, v_actor_role
+  SELECT normalize_permissions(permissions)->>'inventory_write', role INTO v_stock_write, v_actor_role
   FROM operators WHERE id = p_operator_id AND business_id = v_caller_business_id AND is_active = true;
   IF FOUND THEN
     IF v_stock_write <> 'true' THEN RETURN jsonb_build_object('success', false, 'error', '403: Permisos de inventario insuficientes'); END IF;
@@ -1882,7 +1912,7 @@ BEGIN
   v_caller_business_id := get_business_id();
   IF v_caller_business_id IS NULL OR p_business_id IS DISTINCT FROM v_caller_business_id THEN
     RETURN jsonb_build_object('success', false, 'error', 'Contexto de negocio inválido'); END IF;
-  SELECT permissions->>'stock_write', role INTO v_stock_write, v_actor_role
+  SELECT normalize_permissions(permissions)->>'inventory_write', role INTO v_stock_write, v_actor_role
   FROM operators WHERE id = p_operator_id AND business_id = v_caller_business_id AND is_active = true;
   IF FOUND THEN
     IF v_stock_write <> 'true' THEN RETURN jsonb_build_object('success', false, 'error', '403: Permisos de inventario insuficientes'); END IF;
@@ -2145,7 +2175,7 @@ BEGIN
     RETURN jsonb_build_object('success', false, 'error', 'No podés eliminar tu propio operador');
   END IF;
 
-  SELECT permissions->>'operators_write', role INTO v_perm, v_actor_role
+  SELECT normalize_permissions(permissions)->>'manage_operators', role INTO v_perm, v_actor_role
   FROM operators
   WHERE id = p_operator_id AND business_id = v_caller_business_id AND is_active = true;
 
@@ -2213,7 +2243,7 @@ BEGIN
     RETURN jsonb_build_object('success', false, 'error', 'Contexto de negocio inválido');
   END IF;
 
-  SELECT permissions->>'price_lists_write', role INTO v_perm, v_actor_role
+  SELECT normalize_permissions(permissions)->>'inventory_write', role INTO v_perm, v_actor_role
   FROM operators
   WHERE id = p_operator_id AND business_id = v_caller_business_id AND is_active = true;
 
@@ -2268,7 +2298,7 @@ BEGIN
   v_caller_business_id := get_business_id();
   IF v_caller_business_id IS NULL OR p_business_id IS DISTINCT FROM v_caller_business_id THEN
     RETURN jsonb_build_object('success', false, 'error', 'Contexto de negocio inválido'); END IF;
-  SELECT permissions->>'stock_write', role INTO v_stock_write, v_actor_role
+  SELECT normalize_permissions(permissions)->>'inventory_write', role INTO v_stock_write, v_actor_role
   FROM operators WHERE id = p_operator_id AND business_id = v_caller_business_id AND is_active = true;
   IF FOUND THEN
     IF v_stock_write <> 'true' THEN RETURN jsonb_build_object('success', false, 'error', '403: Permisos de inventario insuficientes'); END IF;
@@ -5796,7 +5826,7 @@ BEGIN
     RETURN jsonb_build_object('success', false, 'error', 'Contexto de negocio inválido'); END IF;
   IF p_name IS NULL OR btrim(p_name) = '' THEN
     RETURN jsonb_build_object('success', false, 'error', 'El nombre es obligatorio'); END IF;
-  SELECT permissions->>'stock_write', role INTO v_stock_write, v_actor_role
+  SELECT normalize_permissions(permissions)->>'inventory_write', role INTO v_stock_write, v_actor_role
   FROM operators WHERE id = p_operator_id AND business_id = v_caller_business_id AND is_active = true;
   IF FOUND THEN
     IF v_stock_write <> 'true' THEN RETURN jsonb_build_object('success', false, 'error', '403: Permisos de inventario insuficientes'); END IF;
@@ -5993,7 +6023,7 @@ BEGIN
   v_business_id := get_business_id();
   IF v_business_id IS NULL THEN RETURN jsonb_build_object('success', false, 'error', 'unauthorized'); END IF;
 
-  SELECT permissions->>'sales', role INTO v_sales_perm, v_actor_role
+  SELECT normalize_permissions(permissions)->>'online_orders', role INTO v_sales_perm, v_actor_role
    FROM operators WHERE id = p_operator_id AND business_id = v_business_id AND is_active = true;
   IF FOUND THEN
     IF v_sales_perm <> 'true' THEN RETURN jsonb_build_object('success', false, 'error', '403: Permisos de ventas insuficientes'); END IF;
@@ -6091,7 +6121,7 @@ BEGIN
     RETURN jsonb_build_object('success', false, 'error', 'Contexto de negocio inválido'); END IF;
   IF p_name IS NULL OR btrim(p_name) = '' THEN
     RETURN jsonb_build_object('success', false, 'error', 'El nombre es obligatorio'); END IF;
-  SELECT permissions->>'stock_write', role INTO v_stock_write, v_actor_role
+  SELECT normalize_permissions(permissions)->>'inventory_write', role INTO v_stock_write, v_actor_role
   FROM operators WHERE id = p_operator_id AND business_id = v_caller_business_id AND is_active = true;
   IF FOUND THEN
     IF v_stock_write <> 'true' THEN RETURN jsonb_build_object('success', false, 'error', '403: Permisos de inventario insuficientes'); END IF;
@@ -6569,7 +6599,7 @@ BEGIN
   END IF;
 
   IF p_actor_operator_id IS NOT NULL THEN
-    SELECT permissions->>'operators_write', role INTO v_perm, v_actor_role
+    SELECT normalize_permissions(permissions)->>'manage_operators', role INTO v_perm, v_actor_role
     FROM operators
     WHERE id = p_actor_operator_id AND business_id = v_caller_business_id AND is_active = true;
 
@@ -6613,7 +6643,7 @@ BEGIN
                   END,
     permissions = CASE
                     WHEN p_permissions IS NOT NULL
-                    THEN permissions || p_permissions
+                    THEN normalize_permissions(permissions || p_permissions)
                     ELSE permissions
                   END
   WHERE id = p_target_operator_id AND business_id = v_caller_business_id
@@ -6680,7 +6710,7 @@ BEGIN
     RETURN jsonb_build_object('success', false, 'error', 'El redondeo debe ser mayor a 0');
   END IF;
 
-  SELECT permissions->>'price_lists_write', role INTO v_perm, v_actor_role
+  SELECT normalize_permissions(permissions)->>'inventory_write', role INTO v_perm, v_actor_role
   FROM operators
   WHERE id = p_operator_id AND business_id = v_caller_business_id AND is_active = true;
 
@@ -6801,7 +6831,7 @@ BEGIN
     RETURN jsonb_build_object('success', false, 'error', 'El nombre es obligatorio');
   END IF;
 
-  SELECT permissions->>'stock_write', role
+  SELECT normalize_permissions(permissions)->>'inventory_write', role
   INTO v_stock_write, v_actor_role
   FROM operators
   WHERE id = p_operator_id AND business_id = v_caller_business_id AND is_active = true;
@@ -6895,7 +6925,7 @@ BEGIN
     RETURN jsonb_build_object('success', false, 'error', 'Contexto de negocio inválido');
   END IF;
 
-  SELECT permissions->>'stock_write', role
+  SELECT normalize_permissions(permissions)->>'inventory_write', role
   INTO v_stock_write, v_actor_role
   FROM operators
   WHERE id = p_operator_id AND business_id = v_caller_business_id AND is_active = true;
@@ -7882,7 +7912,7 @@ CREATE TABLE IF NOT EXISTS "public"."operators" (
     "name" "text" NOT NULL,
     "role" "text" DEFAULT 'cashier'::"text" NOT NULL,
     "pin" "text" NOT NULL,
-    "permissions" "jsonb" DEFAULT '{"sales": true, "stock": false, "analysis": false, "expenses": false, "settings": false, "price_lists": false, "stock_write": false, "operators_write": false, "price_lists_write": false}'::"jsonb" NOT NULL,
+    "permissions" "jsonb" DEFAULT '{"online_orders": true, "pos_pricing": false, "inventory_read": false, "inventory_write": false, "reports": false, "expenses": false, "settings": false, "manage_operators": false}'::"jsonb" NOT NULL,
     "is_active" boolean DEFAULT true,
     "created_at" timestamp with time zone DEFAULT "now"(),
     "failed_pin_attempts" integer DEFAULT 0 NOT NULL,

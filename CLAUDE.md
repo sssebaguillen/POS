@@ -186,8 +186,8 @@ src/
 │   └── query-provider.tsx                # React Query provider
 ├── lib/
 │   ├── business.ts                       # getBusinessIdByUserId, requireAuthenticatedBusinessId
-│   ├── operator.ts                       # UserRole, Permissions (11 fields), OWNER_PERMISSIONS,
-│   │                                     # getActiveOperator, getActorOperatorId, parsePermissions, normalizePermissions
+│   ├── operator.ts                       # UserRole, Permissions (8 capabilities, 4 areas), OWNER_PERMISSIONS,
+│   │                                     # getActiveOperator, getActorOperatorId, parsePermissions/normalizePermissions (bi-shape, mirror of SQL normalize_permissions)
 │   ├── payments.ts                       # normalizePayment, PAYMENT_LABELS, PAYMENT_COLORS, PAYMENT_OPTIONS
 │   ├── price-lists.ts                    # calculateProductPrice — sole price calculation source
 │   ├── date-utils.ts                     # DateRangePeriod, getDateRange, resolveDateRange, buildDateParams
@@ -244,7 +244,7 @@ src/
 │   ├── api/catalog/
 │   │   └── orders/route.ts               # POST: anon catalog checkout → create_catalog_order; per-IP rate limit
 │   ├── api/operator/
-│   │   ├── switch/route.ts               # Writes operator_session + op_perms (11 permissions)
+│   │   ├── switch/route.ts               # Writes operator_session + op_perms (8 permissions)
 │   │   └── logout/route.ts               # Only deletes cookies — NEVER restores owner session
 │   └── catalogo/
 │       ├── layout.tsx                    # CatalogThemeProvider wrapper
@@ -338,7 +338,7 @@ src/
     ├── settings/
     │   ├── SettingsForm.tsx              # Slug input with puls.ar/{slug} preview + client-side validation
     │   ├── OperatorList.tsx
-    │   ├── NewOperatorModal.tsx          # 11 permission toggles
+    │   ├── NewOperatorModal.tsx          # 8 permission toggles (4 areas, via operatorPermissions.tsx)
     │   ├── EditOperatorModal.tsx
     │   └── types.ts
     ├── profile/
@@ -377,7 +377,7 @@ Full route map with permission gates: `docs/conventions.md`.
 13. `createClient()` always inside `useMemo(() => createClient(), [])` in Client Components.
 14. Independent queries in Server Components: always `Promise.all`.
 15. RPCs returning `{data: [...]}`: always extract `.data`, never iterate the wrapper.
-16. New permission field: update `lib/operator.ts` (interface + defaults + `OPERATOR_MANAGEMENT_PERMISSION_KEYS` + `parsePermissions` + `normalizePermissions`), `sidebar.tsx`, `api/operator/switch/route.ts`, both operator modals, and the DB column default + `create_operator` RPC role-default JSONBs — same commit. See `docs/conventions.md` for the full checklist.
+16. **Permisos de operario: modelo de 8 capacidades en 4 áreas** (Mostrador: `pos_pricing`, `online_orders` · Inventario: `inventory_read`, `inventory_write` · Reportes: `reports`, `expenses` · Administración: `settings`, `manage_operators`). El normalizador canónico es `normalize_permissions(jsonb)` en Postgres ↔ `normalizePermissions()`/`parsePermissions()` en `lib/operator.ts` (**bi-shape**: aceptan el shape viejo de 11 flags y el nuevo; mantener ambas implementaciones en sync — regla 11). **Las guardas `SECURITY DEFINER` leen el permiso vía `normalize_permissions(permissions)->>'<key>'`** (no por columna directa) — al sumar/renombrar una capacidad, actualizar el helper SQL **y** el TS, o las guardas fallan abierto en silencio. Lugares a tocar para una capacidad nueva: `lib/operator.ts` (interface + defaults + `OPERATOR_MANAGEMENT_PERMISSION_KEYS` + `PERMISSION_LABELS`), `normalize_permissions` (SQL) + su espejo TS, las guardas que la consuman, `proxy.ts`, `sidebar.tsx`, `api/operator/switch/route.ts`, `components/settings/operatorPermissions.tsx` (presets + áreas + `applyPermissionToggle`), y el default de columna + role-defaults de `create_operator`/`update_operator`. Historia y plan: `docs/todo/permisos-operario-redesign.md`.
 17. Filter pattern split: **pill tabs** (with `usePillIndicator`) only for `DateRangeFilter` and section/view navigation; **chips** (flat `pill-tab` buttons, active class `bg-primary/10 text-primary border border-primary/20`) for all data filters. Reference: `SalesHistoryTable.tsx`. Exception: POS `ProductPanel` keeps its own style. Details in `docs/conventions.md`.
 18. Sidebar collapsed: from cookie `pos-sidebar-collapsed` in Server Component — no post-hydration `useEffect`.
 19. Prefer `requireAuthenticatedBusinessId(supabase)` in page components.

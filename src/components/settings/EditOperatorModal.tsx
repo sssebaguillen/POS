@@ -15,6 +15,7 @@ import {
   type OperatorManagementPermissionKey,
   type OperatorManagementPermissions,
 } from '@/lib/operator'
+import { applyPermissionToggle, PermissionsFields } from '@/components/settings/operatorPermissions'
 import { translateDbError, ERR } from '@/lib/errors'
 
 interface EditOperatorModalProps {
@@ -27,66 +28,6 @@ interface EditOperatorModalProps {
   onUpdated: (operator: SettingsOperator) => void
   onSuccess: (message: string) => void
   onError: (message: string) => void
-}
-
-interface PermissionField {
-  key: Exclude<OperatorManagementPermissionKey, 'operators_write' | 'stock_write' | 'price_lists_write' | 'price_override'>
-  label: string
-  description?: string
-}
-
-interface PermissionToggleRowProps {
-  label: string
-  checked: boolean
-  disabled?: boolean
-  indented?: boolean
-  onToggle: () => void
-}
-
-const PERMISSION_FIELDS: PermissionField[] = [
-  { key: 'sales', label: 'Ventas' },
-  { key: 'stock', label: 'Ver inventario' },
-  { key: 'analysis', label: 'Análisis' },
-  { key: 'price_lists', label: 'Ver listas de precios' },
-  { key: 'expenses', label: 'Gastos' },
-  { key: 'settings', label: 'Configuración' },
-  { key: 'free_line', label: 'Producto Libre', description: 'Puede agregar líneas de venta sin producto' },
-]
-
-function PermissionToggleRow({
-  label,
-  checked,
-  disabled = false,
-  indented = false,
-  onToggle,
-}: PermissionToggleRowProps) {
-  return (
-    <div className={`flex items-center justify-between px-3 py-2.5 ${indented ? 'pl-8' : ''}`}>
-      <span className={`text-sm ${indented ? 'text-hint' : 'text-body'}`}>{label}</span>
-
-      <button
-        type="button"
-        role="switch"
-        aria-checked={checked}
-        aria-label={label}
-        disabled={disabled}
-        onClick={onToggle}
-        className={`relative h-5 w-9 rounded-full transition-colors ${
-          disabled
-            ? 'cursor-not-allowed bg-muted opacity-60'
-            : checked
-              ? 'cursor-pointer bg-primary'
-              : 'cursor-pointer bg-muted-foreground'
-        }`}
-      >
-        <span
-          className={`absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-card shadow-sm transition-transform ${
-            checked ? 'translate-x-4' : 'translate-x-0'
-          }`}
-        />
-      </button>
-    </div>
-  )
 }
 
 function normalizePin(value: string): string {
@@ -136,51 +77,7 @@ export default function EditOperatorModal({
   const hasChanges = shouldSendName || shouldSendPin || shouldSendPermissions
 
   function handleTogglePermission(key: OperatorManagementPermissionKey) {
-    setPermissions(prev => {
-      if (key === 'sales') {
-        const nextSales = !prev.sales
-        return {
-          ...prev,
-          sales: nextSales,
-          price_override: nextSales ? prev.price_override : false,
-        }
-      }
-
-      if (key === 'stock') {
-        const nextStock = !prev.stock
-
-        return {
-          ...prev,
-          stock: nextStock,
-          stock_write: nextStock ? prev.stock_write : false,
-        }
-      }
-
-      if (key === 'price_lists') {
-        const nextPriceLists = !prev.price_lists
-
-        return {
-          ...prev,
-          price_lists: nextPriceLists,
-          price_lists_write: nextPriceLists ? prev.price_lists_write : false,
-        }
-      }
-
-      if (key === 'settings') {
-        const nextSettings = !prev.settings
-
-        return {
-          ...prev,
-          settings: nextSettings,
-          operators_write: nextSettings ? prev.operators_write : false,
-        }
-      }
-
-      return {
-        ...prev,
-        [key]: !prev[key],
-      }
-    })
+    setPermissions(prev => applyPermissionToggle(prev, key))
     setError(null)
   }
 
@@ -358,61 +255,7 @@ export default function EditOperatorModal({
                   </p>
                 </div>
 
-                <div className="rounded-lg border border-edge divide-y divide-edge">
-                  {PERMISSION_FIELDS.map(({ key, label }) => (
-                    <div key={key}>
-                      <PermissionToggleRow
-                        label={label}
-                        checked={permissions[key]}
-                        onToggle={() => handleTogglePermission(key)}
-                      />
-
-                      {key === 'sales' && permissions.sales && (
-                        <div className="border-t border-edge">
-                          <PermissionToggleRow
-                            label="Editar precio en venta"
-                            checked={permissions.price_override}
-                            indented
-                            onToggle={() => handleTogglePermission('price_override')}
-                          />
-                        </div>
-                      )}
-
-                      {key === 'stock' && permissions.stock && (
-                        <div className="border-t border-edge">
-                          <PermissionToggleRow
-                            label="Modificar inventario"
-                            checked={permissions.stock_write}
-                            indented
-                            onToggle={() => handleTogglePermission('stock_write')}
-                          />
-                        </div>
-                      )}
-
-                      {key === 'price_lists' && permissions.price_lists && (
-                        <div className="border-t border-edge">
-                          <PermissionToggleRow
-                            label="Modificar listas de precios"
-                            checked={permissions.price_lists_write}
-                            indented
-                            onToggle={() => handleTogglePermission('price_lists_write')}
-                          />
-                        </div>
-                      )}
-
-                      {key === 'settings' && permissions.settings && (
-                        <div className="border-t border-edge">
-                          <PermissionToggleRow
-                            label="Gestionar operarios"
-                            checked={permissions.operators_write}
-                            indented
-                            onToggle={() => handleTogglePermission('operators_write')}
-                          />
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
+                <PermissionsFields permissions={permissions} onToggle={handleTogglePermission} defaultExpanded />
               </section>
             )}
 

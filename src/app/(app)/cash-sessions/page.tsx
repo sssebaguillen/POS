@@ -13,8 +13,8 @@ export default async function CashSessionsPage() {
   const activeOperator = await getActiveOperator(cookieStore)
   const businessId = await requireAuthenticatedBusinessId(supabase)
 
-  // Only owner and operators with analysis permission can access /cash-sessions
-  if (activeOperator && activeOperator.role !== 'owner' && !activeOperator.permissions.analysis) {
+  // Only owner and operators with reports permission can access /cash-sessions
+  if (activeOperator && activeOperator.role !== 'owner' && !activeOperator.permissions.reports) {
     redirect('/pos')
   }
 

@@ -271,7 +271,7 @@ const CartPanel = forwardRef<CartPanelHandle, Props>(function CartPanel({ busine
   }
 
   function startPriceEdit(itemId: string, currentValue: number, mode: 'unit' | 'total') {
-    if (permissions?.price_override !== true) return
+    if (permissions?.pos_pricing !== true) return
     priceEditResolvedRef.current = false
     setEditingPrice({ productId: itemId, mode })
     setEditPriceValue(String(currentValue))
@@ -369,7 +369,7 @@ const CartPanel = forwardRef<CartPanelHandle, Props>(function CartPanel({ busine
                       : (adjustedByItemKey.get(adjustedKey)?.total ?? item.total)
                     const isEditingUnit = editingPrice?.productId === itemId && editingPrice.mode === 'unit'
                     const isEditingTotal = editingPrice?.productId === itemId && editingPrice.mode === 'total'
-                    const canOverridePrice = !isFreeLine && permissions?.price_override === true
+                    const canOverridePrice = !isFreeLine && permissions?.pos_pricing === true
 
                     const originalPrice = !isFreeLine && item.priceIsManual
                       ? resolveDisplayPrice({
@@ -561,8 +561,8 @@ const CartPanel = forwardRef<CartPanelHandle, Props>(function CartPanel({ busine
 
               {/* Modifier triggers — compact icon+label row */}
               {(() => {
-                const canDiscount = permissions?.price_override === true
-                const canFreeLine = freeLineEnabled && permissions?.free_line === true
+                const canDiscount = permissions?.pos_pricing === true
+                const canFreeLine = freeLineEnabled && permissions?.pos_pricing === true
                 const count = 1 + (canDiscount ? 1 : 0) + (canFreeLine ? 1 : 0)
                 const cols = count === 3 ? 'grid-cols-3' : count === 2 ? 'grid-cols-2' : 'grid-cols-1'
                 const base = 'flex flex-col items-center justify-center gap-1 h-14 rounded-xl border text-[11px] font-medium transition-[transform,background-color,border-color,color] duration-150 ease-[var(--ease-out)] active:scale-[0.97]'
@@ -781,7 +781,7 @@ const CartPanel = forwardRef<CartPanelHandle, Props>(function CartPanel({ busine
               )}
 
               {/* Free line — form */}
-              {showFreeLineForm && freeLineEnabled && permissions?.free_line === true && (
+              {showFreeLineForm && freeLineEnabled && permissions?.pos_pricing === true && (
                 <div className="rounded-xl border border-primary/30 bg-primary/5 p-3 space-y-2">
                   <p className="text-xs font-medium text-primary">Producto Libre</p>
                   <input

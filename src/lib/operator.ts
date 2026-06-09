@@ -2,78 +2,64 @@ export type { UserRole } from '@/lib/types'
 import type { UserRole } from '@/lib/types'
 import { OPERATOR_ROLES } from '@/lib/constants/domain'
 
+// Modelo de 8 capacidades agrupadas en 4 áreas (Mostrador / Inventario / Reportes /
+// Administración). Reemplaza los 11 flags planos viejos. Ver docs/todo/permisos-operario-redesign.md.
 export interface Permissions {
-  sales: boolean
-  stock: boolean
-  stock_write: boolean
-  analysis: boolean
-  price_lists: boolean
-  price_lists_write: boolean
-  settings: boolean
+  online_orders: boolean
+  pos_pricing: boolean
+  inventory_read: boolean
+  inventory_write: boolean
+  reports: boolean
   expenses: boolean
-  operators_write: boolean
-  price_override: boolean
-  free_line: boolean
+  settings: boolean
+  manage_operators: boolean
 }
 
 export const DEFAULT_PERMISSIONS: Permissions = {
-  sales: false,
-  stock: false,
-  stock_write: false,
-  analysis: false,
-  price_lists: false,
-  price_lists_write: false,
-  settings: false,
+  online_orders: false,
+  pos_pricing: false,
+  inventory_read: false,
+  inventory_write: false,
+  reports: false,
   expenses: false,
-  operators_write: false,
-  price_override: false,
-  free_line: false,
+  settings: false,
+  manage_operators: false,
 }
 
 export const OPERATOR_MANAGEMENT_PERMISSION_KEYS = [
-  'sales',
-  'stock',
-  'stock_write',
-  'analysis',
-  'price_lists',
-  'price_lists_write',
+  'online_orders',
+  'pos_pricing',
+  'inventory_read',
+  'inventory_write',
+  'reports',
   'expenses',
   'settings',
-  'operators_write',
-  'price_override',
-  'free_line',
+  'manage_operators',
 ] as const
 
 export type OperatorManagementPermissionKey = (typeof OPERATOR_MANAGEMENT_PERMISSION_KEYS)[number]
 export type OperatorManagementPermissions = Pick<Permissions, OperatorManagementPermissionKey>
 
 export const PERMISSION_LABELS: Record<keyof Permissions, string> = {
-  sales: 'Ventas',
-  stock: 'Inventario (lectura)',
-  stock_write: 'Inventario (edición)',
-  analysis: 'Análisis',
-  price_lists: 'Listas (lectura)',
-  price_lists_write: 'Listas (edición)',
+  online_orders: 'Pedidos online',
+  pos_pricing: 'Ajustar precios en la venta',
+  inventory_read: 'Ver inventario',
+  inventory_write: 'Editar inventario',
+  reports: 'Ver reportes y estadísticas',
+  expenses: 'Registrar gastos',
   settings: 'Configuración',
-  expenses: 'Gastos',
-  operators_write: 'Operarios',
-  price_override: 'Override de precio',
-  free_line: 'Línea libre',
+  manage_operators: 'Gestionar operarios',
 }
 
 export const OWNER_PERMISSIONS: Permissions = {
-  ...DEFAULT_PERMISSIONS,
-  sales: true,
-  stock: true,
-  stock_write: true,
-  analysis: true,
-  price_lists: true,
-  price_lists_write: true,
-  settings: true,
+  online_orders: true,
+  pos_pricing: true,
+  inventory_read: true,
+  inventory_write: true,
+  reports: true,
   expenses: true,
-  operators_write: true,
-  price_override: true,
-  free_line: true,
+  settings: true,
+  manage_operators: true,
 }
 
 export interface ActiveOperator {
@@ -91,77 +77,49 @@ export interface CookieStoreLike {
   get: (name: string) => CookieLike | undefined
 }
 
+function flag(value: unknown): boolean {
+  return value === true
+}
+
+/**
+ * Normaliza un objeto de permisos al shape canónico de 8 capacidades (clave faltante →
+ * false). Espejo TS de la función SQL `normalize_permissions` — mantener ambas en sync
+ * (ver regla 11).
+ */
+export function normalizePermissions(
+  value: Record<string, unknown> | Partial<Permissions> | null | undefined
+): Permissions {
+  const v = (value ?? {}) as Record<string, unknown>
+  return {
+    online_orders: flag(v.online_orders),
+    pos_pricing: flag(v.pos_pricing),
+    inventory_read: flag(v.inventory_read),
+    inventory_write: flag(v.inventory_write),
+    reports: flag(v.reports),
+    expenses: flag(v.expenses),
+    settings: flag(v.settings),
+    manage_operators: flag(v.manage_operators),
+  }
+}
+
 export function parsePermissions(value: unknown): Permissions | null {
   if (!value || typeof value !== 'object') {
     return null
   }
-
   const record = value as Record<string, unknown>
-  if (
-    typeof record.sales !== 'boolean' ||
-    typeof record.stock !== 'boolean' ||
-    typeof record.stock_write !== 'boolean' ||
-    typeof record.analysis !== 'boolean' ||
-    typeof record.price_lists !== 'boolean' ||
-    typeof record.price_lists_write !== 'boolean' ||
-    typeof record.settings !== 'boolean' ||
-    typeof record.expenses !== 'boolean'
-  ) {
+  // Exigir el shape canónico de 8 keys. Una cookie de shape viejo (11 flags) no las tiene
+  // → null → el proxy la limpia y fuerza re-selección de operador. Cutover limpio: nunca
+  // degrada permisos en silencio (fail-closed).
+  if (!OPERATOR_MANAGEMENT_PERMISSION_KEYS.every(key => typeof record[key] === 'boolean')) {
     return null
   }
-
-  return {
-    ...DEFAULT_PERMISSIONS,
-    sales: record.sales,
-    stock: record.stock,
-    stock_write: record.stock_write,
-    analysis: record.analysis,
-    price_lists: record.price_lists,
-    price_lists_write: record.price_lists_write,
-    settings: record.settings,
-    expenses: record.expenses,
-    operators_write: record.operators_write === true,
-    // Soft defaults: old cookies without these fields stay valid (default to false)
-    price_override: record.price_override === true,
-    free_line: record.free_line === true,
-  }
-}
-
-export function normalizePermissions(value: Partial<Permissions> | null | undefined): Permissions {
-  return {
-    ...DEFAULT_PERMISSIONS,
-    sales: value?.sales === true,
-    stock: value?.stock === true,
-    stock_write: value?.stock_write === true,
-    analysis: value?.analysis === true,
-    price_lists: value?.price_lists === true,
-    price_lists_write: value?.price_lists_write === true,
-    settings: value?.settings === true,
-    expenses: value?.expenses === true,
-    operators_write: value?.operators_write === true,
-    price_override: value?.price_override === true,
-    free_line: value?.free_line === true,
-  }
+  return normalizePermissions(record)
 }
 
 export function toOperatorManagementPermissions(
-  value: Partial<Permissions> | null | undefined
+  value: Record<string, unknown> | Partial<Permissions> | null | undefined
 ): OperatorManagementPermissions {
-  const permissions = normalizePermissions(value)
-
-  return {
-    sales: permissions.sales,
-    stock: permissions.stock,
-    stock_write: permissions.stock_write,
-    analysis: permissions.analysis,
-    price_lists: permissions.price_lists,
-    price_lists_write: permissions.price_lists_write,
-    expenses: permissions.expenses,
-    settings: permissions.settings,
-    operators_write: permissions.operators_write,
-    price_override: permissions.price_override,
-    free_line: permissions.free_line,
-  }
+  return normalizePermissions(value)
 }
 
 export function isUserRole(value: unknown): value is UserRole {

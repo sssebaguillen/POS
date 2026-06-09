@@ -39,11 +39,11 @@ export function useAiInsightsEnabled() {
 }
 
 /**
- * Lee el flag `analysis` del operario activo desde la cookie `op_perms` (espejo non-httpOnly
+ * Lee el flag `reports` del operario activo desde la cookie `op_perms` (espejo non-httpOnly
  * de los permisos, lo mismo que consume el sidebar). El dueño siempre la trae en true
  * (proxy escribe OWNER_PERMISSIONS). Patrón `mounted` para evitar mismatch de hidratación y
  * fail-closed (false hasta poder leer la cookie en el cliente): los insights son contenido de
- * análisis de negocio (capital inmovilizado, márgenes, anomalías de pago) → solo `analysis`.
+ * análisis de negocio (capital inmovilizado, márgenes, anomalías de pago) → solo `reports`.
  */
 function useHasInsightsPermission(): boolean {
   const [granted, setGranted] = useState(false)
@@ -51,8 +51,8 @@ function useHasInsightsPermission(): boolean {
     const match = document.cookie.match(/(?:^|; )op_perms=([^;]*)/)
     if (!match) return
     try {
-      const perms = JSON.parse(decodeURIComponent(match[1])) as { analysis?: boolean }
-      setGranted(perms?.analysis === true)
+      const perms = JSON.parse(decodeURIComponent(match[1])) as { reports?: boolean }
+      setGranted(perms?.reports === true)
     } catch {
       // cookie corrupta → fail-closed (granted queda false)
     }
@@ -64,7 +64,7 @@ function useHasInsightsPermission(): boolean {
  * Insights activos (status new|seen) del negocio del usuario. RLS (business isolation)
  * scopea por get_business_id() — no hace falta pasar business_id. Volumen chico (un
  * puñado por noche): se traen todos y los consumidores filtran por surface en memoria.
- * Sólo consulta si la feature está activada (opt-in del negocio) Y el operario tiene `analysis`
+ * Sólo consulta si la feature está activada (opt-in del negocio) Y el operario tiene `reports`
  * (los operarios montan sobre la sesión Supabase del dueño, así que el gate por rol es
  * client-side vía cookie — RLS no distingue operario).
  */
