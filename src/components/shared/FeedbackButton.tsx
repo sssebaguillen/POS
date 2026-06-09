@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { MessageSquarePlus } from 'lucide-react'
 import FeedbackModal from './FeedbackModal'
-import Toast from './Toast'
+import { useToast } from '@/hooks/useToast'
 
 interface Props {
   businessId: string
@@ -12,7 +12,7 @@ interface Props {
 
 export default function FeedbackButton({ businessId, showLabel = true }: Props) {
   const [open, setOpen] = useState(false)
-  const [showToast, setShowToast] = useState(false)
+  const { showToast } = useToast()
 
   return (
     <>
@@ -32,15 +32,8 @@ export default function FeedbackButton({ businessId, showLabel = true }: Props) 
         open={open}
         onOpenChange={setOpen}
         businessId={businessId}
-        onSuccess={() => setShowToast(true)}
+        onSuccess={() => showToast({ message: '¡Gracias! Tu mensaje llegó.' })}
       />
-
-      {showToast && (
-        <Toast
-          message="¡Gracias! Tu mensaje llegó."
-          onDismiss={() => setShowToast(false)}
-        />
-      )}
     </>
   )
 }

@@ -9,7 +9,6 @@ import SelectDropdown from '@/components/ui/SelectDropdown'
 import type { InventoryBrand, InventoryCategory } from '@/components/inventory/types'
 import { useFormatMoney } from '@/lib/context/CurrencyContext'
 import { useToast } from '@/hooks/useToast'
-import Toast from '@/components/shared/Toast'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -209,7 +208,7 @@ export default function ImportProductsModal({
 }: Props) {
   const supabase = useMemo(() => createClient(), [])
   const formatMoney = useFormatMoney()
-  const { toast, showToast, dismissToast } = useToast()
+  const { showToast } = useToast()
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   // step: 'upload' | 'mapping' | 'preview'
@@ -541,6 +540,7 @@ export default function ImportProductsModal({
           },
         })
         onImported()
+        onClose()
       } else {
         onImported()
         onClose()
@@ -550,11 +550,6 @@ export default function ImportProductsModal({
     } finally {
       setImporting(false)
     }
-  }
-
-  function handleDismissToast() {
-    dismissToast()
-    onClose()
   }
 
   // ---------------------------------------------------------------------------
@@ -572,8 +567,8 @@ export default function ImportProductsModal({
     <Dialog open onOpenChange={next => { if (!next) onClose() }}>
       <DialogContent
         showCloseButton={false}
-        onInteractOutside={e => { if (importing || toast !== null) e.preventDefault() }}
-        onEscapeKeyDown={e => { if (importing || toast !== null) e.preventDefault() }}
+        onInteractOutside={e => { if (importing) e.preventDefault() }}
+        onEscapeKeyDown={e => { if (importing) e.preventDefault() }}
         className="flex flex-col p-0 overflow-hidden sm:max-w-3xl max-h-[90vh]"
       >
         {/* Header */}
@@ -606,7 +601,7 @@ export default function ImportProductsModal({
 
           <button
             onClick={onClose}
-            disabled={importing || toast !== null}
+            disabled={importing}
             className="p-1.5 rounded-lg hover:bg-hover-bg transition-[transform,background-color,color] duration-150 ease-[var(--ease-out)] active:scale-95 text-hint disabled:opacity-50"
             aria-label="Cerrar"
           >
@@ -851,14 +846,6 @@ export default function ImportProductsModal({
           )}
         </div>
       </DialogContent>
-      {toast && (
-        <Toast
-          message={toast.message}
-          duration={toast.duration}
-          onUndo={toast.onUndo}
-          onDismiss={handleDismissToast}
-        />
-      )}
     </Dialog>
   )
 }

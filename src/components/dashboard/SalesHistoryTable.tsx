@@ -16,7 +16,6 @@ import type { PaymentMethod } from '@/lib/constants/domain'
 import { isPaymentMethod, normalizePayment, PAYMENT_OPTIONS, PAYMENT_TONE } from '@/lib/payments'
 import { ACCENT_CHIP } from '@/lib/accent-colors'
 import { useToast } from '@/hooks/useToast'
-import Toast from '@/components/shared/Toast'
 import SelectDropdown from '@/components/ui/SelectDropdown'
 import PopNumber from '@/components/shared/PopNumber'
 import { DynamicIcon } from '@/components/inventory/CategoryIconPreview'
@@ -59,7 +58,7 @@ function SalesHistoryTable({ businessId, businessName, operatorId, from, to, ope
   const fmt = useFormatMoney()
   const queryClient = useQueryClient()
   const supabase = useMemo(() => createClient(), [])
-  const { toast, showToast, dismissToast } = useToast()
+  const { showToast } = useToast()
 
   const [deletedIds, setDeletedIds] = useState<Set<string>>(new Set())
   const [expandedSaleId, setExpandedSaleId] = useState<string | null>(null)
@@ -651,7 +650,6 @@ function SalesHistoryTable({ businessId, businessName, operatorId, from, to, ope
         />
       )}
 
-      {toast && <Toast message={toast.message} duration={toast.duration} variant={toast.variant} onUndo={toast.onUndo} onDismiss={dismissToast} />}
     </div>
   )
 }

@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { X } from 'lucide-react'
 import { formatMoney } from '@/lib/format'
-import Toast from '@/components/shared/Toast'
+import { useToast } from '@/hooks/useToast'
 import type { Customer } from '@/lib/types'
 import { ERR } from '@/lib/errors'
 import SettlePaymentForm from './SettlePaymentForm'
@@ -35,7 +35,7 @@ export default function EditCustomerModal({ open, onClose, customer, operatorId,
   const [saving, setSaving] = useState(false)
 
   const [showSettleForm, setShowSettleForm] = useState(false)
-  const [toast, setToast] = useState<string | null>(null)
+  const { showToast } = useToast()
 
   async function handleSave() {
     const trimmedName = name.trim()
@@ -218,7 +218,7 @@ export default function EditCustomerModal({ open, onClose, customer, operatorId,
                     onSettled={nextBalance => {
                       setCreditBalance(nextBalance)
                       setShowSettleForm(false)
-                      setToast('Pago registrado correctamente.')
+                      showToast({ message: 'Pago registrado correctamente.' })
                       onUpdated({ ...customer, credit_balance: nextBalance })
                     }}
                     onCancel={() => setShowSettleForm(false)}
@@ -256,12 +256,6 @@ export default function EditCustomerModal({ open, onClose, customer, operatorId,
         </DialogContent>
       </Dialog>
 
-      {toast && (
-        <Toast
-          message={toast}
-          onDismiss={() => setToast(null)}
-        />
-      )}
     </>
   )
 }

@@ -1,9 +1,9 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef } from 'react'
 import { usePathname } from 'next/navigation'
 import { useUnreadOrdersCount } from './UnreadBadge'
-import Toast from '@/components/shared/Toast'
+import { useToast } from '@/hooks/useToast'
 
 const ACTIVE_ROUTES = ['/pos', '/dashboard']
 const MUTE_KEY = 'orders-online-mute'
@@ -36,7 +36,7 @@ export default function NewOrderNotifier() {
   const isActiveRoute = ACTIVE_ROUTES.some(r => pathname === r || pathname.startsWith(`${r}/`))
   const { data: count = 0 } = useUnreadOrdersCount(isActiveRoute)
   const previousCount = useRef<number | null>(null)
-  const [toastMessage, setToastMessage] = useState<string | null>(null)
+  const { showToast } = useToast()
 
   useEffect(() => {
     if (previousCount.current === null) {
@@ -47,20 +47,14 @@ export default function NewOrderNotifier() {
       const muted = typeof window !== 'undefined' && window.localStorage.getItem(MUTE_KEY) === 'true'
       if (!muted) playBeep()
       const diff = count - previousCount.current
-      // Notifying on a polled external value change — the toast UI is the side effect.
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setToastMessage(diff === 1 ? 'Nuevo pedido online' : `${diff} pedidos online nuevos`)
+      showToast({
+        message: diff === 1 ? 'Nuevo pedido online' : `${diff} pedidos online nuevos`,
+        variant: 'success',
+        duration: 5000,
+      })
     }
     previousCount.current = count
-  }, [count])
+  }, [count, showToast])
 
-  if (!toastMessage) return null
-  return (
-    <Toast
-      message={toastMessage}
-      variant="success"
-      duration={5000}
-      onDismiss={() => setToastMessage(null)}
-    />
-  )
+  return null
 }

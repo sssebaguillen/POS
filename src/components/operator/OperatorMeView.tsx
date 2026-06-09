@@ -8,7 +8,6 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import DateRangeFilter from '@/components/shared/DateRangeFilter'
 import type { DateRangePeriod } from '@/components/shared/DateRangeFilter'
-import Toast from '@/components/shared/Toast'
 import { useToast } from '@/hooks/useToast'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import SalesHeatmap from '@/components/stats/SalesHeatmap'
@@ -135,7 +134,7 @@ export default function OperatorMeView({
   const currentPinRef = useRef<HTMLInputElement>(null)
   const newPinRef = useRef<HTMLInputElement>(null)
   const confirmPinRef = useRef<HTMLInputElement>(null)
-  const { toast, showToast, dismissToast } = useToast()
+  const { showToast } = useToast()
 
   const [period, setPeriod] = useState<DateRangePeriod>(initialPeriod)
   const [from, setFrom] = useState(initialFrom)
@@ -588,7 +587,6 @@ export default function OperatorMeView({
         </div>
       </div>
 
-      {toast && <Toast message={toast.message} duration={toast.duration} onDismiss={dismissToast} />}
     </div>
   )
 }

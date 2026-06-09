@@ -1,10 +1,15 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import Toast, { type ToastVariant } from '@/components/shared/Toast'
+import { useEffect } from 'react'
+import { useToast } from '@/components/shared/ToastProvider'
+import type { ToastVariant } from '@/components/shared/Toast'
 
 const MESSAGES: Record<string, string> = {
   'no-access': 'No tienes permisos para acceder a esa sección',
+}
+
+function clearFlashCookie() {
+  document.cookie = 'flash_toast=; Max-Age=0; path=/; SameSite=Lax'
 }
 
 interface Props {
@@ -12,28 +17,14 @@ interface Props {
   variant?: ToastVariant
 }
 
-function clearFlashCookie() {
-  document.cookie = 'flash_toast=; Max-Age=0; path=/; SameSite=Lax'
-}
-
+/** Lee el mensaje flash (cookie) y lo dispara una vez en el toast global. No renderiza nada. */
 export default function FlashToast({ message, variant = 'warning' }: Props) {
-  const [visible, setVisible] = useState(true)
+  const { showToast } = useToast()
 
   useEffect(() => {
+    showToast({ message: MESSAGES[message] ?? message, variant, duration: 3000 })
     clearFlashCookie()
-  }, [])
+  }, [message, variant, showToast])
 
-  if (!visible) return null
-
-  return (
-    <Toast
-      message={MESSAGES[message] ?? message}
-      variant={variant}
-      duration={3000}
-      onDismiss={() => {
-        clearFlashCookie()
-        setVisible(false)
-      }}
-    />
-  )
+  return null
 }

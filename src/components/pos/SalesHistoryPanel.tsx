@@ -18,7 +18,6 @@ import { isPaymentMethod, normalizePayment } from '@/lib/payments'
 import type { PaymentMethod } from '@/lib/constants/domain'
 import { useCurrency, useFormatMoney } from '@/lib/context/CurrencyContext'
 import { useToast } from '@/hooks/useToast'
-import Toast from '@/components/shared/Toast'
 import type { SaleRow, SaleDetail } from '@/components/pos/types'
 
 type CategoryIcon = { icon: string | null; icon_color: string | null }
@@ -59,7 +58,7 @@ export default function SalesHistoryPanel({ businessId, businessName, operatorId
   const queryClient = useQueryClient()
   const currency = useCurrency()
   const formatMoney = useFormatMoney()
-  const { toast, showToast, dismissToast } = useToast()
+  const { showToast } = useToast()
 
   const [historyQuery, setHistoryQuery] = useState('')
   const [expandedSaleId, setExpandedSaleId] = useState<string | null>(null)
@@ -626,7 +625,6 @@ export default function SalesHistoryPanel({ businessId, businessName, operatorId
         </div>
       )}
 
-      {toast && <Toast message={toast.message} duration={toast.duration} variant={toast.variant} onUndo={toast.onUndo} onDismiss={dismissToast} />}
 
       {receiptPreview && (
         <ReceiptPreviewModal

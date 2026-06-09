@@ -9,7 +9,6 @@ import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { VisuallyHidden } from '@radix-ui/react-visually-hidden'
 import { Button } from '@/components/ui/button'
 import { useToast } from '@/hooks/useToast'
-import Toast from '@/components/shared/Toast'
 import { useFormatMoney } from '@/lib/context/CurrencyContext'
 
 /** Extracts the storage path from either a legacy full Supabase URL or a bare path. */
@@ -40,7 +39,7 @@ interface Props {
 export default function ExpensesTable({ expenses, businessId, operatorId, supabaseClient, onDeleted, onEdit }: Props) {
   const supabase = useMemo(() => supabaseClient, [supabaseClient])
   const formatMoney = useFormatMoney()
-  const { toast, showToast, dismissToast } = useToast()
+  const { showToast } = useToast()
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [loadingItemsId, setLoadingItemsId] = useState<string | null>(null)
   const [pendingDelete, setPendingDelete] = useState<Expense | null>(null)
@@ -229,9 +228,6 @@ export default function ExpensesTable({ expenses, businessId, operatorId, supaba
         />
       )}
 
-      {toast && (
-        <Toast message={toast.message} duration={toast.duration} onDismiss={dismissToast} />
-      )}
     </>
   )
 }

@@ -33,7 +33,6 @@ import type { InventoryBrand, InventoryCategory, InventoryProduct } from '@/comp
 import { getStatus } from '@/components/inventory/types'
 import { useToast } from '@/hooks/useToast'
 import { usePillIndicator } from '@/hooks/usePillIndicator'
-import Toast from '@/components/shared/Toast'
 import { useFormatMoney } from '@/lib/context/CurrencyContext'
 import { trackFeatureUsed } from '@/lib/analytics'
 import { fetchInventoryProducts } from '@/lib/inventory-products'
@@ -88,7 +87,7 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
   const [selectionMode, setSelectionMode] = useState(false)
   const [bulkLoading, setBulkLoading] = useState(false)
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false)
-  const { toast, showToast, dismissToast } = useToast()
+  const { showToast } = useToast()
   const formatMoney = useFormatMoney()
 
   const scrollContainerRef = useRef<HTMLDivElement>(null)
@@ -1298,7 +1297,6 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
         document.body
       )}
 
-      {toast && <Toast message={toast.message} duration={toast.duration} variant={toast.variant} onUndo={toast.onUndo} onDismiss={dismissToast} />}
 
       {!readOnly && selectedIds.size > 0 && (
         <BulkActionBar

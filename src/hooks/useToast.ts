@@ -1,37 +1,4 @@
-'use client'
-
-import { useState, useCallback } from 'react'
-import type { ToastVariant } from '@/components/shared/Toast'
-
-export interface ToastOptions {
-  message: string
-  duration?: number
-  variant?: ToastVariant
-  onUndo?: () => void
-}
-
-export interface ToastState {
-  message: string
-  duration: number
-  variant: ToastVariant
-  onUndo?: () => void
-}
-
-export function useToast() {
-  const [toast, setToast] = useState<ToastState | null>(null)
-
-  const showToast = useCallback((opts: ToastOptions) => {
-    setToast({
-      message: opts.message,
-      duration: opts.duration ?? 5500,
-      variant: opts.variant ?? 'success',
-      onUndo: opts.onUndo,
-    })
-  }, [])
-
-  const dismissToast = useCallback(() => {
-    setToast(null)
-  }, [])
-
-  return { toast, showToast, dismissToast }
-}
+// Re-export del provider global de toasts (la implementación vive en ToastProvider).
+// Se mantiene este módulo para no romper los imports existentes `from '@/hooks/useToast'`.
+export { useToast } from '@/components/shared/ToastProvider'
+export type { ToastOptions } from '@/components/shared/ToastProvider'

@@ -15,7 +15,7 @@ interface Props {
 
 const VARIANT_CLASSES: Record<ToastVariant, string> = {
   success: 'border-border bg-popover text-popover-foreground',
-  warning: 'border-amber-200 bg-background text-amber-800 dark:border-amber-500/30 dark:bg-amber-950/80 dark:text-amber-200',
+  warning: 'border-warning/30 bg-background text-warning dark:border-warning/40 dark:bg-warning/10',
   error: 'border-destructive/30 bg-background text-destructive dark:border-destructive/40 dark:bg-destructive/10 dark:text-red-300',
 }
 

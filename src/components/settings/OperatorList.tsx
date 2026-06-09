@@ -10,7 +10,6 @@ import EditOperatorModal from '@/components/settings/EditOperatorModal'
 import ConfirmModal from '@/components/shared/ConfirmModal'
 import { useToast } from '@/hooks/useToast'
 import { ERR } from '@/lib/errors'
-import Toast from '@/components/shared/Toast'
 import { Plus } from 'lucide-react'
 
 type ConfirmState = { title: string; message: string; onConfirm: () => void } | null
@@ -35,7 +34,7 @@ export default function OperatorList({
   const [showNewOperatorModal, setShowNewOperatorModal] = useState(false)
   const [editingOperator, setEditingOperator] = useState<SettingsOperator | null>(null)
   const [pendingConfirm, setPendingConfirm] = useState<ConfirmState>(null)
-  const { toast, showToast, dismissToast } = useToast()
+  const { showToast } = useToast()
   const deleteTimersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map())
 
   function handleDeleteOperator(operator: SettingsOperator) {
@@ -183,7 +182,6 @@ export default function OperatorList({
         onCancel={() => setPendingConfirm(null)}
       />
 
-      {toast && <Toast message={toast.message} duration={toast.duration} variant={toast.variant} onUndo={toast.onUndo} onDismiss={dismissToast} />}
     </div>
   )
 }

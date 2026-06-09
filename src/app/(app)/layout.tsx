@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import AppShell from '@/components/shared/AppShell'
 import FlashToast from '@/components/shared/FlashToast'
+import { ToastProvider } from '@/components/shared/ToastProvider'
 import PostHogIdentify from '@/components/shared/PostHogIdentify'
 import QueryProvider from '@/providers/query-provider'
 import { cookies } from 'next/headers'
@@ -162,6 +163,7 @@ export default async function AppLayout({
           --primary-foreground: #1a0800;
         }
       `}</style>
+      <ToastProvider>
       <QueryProvider>
         <AppShell
           activeOperatorName={activeOperator?.name ?? null}
@@ -198,6 +200,7 @@ export default async function AppLayout({
         />
       ) : null}
       {flashMessage && <FlashToast message={flashMessage} />}
+      </ToastProvider>
     </>
   )
 }

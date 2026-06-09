@@ -18,7 +18,6 @@ import type { CustomerSelection } from '@/lib/types/pos'
 import type { Permissions } from '@/lib/operator'
 import { useToast } from '@/hooks/useToast'
 import { useFormatMoney } from '@/lib/context/CurrencyContext'
-import Toast from '@/components/shared/Toast'
 import PopNumber from '@/components/shared/PopNumber'
 
 function getStockIndicator(
@@ -74,7 +73,7 @@ const CartPanel = forwardRef<CartPanelHandle, Props>(function CartPanel({ busine
   const [customerQuery, setCustomerQuery] = useState('')
   const [customerResults, setCustomerResults] = useState<CustomerSelection[]>([])
   const [customerSearching, setCustomerSearching] = useState(false)
-  const { toast, showToast, dismissToast } = useToast()
+  const { showToast } = useToast()
   const [activeTab, setActiveTab] = useState<RightTab>('current')
   const [editingPrice, setEditingPrice] = useState<{ productId: string; mode: 'unit' | 'total' } | null>(null)
   const [editPriceValue, setEditPriceValue] = useState('')
@@ -907,7 +906,6 @@ const CartPanel = forwardRef<CartPanelHandle, Props>(function CartPanel({ busine
         />
       )}
 
-      {toast && <Toast message={toast.message} duration={toast.duration} variant={toast.variant} onUndo={toast.onUndo} onDismiss={dismissToast} />}
     </>
   )
 })
