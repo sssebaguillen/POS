@@ -67,8 +67,6 @@ export default function POSView({ products, businessId, businessName, freeLineEn
   const itemsRef = useRef<CartItem[]>([])
   const itemCount = useCartStore(s => s.items.length)
   const cartItems = useCartStore(s => s.items)
-  itemCountRef.current = itemCount
-  itemsRef.current = cartItems
   const clearCart = useCartStore(s => s.clearCart)
   const removeItem = useCartStore(s => s.removeItem)
   const updateQuantity = useCartStore(s => s.updateQuantity)
@@ -77,7 +75,6 @@ export default function POSView({ products, businessId, businessName, freeLineEn
   const supabase = useMemo(() => createClient(), [])
   const queryClient = useQueryClient()
   const [confirmingNewSale, setConfirmingNewSale] = useState(false)
-  confirmingNewSaleRef.current = confirmingNewSale
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false)
   const confirmNewSaleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -88,6 +85,14 @@ export default function POSView({ products, businessId, businessName, freeLineEn
   const [showCloseModal, setShowCloseModal] = useState(false)
 
   const operatorId = activeOperator?.role === 'owner' || !activeOperator ? null : activeOperator.profile_id
+
+  // Mantener refs en sync con el último estado para handlers/timers estables
+  // (se leen fuera del render: keydown global del scanner, timer de "nueva venta").
+  useEffect(() => {
+    itemCountRef.current = itemCount
+    itemsRef.current = cartItems
+    confirmingNewSaleRef.current = confirmingNewSale
+  }, [itemCount, cartItems, confirmingNewSale])
 
   useEffect(() => {
     return () => {

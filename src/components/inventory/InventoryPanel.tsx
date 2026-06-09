@@ -19,6 +19,7 @@ import EditProductModal from '@/components/inventory/EditProductModal'
 import CategoryModal from '@/components/inventory/CategoryModal'
 import BrandModal from '@/components/inventory/BrandModal'
 import ImportProductsModal from '@/components/inventory/ImportProductsModal'
+import HeaderActionDropdown from '@/components/inventory/HeaderActionDropdown'
 import ConfirmModal from '@/components/shared/ConfirmModal'
 import BulkActionBar from '@/components/inventory/BulkActionBar'
 import QuickEditCategoryModal from '@/components/inventory/QuickEditCategoryModal'
@@ -87,14 +88,6 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
   const [selectionMode, setSelectionMode] = useState(false)
   const [bulkLoading, setBulkLoading] = useState(false)
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false)
-  const [ioDropdownOpen, setIoDropdownOpen] = useState(false)
-  const [tagsDropdownOpen, setTagsDropdownOpen] = useState(false)
-  const ioDropdownRef = useRef<HTMLDivElement>(null)
-  const tagsDropdownRef = useRef<HTMLDivElement>(null)
-  const ioButtonRef = useRef<HTMLButtonElement>(null)
-  const tagsButtonRef = useRef<HTMLButtonElement>(null)
-  const ioPortalRef = useRef<HTMLDivElement>(null)
-  const tagsPortalRef = useRef<HTMLDivElement>(null)
   const { toast, showToast, dismissToast } = useToast()
   const formatMoney = useFormatMoney()
 
@@ -231,31 +224,19 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
     return () => { timers.forEach(id => clearTimeout(id)) }
   }, [])
 
-  // Close dropdowns on outside click — also exclude the portaled content
-  useEffect(() => {
-    function handleClick(e: MouseEvent) {
-      const t = e.target as Node
-      const insideIo = ioDropdownRef.current?.contains(t) || ioPortalRef.current?.contains(t)
-      if (!insideIo) setIoDropdownOpen(false)
-      const insideTags = tagsDropdownRef.current?.contains(t) || tagsPortalRef.current?.contains(t)
-      if (!insideTags) setTagsDropdownOpen(false)
-    }
-    document.addEventListener('mousedown', handleClick)
-    return () => document.removeEventListener('mousedown', handleClick)
-  }, [])
-
-  const activeProducts = products.filter(p => p.is_active)
-  const totalStock = activeProducts.reduce((acc, p) => acc + p.stock, 0)
-  const inventoryValue = activeProducts.reduce((acc, p) => acc + p.cost * p.stock, 0)
-  const avgMargin = (() => {
+  const { activeProducts, totalStock, inventoryValue, avgMargin, outOfStock, lowStock, categoryCount } = useMemo(() => {
+    const activeProducts = products.filter(p => p.is_active)
+    const totalStock = activeProducts.reduce((acc, p) => acc + p.stock, 0)
+    const inventoryValue = activeProducts.reduce((acc, p) => acc + p.cost * p.stock, 0)
     const withCost = activeProducts.filter(p => p.cost > 0 && p.price > 0)
-    if (withCost.length === 0) return 0
-    const margins = withCost.map(p => ((p.price - p.cost) / p.price) * 100)
-    return margins.reduce((a, b) => a + b, 0) / margins.length
-  })()
-  const outOfStock = activeProducts.filter(p => p.stock <= 0).length
-  const lowStock = activeProducts.filter(p => p.stock > 0 && p.stock <= p.min_stock).length
-  const categoryCount = new Set(products.map(p => p.category_id).filter(Boolean)).size
+    const avgMargin = withCost.length === 0
+      ? 0
+      : withCost.reduce((acc, p) => acc + ((p.price - p.cost) / p.price) * 100, 0) / withCost.length
+    const outOfStock = activeProducts.filter(p => p.stock <= 0).length
+    const lowStock = activeProducts.filter(p => p.stock > 0 && p.stock <= p.min_stock).length
+    const categoryCount = new Set(products.map(p => p.category_id).filter(Boolean)).size
+    return { activeProducts, totalStock, inventoryValue, avgMargin, outOfStock, lowStock, categoryCount }
+  }, [products])
 
   const updateProduct = useCallback(async (productId: string, values: Partial<InventoryProduct>) => {
     if (readOnly) {
@@ -711,151 +692,41 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
           <Search size={18} className="text-body" />
         </button>
 
-        {/* Import/Export — desktop shows text, mobile shows icon dropdown */}
-        <div ref={ioDropdownRef} className="relative">
-          {/* Mobile: single icon that opens dropdown */}
-          <button
-            ref={ioButtonRef}
-            type="button"
-            onClick={() => {
-              const rect = ioButtonRef.current?.getBoundingClientRect()
-              setIoDropdownOpen(prev => !prev)
-              void rect
-            }}
-            className="inv:hidden p-1.5 rounded-lg border border-edge hover:bg-surface-alt transition-[transform,background-color] duration-150 ease-[var(--ease-out)] active:scale-95"
-            aria-label="Importar / Exportar"
-            title="Importar / Exportar"
-          >
-            <ArrowDownToLine size={17} className="text-body" />
-          </button>
-          {/* Desktop: plain buttons */}
-          <div className="hidden inv:flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              className="rounded-lg text-xs"
-              onClick={() => { setShowImport(true); trackFeatureUsed('import_products') }}
-              disabled={readOnly || !businessId}
-              title={readOnly ? 'Sin permiso de inventario' : undefined}
-            >
-              Importar
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              className="rounded-lg text-xs"
-              onClick={exportCsv}
-              disabled={filtered.length === 0}
-            >
-              Exportar
-            </Button>
-          </div>
-          {/* Mobile dropdown — rendered via portal to escape overflow:hidden */}
-          {ioDropdownOpen && typeof document !== 'undefined' && createPortal(
-            <div
-              ref={ioPortalRef}
-              className="inv:hidden"
-              style={{
-                position: 'fixed',
-                top: (ioButtonRef.current?.getBoundingClientRect().bottom ?? 0) + 4,
-                right: window.innerWidth - (ioButtonRef.current?.getBoundingClientRect().right ?? 0),
-                zIndex: 9999,
-                minWidth: 140,
-              }}
-            >
-              <div className="rounded-lg border border-edge bg-surface shadow-lg py-1 animate-in fade-in-0 zoom-in-95 origin-top-right duration-150">
-                <button
-                  type="button"
-                  className="w-full text-left px-4 py-2.5 text-sm hover:bg-surface-alt transition-[transform,background-color] duration-150 ease-[var(--ease-out)] active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none"
-                  disabled={readOnly || !businessId}
-                  onClick={() => { setIoDropdownOpen(false); setShowImport(true); trackFeatureUsed('import_products') }}
-                >
-                  Importar
-                </button>
-                <button
-                  type="button"
-                  className="w-full text-left px-4 py-2.5 text-sm hover:bg-surface-alt transition-[transform,background-color] duration-150 ease-[var(--ease-out)] active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none"
-                  disabled={filtered.length === 0}
-                  onClick={() => { setIoDropdownOpen(false); exportCsv() }}
-                >
-                  Exportar
-                </button>
-              </div>
-            </div>,
-            document.body
-          )}
-        </div>
+        {/* Import/Export — desktop: botones; mobile: icono + menú en portal */}
+        <HeaderActionDropdown
+          ariaLabel="Importar / Exportar"
+          icon={<ArrowDownToLine size={17} className="text-body" />}
+          items={[
+            {
+              label: 'Importar',
+              onClick: () => { setShowImport(true); trackFeatureUsed('import_products') },
+              disabled: readOnly || !businessId,
+              title: readOnly ? 'Sin permiso de inventario' : undefined,
+            },
+            { label: 'Exportar', onClick: exportCsv, disabled: filtered.length === 0 },
+          ]}
+        />
 
-        {/* Categories/Brands — desktop shows text, mobile shows icon dropdown */}
-        <div ref={tagsDropdownRef} className="relative">
-          {/* Mobile: single icon that opens dropdown */}
-          <button
-            ref={tagsButtonRef}
-            type="button"
-            onClick={() => setTagsDropdownOpen(prev => !prev)}
-            className="inv:hidden p-1.5 rounded-lg border border-edge hover:bg-surface-alt transition-[transform,background-color] duration-150 ease-[var(--ease-out)] active:scale-95"
-            disabled={readOnly}
-            aria-label="Categorías / Marcas"
-            title="Categorías / Marcas"
-          >
-            <Tag size={17} className="text-body" />
-          </button>
-          {/* Desktop: plain buttons */}
-          <div className="hidden inv:flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              className="rounded-lg text-xs"
-              onClick={() => setShowCategories(true)}
-              disabled={readOnly}
-              title={readOnly ? 'Sin permiso de inventario' : undefined}
-            >
-              Categorías
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              className="rounded-lg text-xs"
-              onClick={() => setShowBrands(true)}
-              disabled={readOnly}
-              title={readOnly ? 'Sin permiso de inventario' : undefined}
-            >
-              Marcas
-            </Button>
-          </div>
-          {/* Mobile dropdown — rendered via portal to escape overflow:hidden */}
-          {tagsDropdownOpen && typeof document !== 'undefined' && createPortal(
-            <div
-              ref={tagsPortalRef}
-              className="inv:hidden"
-              style={{
-                position: 'fixed',
-                top: (tagsButtonRef.current?.getBoundingClientRect().bottom ?? 0) + 4,
-                right: window.innerWidth - (tagsButtonRef.current?.getBoundingClientRect().right ?? 0),
-                zIndex: 9999,
-                minWidth: 140,
-              }}
-            >
-              <div className="rounded-lg border border-edge bg-surface shadow-lg py-1 animate-in fade-in-0 zoom-in-95 origin-top-right duration-150">
-                <button
-                  type="button"
-                  className="w-full text-left px-4 py-2.5 text-sm hover:bg-surface-alt transition-[transform,background-color] duration-150 ease-[var(--ease-out)] active:scale-[0.98]"
-                  onClick={() => { setTagsDropdownOpen(false); setShowCategories(true) }}
-                >
-                  Categorías
-                </button>
-                <button
-                  type="button"
-                  className="w-full text-left px-4 py-2.5 text-sm hover:bg-surface-alt transition-[transform,background-color] duration-150 ease-[var(--ease-out)] active:scale-[0.98]"
-                  onClick={() => { setTagsDropdownOpen(false); setShowBrands(true) }}
-                >
-                  Marcas
-                </button>
-              </div>
-            </div>,
-            document.body
-          )}
-        </div>
+        {/* Categorías/Marcas — desktop: botones; mobile: icono + menú en portal */}
+        <HeaderActionDropdown
+          ariaLabel="Categorías / Marcas"
+          icon={<Tag size={17} className="text-body" />}
+          triggerDisabled={readOnly}
+          items={[
+            {
+              label: 'Categorías',
+              onClick: () => setShowCategories(true),
+              disabled: readOnly,
+              title: readOnly ? 'Sin permiso de inventario' : undefined,
+            },
+            {
+              label: 'Marcas',
+              onClick: () => setShowBrands(true),
+              disabled: readOnly,
+              title: readOnly ? 'Sin permiso de inventario' : undefined,
+            },
+          ]}
+        />
 
         {!readOnly && (
           <Button
