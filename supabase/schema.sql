@@ -105,6 +105,89 @@ CREATE TYPE "public"."expense_category" AS ENUM (
 ALTER TYPE "public"."expense_category" OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."apply_unit_promo"("p_kind" "text", "p_percent" numeric, "p_offer_price" numeric, "p_unit_price" numeric) RETURNS numeric
+    LANGUAGE "sql" IMMUTABLE
+    SET "search_path" TO 'public', 'extensions'
+    AS $$
+-- Precio unitario con promo unitaria aplicada. Espejo TS: applyUnitPromo (src/lib/promotions.ts).
+-- percent → precio × (1 − pct/100); offer_price → LEAST(oferta, precio): una oferta nunca
+-- SUBE el precio. quantity (u otro) → el unitario no se toca.
+  SELECT CASE
+    WHEN p_kind = 'percent' AND p_percent IS NOT NULL AND p_percent > 0
+      THEN ROUND(p_unit_price * (1 - p_percent / 100.0), 2)
+    WHEN p_kind = 'offer_price' AND p_offer_price IS NOT NULL AND p_offer_price > 0
+      THEN LEAST(ROUND(p_offer_price, 2), ROUND(p_unit_price, 2))
+    ELSE ROUND(p_unit_price, 2)
+  END;
+$$;
+
+
+ALTER FUNCTION "public"."apply_unit_promo"("p_kind" "text", "p_percent" numeric, "p_offer_price" numeric, "p_unit_price" numeric) OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."archive_promotion"("p_operator_id" "uuid", "p_business_id" "uuid", "p_promotion_id" "uuid") RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'extensions'
+    AS $$
+DECLARE
+  v_caller_business_id uuid;
+  v_perm               text;
+  v_actor_role         text;
+  v_stored_op_id       uuid;
+  v_old                public.promotions%ROWTYPE;
+  v_row                public.promotions%ROWTYPE;
+BEGIN
+  IF p_operator_id IS NULL THEN
+    RETURN jsonb_build_object('success', false, 'error', '403: Sesión de operador no encontrada');
+  END IF;
+
+  v_caller_business_id := get_business_id();
+  IF v_caller_business_id IS NULL OR p_business_id IS DISTINCT FROM v_caller_business_id THEN
+    RETURN jsonb_build_object('success', false, 'error', 'Contexto de negocio inválido');
+  END IF;
+
+  SELECT normalize_permissions(permissions)->>'inventory_write', role INTO v_perm, v_actor_role
+  FROM operators WHERE id = p_operator_id AND business_id = v_caller_business_id AND is_active = true;
+  IF FOUND THEN
+    IF v_perm <> 'true' THEN
+      RETURN jsonb_build_object('success', false, 'error', '403: Permisos de inventario insuficientes');
+    END IF;
+  ELSE
+    IF NOT EXISTS (SELECT 1 FROM profiles WHERE id = p_operator_id AND business_id = v_caller_business_id) THEN
+      RETURN jsonb_build_object('success', false, 'error', '403: Sesión inválida');
+    END IF;
+    v_actor_role := 'owner';
+  END IF;
+  v_stored_op_id := CASE WHEN v_actor_role = 'owner' THEN NULL ELSE p_operator_id END;
+
+  SELECT * INTO v_old FROM promotions
+  WHERE id = p_promotion_id AND business_id = v_caller_business_id
+  FOR UPDATE;
+  IF NOT FOUND THEN
+    RETURN jsonb_build_object('success', false, 'error', 'Promoción no encontrada');
+  END IF;
+  IF v_old.archived_at IS NOT NULL THEN
+    RETURN jsonb_build_object('success', false, 'error', 'La promoción ya está archivada');
+  END IF;
+
+  UPDATE promotions SET
+    is_active   = false,
+    archived_at = now(),
+    updated_at  = now()
+  WHERE id = p_promotion_id
+  RETURNING * INTO v_row;
+
+  PERFORM log_audit_event(p_business_id, v_stored_op_id, v_actor_role,
+    'promotion_archived', 'promotion', v_row.id, v_row.name, to_jsonb(v_old), to_jsonb(v_row));
+
+  RETURN jsonb_build_object('success', true);
+END;
+$$;
+
+
+ALTER FUNCTION "public"."archive_promotion"("p_operator_id" "uuid", "p_business_id" "uuid", "p_promotion_id" "uuid") OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."assert_tenant"("p_business_id" "uuid") RETURNS "void"
     LANGUAGE "plpgsql" STABLE SECURITY DEFINER
     SET "search_path" TO 'public', 'extensions'
@@ -567,6 +650,34 @@ $$;
 
 
 ALTER FUNCTION "public"."compute_effective_price"("p_cost" numeric, "p_price" numeric, "p_variant_price" numeric, "p_list_id" "uuid", "p_list_multiplier" numeric, "p_product_id" "uuid", "p_brand_id" "uuid") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."compute_quantity_promo_discount"("p_group_size" integer, "p_affected_units" integer, "p_pay_percent" numeric, "p_unit_price" numeric, "p_quantity" integer) RETURNS numeric
+    LANGUAGE "sql" IMMUTABLE
+    SET "search_path" TO 'public', 'extensions'
+    AS $$
+-- Descuento de línea de una promo de cantidad: floor(qty / N) × K × unit_price × (1 − P/100).
+-- 2x1 = (2,1,0) · 3x2 = (3,1,0) · 2da unidad al 50% = (2,1,50).
+-- Espejo TS: computeQuantityDiscount (src/lib/promotions.ts).
+  SELECT CASE
+    WHEN p_group_size IS NULL OR p_group_size < 2
+      OR p_affected_units IS NULL OR p_affected_units < 1
+      OR COALESCE(p_quantity, 0) < p_group_size
+      OR COALESCE(p_unit_price, 0) <= 0
+      THEN 0::numeric
+    ELSE GREATEST(
+      ROUND(
+        FLOOR(p_quantity::numeric / p_group_size) * p_affected_units
+          * p_unit_price * (1 - COALESCE(p_pay_percent, 0) / 100.0),
+        2
+      ),
+      0
+    )
+  END;
+$$;
+
+
+ALTER FUNCTION "public"."compute_quantity_promo_discount"("p_group_size" integer, "p_affected_units" integer, "p_pay_percent" numeric, "p_unit_price" numeric, "p_quantity" integer) OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."create_brand_guarded"("p_operator_id" "uuid", "p_business_id" "uuid", "p_name" "text") RETURNS "jsonb"
@@ -1567,6 +1678,125 @@ $$;
 ALTER FUNCTION "public"."create_product_with_variants"("p_operator_id" "uuid", "p_business_id" "uuid", "p_product" "jsonb", "p_options" "jsonb", "p_variants" "jsonb") OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."create_promotion"("p_operator_id" "uuid", "p_business_id" "uuid", "p_name" "text", "p_kind" "text", "p_percent" numeric DEFAULT NULL::numeric, "p_offer_price" numeric DEFAULT NULL::numeric, "p_group_size" integer DEFAULT NULL::integer, "p_affected_units" integer DEFAULT NULL::integer, "p_pay_percent" numeric DEFAULT NULL::numeric, "p_product_id" "uuid" DEFAULT NULL::"uuid", "p_category_id" "uuid" DEFAULT NULL::"uuid", "p_brand_id" "uuid" DEFAULT NULL::"uuid", "p_starts_at" timestamp with time zone DEFAULT NULL::timestamp with time zone, "p_ends_at" timestamp with time zone DEFAULT NULL::timestamp with time zone, "p_show_in_catalog" boolean DEFAULT true) RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'extensions'
+    AS $$
+DECLARE
+  v_caller_business_id uuid;
+  v_perm               text;
+  v_actor_role         text;
+  v_stored_op_id       uuid;
+  v_row                public.promotions%ROWTYPE;
+  v_has_variants       boolean;
+BEGIN
+  IF p_operator_id IS NULL THEN
+    RETURN jsonb_build_object('success', false, 'error', '403: Sesión de operador no encontrada');
+  END IF;
+
+  v_caller_business_id := get_business_id();
+  IF v_caller_business_id IS NULL OR p_business_id IS DISTINCT FROM v_caller_business_id THEN
+    RETURN jsonb_build_object('success', false, 'error', 'Contexto de negocio inválido');
+  END IF;
+
+  SELECT normalize_permissions(permissions)->>'inventory_write', role INTO v_perm, v_actor_role
+  FROM operators WHERE id = p_operator_id AND business_id = v_caller_business_id AND is_active = true;
+  IF FOUND THEN
+    IF v_perm <> 'true' THEN
+      RETURN jsonb_build_object('success', false, 'error', '403: Permisos de inventario insuficientes');
+    END IF;
+  ELSE
+    IF NOT EXISTS (SELECT 1 FROM profiles WHERE id = p_operator_id AND business_id = v_caller_business_id) THEN
+      RETURN jsonb_build_object('success', false, 'error', '403: Sesión inválida');
+    END IF;
+    v_actor_role := 'owner';
+  END IF;
+  v_stored_op_id := CASE WHEN v_actor_role = 'owner' THEN NULL ELSE p_operator_id END;
+
+  -- Validaciones de negocio (los CHECK de la tabla son la red de seguridad final)
+  IF p_name IS NULL OR btrim(p_name) = '' THEN
+    RETURN jsonb_build_object('success', false, 'error', 'El nombre es obligatorio');
+  END IF;
+  IF p_kind NOT IN ('percent', 'offer_price', 'quantity') THEN
+    RETURN jsonb_build_object('success', false, 'error', 'Tipo de promoción inválido');
+  END IF;
+  IF (p_product_id IS NOT NULL)::int + (p_category_id IS NOT NULL)::int + (p_brand_id IS NOT NULL)::int <> 1 THEN
+    RETURN jsonb_build_object('success', false, 'error', 'La promoción debe tener exactamente un alcance (producto, categoría o marca)');
+  END IF;
+  IF p_kind = 'percent' AND (p_percent IS NULL OR p_percent <= 0 OR p_percent > 100) THEN
+    RETURN jsonb_build_object('success', false, 'error', 'El porcentaje debe estar entre 0 y 100');
+  END IF;
+  IF p_kind = 'offer_price' THEN
+    IF p_offer_price IS NULL OR p_offer_price <= 0 THEN
+      RETURN jsonb_build_object('success', false, 'error', 'El precio de oferta debe ser mayor a 0');
+    END IF;
+    IF p_product_id IS NULL THEN
+      RETURN jsonb_build_object('success', false, 'error', 'El precio de oferta requiere un producto específico');
+    END IF;
+  END IF;
+  IF p_kind = 'quantity' THEN
+    IF p_product_id IS NULL THEN
+      RETURN jsonb_build_object('success', false, 'error', 'Las promos por cantidad requieren un producto específico');
+    END IF;
+    IF p_group_size IS NULL OR p_group_size < 2 OR p_group_size > 100
+       OR p_affected_units IS NULL OR p_affected_units < 1 OR p_affected_units >= p_group_size
+       OR p_pay_percent IS NULL OR p_pay_percent < 0 OR p_pay_percent >= 100 THEN
+      RETURN jsonb_build_object('success', false, 'error', 'Configuración de cantidad inválida');
+    END IF;
+  END IF;
+  IF p_starts_at IS NOT NULL AND p_ends_at IS NOT NULL AND p_ends_at <= p_starts_at THEN
+    RETURN jsonb_build_object('success', false, 'error', 'La fecha de fin debe ser posterior a la de inicio');
+  END IF;
+
+  -- El target debe pertenecer al negocio
+  IF p_product_id IS NOT NULL THEN
+    SELECT has_variants INTO v_has_variants
+    FROM products WHERE id = p_product_id AND business_id = v_caller_business_id;
+    IF NOT FOUND THEN
+      RETURN jsonb_build_object('success', false, 'error', 'Producto no encontrado');
+    END IF;
+    IF p_kind = 'offer_price' AND v_has_variants THEN
+      RETURN jsonb_build_object('success', false, 'error', 'El precio de oferta no aplica a productos con variantes; usa porcentaje');
+    END IF;
+  END IF;
+  IF p_category_id IS NOT NULL AND NOT EXISTS (
+    SELECT 1 FROM categories WHERE id = p_category_id AND business_id = v_caller_business_id
+  ) THEN
+    RETURN jsonb_build_object('success', false, 'error', 'Categoría no encontrada');
+  END IF;
+  IF p_brand_id IS NOT NULL AND NOT EXISTS (
+    SELECT 1 FROM brands WHERE id = p_brand_id AND business_id = v_caller_business_id
+  ) THEN
+    RETURN jsonb_build_object('success', false, 'error', 'Marca no encontrada');
+  END IF;
+
+  INSERT INTO promotions (
+    business_id, name, kind, percent, offer_price,
+    group_size, affected_units, pay_percent,
+    product_id, category_id, brand_id,
+    starts_at, ends_at, show_in_catalog
+  ) VALUES (
+    v_caller_business_id, btrim(p_name), p_kind,
+    CASE WHEN p_kind = 'percent' THEN p_percent END,
+    CASE WHEN p_kind = 'offer_price' THEN p_offer_price END,
+    CASE WHEN p_kind = 'quantity' THEN p_group_size END,
+    CASE WHEN p_kind = 'quantity' THEN p_affected_units END,
+    CASE WHEN p_kind = 'quantity' THEN p_pay_percent END,
+    p_product_id, p_category_id, p_brand_id,
+    p_starts_at, p_ends_at, COALESCE(p_show_in_catalog, true)
+  ) RETURNING * INTO v_row;
+
+  PERFORM log_audit_event(p_business_id, v_stored_op_id, v_actor_role,
+    'promotion_created', 'promotion', v_row.id, v_row.name, NULL, to_jsonb(v_row));
+
+  RETURN jsonb_build_object('success', true, 'id', v_row.id);
+END;
+$$;
+
+
+ALTER FUNCTION "public"."create_promotion"("p_operator_id" "uuid", "p_business_id" "uuid", "p_name" "text", "p_kind" "text", "p_percent" numeric, "p_offer_price" numeric, "p_group_size" integer, "p_affected_units" integer, "p_pay_percent" numeric, "p_product_id" "uuid", "p_category_id" "uuid", "p_brand_id" "uuid", "p_starts_at" timestamp with time zone, "p_ends_at" timestamp with time zone, "p_show_in_catalog" boolean) OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."create_sale_transaction"("p_business_id" "uuid", "p_subtotal" numeric, "p_discount" numeric, "p_total" numeric, "p_status" "text", "p_price_list_id" "uuid", "p_operator_id" "uuid", "p_items" "jsonb", "p_payments" "jsonb", "p_customer_id" "uuid" DEFAULT NULL::"uuid", "p_session_id" "uuid" DEFAULT NULL::"uuid") RETURNS "jsonb"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public', 'extensions'
@@ -1587,6 +1817,8 @@ DECLARE
   v_credit_available   numeric;
   v_has_price_override boolean := false;
   v_balance_after      numeric;
+  v_item_promo_id      uuid;
+  v_item_promo_disc    numeric;
 BEGIN
   v_caller_business_id := get_business_id();
   IF v_caller_business_id IS NULL OR p_business_id IS DISTINCT FROM v_caller_business_id THEN
@@ -1673,9 +1905,24 @@ BEGIN
   RETURNING id, created_at INTO v_sale_id, v_sale_created_at;
 
   FOR v_item IN SELECT * FROM jsonb_array_elements(p_items) LOOP
+    -- promotion_id / promo_discount son informativos (la línea ya viene neta).
+    -- Si la promo no pertenece al negocio del llamador, se descartan sin bloquear la venta.
+    v_item_promo_id   := NULLIF(v_item->>'promotion_id', '')::uuid;
+    v_item_promo_disc := GREATEST(COALESCE((v_item->>'promo_discount')::numeric, 0), 0);
+    IF v_item_promo_id IS NOT NULL AND NOT EXISTS (
+      SELECT 1 FROM promotions WHERE id = v_item_promo_id AND business_id = v_caller_business_id
+    ) THEN
+      v_item_promo_id   := NULL;
+      v_item_promo_disc := 0;
+    END IF;
+    IF v_item_promo_id IS NULL THEN
+      v_item_promo_disc := 0;
+    END IF;
+
     INSERT INTO sale_items (
       sale_id, product_id, variant_id, quantity, unit_price, total,
-      unit_price_override, override_reason, free_line_description
+      unit_price_override, override_reason, free_line_description,
+      promotion_id, promo_discount
     ) VALUES (
       v_sale_id,
       NULLIF(v_item->>'product_id', '')::uuid,
@@ -1685,7 +1932,9 @@ BEGIN
       (v_item->>'total')::numeric,
       (v_item->>'unit_price_override')::numeric,
       v_item->>'override_reason',
-      v_item->>'free_line_description'
+      v_item->>'free_line_description',
+      v_item_promo_id,
+      v_item_promo_disc
     );
   END LOOP;
 
@@ -1711,7 +1960,8 @@ BEGIN
     'items', COALESCE((
       SELECT jsonb_agg(jsonb_build_object(
         'product_id', si.product_id, 'variant_id', si.variant_id,
-        'quantity', si.quantity, 'unit_price', si.unit_price, 'total', si.total) ORDER BY si.id)
+        'quantity', si.quantity, 'unit_price', si.unit_price, 'total', si.total,
+        'promotion_id', si.promotion_id, 'promo_discount', si.promo_discount) ORDER BY si.id)
       FROM sale_items si WHERE si.sale_id = v_sale_id), '[]'::jsonb),
     'payments', COALESCE((
       SELECT jsonb_agg(jsonb_build_object('method', pa.method, 'amount', pa.amount) ORDER BY pa.id)
@@ -2378,6 +2628,40 @@ $$;
 ALTER FUNCTION "public"."delete_sale"("p_sale_id" "uuid", "p_business_id" "uuid", "p_operator_id" "uuid") OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."find_applicable_promotion"("p_business_id" "uuid", "p_product_id" "uuid", "p_category_id" "uuid", "p_brand_id" "uuid", "p_at" timestamp with time zone DEFAULT "now"()) RETURNS "public"."promotions"
+    LANGUAGE "sql" STABLE
+    SET "search_path" TO 'public', 'extensions'
+    AS $$
+-- Promo vigente más aplicable para un producto. Resolución determinística: más específica
+-- gana (producto > categoría > marca); a igual especificidad, la más reciente. Sin stacking.
+-- Sin guard de tenant: helper del path del catálogo público (como compute_effective_price).
+-- Espejo TS: findApplicablePromo (src/lib/promotions.ts).
+  SELECT pr.*
+  FROM public.promotions pr
+  WHERE pr.business_id = p_business_id
+    AND pr.is_active = true
+    AND pr.archived_at IS NULL
+    AND (pr.starts_at IS NULL OR pr.starts_at <= p_at)
+    AND (pr.ends_at IS NULL OR pr.ends_at >= p_at)
+    AND (
+      (pr.product_id IS NOT NULL AND pr.product_id = p_product_id)
+      OR (pr.category_id IS NOT NULL AND pr.category_id = p_category_id)
+      OR (pr.brand_id IS NOT NULL AND pr.brand_id = p_brand_id)
+    )
+  ORDER BY
+    CASE
+      WHEN pr.product_id IS NOT NULL THEN 0
+      WHEN pr.category_id IS NOT NULL THEN 1
+      ELSE 2
+    END,
+    pr.created_at DESC
+  LIMIT 1;
+$$;
+
+
+ALTER FUNCTION "public"."find_applicable_promotion"("p_business_id" "uuid", "p_product_id" "uuid", "p_category_id" "uuid", "p_brand_id" "uuid", "p_at" timestamp with time zone) OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."get_active_session"() RETURNS "jsonb"
     LANGUAGE "plpgsql" STABLE SECURITY DEFINER
     SET "search_path" TO 'public', 'extensions'
@@ -3000,7 +3284,8 @@ BEGIN
     'avg_ticket', ds.avg_ticket, 'customers_count', ds.customers_count, 'expenses_total', ds.expenses_total,
     'operating_expenses_total', ds.operating_expenses_total, 'inventory_expenses_total', ds.inventory_expenses_total,
     'top_product_id', ds.top_product_id, 'top_product_name', ds.top_product_name,
-    'top_product_units', ds.top_product_units, 'top_product_revenue', ds.top_product_revenue
+    'top_product_units', ds.top_product_units, 'top_product_revenue', ds.top_product_revenue,
+    'promo_discounts_total', ds.promo_discounts_total, 'promo_sales_count', ds.promo_sales_count
   ) ORDER BY ds.snapshot_date), '[]'::jsonb) INTO v_rows
   FROM public.daily_snapshots ds
   WHERE ds.business_id = p_business_id AND ds.snapshot_date BETWEEN v_from AND v_to;
@@ -7122,6 +7407,137 @@ $$;
 ALTER FUNCTION "public"."update_product_variants"("p_operator_id" "uuid", "p_business_id" "uuid", "p_product_id" "uuid", "p_options" "jsonb", "p_variants" "jsonb") OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."update_promotion"("p_operator_id" "uuid", "p_business_id" "uuid", "p_promotion_id" "uuid", "p_name" "text", "p_kind" "text", "p_percent" numeric DEFAULT NULL::numeric, "p_offer_price" numeric DEFAULT NULL::numeric, "p_group_size" integer DEFAULT NULL::integer, "p_affected_units" integer DEFAULT NULL::integer, "p_pay_percent" numeric DEFAULT NULL::numeric, "p_product_id" "uuid" DEFAULT NULL::"uuid", "p_category_id" "uuid" DEFAULT NULL::"uuid", "p_brand_id" "uuid" DEFAULT NULL::"uuid", "p_starts_at" timestamp with time zone DEFAULT NULL::timestamp with time zone, "p_ends_at" timestamp with time zone DEFAULT NULL::timestamp with time zone, "p_show_in_catalog" boolean DEFAULT true, "p_is_active" boolean DEFAULT true) RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'extensions'
+    AS $$
+DECLARE
+  v_caller_business_id uuid;
+  v_perm               text;
+  v_actor_role         text;
+  v_stored_op_id       uuid;
+  v_old                public.promotions%ROWTYPE;
+  v_row                public.promotions%ROWTYPE;
+  v_has_variants       boolean;
+BEGIN
+  IF p_operator_id IS NULL THEN
+    RETURN jsonb_build_object('success', false, 'error', '403: Sesión de operador no encontrada');
+  END IF;
+
+  v_caller_business_id := get_business_id();
+  IF v_caller_business_id IS NULL OR p_business_id IS DISTINCT FROM v_caller_business_id THEN
+    RETURN jsonb_build_object('success', false, 'error', 'Contexto de negocio inválido');
+  END IF;
+
+  SELECT normalize_permissions(permissions)->>'inventory_write', role INTO v_perm, v_actor_role
+  FROM operators WHERE id = p_operator_id AND business_id = v_caller_business_id AND is_active = true;
+  IF FOUND THEN
+    IF v_perm <> 'true' THEN
+      RETURN jsonb_build_object('success', false, 'error', '403: Permisos de inventario insuficientes');
+    END IF;
+  ELSE
+    IF NOT EXISTS (SELECT 1 FROM profiles WHERE id = p_operator_id AND business_id = v_caller_business_id) THEN
+      RETURN jsonb_build_object('success', false, 'error', '403: Sesión inválida');
+    END IF;
+    v_actor_role := 'owner';
+  END IF;
+  v_stored_op_id := CASE WHEN v_actor_role = 'owner' THEN NULL ELSE p_operator_id END;
+
+  SELECT * INTO v_old FROM promotions
+  WHERE id = p_promotion_id AND business_id = v_caller_business_id
+  FOR UPDATE;
+  IF NOT FOUND THEN
+    RETURN jsonb_build_object('success', false, 'error', 'Promoción no encontrada');
+  END IF;
+  IF v_old.archived_at IS NOT NULL THEN
+    RETURN jsonb_build_object('success', false, 'error', 'No se puede editar una promoción archivada');
+  END IF;
+
+  IF p_name IS NULL OR btrim(p_name) = '' THEN
+    RETURN jsonb_build_object('success', false, 'error', 'El nombre es obligatorio');
+  END IF;
+  IF p_kind NOT IN ('percent', 'offer_price', 'quantity') THEN
+    RETURN jsonb_build_object('success', false, 'error', 'Tipo de promoción inválido');
+  END IF;
+  IF (p_product_id IS NOT NULL)::int + (p_category_id IS NOT NULL)::int + (p_brand_id IS NOT NULL)::int <> 1 THEN
+    RETURN jsonb_build_object('success', false, 'error', 'La promoción debe tener exactamente un alcance (producto, categoría o marca)');
+  END IF;
+  IF p_kind = 'percent' AND (p_percent IS NULL OR p_percent <= 0 OR p_percent > 100) THEN
+    RETURN jsonb_build_object('success', false, 'error', 'El porcentaje debe estar entre 0 y 100');
+  END IF;
+  IF p_kind = 'offer_price' THEN
+    IF p_offer_price IS NULL OR p_offer_price <= 0 THEN
+      RETURN jsonb_build_object('success', false, 'error', 'El precio de oferta debe ser mayor a 0');
+    END IF;
+    IF p_product_id IS NULL THEN
+      RETURN jsonb_build_object('success', false, 'error', 'El precio de oferta requiere un producto específico');
+    END IF;
+  END IF;
+  IF p_kind = 'quantity' THEN
+    IF p_product_id IS NULL THEN
+      RETURN jsonb_build_object('success', false, 'error', 'Las promos por cantidad requieren un producto específico');
+    END IF;
+    IF p_group_size IS NULL OR p_group_size < 2 OR p_group_size > 100
+       OR p_affected_units IS NULL OR p_affected_units < 1 OR p_affected_units >= p_group_size
+       OR p_pay_percent IS NULL OR p_pay_percent < 0 OR p_pay_percent >= 100 THEN
+      RETURN jsonb_build_object('success', false, 'error', 'Configuración de cantidad inválida');
+    END IF;
+  END IF;
+  IF p_starts_at IS NOT NULL AND p_ends_at IS NOT NULL AND p_ends_at <= p_starts_at THEN
+    RETURN jsonb_build_object('success', false, 'error', 'La fecha de fin debe ser posterior a la de inicio');
+  END IF;
+
+  IF p_product_id IS NOT NULL THEN
+    SELECT has_variants INTO v_has_variants
+    FROM products WHERE id = p_product_id AND business_id = v_caller_business_id;
+    IF NOT FOUND THEN
+      RETURN jsonb_build_object('success', false, 'error', 'Producto no encontrado');
+    END IF;
+    IF p_kind = 'offer_price' AND v_has_variants THEN
+      RETURN jsonb_build_object('success', false, 'error', 'El precio de oferta no aplica a productos con variantes; usa porcentaje');
+    END IF;
+  END IF;
+  IF p_category_id IS NOT NULL AND NOT EXISTS (
+    SELECT 1 FROM categories WHERE id = p_category_id AND business_id = v_caller_business_id
+  ) THEN
+    RETURN jsonb_build_object('success', false, 'error', 'Categoría no encontrada');
+  END IF;
+  IF p_brand_id IS NOT NULL AND NOT EXISTS (
+    SELECT 1 FROM brands WHERE id = p_brand_id AND business_id = v_caller_business_id
+  ) THEN
+    RETURN jsonb_build_object('success', false, 'error', 'Marca no encontrada');
+  END IF;
+
+  UPDATE promotions SET
+    name            = btrim(p_name),
+    kind            = p_kind,
+    percent         = CASE WHEN p_kind = 'percent' THEN p_percent END,
+    offer_price     = CASE WHEN p_kind = 'offer_price' THEN p_offer_price END,
+    group_size      = CASE WHEN p_kind = 'quantity' THEN p_group_size END,
+    affected_units  = CASE WHEN p_kind = 'quantity' THEN p_affected_units END,
+    pay_percent     = CASE WHEN p_kind = 'quantity' THEN p_pay_percent END,
+    product_id      = p_product_id,
+    category_id     = p_category_id,
+    brand_id        = p_brand_id,
+    starts_at       = p_starts_at,
+    ends_at         = p_ends_at,
+    show_in_catalog = COALESCE(p_show_in_catalog, true),
+    is_active       = COALESCE(p_is_active, true),
+    updated_at      = now()
+  WHERE id = p_promotion_id
+  RETURNING * INTO v_row;
+
+  PERFORM log_audit_event(p_business_id, v_stored_op_id, v_actor_role,
+    'promotion_updated', 'promotion', v_row.id, v_row.name, to_jsonb(v_old), to_jsonb(v_row));
+
+  RETURN jsonb_build_object('success', true, 'id', v_row.id);
+END;
+$$;
+
+
+ALTER FUNCTION "public"."update_promotion"("p_operator_id" "uuid", "p_business_id" "uuid", "p_promotion_id" "uuid", "p_name" "text", "p_kind" "text", "p_percent" numeric, "p_offer_price" numeric, "p_group_size" integer, "p_affected_units" integer, "p_pay_percent" numeric, "p_product_id" "uuid", "p_category_id" "uuid", "p_brand_id" "uuid", "p_starts_at" timestamp with time zone, "p_ends_at" timestamp with time zone, "p_show_in_catalog" boolean, "p_is_active" boolean) OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."update_sale"("p_sale_id" "uuid", "p_business_id" "uuid", "p_items" "jsonb", "p_payment_method" "text", "p_operator_id" "uuid", "p_status" "text" DEFAULT NULL::"text") RETURNS "jsonb"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public', 'extensions'
@@ -7338,7 +7754,9 @@ BEGIN
   ),
   item_stats AS (
     SELECT
-      COALESCE(SUM(si.quantity), 0)::integer AS items_sold
+      COALESCE(SUM(si.quantity), 0)::integer AS items_sold,
+      COALESCE(SUM(si.promo_discount), 0) AS promo_discounts_total,
+      COUNT(DISTINCT s.id) FILTER (WHERE si.promotion_id IS NOT NULL)::integer AS promo_sales_count
     FROM public.sales s
     JOIN public.sale_items si ON si.sale_id = s.id
     WHERE s.business_id = p_business_id
@@ -7388,6 +7806,8 @@ BEGIN
     top_product_name,
     top_product_units,
     top_product_revenue,
+    promo_discounts_total,
+    promo_sales_count,
     updated_at
   )
   SELECT
@@ -7407,6 +7827,8 @@ BEGIN
     tp.top_product_name,
     COALESCE(tp.top_product_units, 0),
     COALESCE(tp.top_product_revenue, 0),
+    ist.promo_discounts_total,
+    ist.promo_sales_count,
     now()
   FROM sales_base sb
   CROSS JOIN item_stats ist
@@ -7428,6 +7850,8 @@ BEGIN
     top_product_name         = EXCLUDED.top_product_name,
     top_product_units        = EXCLUDED.top_product_units,
     top_product_revenue      = EXCLUDED.top_product_revenue,
+    promo_discounts_total    = EXCLUDED.promo_discounts_total,
+    promo_sales_count        = EXCLUDED.promo_sales_count,
     updated_at               = now()
   RETURNING * INTO v_snapshot_row;
 
@@ -7689,6 +8113,8 @@ CREATE TABLE IF NOT EXISTS "public"."catalog_order_items" (
     "unit_price" numeric(12,2) NOT NULL,
     "line_total" numeric(12,2) NOT NULL,
     "image_url" "text",
+    "promotion_id" "uuid",
+    "promo_discount" numeric(12,2) DEFAULT 0 NOT NULL,
     CONSTRAINT "catalog_order_items_quantity_check" CHECK (("quantity" > 0))
 );
 
@@ -7817,6 +8243,8 @@ CREATE TABLE IF NOT EXISTS "public"."daily_snapshots" (
     "top_product_name" "text",
     "top_product_units" integer DEFAULT 0 NOT NULL,
     "top_product_revenue" numeric DEFAULT 0 NOT NULL,
+    "promo_discounts_total" numeric DEFAULT 0 NOT NULL,
+    "promo_sales_count" integer DEFAULT 0 NOT NULL,
     "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
     "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL
 );
@@ -8072,6 +8500,46 @@ COMMENT ON COLUMN "public"."profiles"."onboarding_state" IS 'Estado del onboardi
 
 
 
+CREATE TABLE IF NOT EXISTS "public"."promotions" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "business_id" "uuid" NOT NULL,
+    "name" "text" NOT NULL,
+    "kind" "text" NOT NULL,
+    "percent" numeric,
+    "offer_price" numeric,
+    "group_size" integer,
+    "affected_units" integer,
+    "pay_percent" numeric,
+    "product_id" "uuid",
+    "category_id" "uuid",
+    "brand_id" "uuid",
+    "starts_at" timestamp with time zone,
+    "ends_at" timestamp with time zone,
+    "is_active" boolean DEFAULT true NOT NULL,
+    "show_in_catalog" boolean DEFAULT true NOT NULL,
+    "archived_at" timestamp with time zone,
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    CONSTRAINT "promotions_kind_check" CHECK (("kind" = ANY (ARRAY['percent'::"text", 'offer_price'::"text", 'quantity'::"text"]))),
+    CONSTRAINT "promotions_scope_one" CHECK ((((("product_id" IS NOT NULL))::integer + (("category_id" IS NOT NULL))::integer + (("brand_id" IS NOT NULL))::integer) = 1)),
+    CONSTRAINT "promotions_kind_fields" CHECK (
+        ((("kind" = 'percent'::"text") AND ("percent" IS NOT NULL) AND ("percent" > (0)::numeric) AND ("percent" <= (100)::numeric))
+        OR (("kind" = 'offer_price'::"text") AND ("offer_price" IS NOT NULL) AND ("offer_price" > (0)::numeric) AND ("product_id" IS NOT NULL))
+        OR (("kind" = 'quantity'::"text") AND ("group_size" IS NOT NULL) AND ("group_size" >= 2) AND ("group_size" <= 100)
+            AND ("affected_units" IS NOT NULL) AND ("affected_units" >= 1) AND ("affected_units" <= ("group_size" - 1))
+            AND ("pay_percent" IS NOT NULL) AND ("pay_percent" >= (0)::numeric) AND ("pay_percent" < (100)::numeric)
+            AND ("product_id" IS NOT NULL)))),
+    CONSTRAINT "promotions_date_range" CHECK ((("starts_at" IS NULL) OR ("ends_at" IS NULL) OR ("ends_at" > "starts_at")))
+);
+
+
+ALTER TABLE "public"."promotions" OWNER TO "postgres";
+
+
+COMMENT ON TABLE "public"."promotions" IS 'Promos/ofertas (plan: docs/todo/promotions.md). Una promo = un target (producto XOR categoría XOR marca). Vigente = is_active AND archived_at IS NULL AND now() en [starts_at, ends_at]. show_in_catalog solo controla la sección Ofertas del catálogo; el precio aplica siempre. Usadas en ventas se archivan, no se borran.';
+
+
+
 CREATE TABLE IF NOT EXISTS "public"."sale_items" (
     "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
     "sale_id" "uuid",
@@ -8082,7 +8550,9 @@ CREATE TABLE IF NOT EXISTS "public"."sale_items" (
     "unit_price_override" numeric,
     "override_reason" "text",
     "free_line_description" "text",
-    "variant_id" "uuid"
+    "variant_id" "uuid",
+    "promotion_id" "uuid",
+    "promo_discount" numeric(12,2) DEFAULT 0 NOT NULL
 );
 
 
@@ -8659,6 +9129,14 @@ CREATE INDEX "idx_sale_items_sale_id" ON "public"."sale_items" USING "btree" ("s
 
 
 
+CREATE INDEX "promotions_business_active_idx" ON "public"."promotions" USING "btree" ("business_id") WHERE ("archived_at" IS NULL);
+
+
+
+CREATE INDEX "sale_items_promotion_idx" ON "public"."sale_items" USING "btree" ("promotion_id") WHERE ("promotion_id" IS NOT NULL);
+
+
+
 CREATE INDEX "idx_sale_items_variant_id" ON "public"."sale_items" USING "btree" ("variant_id");
 
 
@@ -8767,6 +9245,11 @@ ALTER TABLE ONLY "public"."catalog_order_items"
 
 ALTER TABLE ONLY "public"."catalog_order_items"
     ADD CONSTRAINT "catalog_order_items_product_id_fkey" FOREIGN KEY ("product_id") REFERENCES "public"."products"("id") ON DELETE SET NULL;
+
+
+
+ALTER TABLE ONLY "public"."catalog_order_items"
+    ADD CONSTRAINT "catalog_order_items_promotion_id_fkey" FOREIGN KEY ("promotion_id") REFERENCES "public"."promotions"("id");
 
 
 
@@ -9000,8 +9483,33 @@ ALTER TABLE ONLY "public"."profiles"
 
 
 
+ALTER TABLE ONLY "public"."promotions"
+    ADD CONSTRAINT "promotions_business_id_fkey" FOREIGN KEY ("business_id") REFERENCES "public"."businesses"("id");
+
+
+
+ALTER TABLE ONLY "public"."promotions"
+    ADD CONSTRAINT "promotions_product_id_fkey" FOREIGN KEY ("product_id") REFERENCES "public"."products"("id");
+
+
+
+ALTER TABLE ONLY "public"."promotions"
+    ADD CONSTRAINT "promotions_category_id_fkey" FOREIGN KEY ("category_id") REFERENCES "public"."categories"("id");
+
+
+
+ALTER TABLE ONLY "public"."promotions"
+    ADD CONSTRAINT "promotions_brand_id_fkey" FOREIGN KEY ("brand_id") REFERENCES "public"."brands"("id");
+
+
+
 ALTER TABLE ONLY "public"."sale_items"
     ADD CONSTRAINT "sale_items_product_id_fkey" FOREIGN KEY ("product_id") REFERENCES "public"."products"("id") ON DELETE SET NULL;
+
+
+
+ALTER TABLE ONLY "public"."sale_items"
+    ADD CONSTRAINT "sale_items_promotion_id_fkey" FOREIGN KEY ("promotion_id") REFERENCES "public"."promotions"("id");
 
 
 
@@ -9177,6 +9685,11 @@ ALTER TABLE "public"."operators" ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "own_profile" ON "public"."profiles" USING (("id" = ( SELECT "auth"."uid"() AS "uid"))) WITH CHECK (("id" = ( SELECT "auth"."uid"() AS "uid")));
 
 
+-- Solo lectura directa (el POS lee promos vigentes client-side).
+-- Escrituras EXCLUSIVAMENTE vía RPCs guardadas (create/update/archive_promotion) — sin policy de INSERT/UPDATE/DELETE.
+CREATE POLICY "promotions_select" ON "public"."promotions" FOR SELECT USING (("business_id" = "public"."get_business_id"()));
+
+
 
 CREATE POLICY "owner_manage_expense_items" ON "public"."expense_items" USING (("business_id" = "public"."get_business_id"())) WITH CHECK (("business_id" = "public"."get_business_id"()));
 
@@ -9277,6 +9790,9 @@ CREATE POLICY "products_stock_write_update" ON "public"."products" FOR UPDATE US
 
 
 ALTER TABLE "public"."profiles" ENABLE ROW LEVEL SECURITY;
+
+
+ALTER TABLE "public"."promotions" ENABLE ROW LEVEL SECURITY;
 
 
 CREATE POLICY "public_read_products" ON "public"."products" FOR SELECT USING (("business_id" = "public"."get_business_id"()));
@@ -11066,6 +11582,18 @@ GRANT ALL ON FUNCTION "public"."any_column_privs_are"("name", "name", "name", "n
 
 
 
+REVOKE ALL ON FUNCTION "public"."apply_unit_promo"("p_kind" "text", "p_percent" numeric, "p_offer_price" numeric, "p_unit_price" numeric) FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."apply_unit_promo"("p_kind" "text", "p_percent" numeric, "p_offer_price" numeric, "p_unit_price" numeric) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."apply_unit_promo"("p_kind" "text", "p_percent" numeric, "p_offer_price" numeric, "p_unit_price" numeric) TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "public"."archive_promotion"("p_operator_id" "uuid", "p_business_id" "uuid", "p_promotion_id" "uuid") FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."archive_promotion"("p_operator_id" "uuid", "p_business_id" "uuid", "p_promotion_id" "uuid") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."archive_promotion"("p_operator_id" "uuid", "p_business_id" "uuid", "p_promotion_id" "uuid") TO "service_role";
+
+
+
 REVOKE ALL ON FUNCTION "public"."assert_tenant"("p_business_id" "uuid") FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."assert_tenant"("p_business_id" "uuid") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."assert_tenant"("p_business_id" "uuid") TO "service_role";
@@ -11844,6 +12372,12 @@ GRANT ALL ON FUNCTION "public"."compute_effective_price"("p_cost" numeric, "p_pr
 
 
 
+REVOKE ALL ON FUNCTION "public"."compute_quantity_promo_discount"("p_group_size" integer, "p_affected_units" integer, "p_pay_percent" numeric, "p_unit_price" numeric, "p_quantity" integer) FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."compute_quantity_promo_discount"("p_group_size" integer, "p_affected_units" integer, "p_pay_percent" numeric, "p_unit_price" numeric, "p_quantity" integer) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."compute_quantity_promo_discount"("p_group_size" integer, "p_affected_units" integer, "p_pay_percent" numeric, "p_unit_price" numeric, "p_quantity" integer) TO "service_role";
+
+
+
 REVOKE ALL ON FUNCTION "public"."create_brand_guarded"("p_operator_id" "uuid", "p_business_id" "uuid", "p_name" "text") FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."create_brand_guarded"("p_operator_id" "uuid", "p_business_id" "uuid", "p_name" "text") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."create_brand_guarded"("p_operator_id" "uuid", "p_business_id" "uuid", "p_name" "text") TO "service_role";
@@ -11908,6 +12442,12 @@ GRANT ALL ON FUNCTION "public"."create_product"("p_operator_id" "uuid", "p_busin
 REVOKE ALL ON FUNCTION "public"."create_product_with_variants"("p_operator_id" "uuid", "p_business_id" "uuid", "p_product" "jsonb", "p_options" "jsonb", "p_variants" "jsonb") FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."create_product_with_variants"("p_operator_id" "uuid", "p_business_id" "uuid", "p_product" "jsonb", "p_options" "jsonb", "p_variants" "jsonb") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."create_product_with_variants"("p_operator_id" "uuid", "p_business_id" "uuid", "p_product" "jsonb", "p_options" "jsonb", "p_variants" "jsonb") TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "public"."create_promotion"("p_operator_id" "uuid", "p_business_id" "uuid", "p_name" "text", "p_kind" "text", "p_percent" numeric, "p_offer_price" numeric, "p_group_size" integer, "p_affected_units" integer, "p_pay_percent" numeric, "p_product_id" "uuid", "p_category_id" "uuid", "p_brand_id" "uuid", "p_starts_at" timestamp with time zone, "p_ends_at" timestamp with time zone, "p_show_in_catalog" boolean) FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."create_promotion"("p_operator_id" "uuid", "p_business_id" "uuid", "p_name" "text", "p_kind" "text", "p_percent" numeric, "p_offer_price" numeric, "p_group_size" integer, "p_affected_units" integer, "p_pay_percent" numeric, "p_product_id" "uuid", "p_category_id" "uuid", "p_brand_id" "uuid", "p_starts_at" timestamp with time zone, "p_ends_at" timestamp with time zone, "p_show_in_catalog" boolean) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."create_promotion"("p_operator_id" "uuid", "p_business_id" "uuid", "p_name" "text", "p_kind" "text", "p_percent" numeric, "p_offer_price" numeric, "p_group_size" integer, "p_affected_units" integer, "p_pay_percent" numeric, "p_product_id" "uuid", "p_category_id" "uuid", "p_brand_id" "uuid", "p_starts_at" timestamp with time zone, "p_ends_at" timestamp with time zone, "p_show_in_catalog" boolean) TO "service_role";
 
 
 
@@ -12002,6 +12542,12 @@ GRANT ALL ON FUNCTION "public"."delete_product"("p_operator_id" "uuid", "p_busin
 REVOKE ALL ON FUNCTION "public"."delete_sale"("p_sale_id" "uuid", "p_business_id" "uuid", "p_operator_id" "uuid") FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."delete_sale"("p_sale_id" "uuid", "p_business_id" "uuid", "p_operator_id" "uuid") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."delete_sale"("p_sale_id" "uuid", "p_business_id" "uuid", "p_operator_id" "uuid") TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "public"."find_applicable_promotion"("p_business_id" "uuid", "p_product_id" "uuid", "p_category_id" "uuid", "p_brand_id" "uuid", "p_at" timestamp with time zone) FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."find_applicable_promotion"("p_business_id" "uuid", "p_product_id" "uuid", "p_category_id" "uuid", "p_brand_id" "uuid", "p_at" timestamp with time zone) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."find_applicable_promotion"("p_business_id" "uuid", "p_product_id" "uuid", "p_category_id" "uuid", "p_brand_id" "uuid", "p_at" timestamp with time zone) TO "service_role";
 
 
 
@@ -17715,6 +18261,12 @@ GRANT ALL ON FUNCTION "public"."update_product_variants"("p_operator_id" "uuid",
 
 
 
+REVOKE ALL ON FUNCTION "public"."update_promotion"("p_operator_id" "uuid", "p_business_id" "uuid", "p_promotion_id" "uuid", "p_name" "text", "p_kind" "text", "p_percent" numeric, "p_offer_price" numeric, "p_group_size" integer, "p_affected_units" integer, "p_pay_percent" numeric, "p_product_id" "uuid", "p_category_id" "uuid", "p_brand_id" "uuid", "p_starts_at" timestamp with time zone, "p_ends_at" timestamp with time zone, "p_show_in_catalog" boolean, "p_is_active" boolean) FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."update_promotion"("p_operator_id" "uuid", "p_business_id" "uuid", "p_promotion_id" "uuid", "p_name" "text", "p_kind" "text", "p_percent" numeric, "p_offer_price" numeric, "p_group_size" integer, "p_affected_units" integer, "p_pay_percent" numeric, "p_product_id" "uuid", "p_category_id" "uuid", "p_brand_id" "uuid", "p_starts_at" timestamp with time zone, "p_ends_at" timestamp with time zone, "p_show_in_catalog" boolean, "p_is_active" boolean) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."update_promotion"("p_operator_id" "uuid", "p_business_id" "uuid", "p_promotion_id" "uuid", "p_name" "text", "p_kind" "text", "p_percent" numeric, "p_offer_price" numeric, "p_group_size" integer, "p_affected_units" integer, "p_pay_percent" numeric, "p_product_id" "uuid", "p_category_id" "uuid", "p_brand_id" "uuid", "p_starts_at" timestamp with time zone, "p_ends_at" timestamp with time zone, "p_show_in_catalog" boolean, "p_is_active" boolean) TO "service_role";
+
+
+
 REVOKE ALL ON FUNCTION "public"."update_sale"("p_sale_id" "uuid", "p_business_id" "uuid", "p_items" "jsonb", "p_payment_method" "text", "p_operator_id" "uuid", "p_status" "text") FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."update_sale"("p_sale_id" "uuid", "p_business_id" "uuid", "p_items" "jsonb", "p_payment_method" "text", "p_operator_id" "uuid", "p_status" "text") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."update_sale"("p_sale_id" "uuid", "p_business_id" "uuid", "p_items" "jsonb", "p_payment_method" "text", "p_operator_id" "uuid", "p_status" "text") TO "service_role";
@@ -18068,6 +18620,12 @@ GRANT ALL ON TABLE "public"."products" TO "service_role";
 GRANT ALL ON TABLE "public"."profiles" TO "anon";
 GRANT ALL ON TABLE "public"."profiles" TO "authenticated";
 GRANT ALL ON TABLE "public"."profiles" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."promotions" TO "anon";
+GRANT ALL ON TABLE "public"."promotions" TO "authenticated";
+GRANT ALL ON TABLE "public"."promotions" TO "service_role";
 
 
 
