@@ -1,6 +1,6 @@
 import { create } from 'zustand'
-import type { CartItem, Product, ProductVariant } from '@/lib/types'
-import { getCartItemId } from '@/lib/types'
+import type { Product, ProductVariant } from '@/lib/types'
+import { getCartItemId, type CartItem } from '@/lib/types/cart'
 
 export type DiscountMode = 'fixed' | 'percent'
 

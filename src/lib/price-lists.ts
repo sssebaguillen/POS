@@ -1,4 +1,5 @@
-import type { CartItem, PriceList, PriceListOverride } from '@/lib/types'
+import type { PriceList, PriceListOverride } from '@/lib/types'
+import type { CartItem } from '@/lib/types/cart'
 
 // Redondea al múltiplo más cercano de `step` (0.1, 1, 5, 10, 50, 100…).
 // `up` = siempre hacia arriba (ceil); si no, redondeo matemático. El precio base
