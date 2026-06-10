@@ -1,9 +1,10 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
+import { ShoppingCart } from 'lucide-react'
 import ProductGrid from '@/components/catalog/ProductGrid'
 import OffersCarousel from '@/components/catalog/OffersCarousel'
-import CartPanel from '@/components/catalog/CartPanel'
+import CartPanel, { lineTotal } from '@/components/catalog/CartPanel'
 import CatalogHeader from '@/components/catalog/CatalogHeader'
 import ProductFilter, {
   EMPTY_FILTER,
@@ -36,6 +37,8 @@ import {
 type ViewMode = 'grid' | 'list'
 
 const VIEW_MODE_KEY = 'catalog-view-mode'
+
+const currencyFormatter = new Intl.NumberFormat('es-AR')
 
 interface CatalogViewProps {
   business: CatalogBusiness
@@ -98,6 +101,11 @@ export default function CatalogView({
 
   const cartCount = useMemo(
     () => cartItems.reduce((acc, item) => acc + item.quantity, 0),
+    [cartItems]
+  )
+
+  const cartTotal = useMemo(
+    () => cartItems.reduce((acc, item) => acc + lineTotal(item), 0),
     [cartItems]
   )
 
@@ -255,6 +263,17 @@ export default function CatalogView({
     })
   }, [filterValue.variantAttributes, normalizedVariantAttributeGroups, products])
 
+  const cartPanelProps = {
+    businessSlug: slug,
+    businessName: business.name,
+    businessWhatsapp: business.whatsapp,
+    cartItems,
+    onIncreaseQuantity: increaseQuantity,
+    onDecreaseQuantity: decreaseQuantity,
+    onRemoveItem: removeItem,
+    onClearCart: clearCart,
+  }
+
   const filterContent = (
     <ProductFilter
       modules={['category', 'brand', 'variant-attributes', 'price-range', 'sort']}
@@ -274,7 +293,7 @@ export default function CatalogView({
   )
 
   return (
-    <div className="mx-auto w-full max-w-7xl space-y-4 md:space-y-6">
+    <div className={`mx-auto w-full max-w-7xl space-y-4 md:space-y-6 ${cartCount > 0 ? 'pb-20 lg:pb-0' : ''}`}>
       <CatalogHeader
         business={business}
         cartCount={cartCount}
@@ -325,18 +344,12 @@ export default function CatalogView({
               />
             </div>
 
-            <div className={`${isMobileCartOpen ? 'block' : 'hidden'} lg:sticky lg:top-4 lg:block lg:self-start lg:h-[calc(100vh-2rem)] lg:overflow-hidden`}>
-              <CartPanel
-                businessSlug={slug}
-                businessName={business.name}
-                businessWhatsapp={business.whatsapp}
-                cartItems={cartItems}
-                onIncreaseQuantity={increaseQuantity}
-                onDecreaseQuantity={decreaseQuantity}
-                onRemoveItem={removeItem}
-                onClearCart={clearCart}
-              />
-            </div>
+            {/* Carrito desktop: columna sticky. En mobile vive en el bottom sheet */}
+            {!isMobileView && (
+              <div className="hidden lg:sticky lg:top-4 lg:block lg:self-start lg:h-[calc(100vh-2rem)] lg:overflow-hidden">
+                <CartPanel {...cartPanelProps} />
+              </div>
+            )}
           </div>
         </div>
       </section>
@@ -354,6 +367,36 @@ export default function CatalogView({
           </div>
         </SheetContent>
       </Sheet>
+
+      {/* Mobile cart — bottom sheet */}
+      <Sheet open={isMobileCartOpen && isMobileView} onOpenChange={open => setIsMobileCartOpen(open)}>
+        <SheetContent side="bottom" className="max-h-[85vh] overflow-y-auto rounded-t-2xl">
+          <SheetHeader className="pb-2">
+            <SheetTitle className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+              Tu pedido · {business.name}
+            </SheetTitle>
+          </SheetHeader>
+          <div className="px-4 pb-6">
+            <CartPanel {...cartPanelProps} embedded />
+          </div>
+        </SheetContent>
+      </Sheet>
+
+      {/* Barra de pedido mobile: feedback inmediato al agregar + CTA siempre visible */}
+      {isMobileView && cartCount > 0 && !isMobileCartOpen && (
+        <button
+          type="button"
+          onClick={() => setIsMobileCartOpen(true)}
+          className="fixed inset-x-4 z-40 flex h-12 items-center justify-between rounded-full bg-primary px-5 text-sm font-semibold text-primary-foreground shadow-lg outline-none transition-transform duration-150 ease-[var(--ease-out)] focus-visible:ring-3 focus-visible:ring-ring/50 active:scale-[0.98] lg:hidden"
+          style={{ bottom: 'max(1rem, env(safe-area-inset-bottom))' }}
+        >
+          <span className="flex items-center gap-2">
+            <ShoppingCart className="h-4 w-4" />
+            Ver pedido ({cartCount})
+          </span>
+          <span>${currencyFormatter.format(cartTotal)}</span>
+        </button>
+      )}
     </div>
   )
 }

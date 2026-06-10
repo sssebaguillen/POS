@@ -1,6 +1,23 @@
 {
-  "current": "0.0.7.2",
+  "current": "0.0.8",
   "releases": [
+    {
+      "version": "0.0.8",
+      "kind": "feature",
+      "date": "2026-06-10",
+      "label": "Promos y ofertas",
+      "changes": [
+        { "type": "new", "text": "Llegan las Promos y ofertas. Desde la nueva sección Promociones puedes crear descuentos por porcentaje, precio de oferta, 2x1, 3x2 y segunda unidad al X% de descuento. Cada promo puede aplicar a productos puntuales, a una categoría o a una marca completa, con fechas de inicio y fin opcionales." },
+        { "type": "new", "text": "Las promos se aplican solas: al vender en el POS y en tu catálogo online, el descuento se calcula automáticamente y queda registrado en cada venta. Si editas el precio de una línea a mano, tu precio manda y la promo no la toca." },
+        { "type": "new", "text": "Tu catálogo ahora luce las ofertas: precios tachados con su etiqueta de promo, un carrusel destacado al inicio y una página de ofertas del negocio. El precio que ve el cliente es exactamente el que se le cobra al confirmar el pedido." },
+        { "type": "improvement", "text": "Puedes pausar, reanudar o archivar una promo en cualquier momento. Si dos promos se pisan entre sí, te avisamos al crearla para que decidas con claridad cuál aplica." },
+        { "type": "new", "text": "Pedir desde el celular ahora es mucho más fácil: al agregar productos en el catálogo aparece una barra inferior con el total del pedido, y al tocarla el carrito sube desde abajo con todo listo para completar y enviar." },
+        { "type": "improvement", "text": "Después de enviar un pedido, el cliente ve un botón directo para escribirle al negocio por WhatsApp. Antes, algunos navegadores del celular bloqueaban la ventana de WhatsApp y el mensaje no llegaba a abrirse." },
+        { "type": "improvement", "text": "El formulario del pedido ahora aclara que no se paga online: el negocio recibe el pedido y coordina la entrega y el pago. Además, el campo de teléfono abre el teclado numérico y los datos se autocompletan." },
+        { "type": "improvement", "text": "Si el catálogo tarda en cargar, no falla en silencio: ahora muestra una vista de carga, una pantalla amigable si el enlace no existe y un botón de reintentar si hubo un problema temporal." },
+        { "type": "fix", "text": "Unificamos el tono y el color de los mensajes del catálogo: los avisos de error ahora hablan igual que el resto de la app y las etiquetas de oferta usan un único verde en todas las vistas." }
+      ]
+    },
     {
       "version": "0.0.7.2",
       "kind": "feature",

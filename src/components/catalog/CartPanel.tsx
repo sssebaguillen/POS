@@ -19,7 +19,7 @@ function lineDiscount(item: CatalogCartItem): number {
   return computeQuantityDiscount(promo, item.product.salePrice, item.quantity)
 }
 
-function lineTotal(item: CatalogCartItem): number {
+export function lineTotal(item: CatalogCartItem): number {
   return Math.round((item.product.salePrice * item.quantity - lineDiscount(item)) * 100) / 100
 }
 
@@ -54,21 +54,23 @@ interface CartPanelProps {
   onDecreaseQuantity: (key: string) => void
   onRemoveItem: (key: string) => void
   onClearCart: () => void
+  /** Dentro del sheet mobile: sin chrome de aside ni heading propio (los pone el sheet) */
+  embedded?: boolean
 }
 
 const ORDER_ERROR_MESSAGES: Record<string, string> = {
-  rate_limited: 'Demasiados pedidos desde este dispositivo. Esperá un momento e intentá de nuevo.',
-  too_many_pending: 'Ya tenés varios pedidos pendientes. Esperá a que el negocio los confirme.',
+  rate_limited: 'Demasiados pedidos desde este dispositivo. Espera un momento e intenta de nuevo.',
+  too_many_pending: 'Ya tienes varios pedidos pendientes. Espera a que el negocio los confirme.',
   blacklisted: 'No es posible enviar pedidos a este negocio desde este número.',
-  invalid_phone: 'Revisá el formato del teléfono.',
-  invalid_name: 'Ingresá tu nombre.',
+  invalid_phone: 'Revisa el formato del teléfono.',
+  invalid_name: 'Ingresa tu nombre.',
   address_required: 'La dirección es obligatoria para envíos a domicilio.',
   empty_cart: 'Tu carrito está vacío.',
-  product_not_available: 'Uno de los productos ya no está disponible. Refrescá el catálogo.',
-  variant_not_available: 'Una de las variantes ya no está disponible. Refrescá el catálogo.',
+  product_not_available: 'Uno de los productos ya no está disponible. Recarga la página para ver el catálogo al día.',
+  variant_not_available: 'Una de las variantes ya no está disponible. Recarga la página para ver el catálogo al día.',
   business_not_found: 'Este catálogo no está disponible.',
-  server_error: 'No pudimos registrar tu pedido. Intentá de nuevo en un momento.',
-  invalid_payload: 'Hay un problema con tu pedido. Recargá la página e intentá de nuevo.',
+  server_error: 'No pudimos registrar tu pedido. Intenta de nuevo en un momento.',
+  invalid_payload: 'Hay un problema con tu pedido. Recarga la página e intenta de nuevo.',
 }
 
 type DeliveryType = 'take-away' | 'delivery'
@@ -84,10 +86,12 @@ export default function CartPanel({
   onDecreaseQuantity,
   onRemoveItem,
   onClearCart,
+  embedded = false,
 }: CartPanelProps) {
   const [customerName, setCustomerName] = useState('')
   const [orderSent, setOrderSent] = useState(false)
   const [orderNumber, setOrderNumber] = useState<number | null>(null)
+  const [whatsappUrl, setWhatsappUrl] = useState<string | null>(null)
   const [customerPhone, setCustomerPhone] = useState('')
   const [deliveryType, setDeliveryType] = useState<DeliveryType>('take-away')
   const [address, setAddress] = useState('')
@@ -202,7 +206,10 @@ export default function CartPanel({
         order_number: number,
       })
 
+      // Popup blockers (iOS Safari sobre todo) suelen matar window.open tras un
+      // await: el estado de éxito muestra el link explícito como camino garantizado.
       window.open(url, '_blank', 'noopener,noreferrer')
+      setWhatsappUrl(url)
       setOrderNumber(number)
       setOrderSent(true)
     } catch (error) {
@@ -221,22 +228,36 @@ export default function CartPanel({
     setNotes('')
     setOrderSent(false)
     setOrderNumber(null)
+    setWhatsappUrl(null)
     setSubmitError(null)
     onClearCart()
   }
 
+  const asideClassName = embedded
+    ? ''
+    : 'rounded-xl border border-border/70 bg-card p-4 md:p-5 lg:max-h-full lg:overflow-y-auto'
+
   if (orderSent) {
     return (
-      <aside className="rounded-xl border border-border/70 bg-card p-4 md:p-5 lg:max-h-full lg:overflow-y-auto">
+      <aside className={asideClassName}>
         <div className="flex flex-col items-center gap-4 py-6 text-center">
-          <CheckCircle2 className="h-12 w-12 text-green-500" />
+          <CheckCircle2 className="h-12 w-12 text-emerald-500" />
           <div>
             <p className="text-base font-semibold text-foreground">
               Pedido enviado{orderNumber != null ? ` #${orderNumber}` : ''}
             </p>
-            <p className="mt-1 text-sm text-muted-foreground">Revisa tu WhatsApp para continuar con el pedido.</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              El negocio ya recibió tu pedido. Puedes escribirle por WhatsApp para coordinar la entrega.
+            </p>
           </div>
-          <Button type="button" className="w-full" onClick={handleNewOrder}>
+          {whatsappUrl && (
+            <Button asChild className="h-10 w-full">
+              <a href={whatsappUrl} target="_blank" rel="noopener noreferrer">
+                Escribir por WhatsApp
+              </a>
+            </Button>
+          )}
+          <Button type="button" variant="outline" className="h-10 w-full" onClick={handleNewOrder}>
             Nuevo pedido
           </Button>
         </div>
@@ -247,11 +268,15 @@ export default function CartPanel({
   const isEmpty = cartItems.length === 0
 
   return (
-    <aside className="rounded-xl border border-border/70 bg-card p-4 md:p-5 lg:max-h-full lg:overflow-y-auto">
-      <h2 className="text-base font-semibold text-foreground">Tu pedido</h2>
-      <p className="mt-1 text-xs uppercase tracking-wide text-muted-foreground">{businessName}</p>
+    <aside className={asideClassName}>
+      {!embedded && (
+        <>
+          <h2 className="text-base font-semibold text-foreground">Tu pedido</h2>
+          <p className="mt-1 text-xs uppercase tracking-wide text-muted-foreground">{businessName}</p>
+        </>
+      )}
 
-      <div className="mt-4 space-y-3">
+      <div className={`space-y-3 ${embedded ? '' : 'mt-4'}`}>
         {isEmpty ? (
           <div className="rounded-lg border border-dashed border-border p-4 text-center text-sm text-muted-foreground">
             Tu carrito está vacío.
@@ -338,12 +363,9 @@ export default function CartPanel({
 
       {!isEmpty && (
         <>
+          {/* Sin fila de subtotal: hoy siempre es igual al total y duplicarlo insinúa fees ocultos */}
           <div className="mt-4 rounded-lg border border-border/70 bg-muted/20 p-3">
-            <div className="flex items-center justify-between text-sm text-muted-foreground">
-              <span>Subtotal</span>
-              <span>${currencyFormatter.format(subtotal)}</span>
-            </div>
-            <div className="mt-2 flex items-center justify-between text-base font-bold text-foreground">
+            <div className="flex items-center justify-between text-base font-bold text-foreground">
               <span>Total</span>
               <PopNumber value={`$${currencyFormatter.format(total)}`} />
             </div>
@@ -359,6 +381,7 @@ export default function CartPanel({
                 value={customerName}
                 onChange={event => setCustomerName(event.target.value)}
                 placeholder="Tu nombre"
+                autoComplete="name"
               />
             </div>
 
@@ -368,9 +391,12 @@ export default function CartPanel({
               </label>
               <Input
                 id="catalog-phone"
+                type="tel"
+                inputMode="tel"
                 value={customerPhone}
                 onChange={event => setCustomerPhone(event.target.value)}
                 placeholder="Tu teléfono"
+                autoComplete="tel"
               />
             </div>
 
@@ -412,6 +438,7 @@ export default function CartPanel({
                   value={address}
                   onChange={event => setAddress(event.target.value)}
                   placeholder="Calle y número"
+                  autoComplete="street-address"
                 />
               </div>
             )}
@@ -449,9 +476,15 @@ export default function CartPanel({
         </div>
       )}
 
+      {!isEmpty && normalizedWhatsapp && (
+        <p className="mt-4 text-center text-xs text-muted-foreground">
+          No pagas ahora: el negocio recibe tu pedido y coordina contigo la entrega y el pago.
+        </p>
+      )}
+
       <Button
         type="button"
-        className="mt-4 h-10 w-full"
+        className="mt-3 h-10 w-full"
         onClick={handleSendWhatsapp}
         disabled={!canSendWhatsapp || submitting}
       >

@@ -281,7 +281,7 @@ export default function ProductDetailView({
               Últimas {displayStock} unidades
             </span>
           ) : (
-            <span className="inline-flex items-center rounded-md bg-green-100 px-2.5 py-1 text-sm font-medium text-green-700 dark:bg-green-950/40 dark:text-green-400 w-fit">
+            <span className="inline-flex items-center rounded-md bg-emerald-100 px-2.5 py-1 text-sm font-medium text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400 w-fit">
               Disponible
             </span>
           )}
@@ -338,7 +338,7 @@ export default function ProductDetailView({
             )}
             <Button
               type="button"
-              className={`w-full h-11 gap-2 ${added ? 'bg-green-600 hover:bg-green-600 text-white' : ''}`}
+              className={`w-full h-11 gap-2 ${added ? 'bg-emerald-600 hover:bg-emerald-600 text-white' : ''}`}
               disabled={!canAdd}
               onClick={handleAddToCart}
             >

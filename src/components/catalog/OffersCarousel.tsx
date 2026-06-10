@@ -108,7 +108,7 @@ function OfferSlide({
               <Button
                 type="button"
                 onClick={handleAdd}
-                className={`gap-1.5 ${added ? 'bg-green-600 hover:bg-green-600 text-white' : ''}`}
+                className={`gap-1.5 ${added ? 'bg-emerald-600 hover:bg-emerald-600 text-white' : ''}`}
               >
                 <ShoppingCart className="h-4 w-4" />
                 {added ? '✓ Agregado' : 'Agregar al carrito'}
