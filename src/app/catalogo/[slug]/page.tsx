@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation'
 import { createClient } from '@supabase/supabase-js'
 import CatalogView from '@/components/catalog/CatalogView'
+import { promoBadgeLabel } from '@/lib/promotions'
 import type { CatalogVariantAttributeGroup } from '@/components/catalog/types'
 
 interface CatalogPageParams {
@@ -27,6 +28,14 @@ interface ProductRow {
   brand_id: string | null
   brand_name: string | null
   variant_count: number | null
+  original_price: number | string | null
+  promo_kind: 'percent' | 'offer_price' | 'quantity' | null
+  promo_percent: number | string | null
+  promo_group_size: number | null
+  promo_affected_units: number | null
+  promo_pay_percent: number | string | null
+  promo_ends_at: string | null
+  promo_featured: boolean | null
 }
 
 interface CategoryRow {
@@ -137,6 +146,25 @@ export default async function CatalogSlugPage({ params }: CatalogPageProps) {
           brandId: product.brand_id ?? null,
           brandName: product.brand_name ?? null,
           variantCount: product.variant_count ?? 0,
+          originalPrice: product.original_price != null ? Number(product.original_price) : null,
+          promo: product.promo_kind
+            ? {
+                kind: product.promo_kind,
+                percent: product.promo_percent != null ? Number(product.promo_percent) : null,
+                group_size: product.promo_group_size,
+                affected_units: product.promo_affected_units,
+                pay_percent: product.promo_pay_percent != null ? Number(product.promo_pay_percent) : null,
+                endsAt: product.promo_ends_at,
+                featured: product.promo_featured ?? false,
+                label: promoBadgeLabel({
+                  kind: product.promo_kind,
+                  percent: product.promo_percent != null ? Number(product.promo_percent) : null,
+                  group_size: product.promo_group_size,
+                  affected_units: product.promo_affected_units,
+                  pay_percent: product.promo_pay_percent != null ? Number(product.promo_pay_percent) : null,
+                }),
+              }
+            : null,
         }))}
         categories={categories.map(category => ({
           id: category.id,

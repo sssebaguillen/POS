@@ -1,7 +1,9 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
+import { BadgePercent } from 'lucide-react'
 import ProductGrid from '@/components/catalog/ProductGrid'
+import ProductCard from '@/components/catalog/ProductCard'
 import CartPanel from '@/components/catalog/CartPanel'
 import CatalogHeader from '@/components/catalog/CatalogHeader'
 import ProductFilter, {
@@ -131,6 +133,15 @@ export default function CatalogView({
   )
 
   const activeFilterCount = countActiveFilters(filterValue)
+
+  // Sección Ofertas: promos vigentes marcadas como destacadas. Se oculta cuando
+  // hay búsqueda/filtros activos para no duplicar resultados.
+  const featuredOffers = useMemo(
+    () => products.filter(p => p.promo !== null && p.promo.featured),
+    [products]
+  )
+  const showOffersSection =
+    featuredOffers.length > 0 && activeFilterCount === 0 && filterValue.search.trim() === ''
 
   function addToCart(product: CatalogProduct, variantId: string | null = null, variantLabel: string | null = null, variantImageUrl: string | null = null) {
     if (!product.hasVariants && product.stock <= 0) return
@@ -295,18 +306,40 @@ export default function CatalogView({
           </div>
         )}
 
-        <ProductGrid
-          slug={slug}
-          products={filteredProducts}
-          filterValue={filterValue}
-          onFilterChange={setFilterValue}
-          onAddToCart={addToCart}
-          viewMode={viewMode}
-          onViewModeChange={setViewMode}
-          onToggleFilter={() => setIsFilterOpen(prev => !prev)}
-          isFilterOpen={isFilterOpen}
-          activeFilterCount={activeFilterCount}
-        />
+        <div className="min-w-0 space-y-4">
+          {showOffersSection && (
+            <section aria-label="Ofertas" className="rounded-xl border border-emerald-300/60 bg-emerald-50/50 p-4 dark:border-emerald-700/50 dark:bg-emerald-950/20">
+              <p className="mb-3 flex items-center gap-1.5 text-sm font-bold text-emerald-700 dark:text-emerald-300">
+                <BadgePercent className="h-4 w-4" />
+                Ofertas
+              </p>
+              <div className="flex gap-3 overflow-x-auto pb-1">
+                {featuredOffers.map(product => (
+                  <div key={product.id} className="w-56 shrink-0">
+                    <ProductCard
+                      product={product}
+                      slug={slug}
+                      onAddToCart={addToCart}
+                    />
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+
+          <ProductGrid
+            slug={slug}
+            products={filteredProducts}
+            filterValue={filterValue}
+            onFilterChange={setFilterValue}
+            onAddToCart={addToCart}
+            viewMode={viewMode}
+            onViewModeChange={setViewMode}
+            onToggleFilter={() => setIsFilterOpen(prev => !prev)}
+            isFilterOpen={isFilterOpen}
+            activeFilterCount={activeFilterCount}
+          />
+        </div>
 
         <div className={`${isMobileCartOpen ? 'block' : 'hidden'} lg:sticky lg:top-0 lg:block lg:h-screen lg:overflow-hidden`}>
           <CartPanel

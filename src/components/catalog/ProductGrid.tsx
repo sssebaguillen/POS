@@ -223,7 +223,19 @@ export default function ProductGrid({
                 <div className="min-w-0 flex-1">
                   <h3 className="truncate text-sm font-medium text-foreground">{product.name}</h3>
                   <p className="mt-0.5 text-sm font-bold text-foreground">
-                    ${currencyFormatter.format(product.salePrice)}
+                    {product.originalPrice !== null && (
+                      <span className="mr-1.5 text-xs font-medium text-muted-foreground line-through">
+                        ${currencyFormatter.format(product.originalPrice)}
+                      </span>
+                    )}
+                    <span className={product.originalPrice !== null ? 'text-emerald-600 dark:text-emerald-400' : undefined}>
+                      ${currencyFormatter.format(product.salePrice)}
+                    </span>
+                    {product.promo && (
+                      <span className="ml-1.5 rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300">
+                        {product.promo.label}
+                      </span>
+                    )}
                   </p>
                   {isOutOfStock && (
                     <span className="mt-0.5 inline-block rounded-md bg-destructive/90 px-2 py-0.5 text-xs font-medium text-destructive-foreground">

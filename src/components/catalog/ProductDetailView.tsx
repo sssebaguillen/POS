@@ -5,6 +5,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { ArrowLeft, ImageIcon, ShoppingCart } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { promoBadgeLabel, promoCountdownLabel } from '@/lib/promotions'
 import type {
   CatalogProductDetail,
   CatalogVariantOption,
@@ -182,6 +183,21 @@ export default function ProductDetailView({
       brandName: null,
       hasVariants: product.has_variants,
       variantCount: variants.filter(v => v.is_active).length,
+      originalPrice: selectedVariant
+        ? (selectedVariant.original_price ?? null)
+        : (product.original_price ?? null),
+      promo: product.promo
+        ? {
+            kind: product.promo.kind,
+            percent: product.promo.percent,
+            group_size: product.promo.group_size,
+            affected_units: product.promo.affected_units,
+            pay_percent: product.promo.pay_percent,
+            endsAt: product.promo.ends_at,
+            featured: product.promo.featured,
+            label: promoBadgeLabel(product.promo),
+          }
+        : null,
     }
 
     const itemKey = `${product.id}:${variantId ?? ''}`
@@ -270,9 +286,36 @@ export default function ProductDetailView({
         <div className="flex flex-col gap-4">
           <div>
             <h1 className="text-2xl font-bold text-foreground">{product.name}</h1>
-            <p className="mt-2 text-3xl font-bold text-foreground">
-              <PopNumber value={`$${currencyFormatter.format(displayPrice)}`} />
-            </p>
+            {(() => {
+              const originalPrice = selectedVariant
+                ? (selectedVariant.original_price ?? null)
+                : (product.original_price ?? null)
+              const countdown = product.promo ? promoCountdownLabel(product.promo.ends_at) : null
+              return (
+                <>
+                  <p className="mt-2 text-3xl font-bold text-foreground">
+                    {originalPrice !== null && (
+                      <span className="mr-2 text-xl font-medium text-muted-foreground line-through">
+                        ${currencyFormatter.format(originalPrice)}
+                      </span>
+                    )}
+                    <span className={originalPrice !== null ? 'text-emerald-600 dark:text-emerald-400' : undefined}>
+                      <PopNumber value={`$${currencyFormatter.format(displayPrice)}`} />
+                    </span>
+                  </p>
+                  {product.promo && (
+                    <p className="mt-1.5 flex items-center gap-1.5">
+                      <span className="rounded-md bg-emerald-600/95 px-2 py-0.5 text-xs font-bold text-white">
+                        {promoBadgeLabel(product.promo)}
+                      </span>
+                      {countdown && (
+                        <span className="text-xs font-medium text-muted-foreground">{countdown}</span>
+                      )}
+                    </p>
+                  )}
+                </>
+              )
+            })()}
           </div>
 
           {/* Stock badge */}

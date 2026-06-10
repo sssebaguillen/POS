@@ -103,9 +103,11 @@ export function applyUnitPromo(promo: Promotion, unitPrice: number): number {
   return round2(unitPrice)
 }
 
+export type QuantityPromoFields = Pick<Promotion, 'kind' | 'group_size' | 'affected_units' | 'pay_percent'>
+
 // Descuento de línea de una promo de cantidad:
 // floor(qty / N) × K × unit_price × (1 − P/100)
-export function computeQuantityDiscount(promo: Promotion, unitPrice: number, quantity: number): number {
+export function computeQuantityDiscount(promo: QuantityPromoFields, unitPrice: number, quantity: number): number {
   const { group_size: n, affected_units: k, pay_percent: p } = promo
   if (promo.kind !== 'quantity' || n === null || n < 2 || k === null || k < 1) return 0
   if (quantity < n || unitPrice <= 0) return 0
@@ -154,7 +156,7 @@ export function resolvePromoLine(args: {
 }
 
 // Etiqueta corta para badges/ticket: "-20%", "Oferta", "2x1", "3x2", "2da un. -50%"
-export function promoBadgeLabel(promo: Promotion): string {
+export function promoBadgeLabel(promo: Pick<Promotion, 'kind' | 'percent' | 'group_size' | 'affected_units' | 'pay_percent'>): string {
   if (promo.kind === 'percent') return `-${promo.percent}%`
   if (promo.kind === 'offer_price') return 'Oferta'
   const n = promo.group_size ?? 0
@@ -163,4 +165,19 @@ export function promoBadgeLabel(promo: Promotion): string {
   if (p === 0) return `${n}x${n - k}`
   if (n === 2 && k === 1) return `2da un. -${100 - p}%`
   return `${n}x${n - k} -${100 - p}%`
+}
+
+// "Termina hoy" / "Termina mañana" / "Termina en N días" cuando la promo vence
+// dentro de los próximos 7 días; null si no vence pronto (o no tiene fecha).
+export function promoCountdownLabel(endsAt: string | null, at: Date = new Date()): string | null {
+  if (!endsAt) return null
+  const end = new Date(endsAt)
+  const msLeft = end.getTime() - at.getTime()
+  if (msLeft <= 0) return null
+  const startOfToday = new Date(at.getFullYear(), at.getMonth(), at.getDate())
+  const daysLeft = Math.floor((end.getTime() - startOfToday.getTime()) / 86_400_000)
+  if (daysLeft <= 0) return 'Termina hoy'
+  if (daysLeft === 1) return 'Termina mañana'
+  if (daysLeft <= 7) return `Termina en ${daysLeft} días`
+  return null
 }

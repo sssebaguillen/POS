@@ -731,6 +731,10 @@ DECLARE
   v_product_name text; v_variant_label text; v_image_url text;
   v_pending_count int;
   v_new_data jsonb;
+  v_promo public.promotions;
+  v_base_unit numeric;
+  v_promo_id uuid;
+  v_promo_discount numeric;
 BEGIN
   IF p_slug IS NULL OR btrim(p_slug) = '' THEN RETURN jsonb_build_object('success', false, 'error', 'invalid_slug'); END IF;
   IF p_customer_name IS NULL OR btrim(p_customer_name) = '' THEN RETURN jsonb_build_object('success', false, 'error', 'invalid_name'); END IF;
@@ -806,17 +810,40 @@ BEGIN
         v_list_id, v_list_mult, v_product.id, v_product.brand_id);
     END IF;
 
+    -- Promo: el precio del catálogo es promesa — el checkout DEBE re-preciar igual.
+    -- Unitaria baja el unitario; cantidad descuenta a nivel línea (2x1, 3x2, 2da al X%).
+    v_promo_id := NULL;
+    v_promo_discount := 0;
+    v_promo := find_applicable_promotion(v_business_id, v_product.id, v_product.category_id, v_product.brand_id);
+    IF v_promo.id IS NOT NULL THEN
+      IF v_promo.kind = 'quantity' THEN
+        v_promo_discount := compute_quantity_promo_discount(
+          v_promo.group_size, v_promo.affected_units, v_promo.pay_percent, v_unit_price, v_quantity);
+        IF v_promo_discount > 0 THEN v_promo_id := v_promo.id; END IF;
+      ELSE
+        v_base_unit := v_unit_price;
+        v_unit_price := apply_unit_promo(v_promo.kind, v_promo.percent, v_promo.offer_price, v_unit_price);
+        IF v_unit_price < v_base_unit THEN
+          v_promo_id := v_promo.id;
+          v_promo_discount := ROUND((v_base_unit - v_unit_price) * v_quantity, 2);
+        END IF;
+      END IF;
+    END IF;
+
     v_product_name := v_product.name;
-    v_line_total := ROUND(v_unit_price * v_quantity, 2);
+    v_line_total := ROUND(v_unit_price * v_quantity, 2)
+      - CASE WHEN v_promo_id IS NOT NULL AND v_promo.kind = 'quantity' THEN v_promo_discount ELSE 0 END;
     v_subtotal := v_subtotal + v_line_total;
 
     INSERT INTO catalog_order_items (
       order_id, product_id, product_name, variant_id, variant_label,
-      quantity, unit_price, line_total, image_url
+      quantity, unit_price, line_total, image_url,
+      promotion_id, promo_discount
     ) VALUES (
       v_order_id, v_product.id, v_product_name,
       v_variant_id, v_variant_label,
-      v_quantity, v_unit_price, v_line_total, v_image_url
+      v_quantity, v_unit_price, v_line_total, v_image_url,
+      v_promo_id, v_promo_discount
     );
   END LOOP;
 
@@ -3008,6 +3035,8 @@ CREATE OR REPLACE FUNCTION "public"."get_catalog_product_with_variants"("p_slug"
 DECLARE
   v_business_id     uuid;
   v_product         record;
+  v_promo           public.promotions;
+  v_base_price      numeric;
   v_computed_price  numeric;
   v_options_json    json;
   v_variants_json   json;
@@ -3033,7 +3062,9 @@ BEGIN
     RETURN json_build_object('success', false, 'error', 'Producto no encontrado');
   END IF;
 
-  v_computed_price := public.compute_effective_price(
+  v_promo := public.find_applicable_promotion(v_business_id, v_product.id, v_product.category_id, v_product.brand_id);
+
+  v_base_price := public.compute_effective_price(
     v_product.cost::numeric,
     v_product.price::numeric,
     NULL,
@@ -3042,6 +3073,7 @@ BEGIN
     v_product.id,
     v_product.brand_id
   );
+  v_computed_price := public.apply_unit_promo(v_promo.kind, v_promo.percent, v_promo.offer_price, v_base_price);
 
   SELECT json_agg(
     json_build_object(
@@ -3070,15 +3102,11 @@ BEGIN
   SELECT json_agg(
     json_build_object(
       'id',          pv.id,
-      'price',       public.compute_effective_price(
-                       pv.cost::numeric,
-                       pv.price::numeric,
-                       pv.price::numeric,
-                       NULL,
-                       NULL,
-                       v_product.id,
-                       v_product.brand_id
-                     ),
+      'price',       public.apply_unit_promo(v_promo.kind, v_promo.percent, v_promo.offer_price, pv_base.price),
+      'original_price', CASE
+                          WHEN public.apply_unit_promo(v_promo.kind, v_promo.percent, v_promo.offer_price, pv_base.price) < pv_base.price
+                          THEN pv_base.price
+                        END,
       'stock',       pv.stock,
       'image_url',   pv.image_url,
       'is_active',   pv.is_active,
@@ -3100,6 +3128,17 @@ BEGIN
   )
   INTO v_variants_json
   FROM public.product_variants pv
+  CROSS JOIN LATERAL (
+    SELECT public.compute_effective_price(
+      pv.cost::numeric,
+      pv.price::numeric,
+      pv.price::numeric,
+      NULL,
+      NULL,
+      v_product.id,
+      v_product.brand_id
+    ) AS price
+  ) pv_base
   WHERE pv.product_id = p_product_id
     AND pv.business_id = v_business_id
     AND pv.is_active = true;
@@ -3112,7 +3151,17 @@ BEGIN
       'stock',          v_product.stock,
       'image_url',      v_product.image_url,
       'has_variants',   v_product.has_variants,
-      'computed_price', v_computed_price
+      'computed_price', v_computed_price,
+      'original_price', CASE WHEN v_computed_price < v_base_price THEN v_base_price END,
+      'promo', CASE WHEN v_promo.id IS NOT NULL THEN json_build_object(
+        'kind',           v_promo.kind,
+        'percent',        v_promo.percent,
+        'group_size',     v_promo.group_size,
+        'affected_units', v_promo.affected_units,
+        'pay_percent',    v_promo.pay_percent,
+        'ends_at',        v_promo.ends_at,
+        'featured',       v_promo.show_in_catalog
+      ) END
     ),
     'options',  COALESCE(v_options_json, '[]'::json),
     'variants', COALESCE(v_variants_json, '[]'::json)
@@ -3124,10 +3173,13 @@ $$;
 ALTER FUNCTION "public"."get_catalog_product_with_variants"("p_slug" "text", "p_product_id" "uuid") OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."get_catalog_products"("p_slug" "text") RETURNS TABLE("id" "uuid", "category_id" "uuid", "name" "text", "sale_price" numeric, "stock" integer, "image_url" "text", "has_variants" boolean, "brand_id" "uuid", "brand_name" "text", "variant_count" integer)
+CREATE OR REPLACE FUNCTION "public"."get_catalog_products"("p_slug" "text") RETURNS TABLE("id" "uuid", "category_id" "uuid", "name" "text", "sale_price" numeric, "stock" integer, "image_url" "text", "has_variants" boolean, "brand_id" "uuid", "brand_name" "text", "variant_count" integer, "original_price" numeric, "promo_kind" "text", "promo_percent" numeric, "promo_group_size" integer, "promo_affected_units" integer, "promo_pay_percent" numeric, "promo_ends_at" timestamp with time zone, "promo_featured" boolean)
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public', 'extensions'
     AS $$
+-- sale_price ya viene con la promo unitaria aplicada (find_applicable_promotion +
+-- apply_unit_promo); original_price trae el precio previo cuando difiere (tachado).
+-- Los campos promo_* son crudos — el label lo arma el cliente (promoBadgeLabel).
 DECLARE
   v_business_id uuid;
 BEGIN
@@ -3141,56 +3193,70 @@ BEGIN
 
   RETURN QUERY
   SELECT
-    p.id,
-    p.category_id,
-    p.name,
+    base.id,
+    base.category_id,
+    base.name,
+    public.apply_unit_promo(fp.kind, fp.percent, fp.offer_price, base.base_price) AS sale_price,
+    base.stock,
+    base.image_url,
+    base.has_variants,
+    base.brand_id,
+    base.brand_name,
+    base.variant_count,
     CASE
-      WHEN p.has_variants AND pv_def.id IS NOT NULL THEN
-        public.compute_effective_price(
-          pv_def.cost::numeric,
-          pv_def.price::numeric,
-          pv_def.price::numeric,
-          NULL,
-          NULL,
-          p.id,
-          p.brand_id
+      WHEN fp.id IS NOT NULL
+       AND public.apply_unit_promo(fp.kind, fp.percent, fp.offer_price, base.base_price) < base.base_price
+      THEN base.base_price
+    END AS original_price,
+    fp.kind AS promo_kind,
+    fp.percent AS promo_percent,
+    fp.group_size AS promo_group_size,
+    fp.affected_units AS promo_affected_units,
+    fp.pay_percent AS promo_pay_percent,
+    fp.ends_at AS promo_ends_at,
+    CASE WHEN fp.id IS NOT NULL THEN fp.show_in_catalog END AS promo_featured
+  FROM (
+    SELECT
+      p.id,
+      p.category_id,
+      p.name,
+      CASE
+        WHEN p.has_variants AND pv_def.id IS NOT NULL THEN
+          public.compute_effective_price(
+            pv_def.cost::numeric, pv_def.price::numeric, pv_def.price::numeric,
+            NULL, NULL, p.id, p.brand_id)
+        ELSE
+          public.compute_effective_price(
+            p.cost::numeric, p.price::numeric, NULL,
+            NULL, NULL, p.id, p.brand_id)
+      END AS base_price,
+      CASE
+        WHEN p.has_variants AND pv_def.id IS NOT NULL THEN pv_def.stock
+        ELSE p.stock::integer
+      END AS stock,
+      CASE
+        WHEN p.has_variants AND pv_def.id IS NOT NULL THEN COALESCE(pv_def.image_url, p.image_url)
+        ELSE p.image_url
+      END AS image_url,
+      p.has_variants,
+      p.brand_id,
+      b_brand.name AS brand_name,
+      CASE
+        WHEN p.has_variants THEN (
+          SELECT count(*)::int FROM product_variants pv
+          WHERE pv.product_id = p.id AND pv.is_active = true
         )
-      ELSE
-        public.compute_effective_price(
-          p.cost::numeric,
-          p.price::numeric,
-          NULL,
-          NULL,
-          NULL,
-          p.id,
-          p.brand_id
-        )
-    END AS sale_price,
-    CASE
-      WHEN p.has_variants AND pv_def.id IS NOT NULL THEN pv_def.stock
-      ELSE p.stock::integer
-    END AS stock,
-    CASE
-      WHEN p.has_variants AND pv_def.id IS NOT NULL THEN COALESCE(pv_def.image_url, p.image_url)
-      ELSE p.image_url
-    END AS image_url,
-    p.has_variants,
-    p.brand_id,
-    b_brand.name AS brand_name,
-    CASE
-      WHEN p.has_variants THEN (
-        SELECT count(*)::int FROM product_variants pv
-        WHERE pv.product_id = p.id AND pv.is_active = true
-      )
-      ELSE 0
-    END AS variant_count
-  FROM products p
-  LEFT JOIN product_variants pv_def ON pv_def.id = p.default_variant_id
-  LEFT JOIN brands b_brand ON b_brand.id = p.brand_id
-  WHERE p.business_id    = v_business_id
-    AND p.is_active      = true
-    AND p.show_in_catalog = true
-  ORDER BY p.name ASC;
+        ELSE 0
+      END AS variant_count
+    FROM products p
+    LEFT JOIN product_variants pv_def ON pv_def.id = p.default_variant_id
+    LEFT JOIN brands b_brand ON b_brand.id = p.brand_id
+    WHERE p.business_id    = v_business_id
+      AND p.is_active      = true
+      AND p.show_in_catalog = true
+  ) base
+  LEFT JOIN LATERAL public.find_applicable_promotion(v_business_id, base.id, base.category_id, base.brand_id) fp ON true
+  ORDER BY base.name ASC;
 END;
 $$;
 
@@ -6344,7 +6410,8 @@ BEGIN
 
     SELECT COALESCE(jsonb_agg(jsonb_build_object(
       'product_id', ci.product_id, 'variant_id', ci.variant_id,
-      'quantity', ci.quantity, 'unit_price', ci.unit_price, 'total', ci.line_total
+      'quantity', ci.quantity, 'unit_price', ci.unit_price, 'total', ci.line_total,
+      'promotion_id', ci.promotion_id, 'promo_discount', ci.promo_discount
     )), '[]'::jsonb) INTO v_sale_items
      FROM catalog_order_items ci WHERE ci.order_id = p_order_id;
 

@@ -6,6 +6,21 @@ export interface CatalogBusiness {
   whatsapp: string | null
 }
 
+// Promo vigente del producto, ya resuelta server-side por las RPCs del catálogo.
+// salePrice YA viene con la promo unitaria aplicada; originalPrice trae el precio
+// previo (para tachado). Las promos de cantidad no tocan el unitario — el descuento
+// se calcula por línea en el carrito con computeQuantityDiscount.
+export interface CatalogPromo {
+  kind: 'percent' | 'offer_price' | 'quantity'
+  percent: number | null
+  group_size: number | null
+  affected_units: number | null
+  pay_percent: number | null
+  endsAt: string | null
+  featured: boolean
+  label: string
+}
+
 export interface CatalogProduct {
   id: string
   categoryId: string | null
@@ -17,6 +32,8 @@ export interface CatalogProduct {
   brandName: string | null
   hasVariants: boolean
   variantCount: number
+  originalPrice: number | null
+  promo: CatalogPromo | null
 }
 
 export interface CatalogCategory {
@@ -49,11 +66,22 @@ export interface CatalogVariantOption {
 export interface CatalogProductVariant {
   id: string
   price: number
+  original_price?: number | null
   stock: number
   image_url: string | null
   is_active: boolean
   is_in_stock: boolean
   option_values: { option_id: string; option_value_id: string; value: string }[]
+}
+
+export interface CatalogDetailPromo {
+  kind: 'percent' | 'offer_price' | 'quantity'
+  percent: number | null
+  group_size: number | null
+  affected_units: number | null
+  pay_percent: number | null
+  ends_at: string | null
+  featured: boolean
 }
 
 export interface CatalogProductDetail {
@@ -63,6 +91,8 @@ export interface CatalogProductDetail {
   image_url: string | null
   has_variants: boolean
   computed_price: number
+  original_price?: number | null
+  promo?: CatalogDetailPromo | null
 }
 
 export interface CatalogVariantAttributeValue {

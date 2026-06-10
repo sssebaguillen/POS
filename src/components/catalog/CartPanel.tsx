@@ -6,8 +6,22 @@ import { AlertTriangle, CheckCircle2, ImageIcon, Minus, Plus, Trash2 } from 'luc
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import type { CatalogCartItem } from '@/components/catalog/types'
+import { computeQuantityDiscount } from '@/lib/promotions'
 import posthog from 'posthog-js'
 import PopNumber from '@/components/shared/PopNumber'
+
+// Descuento de línea por promo de cantidad (2x1, 3x2, 2da al X%). Las promos
+// unitarias ya vienen aplicadas en salePrice. Espeja lo que create_catalog_order
+// cobra server-side — el total mostrado debe coincidir con el cobrado.
+function lineDiscount(item: CatalogCartItem): number {
+  const promo = item.product.promo
+  if (!promo || promo.kind !== 'quantity') return 0
+  return computeQuantityDiscount(promo, item.product.salePrice, item.quantity)
+}
+
+function lineTotal(item: CatalogCartItem): number {
+  return Math.round((item.product.salePrice * item.quantity - lineDiscount(item)) * 100) / 100
+}
 
 function CartItemImage({ imageUrl, name }: { imageUrl: string; name: string }) {
   const [loaded, setLoaded] = useState(false)
@@ -82,7 +96,7 @@ export default function CartPanel({
   const [submitError, setSubmitError] = useState<string | null>(null)
 
   const subtotal = useMemo(
-    () => cartItems.reduce((acc, item) => acc + item.product.salePrice * item.quantity, 0),
+    () => cartItems.reduce((acc, item) => acc + lineTotal(item), 0),
     [cartItems]
   )
 
@@ -107,9 +121,11 @@ export default function CartPanel({
   function buildMessage(orderNumberValue: number): string {
     const itemsText = cartItems
       .map(item => {
-        const lineTotal = item.product.salePrice * item.quantity
         const variantPart = item.variantLabel ? ` (${item.variantLabel})` : ''
-        return `${item.quantity}x ${item.product.name}${variantPart} - $${currencyFormatter.format(lineTotal)}`
+        const promoPart = item.product.promo && (lineDiscount(item) > 0 || item.product.originalPrice !== null)
+          ? ` [Promo ${item.product.promo.label}]`
+          : ''
+        return `${item.quantity}x ${item.product.name}${variantPart}${promoPart} - $${currencyFormatter.format(lineTotal(item))}`
       })
       .join('\n')
 
@@ -269,7 +285,12 @@ export default function CartPanel({
                           <p className="mt-0.5 text-xs text-muted-foreground">{item.variantLabel}</p>
                         )}
                         <p className="mt-0.5 text-sm text-muted-foreground">
-                          <PopNumber value={`$${currencyFormatter.format(item.product.salePrice * item.quantity)}`} />
+                          <PopNumber value={`$${currencyFormatter.format(lineTotal(item))}`} />
+                          {item.product.promo && (lineDiscount(item) > 0 || item.product.originalPrice !== null) && (
+                            <span className="ml-1.5 rounded bg-emerald-100 px-1 py-0.5 text-[10px] font-semibold text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300">
+                              {item.product.promo.label}
+                            </span>
+                          )}
                         </p>
                       </div>
                       <button

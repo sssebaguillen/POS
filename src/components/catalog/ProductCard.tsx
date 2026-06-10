@@ -7,6 +7,7 @@ import { ImageIcon, Layers, Plus } from 'lucide-react'
 import { createClient } from '@supabase/supabase-js'
 import { Button } from '@/components/ui/button'
 import VariantQuickSelector from '@/components/catalog/VariantQuickSelector'
+import { promoCountdownLabel } from '@/lib/promotions'
 import type { CatalogProduct, CatalogVariantOption, CatalogProductVariant } from '@/components/catalog/types'
 
 const anonClient = createClient(
@@ -52,6 +53,38 @@ export interface ProductCardProps {
   product: CatalogProduct
   slug: string
   onAddToCart: (product: CatalogProduct, variantId: string | null, variantLabel: string | null, variantImageUrl?: string | null) => void
+}
+
+function PromoBadges({ product }: { product: CatalogProduct }) {
+  if (!product.promo) return null
+  const countdown = promoCountdownLabel(product.promo.endsAt)
+  return (
+    <div className="absolute left-2 bottom-2 flex flex-col items-start gap-1">
+      <span className="rounded-md bg-emerald-600/95 px-2 py-0.5 text-xs font-bold text-white shadow-sm">
+        {product.promo.label}
+      </span>
+      {countdown && (
+        <span className="rounded-md bg-black/65 px-1.5 py-0.5 text-[10px] font-medium text-white">
+          {countdown}
+        </span>
+      )}
+    </div>
+  )
+}
+
+function PriceBlock({ product }: { product: CatalogProduct }) {
+  return (
+    <p className="mt-1 text-base font-bold text-foreground">
+      {product.originalPrice !== null && (
+        <span className="mr-1.5 text-sm font-medium text-muted-foreground line-through">
+          ${currencyFormatter.format(product.originalPrice)}
+        </span>
+      )}
+      <span className={product.originalPrice !== null ? 'text-emerald-600 dark:text-emerald-400' : undefined}>
+        ${currencyFormatter.format(product.salePrice)}
+      </span>
+    </p>
+  )
 }
 
 export default function ProductCard({ product, slug, onAddToCart }: ProductCardProps) {
@@ -146,6 +179,7 @@ export default function ProductCard({ product, slug, onAddToCart }: ProductCardP
               Sin stock
             </span>
           )}
+          <PromoBadges product={product} />
         </div>
         <div className="mt-3 flex items-start justify-between gap-2">
           <div className="min-w-0">
@@ -153,9 +187,7 @@ export default function ProductCard({ product, slug, onAddToCart }: ProductCardP
             {product.brandName && (
               <p className="mt-0.5 text-xs text-muted-foreground">{product.brandName}</p>
             )}
-            <p className="mt-1 text-base font-bold text-foreground">
-              ${currencyFormatter.format(product.salePrice)}
-            </p>
+            <PriceBlock product={product} />
           </div>
           <Button
             type="button"
@@ -206,15 +238,14 @@ export default function ProductCard({ product, slug, onAddToCart }: ProductCardP
             <Layers className="h-3 w-3" />
             {variantBadgeText}
           </span>
+          <PromoBadges product={product} />
         </div>
         <div className="mt-3 min-w-0">
           <h3 className="line-clamp-2 text-sm font-medium text-foreground">{product.name}</h3>
           {product.brandName && (
             <p className="mt-0.5 text-xs text-muted-foreground">{product.brandName}</p>
           )}
-          <p className="mt-1 text-base font-bold text-foreground">
-            ${currencyFormatter.format(product.salePrice)}
-          </p>
+          <PriceBlock product={product} />
         </div>
       </Link>
 
