@@ -6,6 +6,7 @@ export type ActivityEntityType =
   | 'expense'
   | 'supplier'
   | 'price_list'
+  | 'promotion'
   | 'setting'
   | 'operator'
   | 'customer'

@@ -37,6 +37,9 @@ export type ActivityAction =
   | 'price_list_updated'
   | 'price_list_deleted'
   | 'price_list_default_changed'
+  | 'promotion_created'
+  | 'promotion_updated'
+  | 'promotion_archived'
   | 'settings_updated'
   | 'settings_slug_updated'
   | 'operator_created'
@@ -203,6 +206,25 @@ export interface PriceListUpdateData {
   overrides_deleted?: unknown[]
 }
 
+export interface PromotionData {
+  id?: string
+  name?: string | null
+  kind?: string | null
+  percent?: number | string | null
+  offer_price?: number | string | null
+  group_size?: number | string | null
+  affected_units?: number | string | null
+  pay_percent?: number | string | null
+  product_id?: string | null
+  category_id?: string | null
+  brand_id?: string | null
+  starts_at?: string | null
+  ends_at?: string | null
+  is_active?: boolean
+  show_in_catalog?: boolean
+  archived_at?: string | null
+}
+
 export interface SettingsData {
   name?: string | null
   description?: string | null
@@ -299,6 +321,9 @@ export interface ActivityPayloadMap {
   price_list_updated: { entityType: 'price_list'; oldData: PriceListData | null; newData: PriceListUpdateData | null }
   price_list_deleted: { entityType: 'price_list'; oldData: PriceListData | null; newData: null }
   price_list_default_changed: { entityType: 'price_list'; oldData: null; newData: null }
+  promotion_created: { entityType: 'promotion'; oldData: null; newData: PromotionData | null }
+  promotion_updated: { entityType: 'promotion'; oldData: PromotionData | null; newData: PromotionData | null }
+  promotion_archived: { entityType: 'promotion'; oldData: PromotionData | null; newData: PromotionData | null }
   settings_updated: { entityType: 'setting'; oldData: SettingsData | null; newData: SettingsData | null }
   settings_slug_updated: { entityType: 'setting'; oldData: { slug?: string } | null; newData: { slug?: string } | null }
   operator_created: { entityType: 'operator'; oldData: null; newData: OperatorData | null }
@@ -356,6 +381,9 @@ export const ACTIVITY_ACTIONS: ActivityAction[] = [
   'price_list_updated',
   'price_list_deleted',
   'price_list_default_changed',
+  'promotion_created',
+  'promotion_updated',
+  'promotion_archived',
   'settings_updated',
   'settings_slug_updated',
   'operator_created',
@@ -403,6 +431,9 @@ export const ACTION_ENTITY_TYPES: Record<ActivityAction, ActivityEntityType> = {
   price_list_updated: 'price_list',
   price_list_deleted: 'price_list',
   price_list_default_changed: 'price_list',
+  promotion_created: 'promotion',
+  promotion_updated: 'promotion',
+  promotion_archived: 'promotion',
   settings_updated: 'setting',
   settings_slug_updated: 'setting',
   operator_created: 'operator',

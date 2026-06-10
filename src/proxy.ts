@@ -189,6 +189,14 @@ export async function proxy(request: NextRequest) {
     return flashRedirect(new URL('/pos', request.url), cspHeader)
   }
 
+  const isPromotionsRoute =
+    pathname === '/promotions' ||
+    pathname.startsWith('/promotions/')
+
+  if (isPromotionsRoute && !hasPermission(operator, 'inventory_read')) {
+    return flashRedirect(new URL('/pos', request.url), cspHeader)
+  }
+
   const isSettingsRoute = pathname === '/settings' || pathname.startsWith('/settings/')
   if (isSettingsRoute && !hasPermission(operator, 'settings')) {
     return flashRedirect(new URL('/pos', request.url), cspHeader)

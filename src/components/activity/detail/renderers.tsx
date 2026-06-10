@@ -16,6 +16,7 @@ import type {
   PriceListCreateData,
   PriceListData,
   PriceListUpdateData,
+  PromotionData,
   SaleData,
   SettingsData,
   SupplierData,
@@ -52,6 +53,10 @@ import {
   SettingsDiff,
   SettingsSlugDiff,
 } from '@/components/activity/detail/price-settings'
+import {
+  PromotionDiff,
+  PromotionSummary,
+} from '@/components/activity/detail/promotion'
 import {
   BulkProductBrand,
   BulkProductCatalog,
@@ -208,6 +213,19 @@ const ACTIVITY_DETAIL_RENDERERS: Record<ActivityAction, ActivityRenderer> = {
   ),
   price_list_default_changed: ({ row }) => (
     <PriceListDefaultChanged label={row.entity_label} />
+  ),
+  promotion_created: ({ row, lookups }) => (
+    <PromotionSummary data={readAuditPayload<PromotionData>(row.new_data)} lookups={lookups} />
+  ),
+  promotion_updated: ({ row, lookups }) => (
+    <PromotionDiff
+      oldData={readAuditPayload<PromotionData>(row.old_data)}
+      newData={readAuditPayload<PromotionData>(row.new_data)}
+      lookups={lookups}
+    />
+  ),
+  promotion_archived: ({ row, lookups }) => (
+    <PromotionSummary data={readAuditPayload<PromotionData>(row.old_data)} lookups={lookups} archived />
   ),
   settings_updated: ({ row }) => (
     <SettingsDiff

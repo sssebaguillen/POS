@@ -30,6 +30,9 @@ export const AUDIT_ACTION_LABELS: Record<string, string> = {
   price_list_updated:         'Lista de precios editada',
   price_list_deleted:         'Lista de precios eliminada',
   price_list_default_changed: 'Lista de precios predeterminada',
+  promotion_created:          'Promoción creada',
+  promotion_updated:          'Promoción editada',
+  promotion_archived:         'Promoción archivada',
   settings_updated:           'Configuración actualizada',
   settings_slug_updated:      'Slug actualizado',
   operator_created:           'Operario creado',
@@ -61,7 +64,7 @@ export function getAuditActionTone(action: string): ActivityActionTone {
   if (action.startsWith('catalog_order_')) return 'updated'
   if (action.endsWith('_created')) return 'created'
   if (action.endsWith('_updated')) return 'updated'
-  if (action.endsWith('_deleted')) return 'deleted'
+  if (action.endsWith('_deleted') || action.endsWith('_archived')) return 'deleted'
   return 'updated'
 }
 

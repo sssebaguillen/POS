@@ -2,7 +2,7 @@
 
 import { usePathname } from 'next/navigation'
 import Link from 'next/link'
-import { X, ShoppingCart, Package, ClipboardList, BarChart2, LineChart, Settings, Sun, Moon, LogOut, PanelLeftClose, PanelLeftOpen, Receipt, UserCircle, Sparkles, Globe, ExternalLink, History, Users, Vault, Inbox } from 'lucide-react'
+import { X, ShoppingCart, Package, ClipboardList, BarChart2, LineChart, Settings, Sun, Moon, LogOut, PanelLeftClose, PanelLeftOpen, Receipt, UserCircle, Sparkles, Globe, ExternalLink, History, Users, Vault, Inbox, BadgePercent } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useState, useEffect, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
@@ -37,6 +37,7 @@ const NAV_LINKS: NavLink[] = [
   { href: '/cash-sessions', label: 'Caja',              icon: Vault,         check: (p) => p.reports === true },
   { href: '/inventory',   label: 'Inventario',        icon: Package,       check: (p) => p.inventory_read === true },
   { href: '/price-lists', label: 'Listas de precios', icon: ClipboardList, check: (p) => p.inventory_read === true },
+  { href: '/promotions',  label: 'Promociones',       icon: BadgePercent,  check: (p) => p.inventory_read === true },
   { href: '/settings',    label: 'Configuración',     icon: Settings,      check: (p) => p.settings === true },
 ]
 
@@ -51,7 +52,7 @@ const NAV_SECTIONS = [
   },
   {
     label: 'Gestión',
-    hrefs: ['/inventory', '/price-lists'],
+    hrefs: ['/inventory', '/price-lists', '/promotions'],
   },
   {
     label: 'Finanzas',

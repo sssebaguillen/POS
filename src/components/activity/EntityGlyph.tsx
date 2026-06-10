@@ -1,5 +1,6 @@
 import type { ComponentType } from 'react'
 import {
+  BadgePercent,
   Folder,
   Inbox,
   Layers,
@@ -23,6 +24,7 @@ const ENTITY_GLYPH: Record<ActivityLogRow['entity_type'], ComponentType<{ size?:
   expense: Receipt,
   supplier: Truck,
   price_list: Layers,
+  promotion: BadgePercent,
   setting: SettingsIcon,
   operator: UserCog,
   customer: UserRound,
