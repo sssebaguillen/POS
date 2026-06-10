@@ -130,6 +130,17 @@ When `unit_price_override` exists in a sale item, it takes precedence over every
 - `isPriceEdited = true` whenever the user edits price in the product form, even without an active price list.
 - When creating/editing a price list that affects products with manual prices: show amber alert with affected list + two options: overwrite with list margin, or create `price_list_overrides` to preserve manual prices.
 
+### Promociones (Promos y Ofertas)
+
+Plan y semántica completa: [`docs/todo/promotions.md`](docs/todo/promotions.md). Implementado 2026-06-10 (F1–F5).
+
+- **Pipeline de precedencia:** precio efectivo (base/variante o lista+redondeo, SIN cambios) → promo unitaria (`percent`/`offer_price`) → promo de cantidad (2x1/3x2/2da al X%, modelo N/K/P) → override manual gana todo (`priceIsManual` excluye listas Y promos) → descuento de carrito.
+- **Resolución:** una línea matchea UNA promo (sin stacking): más específica gana (producto > categoría > marca); a igual especificidad, la más reciente. UI avisa solapamientos al crear (ámbar, no bloquea).
+- **Espejo SQL↔TS (extiende la regla 11):** `find_applicable_promotion` / `apply_unit_promo` / `compute_quantity_promo_discount` (SQL) ↔ `src/lib/promotions.ts` (TS). Cambiarlos juntos.
+- **Tracking informativo, líneas NETAS:** promo unitaria baja `unit_price` (total = qty×unit); promo de cantidad deja el unitario y descuenta a nivel línea (total = qty×unit − promo_discount). `sale_items.promotion_id`/`promo_discount` y sus pares en `catalog_order_items` son informativos — `sales.discount` sigue siendo SOLO el descuento de carrito. Invariantes R1/R12 en `docs/tests/06-reconciliacion.sql`.
+- **Catálogo:** la promo se aplica **server-side** (`get_catalog_products`, `get_catalog_product_with_variants`, `create_catalog_order`) — el precio mostrado es promesa, el checkout re-precia con la misma promo. La conversión a venta arrastra `promotion_id`/`promo_discount`. `show_in_catalog` solo controla la sección Ofertas destacada; el precio aplica siempre (paridad POS↔catálogo).
+- **Ciclo de vida:** promo usada en ventas se ARCHIVA (`archive_promotion`), nunca se borra. CRUD vía `create/update/archive_promotion` (guard `inventory_write` + audit `entity_type='promotion'`). `daily_snapshots.promo_discounts_total`/`promo_sales_count` alimentan a P12.
+
 ### Public Catalog
 
 URL: `/catalogo/[slug]`
@@ -190,6 +201,7 @@ src/
 │   │                                     # getActiveOperator, getActorOperatorId, parsePermissions/normalizePermissions (bi-shape, mirror of SQL normalize_permissions)
 │   ├── payments.ts                       # normalizePayment, PAYMENT_LABELS, PAYMENT_COLORS, PAYMENT_OPTIONS
 │   ├── price-lists.ts                    # calculateProductPrice — sole price calculation source
+│   ├── promotions.ts                     # Espejo TS de promos: findApplicablePromo, applyUnitPromo, computeQuantityDiscount, resolvePromoLine, promoBadgeLabel
 │   ├── date-utils.ts                     # DateRangePeriod, getDateRange, resolveDateRange, buildDateParams
 │   ├── format.ts                         # formatMoney, formatNumber
 │   ├── mappers.ts                        # normalizePriceList, unwrapRelation
@@ -223,6 +235,7 @@ src/
 │   │   ├── inventory/page.tsx
 │   │   ├── products/page.tsx
 │   │   ├── price-lists/page.tsx
+│   │   ├── promotions/page.tsx           # Promos y ofertas — gate inventory_read; CRUD vía RPCs guardadas
 │   │   ├── dashboard/page.tsx            # edge — denormalizes operator_name + product names for SalesHistoryTable
 │   │   ├── expenses/page.tsx             # Expenses + /expenses/providers sub-route
 │   │   ├── stats/page.tsx                # edge
@@ -309,6 +322,10 @@ src/
     │   ├── CategoryModal.tsx
     │   ├── BrandModal.tsx
     │   └── types.ts
+    ├── promotions/
+    │   ├── PromotionsView.tsx            # Chips de estado + tabla + pausar/reanudar/archivar
+    │   ├── PromotionModal.tsx            # New/Edit compartido: 4 tipos en lenguaje natural (mapea a N/K/P), preview, aviso de solapamiento
+    │   └── types.ts                      # getPromotionStatus, describePromotion, coveredProductIds
     ├── price-lists/
     │   ├── PriceListsPanel.tsx
     │   ├── NewPriceListModal.tsx         # Conflict alert for manual prices
@@ -398,3 +415,4 @@ Full route map with permission gates: `docs/conventions.md`.
 33. **Pedidos Online (`/orders`)**: anon catalog checkouts POST through `/api/catalog/orders` (Node runtime, per-IP rate limit, IP forwarded to RPC for forensics) → `create_catalog_order` RPC re-precia items server-side. Status flow lives in `update_catalog_order_status`; **sale conversion (and stock decrement) happens only on the `completado` transition** — it reuses `create_sale_transaction` with the **payment method the operator selects at completion** (`cash/card/transfer/mercadopago`, passed as `p_payment_method`; `credit` excluido — el pedido online es anónimo). El método `'other'` NO existe en `payments_method_check`; no usarlo. La venta convertida se marca `sales.source = 'catalog'` (default `'pos'`) para distinguir POS vs pedido online. La transición a `completado` toma `SELECT … FOR UPDATE` sobre el pedido (evita doble conversión por doble-click/concurrencia). Permission key reused: `sales`. Audit `entity_type = 'catalog_order'`. UI: `/orders` page + `<NewOrderNotifier />` mounted in `(app)/layout.tsx` (sound+toast on `/pos` and `/dashboard`). Sidebar unread badge via `get_catalog_orders_unread_count` polled every 30s.
 34. **Tenant guard + grants en RPC `SECURITY DEFINER` (regla de seguridad multi-tenant).** Como DEFINER saltea RLS, toda RPC nueva que reciba `p_business_id` o mute datos de negocio DEBE: **(a)** verificar la pertenencia del llamador como **primera sentencia** — `assert_tenant(p_business_id)` (lanza `'Contexto de negocio invalido'`), o el patrón equivalente `IF NOT EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND business_id = p_business_id) THEN ... unauthorized`. **Nunca** confiar en que el dato pertenezca al `p_business_id` recibido (eso se satisface pasando un par ajeno válido). **(b)** En la misma migración, `REVOKE EXECUTE ... FROM PUBLIC, anon` y `GRANT EXECUTE ... TO authenticated` (Supabase otorga EXECUTE a PUBLIC por defecto → revocar solo `anon` no alcanza). Catálogo público anon: única excepción autorizada, por slug, re-preciando server-side (reglas 29/33). Helpers internos / cron (`log_audit_event`, `upsert_daily_snapshot`, `refresh_all_daily_snapshots`): revocar anon **y** authenticated; el cron corre como `service_role`. Antecedente y pruebas: `docs/tests/08-auditoria-seguridad.md` + migraciones `20260529_01..04`.
 35. **Storage RLS scopeada por carpeta de negocio.** El path de todo objeto es `{businessId}/...` (regla 23). Toda policy de **escritura** (`insert`/`update`/`delete`) sobre `storage.objects` DEBE exigir `(storage.foldername(name))[1] = (get_business_id())::text` — nunca solo `bucket_id = '...'` (eso permite escribir/borrar objetos de otro negocio). Buckets **públicos** (`product-images`, `business-logos`): el render va por CDN (`getPublicUrl` → `/object/public/...`, no consulta RLS), así que el SELECT también se scopea a `authenticated` + carpeta propia (no anon) sin romper el catálogo; `.list()` no se usa. Buckets **privados** (`expense-receipts`, `feedback-attachments`): read/write/delete scopeados por carpeta; acceso vía `createSignedUrl` con la sesión del dueño. El `DELETE` directo por SQL sobre `storage.objects` está bloqueado (trigger `storage.protect_delete`) → usar la Storage API con `service_role`. Antecedente: `docs/tests/08-auditoria-seguridad.md` §6 + migraciones `20260529_10..11`.
+36. **Promos: resolución y cálculo SOLO vía los espejos** `find_applicable_promotion`/`apply_unit_promo`/`compute_quantity_promo_discount` (SQL) ↔ `src/lib/promotions.ts` (TS) — nunca inline; mantener en sync (extiende la regla 11). Una línea matchea UNA promo (producto > categoría > marca; a igual especificidad, la más reciente). Líneas NETAS: `promotion_id`/`promo_discount` en `sale_items`/`catalog_order_items` son informativos; `sales.discount` sigue siendo solo el descuento de carrito. El catálogo aplica la promo **server-side** (RPCs de catálogo + `create_catalog_order` — nunca solo en UI: el precio mostrado es promesa y el checkout re-precia). El override manual (`priceIsManual`) excluye la línea de listas Y promos. Promos usadas en ventas se ARCHIVAN (`archive_promotion`), nunca se borran. Detalle: sección "Promociones" arriba + `docs/todo/promotions.md`.

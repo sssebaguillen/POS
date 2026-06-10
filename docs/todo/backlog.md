@@ -139,9 +139,17 @@ Al exportar listas de precio desde `/price-lists` (`ExportPriceListModal`), perm
 
 Comprobar si vale la pena (y qué tan sencillo es) soportar productos vendidos por peso o medida — Kg, gramos, litros, metros — en lugar de unidades enteras. Impacta: `products` (unidad de medida), input de cantidad en POS (decimales), stock (decimal), cálculo de precio (precio por Kg × cantidad). Spike de viabilidad antes de comprometer.
 
-### Ofertas y descuentos en el catálogo ⭐ (PRÓXIMA SESIÓN — acordado 2026-06-09)
+### Ofertas y descuentos en el catálogo — ✅ MÓDULO SHIPPED (2026-06-10)
 
-**Próximo feature grande.** Al usuario le interesa mucho un sistema de **ofertas/promos con lugar especial en el catálogo online** (sección de ofertas, productos destacados) **+ captura de interacción de los clientes** con esa sección/productos (vistas, clics) para **medir impacto** — lo ve como diferenciador y palanca de marketing, no solo utilidad interna. Encarar en fases: (1) modelo de promos, (2) sección de ofertas en el catálogo, (3) analytics de engagement anónimo. Por definir: alcance (descuento por línea/venta/producto/categoría, 2x1, % temporal), dónde se configura, cómo se persiste en `sale_items`/`sales`, cómo se refleja en el catálogo. Requiere diseño dedicado — armar plan antes de implementar. Base: el v1 de descuento de carrito del POS ya existe (`cart.store.ts`, gated por `pos_pricing`).
+**Implementado completo (F1–F5)** — plan, semántica y estado en [`promotions.md`](promotions.md); reglas en CLAUDE.md §Promociones + regla 36. Tipos: % / precio de oferta / 2x1-3x2 / 2da unidad al X% (modelo N/K/P). `/promotions` + POS + catálogo (sección Ofertas, badges, countdown, checkout re-precia server-side) + audit + snapshots para P12. Invariantes R1/R12 en `06-reconciliacion.sql`, verificados al centavo en vivo.
+
+**Pendientes derivados (post-módulo):**
+- **Quick win acordado:** segmentación POS vs catálogo en stats (`sales.source` ya existe — ver ítem en P-Phases).
+- **Tarjeta de impacto de promos en `/stats`:** lee `sale_items.promotion_id`/`promo_discount` (la data ya se captura desde el día 1).
+- **Engagement del catálogo (vistas/clics para el dueño):** diferido hasta tener tráfico real; requiere storage propio agregado (PostHog es analytics nuestro, el dueño no lo ve).
+- **Detector P12:** "la promo X no mueve ventas / duplicó rotación" — sale de las columnas de snapshot ya creadas.
+- **Smoke UI en browser pendiente** (el smoke fue server-side: RPCs al centavo + build/tsc/lint): crear una promo de cada tipo desde `/promotions` y verla en POS y catálogo.
+- v2 diferida: 2x1 *cruzado* (combinatoria multi-producto), precio de oferta por variante, redondeo configurable del % de promo.
 
 ### Lista de precios del catálogo configurable (DESPUÉS de ofertas)
 

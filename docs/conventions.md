@@ -281,6 +281,7 @@ DB enum (`payments.method`): `'cash' | 'card' | 'transfer' | 'mercadopago'` — 
 | `/inventory` | Inventory (read) | `permissions.stock` |
 | `/products` | Inventory (write) | `permissions.stock` + `permissions.stock_write` |
 | `/price-lists` | Price lists | `permissions.price_lists` |
+| `/promotions` | Promos y ofertas (CRUD, chips de estado) | `permissions.inventory_read` (escrituras: `inventory_write` en RPCs) |
 | `/dashboard` | KPI dashboard | `permissions.analysis` |
 | `/stats` | Statistics | `permissions.analysis` |
 | `/stats/top-products` | Top products detail | `permissions.analysis` |

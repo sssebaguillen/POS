@@ -177,7 +177,9 @@ Constraints: override by product OR by brand, never both or neither. UNIQUE (pri
 | unit_price | numeric | price at time of sale |
 | unit_price_override | numeric nullable | manually edited price in POS |
 | override_reason | text nullable | free-text reason |
-| total | numeric | |
+| total | numeric | NETO: promo unitaria → `qty×unit`; promo de cantidad → `qty×unit − promo_discount` |
+| promotion_id | uuid nullable | FK → promotions(id) — informativo (2026-06-10) |
+| promo_discount | numeric(12,2) | default 0 — ahorro de la línea, informativo |
 
 ---
 
@@ -386,6 +388,25 @@ Per-business order-number counter; atomic increment via `INSERT … ON CONFLICT 
 | business_id | uuid PK | |
 | last_number | int | |
 
+### `promotions` ⭐ new (2026-06-10)
+Promos y ofertas — plan completo en `docs/todo/promotions.md`. Una promo = exactamente un target (producto XOR categoría XOR marca, CHECK `promotions_scope_one`). Vigente = `is_active AND archived_at IS NULL AND now() ∈ [starts_at, ends_at]`. `show_in_catalog` solo controla la sección Ofertas destacada — el precio aplica siempre (paridad POS↔catálogo). Usadas en ventas se ARCHIVAN, nunca se borran (sin CASCADE). RLS: SELECT-only por negocio; escrituras solo vía RPCs guardadas.
+
+| column | type | notes |
+|--------|------|-------|
+| id | uuid PK | |
+| business_id | uuid NOT NULL | FK → businesses |
+| name | text | |
+| kind | text | CHECK `('percent','offer_price','quantity')` |
+| percent | numeric | kind=percent: (0,100] |
+| offer_price | numeric | kind=offer_price (solo productos sin variantes) |
+| group_size / affected_units / pay_percent | int/int/numeric | kind=quantity: "cada N unidades, K pagan P%" — 2x1=(2,1,0), 3x2=(3,1,0), 2da al 50%=(2,1,50) |
+| product_id / category_id / brand_id | uuid nullable | scope (exactamente uno) |
+| starts_at / ends_at | timestamptz nullable | NULL = sin límite |
+| is_active / show_in_catalog | boolean | default true |
+| archived_at | timestamptz nullable | archivado = terminal |
+
+`catalog_order_items` y `daily_snapshots` también suman columnas promo: `promotion_id`+`promo_discount` (informativas, líneas netas) y `promo_discounts_total`+`promo_sales_count` (agregados para P12) respectivamente. Espejo SQL↔TS de resolución/cálculo: `find_applicable_promotion`/`apply_unit_promo`/`compute_quantity_promo_discount` ↔ `src/lib/promotions.ts`.
+
 ### `invoices`
 | column | type | notes |
 |--------|------|-------|
@@ -453,6 +474,12 @@ All SECURITY DEFINER, all with `set search_path = public, extensions`.
 | `get_operator_stats(p_operator_id, p_date_from?, p_date_to?)` | Sales stats for a sub-operator — derives business_id from auth.uid() |
 | `get_owner_stats(p_date_from?, p_date_to?)` | Sales stats for owner — derives business_id from auth.uid() |
 | `swap_default_price_list(p_price_list_id, p_business_id)` | Atomic default swap |
+| `create_promotion(p_operator_id, p_business_id, p_name, p_kind, …)` | Verifica `inventory_write` + tenant + scope del negocio; logs `promotion_created`. Returns `{success, id?, error?}` |
+| `update_promotion(…, p_promotion_id, …, p_is_active)` | Ídem; rechaza archivadas; logs `promotion_updated` |
+| `archive_promotion(p_operator_id, p_business_id, p_promotion_id)` | `is_active=false` + `archived_at=now()` (terminal); logs `promotion_archived` |
+| `find_applicable_promotion(p_business_id, p_product_id, p_category_id, p_brand_id, p_at?)` | Promo vigente más aplicable (producto > categoría > marca; desempata la más reciente). Helper del path de catálogo — sin guard de tenant (como `compute_effective_price`) |
+| `apply_unit_promo(p_kind, p_percent, p_offer_price, p_unit_price)` | IMMUTABLE — unitario con promo (percent/offer_price; oferta nunca sube el precio) |
+| `compute_quantity_promo_discount(p_group_size, p_affected_units, p_pay_percent, p_unit_price, p_quantity)` | IMMUTABLE — descuento de línea `floor(qty/N)×K×unit×(1−P/100)` |
 | `update_business_slug(p_slug)` | Validates format + uniqueness; throws in Spanish on failure; GRANT EXECUTE TO authenticated |
 | `create_category_guarded(p_operator_id, p_business_id, p_name, p_icon, p_icon_color?)` | Verifies `stock_write`; accepts optional `icon_color`; logs `category_created` |
 | `create_brand_guarded(p_operator_id, p_business_id, p_name)` | Verifies `stock_write`; logs `brand_created` |

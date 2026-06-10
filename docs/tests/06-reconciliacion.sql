@@ -35,23 +35,42 @@ $$;
 
 
 -- =============================================================
--- R1: total de cada línea = cantidad × precio unitario
+-- R1: total de cada línea = cantidad × precio unitario (− promo de cantidad)
+--
+-- Con promos (2026-06-10): las promos UNITARIAS (percent/offer_price) bajan el
+-- unit_price y dejan promo_discount informativo → total = qty×unit. Las promos
+-- de CANTIDAD (2x1, 3x2, 2da al X%) dejan el unit_price íntegro y descuentan a
+-- nivel línea → total = qty×unit − promo_discount. El invariante es
+-- deliberadamente auto-contenido (no joinea promotions.kind, que es editable):
+-- una línea con promo es válida si cumple CUALQUIERA de las dos formas.
 -- =============================================================
 DO $$
 DECLARE n int;
 BEGIN
   SELECT COUNT(*) INTO n
   FROM sale_items si
-  WHERE ABS(si.total - (si.quantity * si.unit_price)) > 0.01;
+  WHERE CASE
+    WHEN si.promotion_id IS NULL THEN
+      ABS(si.total - (si.quantity * si.unit_price)) > 0.01
+      OR si.promo_discount <> 0
+    ELSE
+      ABS(si.total - (si.quantity * si.unit_price)) > 0.01
+      AND ABS(si.total - (si.quantity * si.unit_price - si.promo_discount)) > 0.01
+  END;
 
-  PERFORM test_assert('R1 sale_items.total = quantity*unit_price', n = 0,
+  PERFORM test_assert('R1 sale_items.total = qty*unit (− promo_discount si es promo de cantidad)', n = 0,
     format('%s líneas con total inconsistente', n));
 END;
 $$;
 -- detail:
--- SELECT id, sale_id, quantity, unit_price, total,
---        (quantity*unit_price) AS esperado
--- FROM sale_items WHERE ABS(total - quantity*unit_price) > 0.01;
+-- SELECT id, sale_id, quantity, unit_price, total, promotion_id, promo_discount,
+--        (quantity*unit_price) AS esperado_unitaria,
+--        (quantity*unit_price - promo_discount) AS esperado_cantidad
+-- FROM sale_items
+-- WHERE CASE
+--   WHEN promotion_id IS NULL THEN ABS(total - quantity*unit_price) > 0.01 OR promo_discount <> 0
+--   ELSE ABS(total - quantity*unit_price) > 0.01 AND ABS(total - (quantity*unit_price - promo_discount)) > 0.01
+-- END;
 
 
 -- =============================================================
@@ -469,6 +488,71 @@ $$;
 -- create_mercaderia_expense permite p_update_stock = false (carga el gasto sin
 -- mover stock). En ese caso hay ítems pero no movimientos, y es correcto.
 -- Esa igualdad sólo se valida acotada a una corrida controlada (E2 en 10-stress-gastos.md).
+
+
+-- =============================================================
+-- R12: PROMOCIONES (tracking informativo por línea)
+-- =============================================================
+
+-- R12a: promo_discount nunca negativo, y sin promo debe ser 0 (ventas).
+DO $$
+DECLARE n int;
+BEGIN
+  SELECT COUNT(*) INTO n
+  FROM sale_items si
+  WHERE si.promo_discount < 0
+     OR (si.promotion_id IS NULL AND si.promo_discount <> 0);
+  PERFORM test_assert('R12a sale_items.promo_discount >= 0 y 0 sin promo', n = 0,
+    format('%s líneas con promo_discount inválido', n));
+END;
+$$;
+
+-- R12b: ídem para los ítems de pedidos del catálogo, con la misma regla dual
+-- de R1 para el line_total (unitaria vs cantidad).
+DO $$
+DECLARE n int;
+BEGIN
+  SELECT COUNT(*) INTO n
+  FROM catalog_order_items ci
+  WHERE ci.promo_discount < 0
+     OR (ci.promotion_id IS NULL AND ci.promo_discount <> 0)
+     OR CASE
+          WHEN ci.promotion_id IS NULL THEN
+            ABS(ci.line_total - (ci.quantity * ci.unit_price)) > 0.01
+          ELSE
+            ABS(ci.line_total - (ci.quantity * ci.unit_price)) > 0.01
+            AND ABS(ci.line_total - (ci.quantity * ci.unit_price - ci.promo_discount)) > 0.01
+        END;
+  PERFORM test_assert('R12b catalog_order_items.line_total consistente con promo', n = 0,
+    format('%s ítems de pedido con línea/promo inconsistente', n));
+END;
+$$;
+
+-- R12c: snapshot diario — promo_discounts_total = Σ promo_discount del día local
+-- y promo_sales_count = ventas con ≥1 línea con promo. Misma salvedad que R6:
+-- refrescar snapshots antes de evaluar o el FAIL puede ser desactualización.
+DO $$
+DECLARE n int;
+BEGIN
+  SELECT COUNT(*) INTO n
+  FROM daily_snapshots ds
+  JOIN businesses b ON b.id = ds.business_id
+  LEFT JOIN LATERAL (
+    SELECT
+      COALESCE(SUM(si.promo_discount), 0) AS promo_disc,
+      COUNT(DISTINCT s.id) FILTER (WHERE si.promotion_id IS NOT NULL)::int AS promo_sales
+    FROM sales s
+    JOIN sale_items si ON si.sale_id = s.id
+    WHERE s.business_id = ds.business_id
+      AND s.status = 'completed'
+      AND (s.created_at AT TIME ZONE COALESCE(NULLIF(b.timezone, ''), 'America/Argentina/Buenos_Aires'))::date = ds.snapshot_date
+  ) agg ON true
+  WHERE ABS(ds.promo_discounts_total - agg.promo_disc) > 0.01
+     OR ds.promo_sales_count <> agg.promo_sales;
+  PERFORM test_assert('R12c daily_snapshots.promo_* = agregados del día', n = 0,
+    format('%s snapshots con métricas de promo desfasadas', n));
+END;
+$$;
 
 
 -- =============================================================
