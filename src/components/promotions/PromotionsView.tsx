@@ -1,10 +1,11 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Archive, BadgePercent, Pause, Pencil, Play, Plus } from 'lucide-react'
+import { BadgePercent, MoreVertical, Plus } from 'lucide-react'
 import PageHeader from '@/components/shared/PageHeader'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import {
   Table,
   TableBody,
@@ -14,9 +15,10 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import ConfirmModal from '@/components/shared/ConfirmModal'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import PromotionModal from '@/components/promotions/PromotionModal'
 import { createClient } from '@/lib/supabase/client'
-import { promoBadgeLabel, type Promotion } from '@/lib/promotions'
+import { promoBadgeLabel, promoCountdownLabel, type Promotion } from '@/lib/promotions'
 import {
   describePromotion,
   getPromotionStatus,
@@ -26,6 +28,7 @@ import {
 } from '@/components/promotions/types'
 import { useToast } from '@/hooks/useToast'
 import { translateDbError } from '@/lib/errors'
+import { ACCENT_CHIP, type AccentTone } from '@/lib/accent-colors'
 
 type StatusFilter = 'all' | PromotionStatus
 
@@ -38,12 +41,12 @@ const STATUS_CHIPS: { value: StatusFilter; label: string }[] = [
   { value: 'archivada', label: 'Archivadas' },
 ]
 
-const STATUS_BADGE_CLASSES: Record<PromotionStatus, string> = {
-  activa: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300',
-  programada: 'bg-sky-100 text-sky-700 dark:bg-sky-500/15 dark:text-sky-300',
-  vencida: 'bg-zinc-100 text-zinc-600 dark:bg-zinc-500/15 dark:text-zinc-400',
-  pausada: 'bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300',
-  archivada: 'bg-zinc-100 text-zinc-500 dark:bg-zinc-500/10 dark:text-zinc-500',
+const STATUS_TONE: Record<PromotionStatus, AccentTone> = {
+  activa: 'emerald',
+  programada: 'sky',
+  vencida: 'muted',
+  pausada: 'amber',
+  archivada: 'muted',
 }
 
 const STATUS_LABELS: Record<PromotionStatus, string> = {
@@ -82,20 +85,22 @@ export default function PromotionsView({
   const { showToast } = useToast()
   const [promotions, setPromotions] = useState<Promotion[]>(initialPromotions)
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
+  const [search, setSearch] = useState('')
   const [modalOpen, setModalOpen] = useState(false)
   const [editing, setEditing] = useState<Promotion | null>(null)
   const [confirmArchive, setConfirmArchive] = useState<Promotion | null>(null)
   const [busyId, setBusyId] = useState<string | null>(null)
+  const [menuId, setMenuId] = useState<string | null>(null)
 
   const productNames = useMemo(() => new Map(products.map(p => [p.id, p.name])), [products])
   const categoryNames = useMemo(() => new Map(categories.map(c => [c.id, c.name])), [categories])
   const brandNames = useMemo(() => new Map(brands.map(b => [b.id, b.name])), [brands])
 
-  function scopeLabel(promo: Promotion): string {
+  const scopeLabel = useCallback((promo: Promotion): string => {
     if (promo.product_id) return productNames.get(promo.product_id) ?? 'Producto'
     if (promo.category_id) return `Categoría: ${categoryNames.get(promo.category_id) ?? '—'}`
     return `Marca: ${brandNames.get(promo.brand_id ?? '') ?? '—'}`
-  }
+  }, [productNames, categoryNames, brandNames])
 
   function vigenciaLabel(promo: Promotion): string {
     if (!promo.starts_at && !promo.ends_at) return 'Sin límite'
@@ -105,18 +110,24 @@ export default function PromotionsView({
   }
 
   const counts = useMemo(() => {
-    const map = new Map<StatusFilter, number>([['all', promotions.length]])
+    const map = new Map<StatusFilter, number>()
     for (const promo of promotions) {
       const status = getPromotionStatus(promo)
       map.set(status, (map.get(status) ?? 0) + 1)
     }
+    // "Todas" excluye archivadas, igual que el filtro
+    map.set('all', promotions.length - (map.get('archivada') ?? 0))
     return map
   }, [promotions])
 
   const filtered = useMemo(() => {
-    if (statusFilter === 'all') return promotions.filter(p => getPromotionStatus(p) !== 'archivada')
-    return promotions.filter(p => getPromotionStatus(p) === statusFilter)
-  }, [promotions, statusFilter])
+    const byStatus = statusFilter === 'all'
+      ? promotions.filter(p => getPromotionStatus(p) !== 'archivada')
+      : promotions.filter(p => getPromotionStatus(p) === statusFilter)
+    const q = search.trim().toLowerCase()
+    if (!q) return byStatus
+    return byStatus.filter(p => p.name.toLowerCase().includes(q) || scopeLabel(p).toLowerCase().includes(q))
+  }, [promotions, statusFilter, search, scopeLabel])
 
   async function refresh() {
     const { data } = await supabase
@@ -183,7 +194,7 @@ export default function PromotionsView({
   }
 
   return (
-    <div className="p-6 space-y-5">
+    <div className="flex flex-col h-full overflow-hidden">
       <PageHeader title="Promociones">
         {!readOnly && (
           <Button
@@ -196,118 +207,157 @@ export default function PromotionsView({
         )}
       </PageHeader>
 
-      {/* Chips de estado */}
-      <div className="flex items-center gap-1.5 overflow-x-auto">
-        {STATUS_CHIPS.map(chip => {
-          const count = counts.get(chip.value) ?? 0
-          if (chip.value !== 'all' && count === 0 && statusFilter !== chip.value) return null
-          return (
-            <button
-              key={chip.value}
-              onClick={() => setStatusFilter(chip.value)}
-              className={`pill-tab shrink-0 ${statusFilter === chip.value ? 'bg-primary/10 text-primary border border-primary/20' : ''}`}
-            >
-              {chip.label}
-              {chip.value !== 'all' && count > 0 && <span className="ml-1 tabular-nums">{count}</span>}
-            </button>
-          )
-        })}
-      </div>
-
-      {filtered.length === 0 ? (
-        <div className="surface-card p-12 text-center text-hint select-none">
-          <BadgePercent size={40} className="mx-auto mb-3 opacity-40" />
-          {promotions.length === 0 ? (
-            <>
-              <p className="text-sm font-medium text-body">Aún no hay promociones</p>
-              <p className="text-xs mt-1">
-                Crea ofertas como &quot;20% off&quot;, &quot;2x1&quot; o un precio especial. Aplican en el punto de venta
-                y se destacan en tu catálogo online.
-              </p>
-            </>
-          ) : (
-            <p className="text-sm">No hay promociones con este estado</p>
-          )}
+      <div className="flex-1 overflow-y-auto p-6 space-y-5">
+        {/* Search + chips de estado — patrón ExpensesView: una sola fila flex */}
+        <div className="flex flex-wrap items-center gap-2">
+          <Input
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="Buscar promoción o producto..."
+            className="h-9 w-[260px] shrink-0 rounded-lg text-sm"
+          />
+          <div className="flex flex-wrap items-center gap-1.5 flex-1">
+            {STATUS_CHIPS.map(chip => {
+              const count = counts.get(chip.value) ?? 0
+              if (chip.value !== 'all' && count === 0 && statusFilter !== chip.value) return null
+              return (
+                <button
+                  key={chip.value}
+                  onClick={() => setStatusFilter(chip.value)}
+                  className={`pill-tab shrink-0 ${statusFilter === chip.value ? 'bg-primary/10 text-primary border border-primary/20' : ''}`}
+                >
+                  {chip.label}
+                  {chip.value !== 'all' && count > 0 && <span className="ml-1 tabular-nums">{count}</span>}
+                </button>
+              )
+            })}
+          </div>
         </div>
-      ) : (
-        <div className="surface-card overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Nombre</TableHead>
-                <TableHead>Promo</TableHead>
-                <TableHead>Alcance</TableHead>
-                <TableHead>Vigencia</TableHead>
-                <TableHead>Catálogo</TableHead>
-                <TableHead>Estado</TableHead>
-                {!readOnly && <TableHead className="text-right">Acciones</TableHead>}
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filtered.map(promo => {
-                const status = getPromotionStatus(promo)
-                const isArchived = status === 'archivada'
-                return (
-                  <TableRow key={promo.id} className={isArchived ? 'opacity-60' : ''}>
-                    <TableCell className="font-medium text-heading">{promo.name}</TableCell>
-                    <TableCell>
-                      <span className="inline-flex items-center gap-1.5">
-                        <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300">
-                          {promoBadgeLabel(promo)}
+
+        {filtered.length === 0 ? (
+          <div className="surface-card p-12 text-center text-hint select-none">
+            <BadgePercent size={40} className="mx-auto mb-3 opacity-40" />
+            {promotions.length === 0 ? (
+              <>
+                <p className="text-sm font-medium text-body">Aún no hay promociones</p>
+                <p className="text-xs mt-1">
+                  Crea ofertas como &quot;20% off&quot;, &quot;2x1&quot; o un precio especial. Aplican en el punto de venta
+                  y se destacan en tu catálogo online.
+                </p>
+                {!readOnly && (
+                  <Button
+                    onClick={() => { setEditing(null); setModalOpen(true) }}
+                    className="mt-4 h-9 px-4 rounded-lg text-sm font-semibold bg-primary hover:bg-primary/90 text-primary-foreground"
+                  >
+                    <Plus size={16} className="mr-1.5" />
+                    Nueva promoción
+                  </Button>
+                )}
+              </>
+            ) : (
+              <p className="text-sm">
+                {search.trim()
+                  ? `Sin resultados para «${search.trim()}»`
+                  : 'No hay promociones con este estado'}
+              </p>
+            )}
+          </div>
+        ) : (
+          <div className="surface-card overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Nombre</TableHead>
+                  <TableHead>Promo</TableHead>
+                  <TableHead>Alcance</TableHead>
+                  <TableHead>Vigencia</TableHead>
+                  <TableHead>Catálogo</TableHead>
+                  <TableHead>Estado</TableHead>
+                  {!readOnly && <TableHead className="text-right">Acciones</TableHead>}
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filtered.map(promo => {
+                  const status = getPromotionStatus(promo)
+                  const isArchived = status === 'archivada'
+                  return (
+                    <TableRow key={promo.id} className={isArchived ? 'opacity-60' : ''}>
+                      <TableCell className="font-medium text-heading">{promo.name}</TableCell>
+                      <TableCell>
+                        <span className="inline-flex items-center gap-1.5">
+                          <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded border ${ACCENT_CHIP.emerald}`}>
+                            {promoBadgeLabel(promo)}
+                          </span>
+                          <span className="text-xs text-subtle">{describePromotion(promo)}</span>
                         </span>
-                        <span className="text-xs text-subtle">{describePromotion(promo)}</span>
-                      </span>
-                    </TableCell>
-                    <TableCell className="text-sm text-body max-w-[220px] truncate">{scopeLabel(promo)}</TableCell>
-                    <TableCell className="text-xs text-subtle tabular-nums whitespace-nowrap">{vigenciaLabel(promo)}</TableCell>
-                    <TableCell className="text-xs text-subtle">{promo.show_in_catalog ? 'Destacada' : '—'}</TableCell>
-                    <TableCell>
-                      <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium ${STATUS_BADGE_CLASSES[status]}`}>
-                        {STATUS_LABELS[status]}
-                      </span>
-                    </TableCell>
-                    {!readOnly && (
-                      <TableCell className="text-right">
-                        {!isArchived && (
-                          <div className="inline-flex items-center gap-1">
-                            <button
-                              onClick={() => { setEditing(promo); setModalOpen(true) }}
-                              disabled={busyId !== null}
-                              className="p-1.5 rounded-md text-hint hover:text-primary hover:bg-hover-bg transition-colors"
-                              aria-label="Editar promoción"
-                              title="Editar"
-                            >
-                              <Pencil size={14} />
-                            </button>
-                            <button
-                              onClick={() => handleToggleActive(promo)}
-                              disabled={busyId !== null}
-                              className="p-1.5 rounded-md text-hint hover:text-primary hover:bg-hover-bg transition-colors"
-                              aria-label={promo.is_active ? 'Pausar promoción' : 'Reanudar promoción'}
-                              title={promo.is_active ? 'Pausar' : 'Reanudar'}
-                            >
-                              {promo.is_active ? <Pause size={14} /> : <Play size={14} />}
-                            </button>
-                            <button
-                              onClick={() => setConfirmArchive(promo)}
-                              disabled={busyId !== null}
-                              className="p-1.5 rounded-md text-hint hover:text-red-500 hover:bg-hover-bg transition-colors"
-                              aria-label="Archivar promoción"
-                              title="Archivar"
-                            >
-                              <Archive size={14} />
-                            </button>
-                          </div>
+                      </TableCell>
+                      <TableCell className="text-sm text-body max-w-[220px] truncate">{scopeLabel(promo)}</TableCell>
+                      <TableCell className="text-xs text-subtle tabular-nums whitespace-nowrap">
+                        {vigenciaLabel(promo)}
+                        {status === 'activa' && promoCountdownLabel(promo.ends_at) && (
+                          <span className="block text-[11px] font-medium text-warning">{promoCountdownLabel(promo.ends_at)}</span>
                         )}
                       </TableCell>
-                    )}
-                  </TableRow>
-                )
-              })}
-            </TableBody>
-          </Table>
-        </div>
-      )}
+                      <TableCell className="text-xs text-subtle">{promo.show_in_catalog ? 'Destacada' : '—'}</TableCell>
+                      <TableCell>
+                        <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium ${ACCENT_CHIP[STATUS_TONE[status]]}`}>
+                          {STATUS_LABELS[status]}
+                        </span>
+                      </TableCell>
+                      {!readOnly && (
+                        <TableCell className="text-right">
+                          {!isArchived && (
+                            <div className="flex items-center justify-end gap-1.5">
+                              <button
+                                type="button"
+                                onClick={() => { setEditing(promo); setModalOpen(true) }}
+                                disabled={busyId !== null}
+                                className="text-xs px-3 py-2 rounded-lg border border-edge text-body hover:bg-hover-bg transition-[transform,background-color,color] duration-150 ease-[var(--ease-out)] active:scale-[0.97] disabled:opacity-50 touch-manipulation"
+                              >
+                                Editar
+                              </button>
+                              <Popover open={menuId === promo.id} onOpenChange={o => setMenuId(o ? promo.id : null)}>
+                                <PopoverTrigger asChild>
+                                  <button
+                                    type="button"
+                                    disabled={busyId !== null}
+                                    aria-label="Más acciones"
+                                    className="shrink-0 px-2 py-2 rounded-lg border border-edge text-subtle hover:bg-hover-bg hover:text-body transition-[transform,background-color,color] duration-150 ease-[var(--ease-out)] active:scale-[0.97] disabled:opacity-50 touch-manipulation"
+                                  >
+                                    <MoreVertical size={16} />
+                                  </button>
+                                </PopoverTrigger>
+                                <PopoverContent align="end" className="w-44 p-1 gap-0.5" onClick={() => setMenuId(null)}>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleToggleActive(promo)}
+                                    disabled={busyId !== null}
+                                    className="w-full text-left text-sm px-2.5 py-2 rounded-md text-body hover:bg-hover-bg transition-[transform,background-color] duration-150 ease-[var(--ease-out)] active:scale-[0.98] disabled:opacity-50 touch-manipulation"
+                                  >
+                                    {promo.is_active ? 'Pausar' : 'Reanudar'}
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => setConfirmArchive(promo)}
+                                    disabled={busyId !== null}
+                                    className="w-full text-left text-sm px-2.5 py-2 rounded-md text-destructive hover:bg-destructive/10 transition-[transform,background-color,color] duration-150 ease-[var(--ease-out)] active:scale-[0.98] disabled:opacity-50 touch-manipulation"
+                                  >
+                                    Archivar
+                                  </button>
+                                </PopoverContent>
+                              </Popover>
+                            </div>
+                          )}
+                        </TableCell>
+                      )}
+                    </TableRow>
+                  )
+                })}
+              </TableBody>
+            </Table>
+          </div>
+        )}
+      </div>
 
       <PromotionModal
         open={modalOpen}

@@ -1,4 +1,5 @@
 import type { Promotion } from '@/lib/promotions'
+import { formatMoney } from '@/lib/format'
 
 export interface PromoProductRef {
   id: string
@@ -26,7 +27,11 @@ export function getPromotionStatus(promo: Promotion, at: Date = new Date()): Pro
 // Descripción en lenguaje natural para listados y previews.
 export function describePromotion(promo: Promotion): string {
   if (promo.kind === 'percent') return `${promo.percent}% de descuento`
-  if (promo.kind === 'offer_price') return 'Precio de oferta'
+  if (promo.kind === 'offer_price') {
+    return promo.offer_price != null && promo.offer_price > 0
+      ? `Precio de oferta: ${formatMoney(promo.offer_price)}`
+      : 'Precio de oferta'
+  }
   const n = promo.group_size ?? 0
   const k = promo.affected_units ?? 0
   const p = promo.pay_percent ?? 0

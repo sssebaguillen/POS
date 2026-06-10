@@ -1,7 +1,7 @@
 'use client'
 
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
-import { ChevronRight, Download, Pencil, Plus, Search, X } from 'lucide-react'
+import { ChevronRight, Download, Plus, Search, X } from 'lucide-react'
 import PageHeader from '@/components/shared/PageHeader'
 import { Button } from '@/components/ui/button'
 import {
@@ -602,14 +602,13 @@ function GroupedPriceRowsTable({
                         <Button
                           variant="outline"
                           size="sm"
-                          className="rounded-lg text-xs gap-1.5"
+                          className="rounded-lg text-xs"
                           onClick={e => { e.stopPropagation(); group.brandId && onEditBrandOverride(group.brandId) }}
                           aria-label={`Ajustar margen de la marca ${group.label}`}
                           title={`Ajustar margen de ${group.label}`}
                           disabled={readOnly || !group.brandId}
                         >
-                          <Pencil size={13} />
-                          Ajustar
+                          Ajustar marca
                         </Button>
                       </div>
                     </TableCell>
@@ -676,13 +675,12 @@ function GroupedPriceRowsTable({
                           <Button
                             variant="outline"
                             size="sm"
-                            className="rounded-lg text-xs gap-1.5"
+                            className="rounded-lg text-xs"
                             onClick={() => onEditProductOverride(row.product.id)}
                             aria-label={`Ajustar precio de ${row.product.name}`}
                             title="Ajustar precio de este producto"
                             disabled={readOnly}
                           >
-                            <Pencil size={13} />
                             Ajustar
                           </Button>
                         </div>

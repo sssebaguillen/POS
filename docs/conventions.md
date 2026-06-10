@@ -123,6 +123,44 @@ All known outliers converged as of 2026-05-27:
 
 CRUD edit pattern is now uniform: always a modal, never inline-replace-row.
 
+#### Row Actions ("Acciones" column) — reference: `ProductListRow.tsx`
+
+Acciones de fila en tablas se resuelven con **texto, no con iconos por acción**:
+
+```tsx
+<div className="flex items-center justify-end gap-1.5">
+  <button className="text-xs px-3 py-2 rounded-lg border border-edge text-body hover:bg-hover-bg ... touch-manipulation">
+    Editar
+  </button>
+  <Popover>
+    <PopoverTrigger asChild>
+      <button aria-label="Más acciones" className="px-2 py-2 rounded-lg border border-edge text-subtle ...">
+        <MoreVertical size={16} />
+      </button>
+    </PopoverTrigger>
+    <PopoverContent align="end" className="w-44 p-1 gap-0.5">
+      <button className="w-full text-left text-sm px-2.5 py-2 rounded-md text-body hover:bg-hover-bg ...">Acción secundaria</button>
+      <button className="w-full text-left text-sm px-2.5 py-2 rounded-md text-destructive hover:bg-destructive/10 ...">Acción destructiva</button>
+    </PopoverContent>
+  </Popover>
+</div>
+```
+
+Rules:
+- **La acción primaria es un botón de texto outline** (`text-xs px-3 py-2 rounded-lg border border-edge`), normalmente "Editar".
+- **Las acciones secundarias y destructivas van en un menú kebab** (`MoreVertical` 16px dentro de Popover `w-44 p-1`). La destructiva al final, con `text-destructive hover:bg-destructive/10`.
+- **El único icono permitido en la celda es el `MoreVertical` del kebab.** Nunca una fila de icon-buttons (lápiz/pausa/tacho): los iconos por acción no son auto-explicativos para el usuario objetivo ("context over documentation") y comprimen targets táctiles.
+- Las acciones destructivas o irreversibles del menú abren `ConfirmModal` antes de ejecutar.
+
+Used by: `/inventory` (`ProductListRow`), `/promotions` (`PromotionsView`).
+
+#### Button Icons — único-en-contexto sí, repetido-por-fila no
+
+- **Con icono:** botones únicos en su contexto — CTAs de header (`Plus` en "Nuevo producto"/"Nueva promoción", `Building2` en "Proveedores"), CTA del empty state, trigger del kebab (`MoreVertical`).
+- **Sin icono (texto puro):** cualquier botón que se repite por fila en tablas/listas ("Editar", "Ajustar", "Cobrar"). Un icono en el CTA es punto focal; el mismo icono repetido en 30 filas es una columna de ruido que compite con los datos.
+- Si un botón de fila "se siente plano", el fix es jerarquía (peso, borde, hover), no un icono de 13px.
+- Antecedente: los "Ajustar" de `/price-lists` llevaban `Pencil` y se percibían raros; al quitar el icono convergieron con `ProductListRow`. De paso, botones repetidos que operan sobre niveles distintos se desambiguan con el **label**, no con iconos ("Ajustar marca" en la fila de grupo vs "Ajustar" en la de producto).
+
 ### Loading Button Text
 
 Canonical Spanish verbs for in-flight async buttons. Pick the one that matches the action — don't use "Procesando..." as a catch-all.
@@ -179,6 +217,8 @@ Most modals build a bespoke top bar (title + close button) instead of using shad
 ```
 
 shadcn's `<DialogHeader>` lacks a close-button slot and applies text-center alignment on mobile — neither is what we want. Reserve `<DialogHeader>` for content modals that don't need a custom close affordance (currently: `FeedbackModal`, `ChangelogModal`).
+
+La "X" de cierre SIEMPRE lleva el fondo en hover (`p-1.5 rounded-lg hover:bg-hover-bg ... text-hint` + `<X className="w-4 h-4" />`) — la variante sin fondo (`text-hint hover:text-body p-0.5`) es una desviación, no una opción. Outliers pendientes de converger: `NewPriceListModal`, `ExportPriceListModal`, `PriceListsPanel` (drawer).
 
 ### Breadcrumbs
 

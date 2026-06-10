@@ -5,7 +5,8 @@ import { AlertTriangle, Search, X } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogPortal, DialogTitle } from '@/components/ui/dialog'
+import { DatePicker } from '@/components/ui/DatePicker'
 import SelectDropdown from '@/components/ui/SelectDropdown'
 import { isPromotionLive, type Promotion, type PromotionKind } from '@/lib/promotions'
 import { coveredProductIds, describePromotion, type NamedRef, type PromoProductRef } from '@/components/promotions/types'
@@ -120,12 +121,14 @@ export default function PromotionModal({
   const [productQuery, setProductQuery] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [attempted, setAttempted] = useState(false)
 
   useEffect(() => {
     if (open) {
       setForm(initial ? formFromPromotion(initial) : emptyForm())
       setProductQuery('')
       setError(null)
+      setAttempted(false)
     }
   }, [open, initial])
 
@@ -143,6 +146,14 @@ export default function PromotionModal({
     if (!q) return []
     return selectableProducts.filter(p => p.name.toLowerCase().includes(q)).slice(0, 8)
   }, [selectableProducts, productQuery])
+
+  // Matches que existen pero quedaron fuera por la regla de variantes (precio de oferta)
+  const variantExcludedCount = useMemo(() => {
+    if (form.uiKind !== 'offer_price') return 0
+    const q = productQuery.trim().toLowerCase()
+    if (!q) return 0
+    return products.filter(p => p.has_variants && p.name.toLowerCase().includes(q)).length
+  }, [products, form.uiKind, productQuery])
 
   const selectedProduct = form.productId ? products.find(p => p.id === form.productId) ?? null : null
 
@@ -223,31 +234,49 @@ export default function PromotionModal({
     })
   }, [effectiveScopeType, form.productId, form.categoryId, form.brandId, existingPromotions, products, initial])
 
-  const isValid = useMemo(() => {
-    if (!form.name.trim()) return false
-    if (effectiveScopeType === 'product' && !form.productId) return false
-    if (effectiveScopeType === 'category' && !form.categoryId) return false
-    if (effectiveScopeType === 'brand' && !form.brandId) return false
+  const fieldErrors = useMemo(() => {
+    const errs: { name?: string; value?: string; scope?: string; dates?: string } = {}
+    if (!form.name.trim()) errs.name = 'Escribe un nombre para identificar la promoción.'
+    if (effectiveScopeType === 'product' && !form.productId) errs.scope = 'Elige el producto al que aplica la promo.'
+    if (effectiveScopeType === 'category' && !form.categoryId) errs.scope = 'Elige una categoría.'
+    if (effectiveScopeType === 'brand' && !form.brandId) errs.scope = 'Elige una marca.'
     if (form.uiKind === 'percent') {
       const pct = parseFloat(form.percent)
-      if (!(pct > 0 && pct <= 100)) return false
+      if (!(pct > 0 && pct <= 100)) errs.value = 'El porcentaje debe estar entre 1 y 100.'
     }
-    if (form.uiKind === 'offer_price' && !(parseFloat(form.offerPrice) > 0)) return false
+    if (form.uiKind === 'offer_price' && !(parseFloat(form.offerPrice) > 0)) {
+      errs.value = 'Ingresa un precio mayor a 0.'
+    }
     if (form.uiKind === 'nxm') {
       const take = parseInt(form.takeQty, 10)
       const pay = parseInt(form.payQty, 10)
-      if (!(take >= 2 && take <= 100 && pay >= 1 && pay < take)) return false
+      if (!(take >= 2 && take <= 100)) errs.value = '"Lleva" debe estar entre 2 y 100.'
+      else if (!(pay >= 1 && pay < take)) errs.value = '"Paga" debe ser al menos 1 y menor que "Lleva".'
     }
     if (form.uiKind === 'second_unit') {
       const pct = parseFloat(form.secondUnitPct)
-      if (!(pct >= 0 && pct < 100)) return false
+      if (!(pct >= 0 && pct < 100)) errs.value = 'El porcentaje debe estar entre 0 y 99.'
     }
-    if (form.startsAt && form.endsAt && form.endsAt <= form.startsAt) return false
-    return true
+    if (form.startsAt && form.endsAt && form.endsAt <= form.startsAt) {
+      errs.dates = 'La fecha "Hasta" debe ser posterior a "Desde".'
+    }
+    return errs
   }, [form, effectiveScopeType])
 
+  const isValid = Object.keys(fieldErrors).length === 0
+
+  function fieldError(key: 'name' | 'value' | 'scope' | 'dates') {
+    const message = attempted ? fieldErrors[key] : undefined
+    if (!message) return null
+    return <p className="text-caption text-destructive">{message}</p>
+  }
+
   async function handleSave() {
-    if (!isValid || saving) return
+    if (saving) return
+    if (!isValid) {
+      setAttempted(true)
+      return
+    }
     if (!operatorId) {
       setError(ERR.INV2)
       return
@@ -287,35 +316,46 @@ export default function PromotionModal({
     onClose()
   }
 
-  const inputCls = 'w-full rounded-lg border border-edge bg-surface px-3 py-1.5 text-sm text-heading placeholder:text-hint focus:outline-none focus:border-primary'
+  const fieldCls = 'h-9 rounded-xl text-sm bg-surface border-edge focus-visible:ring-ring/50 focus-visible:border-ring'
 
   return (
-    <Dialog open={open} onOpenChange={o => { if (!o) onClose() }}>
-      <DialogContent className="max-w-lg p-0 gap-0 max-h-[90dvh] flex flex-col">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-edge/60 shrink-0">
+    <Dialog open={open} onOpenChange={o => { if (!o) onClose() }} modal={false}>
+      <DialogPortal>
+        <div className="fixed inset-0 z-50 bg-foreground/40 dark:bg-black/60 backdrop-blur-sm" />
+      </DialogPortal>
+      <DialogContent className="sm:max-w-[640px] p-0 gap-0 max-h-[90dvh] flex flex-col bg-card" showCloseButton={false}>
+        <div className="flex items-center justify-between px-6 py-4 border-b border-edge/60 shrink-0">
           <DialogTitle className="text-base font-semibold text-heading">
             {initial ? 'Editar promoción' : 'Nueva promoción'}
           </DialogTitle>
-          <button onClick={onClose} className="text-hint hover:text-body transition-colors" aria-label="Cerrar">
-            <X size={18} />
+          <button
+            type="button"
+            onClick={onClose}
+            className="p-1.5 rounded-lg hover:bg-hover-bg transition-[transform,background-color,color] duration-150 ease-[var(--ease-out)] active:scale-95 text-hint"
+            aria-label="Cerrar"
+          >
+            <X className="w-4 h-4" />
           </button>
         </div>
 
-        <div className="px-5 py-4 space-y-4 overflow-y-auto">
+        <div className="px-6 py-5 space-y-4 overflow-y-auto">
           {/* Nombre */}
           <div className="space-y-1">
-            <label className="text-xs font-medium text-subtle">Nombre</label>
+            <label className="block text-label text-subtle mb-1.5">Nombre</label>
             <Input
               value={form.name}
               onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
               placeholder="Ej: Oferta de la semana"
-              className="h-9 text-sm"
+              className={fieldCls}
+              aria-invalid={attempted && !!fieldErrors.name}
+              autoFocus
             />
+            {fieldError('name')}
           </div>
 
           {/* Tipo */}
-          <div className="space-y-1.5">
-            <label className="text-xs font-medium text-subtle">Tipo de promo</label>
+          <div className="space-y-1">
+            <label className="block text-label text-subtle mb-1.5">Tipo de promo</label>
             <div className="grid grid-cols-2 gap-2">
               {UI_KIND_OPTIONS.map(opt => (
                 <button
@@ -338,76 +378,87 @@ export default function PromotionModal({
           {/* Valor según tipo */}
           {form.uiKind === 'percent' && (
             <div className="space-y-1">
-              <label className="text-xs font-medium text-subtle">Porcentaje de descuento</label>
-              <div className="flex items-center gap-2">
-                <input
+              <label className="block text-label text-subtle mb-1.5">Porcentaje de descuento</label>
+              <div className="relative w-28">
+                <Input
                   type="number" min={0} max={100} step="any"
                   value={form.percent}
                   onChange={e => setForm(f => ({ ...f, percent: e.target.value }))}
                   placeholder="20"
-                  className={`${inputCls} w-24 tabular-nums`}
+                  className={`${fieldCls} tabular-nums pr-8`}
+                  aria-invalid={attempted && !!fieldErrors.value}
                 />
-                <span className="text-sm text-hint">%</span>
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-hint pointer-events-none">%</span>
               </div>
+              {fieldError('value')}
             </div>
           )}
           {form.uiKind === 'offer_price' && (
             <div className="space-y-1">
-              <label className="text-xs font-medium text-subtle">Precio de oferta</label>
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-hint">$</span>
-                <input
+              <label className="block text-label text-subtle mb-1.5">Precio de oferta</label>
+              <div className="relative w-36">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-hint pointer-events-none">$</span>
+                <Input
                   type="number" min={0} step="any"
                   value={form.offerPrice}
                   onChange={e => setForm(f => ({ ...f, offerPrice: e.target.value }))}
                   placeholder="800"
-                  className={`${inputCls} w-32 tabular-nums`}
+                  className={`${fieldCls} tabular-nums pl-7`}
+                  aria-invalid={attempted && !!fieldErrors.value}
                 />
               </div>
-              <p className="text-[11px] text-hint">Solo para productos sin variantes. Si el producto tiene variantes, usa porcentaje.</p>
+              <p className="text-caption text-hint">Solo para productos sin variantes. Si el producto tiene variantes, usa porcentaje.</p>
+              {fieldError('value')}
             </div>
           )}
           {form.uiKind === 'nxm' && (
             <div className="space-y-1">
-              <label className="text-xs font-medium text-subtle">Cantidades</label>
+              <label className="block text-label text-subtle mb-1.5">Cantidades</label>
               <div className="flex items-center gap-2 text-sm text-body">
                 <span>Lleva</span>
-                <input
+                <Input
                   type="number" min={2} max={100} step={1}
                   value={form.takeQty}
                   onChange={e => setForm(f => ({ ...f, takeQty: e.target.value }))}
-                  className={`${inputCls} w-16 text-center tabular-nums`}
+                  className={`${fieldCls} w-16 text-center tabular-nums`}
                 />
                 <span>paga</span>
-                <input
+                <Input
                   type="number" min={1} step={1}
                   value={form.payQty}
                   onChange={e => setForm(f => ({ ...f, payQty: e.target.value }))}
-                  className={`${inputCls} w-16 text-center tabular-nums`}
+                  className={`${fieldCls} w-16 text-center tabular-nums`}
+                  aria-invalid={attempted && !!fieldErrors.value}
                 />
               </div>
+              {fieldError('value')}
             </div>
           )}
           {form.uiKind === 'second_unit' && (
             <div className="space-y-1">
-              <label className="text-xs font-medium text-subtle">La 2da unidad paga el…</label>
+              <label className="block text-label text-subtle mb-1.5">La 2da unidad paga el…</label>
               <div className="flex items-center gap-2">
-                <input
-                  type="number" min={0} max={99} step="any"
-                  value={form.secondUnitPct}
-                  onChange={e => setForm(f => ({ ...f, secondUnitPct: e.target.value }))}
-                  className={`${inputCls} w-24 tabular-nums`}
-                />
-                <span className="text-sm text-hint">% del precio</span>
+                <div className="relative w-28">
+                  <Input
+                    type="number" min={0} max={99} step="any"
+                    value={form.secondUnitPct}
+                    onChange={e => setForm(f => ({ ...f, secondUnitPct: e.target.value }))}
+                    className={`${fieldCls} tabular-nums pr-8`}
+                    aria-invalid={attempted && !!fieldErrors.value}
+                  />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-hint pointer-events-none">%</span>
+                </div>
+                <span className="text-sm text-hint">del precio</span>
               </div>
+              {fieldError('value')}
             </div>
           )}
 
           {/* Alcance */}
-          <div className="space-y-1.5">
-            <label className="text-xs font-medium text-subtle">Alcance</label>
+          <div className="space-y-1">
+            <label className="block text-label text-subtle mb-1.5">Alcance</label>
             {requiresProductScope ? (
-              <p className="text-[11px] text-hint -mt-0.5">Este tipo de promo aplica a un producto específico.</p>
+              <p className="text-caption text-hint -mt-0.5">Este tipo de promo aplica a un producto específico.</p>
             ) : (
               <div className="flex gap-1.5">
                 {([['product', 'Producto'], ['category', 'Categoría'], ['brand', 'Marca']] as [ScopeType, string][]).map(([value, label]) => (
@@ -430,36 +481,51 @@ export default function PromotionModal({
                   <button
                     type="button"
                     onClick={() => setForm(f => ({ ...f, productId: null }))}
-                    className="text-hint hover:text-red-500 transition-colors shrink-0"
+                    className="-my-1.5 -mr-1.5 h-8 w-8 inline-flex items-center justify-center text-hint hover:text-destructive transition-colors shrink-0"
                     aria-label="Quitar producto"
                   >
-                    <X size={14} />
+                    <X size={15} />
                   </button>
                 </div>
               ) : (
                 <div className="relative">
-                  <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-hint pointer-events-none" />
-                  <input
+                  <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-hint pointer-events-none z-10" />
+                  <Input
                     type="text"
                     value={productQuery}
                     onChange={e => setProductQuery(e.target.value)}
                     placeholder="Buscar producto..."
-                    className={`${inputCls} pl-8`}
+                    className={`${fieldCls} pl-8`}
                   />
-                  {filteredProducts.length > 0 && (
-                    <ul className="absolute z-10 mt-1 w-full divide-y divide-edge-soft rounded-lg border border-edge bg-surface shadow-md overflow-hidden">
-                      {filteredProducts.map(p => (
-                        <li key={p.id}>
-                          <button
-                            type="button"
-                            onClick={() => { setForm(f => ({ ...f, productId: p.id })); setProductQuery('') }}
-                            className="w-full text-left px-3 py-1.5 text-sm text-body hover:bg-hover-bg transition-colors"
-                          >
-                            {p.name}
-                          </button>
-                        </li>
-                      ))}
-                    </ul>
+                  {productQuery.trim().length > 0 && (
+                    <div className="absolute z-50 top-full left-0 right-0 mt-1 surface-elevated overflow-hidden animate-in fade-in-0 zoom-in-95 origin-top duration-150">
+                      {filteredProducts.length > 0 ? (
+                        <div className="max-h-56 overflow-y-auto py-1">
+                          {filteredProducts.map(p => (
+                            <button
+                              key={p.id}
+                              type="button"
+                              onMouseDown={e => { e.preventDefault(); setForm(f => ({ ...f, productId: p.id })); setProductQuery('') }}
+                              className="w-full text-left px-3 py-2 text-sm text-body font-medium hover:bg-hover-bg transition-[transform,background-color] duration-150 ease-[var(--ease-out)] active:scale-[0.98]"
+                            >
+                              {p.name}
+                            </button>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="px-3 py-2.5 space-y-0.5">
+                          <p className="text-sm text-hint">Sin resultados para «{productQuery.trim()}»</p>
+                          {variantExcludedCount > 0 && (
+                            <p className="text-caption text-hint">
+                              {variantExcludedCount === 1
+                                ? 'Hay 1 producto con variantes que coincide,'
+                                : `Hay ${variantExcludedCount} productos con variantes que coinciden,`}{' '}
+                              pero el precio de oferta no admite variantes. Usa una promo de porcentaje.
+                            </p>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   )}
                 </div>
               )
@@ -482,44 +548,45 @@ export default function PromotionModal({
                 usePortal
               />
             )}
+            {fieldError('scope')}
           </div>
 
-          {/* Vigencia */}
-          <div className="space-y-1">
-            <label className="text-xs font-medium text-subtle">Vigencia (opcional)</label>
-            <div className="grid grid-cols-2 gap-2">
-              <div className="space-y-0.5">
-                <span className="text-[10px] text-hint uppercase tracking-wide">Desde</span>
-                <input
-                  type="date"
-                  value={form.startsAt}
-                  onChange={e => setForm(f => ({ ...f, startsAt: e.target.value }))}
-                  className={inputCls}
-                />
+          {/* Condiciones: vigencia + catálogo */}
+          <div className="space-y-3.5 border-t border-edge/60 pt-4">
+            <div className="space-y-1">
+              <label className="block text-label text-subtle mb-1.5">Vigencia (opcional)</label>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-0.5">
+                  <span className="text-[10px] text-hint uppercase tracking-wide">Desde</span>
+                  <DatePicker
+                    value={form.startsAt}
+                    onChange={v => setForm(f => ({ ...f, startsAt: v }))}
+                    className="w-full"
+                  />
+                </div>
+                <div className="space-y-0.5">
+                  <span className="text-[10px] text-hint uppercase tracking-wide">Hasta</span>
+                  <DatePicker
+                    value={form.endsAt}
+                    onChange={v => setForm(f => ({ ...f, endsAt: v }))}
+                    className="w-full"
+                  />
+                </div>
               </div>
-              <div className="space-y-0.5">
-                <span className="text-[10px] text-hint uppercase tracking-wide">Hasta</span>
-                <input
-                  type="date"
-                  value={form.endsAt}
-                  onChange={e => setForm(f => ({ ...f, endsAt: e.target.value }))}
-                  className={inputCls}
-                />
-              </div>
+              <p className="text-caption text-hint">Sin fechas, la promo queda vigente hasta que la pauses o archives.</p>
+              {fieldError('dates')}
             </div>
-            <p className="text-[11px] text-hint">Sin fechas, la promo queda vigente hasta que la pauses o archives.</p>
-          </div>
 
-          {/* Catálogo */}
-          <label className="flex items-center gap-2 cursor-pointer select-none">
-            <input
-              type="checkbox"
-              checked={form.showInCatalog}
-              onChange={e => setForm(f => ({ ...f, showInCatalog: e.target.checked }))}
-              className="accent-[var(--primary)]"
-            />
-            <span className="text-sm text-body">Destacar en la sección Ofertas del catálogo online</span>
-          </label>
+            <label className="flex items-center gap-2 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={form.showInCatalog}
+                onChange={e => setForm(f => ({ ...f, showInCatalog: e.target.checked }))}
+                className="h-4 w-4 rounded border-edge accent-primary cursor-pointer"
+              />
+              <span className="text-sm text-body">Destacar en la sección Ofertas del catálogo online</span>
+            </label>
+          </div>
 
           {/* Preview */}
           {previewText && (
@@ -530,37 +597,48 @@ export default function PromotionModal({
 
           {/* Solapamiento */}
           {overlapping.length > 0 && (
-            <div className="rounded-xl border border-amber-300 bg-amber-50 dark:border-amber-700 dark:bg-amber-950/30 px-3 py-2 space-y-1">
-              <p className="text-xs font-semibold text-amber-700 dark:text-amber-400 flex items-center gap-1.5">
+            <div className="rounded-xl border border-warning/20 bg-warning/10 px-3 py-2 space-y-1">
+              <p className="text-xs font-semibold text-warning flex items-center gap-1.5">
                 <AlertTriangle size={13} />
                 Se superpone con {overlapping.length === 1 ? 'otra promo vigente' : `${overlapping.length} promos vigentes`}
               </p>
-              <ul className="text-[11px] text-amber-700/90 dark:text-amber-400/90 space-y-0.5">
+              <ul className="text-[11px] text-warning/90 space-y-0.5">
                 {overlapping.slice(0, 4).map(p => (
-                  <li key={p.id}>· {p.name} — {describePromotion(p)}</li>
+                  <li key={p.id}>· {p.name}: {describePromotion(p)}</li>
                 ))}
                 {overlapping.length > 4 && <li>· y {overlapping.length - 4} más…</li>}
               </ul>
-              <p className="text-[11px] text-amber-700/80 dark:text-amber-400/80">
+              <p className="text-[11px] text-warning/80">
                 Cada producto aplica una sola promo: gana la más específica y, a igual alcance, la más reciente.
               </p>
             </div>
           )}
 
-          {error && <p className="text-xs text-red-500">{error}</p>}
         </div>
 
-        <div className="grid grid-cols-2 gap-2 px-5 py-4 border-t border-edge/60 shrink-0">
-          <Button variant="cancel" className="h-9 rounded-lg text-sm" onClick={onClose}>
-            Cancelar
-          </Button>
-          <Button
-            className="h-9 rounded-lg text-sm font-semibold bg-primary hover:bg-primary/90 text-primary-foreground"
-            disabled={!isValid || saving}
-            onClick={handleSave}
-          >
-            {saving ? 'Guardando…' : initial ? 'Guardar cambios' : 'Crear promoción'}
-          </Button>
+        <div className="px-6 py-4 border-t border-edge/60 shrink-0 space-y-3">
+          {error && (
+            <p className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
+              {error}
+            </p>
+          )}
+          {attempted && !isValid && (
+            <p className="text-caption text-destructive text-right">
+              Revisa los campos marcados antes de guardar.
+            </p>
+          )}
+          <div className="flex items-center justify-end gap-2.5">
+            <Button variant="cancel" className="h-9 px-5 rounded-lg text-sm" onClick={onClose}>
+              Cancelar
+            </Button>
+            <Button
+              className="h-9 px-5 rounded-lg text-sm font-semibold bg-primary hover:bg-primary/90 text-primary-foreground"
+              disabled={saving}
+              onClick={handleSave}
+            >
+              {saving ? 'Guardando…' : initial ? 'Guardar cambios' : 'Crear promoción'}
+            </Button>
+          </div>
         </div>
       </DialogContent>
     </Dialog>
