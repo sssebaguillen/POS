@@ -10,16 +10,9 @@ import type {
   CatalogProductDetail,
   CatalogVariantOption,
   CatalogProductVariant,
-  CatalogCartItem,
 } from '@/components/catalog/types'
 import PopNumber from '@/components/shared/PopNumber'
-
-const CART_TTL_MS = 8 * 60 * 60 * 1000
-
-interface StoredCart {
-  items: CatalogCartItem[]
-  savedAt: number
-}
+import { addItemToStoredCart, catalogCartKey } from '@/lib/catalog-cart'
 
 const currencyFormatter = new Intl.NumberFormat('es-AR')
 
@@ -71,7 +64,7 @@ export default function ProductDetailView({
   options,
   variants,
 }: Props) {
-  const cartKey = `catalog-cart-${businessId}`
+  const cartKey = catalogCartKey(businessId)
   const productWithDefaultVariant = product as CatalogProductDetailWithDefaultVariant
 
   // Selected option value per option id
@@ -200,53 +193,13 @@ export default function ProductDetailView({
         : null,
     }
 
-    const itemKey = `${product.id}:${variantId ?? ''}`
-
-    // Read existing cart
-    let stored: StoredCart = { items: [], savedAt: Date.now() }
-    try {
-      const raw = localStorage.getItem(cartKey)
-      if (raw) {
-        const parsed = JSON.parse(raw) as StoredCart | CatalogCartItem[]
-        if (!Array.isArray(parsed) && Date.now() - parsed.savedAt < CART_TTL_MS) {
-          stored = parsed
-        } else if (Array.isArray(parsed)) {
-          stored = { items: parsed, savedAt: 0 }
-        }
-      }
-    } catch {
-      // ignore
-    }
-
-    // Upsert the item
-    const existing = stored.items.find(
-      item => `${item.product.id}:${item.variantId ?? ''}` === itemKey
-    )
-
-    let nextItems: CatalogCartItem[]
-    if (existing) {
-      nextItems = stored.items.map(item =>
-        `${item.product.id}:${item.variantId ?? ''}` === itemKey
-          ? { ...item, quantity: item.quantity + 1 }
-          : item
-      )
-    } else {
-      nextItems = [
-        ...stored.items,
-        {
-          product: cartItemProduct,
-          quantity: 1,
-          variantId,
-          variantLabel: label,
-          variantImageUrl: selectedVariant?.image_url ?? null,
-        },
-      ]
-    }
-
-    localStorage.setItem(
-      cartKey,
-      JSON.stringify({ items: nextItems, savedAt: Date.now() })
-    )
+    addItemToStoredCart(cartKey, {
+      product: cartItemProduct,
+      quantity: 1,
+      variantId,
+      variantLabel: label,
+      variantImageUrl: selectedVariant?.image_url ?? null,
+    })
 
     setAdded(true)
     setTimeout(() => setAdded(false), 2000)

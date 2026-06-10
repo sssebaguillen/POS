@@ -1,9 +1,8 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { BadgePercent } from 'lucide-react'
 import ProductGrid from '@/components/catalog/ProductGrid'
-import ProductCard from '@/components/catalog/ProductCard'
+import OffersCarousel from '@/components/catalog/OffersCarousel'
 import CartPanel from '@/components/catalog/CartPanel'
 import CatalogHeader from '@/components/catalog/CatalogHeader'
 import ProductFilter, {
@@ -27,45 +26,16 @@ import type {
   CatalogProduct,
   CatalogVariantAttributeGroup,
 } from '@/components/catalog/types'
+import {
+  cartItemKey,
+  catalogCartKey,
+  getStoredCartItems,
+  saveStoredCart,
+} from '@/lib/catalog-cart'
 
 type ViewMode = 'grid' | 'list'
 
 const VIEW_MODE_KEY = 'catalog-view-mode'
-const CART_TTL_MS = 8 * 60 * 60 * 1000
-
-interface StoredCart {
-  items: CatalogCartItem[]
-  savedAt: number
-}
-
-function cartItemKey(item: CatalogCartItem): string {
-  return `${item.product.id}:${item.variantId ?? ''}`
-}
-
-function getStoredCartItems(cartKey: string, products: CatalogProduct[]): CatalogCartItem[] {
-  if (typeof window === 'undefined') return []
-  const raw = localStorage.getItem(cartKey)
-  if (!raw) return []
-  try {
-    const stored = JSON.parse(raw) as StoredCart | CatalogCartItem[]
-    const items = Array.isArray(stored) ? stored : stored.items
-    const savedAt = Array.isArray(stored) ? 0 : stored.savedAt
-    if (Date.now() - savedAt > CART_TTL_MS) {
-      localStorage.removeItem(cartKey)
-      return []
-    }
-    const productsById = new Map(products.map(p => [p.id, p]))
-    return items.flatMap(item => {
-      const product = productsById.get(item.product.id)
-      if (!product) return []
-      const quantity = Math.min(item.quantity, product.stock)
-      if (quantity <= 0) return []
-      return [{ product, quantity, variantId: item.variantId ?? null, variantLabel: item.variantLabel ?? null, variantImageUrl: item.variantImageUrl ?? null }]
-    })
-  } catch {
-    return []
-  }
-}
 
 interface CatalogViewProps {
   business: CatalogBusiness
@@ -94,7 +64,7 @@ export default function CatalogView({
   categories,
   variantAttributeGroups,
 }: CatalogViewProps) {
-  const cartKey = `catalog-cart-${business.id}`
+  const cartKey = catalogCartKey(business.id)
 
   const [filterValue, setFilterValue] = useState<ProductFilterValue>(EMPTY_FILTER)
   const [isFilterOpen, setIsFilterOpen] = useState(false)
@@ -114,8 +84,7 @@ export default function CatalogView({
   }, [])
 
   useEffect(() => {
-    const payload: StoredCart = { items: cartItems, savedAt: Date.now() }
-    localStorage.setItem(cartKey, JSON.stringify(payload))
+    saveStoredCart(cartKey, cartItems)
   }, [cartItems, cartKey])
 
   useEffect(() => {
@@ -131,6 +100,32 @@ export default function CatalogView({
     () => cartItems.reduce((acc, item) => acc + item.quantity, 0),
     [cartItems]
   )
+
+  // Entrada/salida animada del sidebar de filtros (desktop): mantener montado
+  // durante la transición para poder animar el cierre antes de desmontar.
+  const showDesktopFilter = isFilterOpen && !isMobileView
+  const [filterMounted, setFilterMounted] = useState(showDesktopFilter)
+  const [filterVisible, setFilterVisible] = useState(showDesktopFilter)
+
+  useEffect(() => {
+    if (showDesktopFilter) {
+      setFilterMounted(true)
+      // Doble rAF: asegura un paint del estado oculto antes de activar la
+      // transición; con un solo frame React re-renderiza antes del paint y
+      // el browser nunca ve el estado inicial (la animación no corre).
+      let innerFrameId: number | null = null
+      const frameId = requestAnimationFrame(() => {
+        innerFrameId = requestAnimationFrame(() => setFilterVisible(true))
+      })
+      return () => {
+        cancelAnimationFrame(frameId)
+        if (innerFrameId !== null) cancelAnimationFrame(innerFrameId)
+      }
+    }
+    setFilterVisible(false)
+    const timeoutId = setTimeout(() => setFilterMounted(false), 200)
+    return () => clearTimeout(timeoutId)
+  }, [showDesktopFilter])
 
   const activeFilterCount = countActiveFilters(filterValue)
 
@@ -289,15 +284,17 @@ export default function CatalogView({
       <section
         className={[
           'grid grid-cols-1 gap-4 lg:gap-6',
-          isFilterOpen && !isMobileView
-            ? 'lg:grid-cols-[240px_minmax(0,1fr)_360px]'
-            : 'lg:grid-cols-[minmax(0,1fr)_360px]',
+          filterMounted && !isMobileView ? 'lg:grid-cols-[240px_minmax(0,1fr)]' : '',
         ].join(' ')}
       >
         {/* Desktop filter sidebar — shown inline when open */}
-        {isFilterOpen && !isMobileView && (
+        {filterMounted && !isMobileView && (
           <div className="hidden lg:block">
-            <div className="surface-card rounded-xl border border-border/70 p-4 sticky top-4">
+            <div
+              className={`surface-card rounded-xl border border-border/70 p-4 sticky top-4 transition-[transform,opacity] duration-200 ease-[var(--ease-out)] ${
+                filterVisible ? 'translate-x-0 opacity-100' : '-translate-x-4 opacity-0'
+              }`}
+            >
               <p className="mb-4 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                 Filtros
               </p>
@@ -306,52 +303,41 @@ export default function CatalogView({
           </div>
         )}
 
-        <div className="min-w-0 space-y-4">
+        <div className="min-w-0 space-y-4 lg:space-y-6">
+          {/* Hero de ofertas: ocupa el ancho de contenido + carrito; el cart arranca debajo */}
           {showOffersSection && (
-            <section aria-label="Ofertas" className="rounded-xl border border-emerald-300/60 bg-emerald-50/50 p-4 dark:border-emerald-700/50 dark:bg-emerald-950/20">
-              <p className="mb-3 flex items-center gap-1.5 text-sm font-bold text-emerald-700 dark:text-emerald-300">
-                <BadgePercent className="h-4 w-4" />
-                Ofertas
-              </p>
-              <div className="flex gap-3 overflow-x-auto pb-1">
-                {featuredOffers.map(product => (
-                  <div key={product.id} className="w-56 shrink-0">
-                    <ProductCard
-                      product={product}
-                      slug={slug}
-                      onAddToCart={addToCart}
-                    />
-                  </div>
-                ))}
-              </div>
-            </section>
+            <OffersCarousel offers={featuredOffers} slug={slug} onAddToCart={addToCart} />
           )}
 
-          <ProductGrid
-            slug={slug}
-            products={filteredProducts}
-            filterValue={filterValue}
-            onFilterChange={setFilterValue}
-            onAddToCart={addToCart}
-            viewMode={viewMode}
-            onViewModeChange={setViewMode}
-            onToggleFilter={() => setIsFilterOpen(prev => !prev)}
-            isFilterOpen={isFilterOpen}
-            activeFilterCount={activeFilterCount}
-          />
-        </div>
+          <div className="grid grid-cols-1 gap-4 lg:gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
+            <div className="min-w-0">
+              <ProductGrid
+                slug={slug}
+                products={filteredProducts}
+                filterValue={filterValue}
+                onFilterChange={setFilterValue}
+                onAddToCart={addToCart}
+                viewMode={viewMode}
+                onViewModeChange={setViewMode}
+                onToggleFilter={() => setIsFilterOpen(prev => !prev)}
+                isFilterOpen={isFilterOpen}
+                activeFilterCount={activeFilterCount}
+              />
+            </div>
 
-        <div className={`${isMobileCartOpen ? 'block' : 'hidden'} lg:sticky lg:top-0 lg:block lg:h-screen lg:overflow-hidden`}>
-          <CartPanel
-            businessSlug={slug}
-            businessName={business.name}
-            businessWhatsapp={business.whatsapp}
-            cartItems={cartItems}
-            onIncreaseQuantity={increaseQuantity}
-            onDecreaseQuantity={decreaseQuantity}
-            onRemoveItem={removeItem}
-            onClearCart={clearCart}
-          />
+            <div className={`${isMobileCartOpen ? 'block' : 'hidden'} lg:sticky lg:top-4 lg:block lg:self-start lg:h-[calc(100vh-2rem)] lg:overflow-hidden`}>
+              <CartPanel
+                businessSlug={slug}
+                businessName={business.name}
+                businessWhatsapp={business.whatsapp}
+                cartItems={cartItems}
+                onIncreaseQuantity={increaseQuantity}
+                onDecreaseQuantity={decreaseQuantity}
+                onRemoveItem={removeItem}
+                onClearCart={clearCart}
+              />
+            </div>
+          </div>
         </div>
       </section>
 

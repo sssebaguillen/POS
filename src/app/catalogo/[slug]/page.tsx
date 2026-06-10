@@ -1,7 +1,7 @@
 import { notFound } from 'next/navigation'
 import { createClient } from '@supabase/supabase-js'
 import CatalogView from '@/components/catalog/CatalogView'
-import { promoBadgeLabel } from '@/lib/promotions'
+import { mapCatalogProductRow, type CatalogProductRow } from '@/components/catalog/mapProducts'
 import type { CatalogVariantAttributeGroup } from '@/components/catalog/types'
 
 interface CatalogPageParams {
@@ -14,28 +14,6 @@ interface BusinessRow {
   description: string | null
   logo_url: string | null
   whatsapp: string | null
-}
-
-// get_catalog_products now returns has_variants + brand_id directly
-interface ProductRow {
-  id: string
-  category_id: string | null
-  name: string
-  sale_price: number | string
-  stock: number | string
-  image_url: string | null
-  has_variants: boolean
-  brand_id: string | null
-  brand_name: string | null
-  variant_count: number | null
-  original_price: number | string | null
-  promo_kind: 'percent' | 'offer_price' | 'quantity' | null
-  promo_percent: number | string | null
-  promo_group_size: number | null
-  promo_affected_units: number | null
-  promo_pay_percent: number | string | null
-  promo_ends_at: string | null
-  promo_featured: boolean | null
 }
 
 interface CategoryRow {
@@ -86,7 +64,7 @@ export default async function CatalogSlugPage({ params }: CatalogPageProps) {
   const [productsResult, categoriesResult, variantFiltersResult] = await Promise.all([
     supabase
       .rpc('get_catalog_products', { p_slug: slug })
-      .returns<ProductRow[]>(),
+      .returns<CatalogProductRow[]>(),
     supabase
       .rpc('get_catalog_categories', { p_slug: slug })
       .returns<CategoryRow[]>(),
@@ -97,7 +75,7 @@ export default async function CatalogSlugPage({ params }: CatalogPageProps) {
   if (productsResult.error) throw new Error(productsResult.error.message)
   if (categoriesResult.error) throw new Error(categoriesResult.error.message)
 
-  const products = (productsResult.data ?? []) as ProductRow[]
+  const products = (productsResult.data ?? []) as CatalogProductRow[]
   const categories = (categoriesResult.data ?? []) as CategoryRow[]
 
   let variantAttributeGroups: CatalogVariantAttributeGroup[] = []
@@ -135,37 +113,7 @@ export default async function CatalogSlugPage({ params }: CatalogPageProps) {
           logoUrl: business.logo_url,
           whatsapp: business.whatsapp,
         }}
-        products={products.map(product => ({
-          id: product.id,
-          categoryId: product.category_id,
-          name: product.name,
-          salePrice: Number(product.sale_price),
-          stock: Number(product.stock),
-          imageUrl: product.image_url,
-          hasVariants: product.has_variants ?? false,
-          brandId: product.brand_id ?? null,
-          brandName: product.brand_name ?? null,
-          variantCount: product.variant_count ?? 0,
-          originalPrice: product.original_price != null ? Number(product.original_price) : null,
-          promo: product.promo_kind
-            ? {
-                kind: product.promo_kind,
-                percent: product.promo_percent != null ? Number(product.promo_percent) : null,
-                group_size: product.promo_group_size,
-                affected_units: product.promo_affected_units,
-                pay_percent: product.promo_pay_percent != null ? Number(product.promo_pay_percent) : null,
-                endsAt: product.promo_ends_at,
-                featured: product.promo_featured ?? false,
-                label: promoBadgeLabel({
-                  kind: product.promo_kind,
-                  percent: product.promo_percent != null ? Number(product.promo_percent) : null,
-                  group_size: product.promo_group_size,
-                  affected_units: product.promo_affected_units,
-                  pay_percent: product.promo_pay_percent != null ? Number(product.promo_pay_percent) : null,
-                }),
-              }
-            : null,
-        }))}
+        products={products.map(mapCatalogProductRow)}
         categories={categories.map(category => ({
           id: category.id,
           name: category.name,
