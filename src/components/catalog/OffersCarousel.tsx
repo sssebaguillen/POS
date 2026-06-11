@@ -65,7 +65,7 @@ function OfferSlide({
     if (added) return
     onAddToCart(product, null, null)
     setAdded(true)
-    swapText('✓ Agregado')
+    swapText('Agregado')
     setTimeout(() => {
       swapText('Agregar al carrito')
       setAdded(false)
@@ -134,7 +134,7 @@ function OfferSlide({
               <Button
                 type="button"
                 onClick={handleAdd}
-                className={`gap-1.5 ${added ? 'bg-promo hover:bg-promo text-promo-foreground' : ''}`}
+                className="gap-1.5"
               >
                 <ShoppingCart className="h-4 w-4" />
                 <span ref={labelRef} className="t-text-swap">Agregar al carrito</span>
@@ -250,7 +250,8 @@ export default function OffersCarousel({ offers, slug, onAddToCart }: OffersCaro
           </button>
 
           {/* Dots */}
-          <div className="mt-3 flex items-center justify-center gap-1.5">
+          {/* Dot visual chico, hit-area de 32px vía padding del botón */}
+          <div className="mt-1 flex items-center justify-center">
             {offers.map((offer, index) => (
               <button
                 key={offer.id}
@@ -258,12 +259,16 @@ export default function OffersCarousel({ offers, slug, onAddToCart }: OffersCaro
                 aria-label={`Ir a oferta ${index + 1}`}
                 aria-current={index === activeIndex}
                 onClick={() => scrollToIndex(index)}
-                className={`h-1.5 rounded-full transition-[width,background-color] duration-200 ease-[var(--ease-out)] ${
-                  index === activeIndex
-                    ? 'w-5 bg-promo'
-                    : 'w-1.5 bg-promo/30 hover:bg-promo/50'
-                }`}
-              />
+                className="group flex h-8 items-center px-1.5 outline-none"
+              >
+                <span
+                  className={`h-1.5 rounded-full transition-[width,background-color] duration-200 ease-[var(--ease-out)] group-focus-visible:ring-2 group-focus-visible:ring-ring/50 ${
+                    index === activeIndex
+                      ? 'w-5 bg-promo'
+                      : 'w-1.5 bg-promo/30 group-hover:bg-promo/50'
+                  }`}
+                />
+              </button>
             ))}
           </div>
         </>

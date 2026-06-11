@@ -45,6 +45,25 @@ function cartItemKey(item: CatalogCartItem): string {
   return `${item.product.id}:${item.variantId ?? ''}`
 }
 
+export interface CatalogLastOrderItem {
+  name: string
+  variantLabel: string | null
+  quantity: number
+  lineTotal: number
+}
+
+/** Snapshot completo del pedido enviado: el comprador anónimo no tiene cuenta,
+    este recap es su única copia de qué pidió y a qué teléfono lo contactan */
+export interface CatalogLastOrder {
+  orderNumber: number
+  whatsappUrl: string | null
+  items: CatalogLastOrderItem[]
+  total: number
+  deliveryType: 'take-away' | 'delivery'
+  address: string | null
+  phone: string
+}
+
 interface CartPanelProps {
   businessSlug: string
   businessName: string
@@ -53,7 +72,11 @@ interface CartPanelProps {
   onIncreaseQuantity: (key: string) => void
   onDecreaseQuantity: (key: string) => void
   onRemoveItem: (key: string) => void
-  onClearCart: () => void
+  /** Último pedido enviado (vive en el shell): el éxito sobrevive al cierre del
+      sheet y el carrito ya quedó vacío — evita el doble envío */
+  lastOrder: CatalogLastOrder | null
+  onOrderSuccess: (order: CatalogLastOrder) => void
+  onNewOrder: () => void
   /** Dentro del sheet mobile: sin chrome de aside ni heading propio (los pone el sheet) */
   embedded?: boolean
 }
@@ -67,13 +90,22 @@ const ORDER_ERROR_MESSAGES: Record<string, string> = {
   address_required: 'La dirección es obligatoria para envíos a domicilio.',
   empty_cart: 'Tu carrito está vacío.',
   product_not_available: 'Uno de los productos ya no está disponible. Recarga la página para ver el catálogo al día.',
-  variant_not_available: 'Una de las variantes ya no está disponible. Recarga la página para ver el catálogo al día.',
+  variant_not_available: 'Una de las opciones elegidas ya no está disponible. Recarga la página para ver el catálogo al día.',
   business_not_found: 'Este catálogo no está disponible.',
   server_error: 'No pudimos registrar tu pedido. Intenta de nuevo en un momento.',
   invalid_payload: 'Hay un problema con tu pedido. Recarga la página e intenta de nuevo.',
 }
 
 type DeliveryType = 'take-away' | 'delivery'
+
+type FieldKey = 'name' | 'phone' | 'address'
+type FieldErrors = Partial<Record<FieldKey, string>>
+
+const FIELD_INPUT_IDS: Record<FieldKey, string> = {
+  name: 'catalog-name',
+  phone: 'catalog-phone',
+  address: 'catalog-address',
+}
 
 const currencyFormatter = new Intl.NumberFormat('es-AR')
 
@@ -85,19 +117,19 @@ export default function CartPanel({
   onIncreaseQuantity,
   onDecreaseQuantity,
   onRemoveItem,
-  onClearCart,
+  lastOrder,
+  onOrderSuccess,
+  onNewOrder,
   embedded = false,
 }: CartPanelProps) {
   const [customerName, setCustomerName] = useState('')
-  const [orderSent, setOrderSent] = useState(false)
-  const [orderNumber, setOrderNumber] = useState<number | null>(null)
-  const [whatsappUrl, setWhatsappUrl] = useState<string | null>(null)
   const [customerPhone, setCustomerPhone] = useState('')
   const [deliveryType, setDeliveryType] = useState<DeliveryType>('take-away')
   const [address, setAddress] = useState('')
   const [notes, setNotes] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({})
 
   const subtotal = useMemo(
     () => cartItems.reduce((acc, item) => acc + lineTotal(item), 0),
@@ -112,15 +144,42 @@ export default function CartPanel({
   const trimmedNotes = notes.trim()
   const normalizedWhatsapp = businessWhatsapp?.trim() ?? ''
 
-  const hasRequiredFormData =
-    trimmedName.length > 0 &&
-    trimmedPhone.length > 0 &&
-    (deliveryType === 'take-away' || trimmedAddress.length > 0)
+  // Espejo de create_catalog_order: teléfono de 8 a 20 dígitos tras quitar separadores
+  const phoneDigits = trimmedPhone.replace(/\D/g, '')
 
-  const canSendWhatsapp =
-    cartItems.length > 0 &&
-    hasRequiredFormData &&
-    normalizedWhatsapp.length > 0
+  function validateForm(): FieldErrors {
+    const errors: FieldErrors = {}
+    if (trimmedName.length === 0) {
+      errors.name = 'Ingresa tu nombre para que el negocio sepa de quién es el pedido.'
+    }
+    if (trimmedPhone.length === 0) {
+      errors.phone = 'Ingresa tu teléfono para que el negocio te contacte.'
+    } else if (phoneDigits.length < 8 || phoneDigits.length > 20) {
+      errors.phone = 'Revisa el teléfono: debe tener entre 8 y 20 dígitos.'
+    }
+    if (deliveryType === 'delivery' && trimmedAddress.length === 0) {
+      errors.address = 'Ingresa la dirección para el envío a domicilio.'
+    }
+    return errors
+  }
+
+  function clearFieldError(field: FieldKey) {
+    setFieldErrors(prev => {
+      if (!prev[field]) return prev
+      const next = { ...prev }
+      delete next[field]
+      return next
+    })
+  }
+
+  function focusFirstError(errors: FieldErrors) {
+    const order: FieldKey[] = ['name', 'phone', 'address']
+    const first = order.find(key => errors[key])
+    if (!first) return
+    const input = document.getElementById(FIELD_INPUT_IDS[first])
+    input?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    input?.focus({ preventScroll: true })
+  }
 
   function buildMessage(orderNumberValue: number): string {
     const itemsText = cartItems
@@ -155,9 +214,17 @@ export default function CartPanel({
     return lines.join('\n')
   }
 
-  async function handleSendWhatsapp() {
-    if (!canSendWhatsapp || submitting) return
+  async function handleSubmitOrder() {
+    if (cartItems.length === 0 || submitting) return
 
+    const errors = validateForm()
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors)
+      focusFirstError(errors)
+      return
+    }
+
+    setFieldErrors({})
     setSubmitting(true)
     setSubmitError(null)
 
@@ -194,9 +261,6 @@ export default function CartPanel({
       }
 
       const number = json.order_number
-      const message = buildMessage(number)
-      const encodedMessage = encodeURIComponent(message)
-      const url = `https://wa.me/${normalizedWhatsapp}?text=${encodedMessage}`
 
       posthog.capture('catalog_order_sent', {
         total,
@@ -204,14 +268,32 @@ export default function CartPanel({
         delivery_type: deliveryType,
         business_name: businessName,
         order_number: number,
+        has_whatsapp: normalizedWhatsapp.length > 0,
       })
 
-      // Popup blockers (iOS Safari sobre todo) suelen matar window.open tras un
-      // await: el estado de éxito muestra el link explícito como camino garantizado.
-      window.open(url, '_blank', 'noopener,noreferrer')
-      setWhatsappUrl(url)
-      setOrderNumber(number)
-      setOrderSent(true)
+      let url: string | null = null
+      if (normalizedWhatsapp) {
+        url = `https://wa.me/${normalizedWhatsapp}?text=${encodeURIComponent(buildMessage(number))}`
+        // Popup blockers (iOS Safari sobre todo) suelen matar window.open tras un
+        // await: el estado de éxito muestra el link explícito como camino garantizado.
+        window.open(url, '_blank', 'noopener,noreferrer')
+      }
+      // El shell limpia el carrito acá mismo — si el comprador cierra y reabre el
+      // sheet ve el éxito (no el form), sin riesgo de reenviar el mismo pedido.
+      onOrderSuccess({
+        orderNumber: number,
+        whatsappUrl: url,
+        items: cartItems.map(item => ({
+          name: item.product.name,
+          variantLabel: item.variantLabel,
+          quantity: item.quantity,
+          lineTotal: lineTotal(item),
+        })),
+        total,
+        deliveryType,
+        address: deliveryType === 'delivery' ? trimmedAddress : null,
+        phone: trimmedPhone,
+      })
     } catch (error) {
       console.error('[catalog cart] submit failed', error)
       setSubmitError(ORDER_ERROR_MESSAGES.server_error)
@@ -226,33 +308,63 @@ export default function CartPanel({
     setDeliveryType('take-away')
     setAddress('')
     setNotes('')
-    setOrderSent(false)
-    setOrderNumber(null)
-    setWhatsappUrl(null)
     setSubmitError(null)
-    onClearCart()
+    setFieldErrors({})
+    onNewOrder()
   }
 
   const asideClassName = embedded
     ? ''
     : 'rounded-xl border border-border/70 bg-card p-4 md:p-5 lg:max-h-full lg:overflow-y-auto'
 
-  if (orderSent) {
+  if (lastOrder) {
     return (
       <aside className={asideClassName}>
         <div className="flex flex-col items-center gap-4 py-6 text-center">
-          <CheckCircle2 className="h-12 w-12 text-promo" />
+          <CheckCircle2 className="h-12 w-12 text-primary" />
           <div>
             <p className="text-base font-semibold text-foreground">
-              Pedido enviado{orderNumber != null ? ` #${orderNumber}` : ''}
+              Pedido enviado #{lastOrder.orderNumber}
             </p>
             <p className="mt-1 text-sm text-muted-foreground">
-              El negocio ya recibió tu pedido. Puedes escribirle por WhatsApp para coordinar la entrega.
+              {lastOrder.whatsappUrl
+                ? 'El negocio ya recibió tu pedido. Puedes escribirle por WhatsApp para coordinar la entrega.'
+                : 'El negocio ya recibió tu pedido y te contactará para coordinar la entrega.'}
             </p>
           </div>
-          {whatsappUrl && (
+
+          {/* Recap: la única copia del pedido que tiene un comprador sin cuenta */}
+          <div className="w-full rounded-lg border border-border/70 bg-muted/20 p-3 text-left">
+            <ul className="space-y-1.5">
+              {lastOrder.items.map((item, index) => (
+                <li key={index} className="flex items-baseline justify-between gap-2 text-sm">
+                  <span className="min-w-0 text-foreground">
+                    {item.quantity}x {item.name}
+                    {item.variantLabel && (
+                      <span className="text-muted-foreground"> ({item.variantLabel})</span>
+                    )}
+                  </span>
+                  <span className="shrink-0 text-muted-foreground">
+                    ${currencyFormatter.format(item.lineTotal)}
+                  </span>
+                </li>
+              ))}
+            </ul>
+            <div className="mt-2.5 flex items-center justify-between border-t border-border/70 pt-2.5 text-sm font-bold text-foreground">
+              <span>Total</span>
+              <span>${currencyFormatter.format(lastOrder.total)}</span>
+            </div>
+            <p className="mt-2 text-xs text-muted-foreground">
+              {lastOrder.deliveryType === 'delivery'
+                ? `Delivery a ${lastOrder.address}`
+                : 'Para llevar'}
+              {' · '}Te contactan al {lastOrder.phone}
+            </p>
+          </div>
+
+          {lastOrder.whatsappUrl && (
             <Button asChild className="h-10 w-full">
-              <a href={whatsappUrl} target="_blank" rel="noopener noreferrer">
+              <a href={lastOrder.whatsappUrl} target="_blank" rel="noopener noreferrer">
                 Escribir por WhatsApp
               </a>
             </Button>
@@ -279,7 +391,7 @@ export default function CartPanel({
       <div className={`space-y-3 ${embedded ? '' : 'mt-4'}`}>
         {isEmpty ? (
           <div className="rounded-lg border border-dashed border-border p-4 text-center text-sm text-muted-foreground">
-            Tu carrito está vacío.
+            Tu carrito está vacío. Agrega productos para armar tu pedido.
           </div>
         ) : (
           <ul className="space-y-2">
@@ -321,7 +433,7 @@ export default function CartPanel({
                       <button
                         type="button"
                         onClick={() => onRemoveItem(key)}
-                        className="shrink-0 rounded-md p-1 text-muted-foreground transition-[transform,background-color,color] duration-150 ease-[var(--ease-out)] active:scale-95 hover:bg-destructive/10 hover:text-destructive"
+                        className="-mr-1 -mt-1 flex h-10 w-10 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-[transform,background-color,color] duration-150 ease-[var(--ease-out)] active:scale-95 hover:bg-destructive/10 hover:text-destructive md:h-8 md:w-8"
                         aria-label={`Quitar ${item.product.name}`}
                       >
                         <Trash2 className="h-4 w-4" />
@@ -337,6 +449,7 @@ export default function CartPanel({
                       size="icon-sm"
                       onClick={() => onDecreaseQuantity(key)}
                       aria-label={`Restar ${item.product.name}`}
+                      className="h-11 w-11 md:h-8 md:w-8"
                     >
                       <Minus className="h-4 w-4" />
                     </Button>
@@ -350,6 +463,7 @@ export default function CartPanel({
                       onClick={() => onIncreaseQuantity(key)}
                       disabled={item.quantity >= item.product.stock}
                       aria-label={`Sumar ${item.product.name}`}
+                      className="h-11 w-11 md:h-8 md:w-8"
                     >
                       <Plus className="h-4 w-4" />
                     </Button>
@@ -371,6 +485,17 @@ export default function CartPanel({
             </div>
           </div>
 
+          <p className="mt-3 text-center text-xs text-muted-foreground">
+            No pagas ahora: el negocio recibe tu pedido y coordina contigo la entrega y el pago.
+          </p>
+
+          {/* <form> (regla 28): Enter-to-submit + autofill del navegador en name/tel */}
+          <form
+            onSubmit={event => {
+              event.preventDefault()
+              handleSubmitOrder()
+            }}
+          >
           <div className="mt-5 space-y-3">
             <div className="space-y-1.5">
               <label htmlFor="catalog-name" className="text-xs uppercase tracking-wide text-muted-foreground">
@@ -379,10 +504,15 @@ export default function CartPanel({
               <Input
                 id="catalog-name"
                 value={customerName}
-                onChange={event => setCustomerName(event.target.value)}
+                onChange={event => {
+                  setCustomerName(event.target.value)
+                  clearFieldError('name')
+                }}
                 placeholder="Tu nombre"
                 autoComplete="name"
+                aria-invalid={fieldErrors.name ? true : undefined}
               />
+              {fieldErrors.name && <p className="text-xs text-destructive">{fieldErrors.name}</p>}
             </div>
 
             <div className="space-y-1.5">
@@ -394,10 +524,15 @@ export default function CartPanel({
                 type="tel"
                 inputMode="tel"
                 value={customerPhone}
-                onChange={event => setCustomerPhone(event.target.value)}
-                placeholder="Tu teléfono"
+                onChange={event => {
+                  setCustomerPhone(event.target.value)
+                  clearFieldError('phone')
+                }}
+                placeholder="Ej: 11 2345-6789"
                 autoComplete="tel"
+                aria-invalid={fieldErrors.phone ? true : undefined}
               />
+              {fieldErrors.phone && <p className="text-xs text-destructive">{fieldErrors.phone}</p>}
             </div>
 
             <div className="space-y-1.5">
@@ -405,7 +540,10 @@ export default function CartPanel({
               <div className="grid grid-cols-2 gap-2">
                 <button
                   type="button"
-                  onClick={() => setDeliveryType('take-away')}
+                  onClick={() => {
+                    setDeliveryType('take-away')
+                    clearFieldError('address')
+                  }}
                   className={`rounded-full border px-3 py-2 text-sm transition-[transform,background-color,border-color,color] duration-150 ease-[var(--ease-out)] active:scale-[0.97] ${
                     deliveryType === 'take-away'
                       ? 'border-primary bg-primary text-primary-foreground'
@@ -436,10 +574,15 @@ export default function CartPanel({
                 <Input
                   id="catalog-address"
                   value={address}
-                  onChange={event => setAddress(event.target.value)}
+                  onChange={event => {
+                    setAddress(event.target.value)
+                    clearFieldError('address')
+                  }}
                   placeholder="Calle y número"
                   autoComplete="street-address"
+                  aria-invalid={fieldErrors.address ? true : undefined}
                 />
+                {fieldErrors.address && <p className="text-xs text-destructive">{fieldErrors.address}</p>}
               </div>
             )}
 
@@ -457,39 +600,38 @@ export default function CartPanel({
               />
             </div>
           </div>
+
+          {!normalizedWhatsapp && (
+            <div className="mt-3 flex items-start gap-2 rounded-lg border border-warning/20 bg-warning/10 px-3 py-2.5">
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-warning" />
+              <p className="text-xs text-warning">
+                Este negocio aún no tiene WhatsApp. Igualmente recibe tu pedido y te contactará al teléfono que dejes.
+              </p>
+            </div>
+          )}
+
+          {submitError && (
+            <div className="mt-3 flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2.5">
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
+              <p className="text-xs text-destructive">{submitError}</p>
+            </div>
+          )}
+
+          <Button
+            type="submit"
+            className="mt-4 h-10 w-full"
+            disabled={submitting}
+          >
+            {submitting ? 'Enviando...' : 'Enviar pedido'}
+          </Button>
+          {normalizedWhatsapp.length > 0 && (
+            <p className="mt-2 text-center text-xs text-muted-foreground">
+              Al enviar, se abre WhatsApp con tu pedido listo para coordinar.
+            </p>
+          )}
+          </form>
         </>
       )}
-
-      {!normalizedWhatsapp && (
-        <div className={`flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 dark:border-amber-800/40 dark:bg-amber-950/30 ${isEmpty ? 'mt-4' : 'mt-3'}`}>
-          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
-          <p className="text-xs text-amber-700 dark:text-amber-300">
-            Este negocio todavía no configuró su número de WhatsApp. No es posible enviar pedidos por ahora.
-          </p>
-        </div>
-      )}
-
-      {submitError && (
-        <div className="mt-3 flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2.5">
-          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
-          <p className="text-xs text-destructive">{submitError}</p>
-        </div>
-      )}
-
-      {!isEmpty && normalizedWhatsapp && (
-        <p className="mt-4 text-center text-xs text-muted-foreground">
-          No pagas ahora: el negocio recibe tu pedido y coordina contigo la entrega y el pago.
-        </p>
-      )}
-
-      <Button
-        type="button"
-        className="mt-3 h-10 w-full"
-        onClick={handleSendWhatsapp}
-        disabled={!canSendWhatsapp || submitting}
-      >
-        {submitting ? 'Enviando...' : 'Enviar pedido por WhatsApp'}
-      </Button>
     </aside>
   )
 }

@@ -4,7 +4,7 @@ import { createContext, useContext, useEffect, useMemo, useState } from 'react'
 import { ShoppingCart } from 'lucide-react'
 import CatalogNavbar from '@/components/catalog/CatalogNavbar'
 import CatalogFooter from '@/components/catalog/CatalogFooter'
-import CartPanel, { lineTotal } from '@/components/catalog/CartPanel'
+import CartPanel, { lineTotal, type CatalogLastOrder } from '@/components/catalog/CartPanel'
 import {
   Sheet,
   SheetContent,
@@ -77,6 +77,9 @@ export default function CatalogShell({
   const [hydrated, setHydrated] = useState(false)
   const [isCartOpen, setIsCartOpen] = useState(false)
   const [isMobileView, setIsMobileView] = useState(false)
+  // Éxito del último pedido a nivel shell: sobrevive al cierre del sheet (Radix
+  // desmonta CartPanel) y el carrito ya quedó vacío — sin riesgo de doble envío
+  const [lastOrder, setLastOrder] = useState<CatalogLastOrder | null>(null)
 
   // Mounted pattern (regla 25): primer render SSR-safe con carrito vacío,
   // hidratación desde localStorage post-mount.
@@ -121,6 +124,8 @@ export default function CatalogShell({
     variantImageUrl: string | null = null
   ) {
     if (!product.hasVariants && product.stock <= 0) return
+    // Agregar algo nuevo arranca un pedido nuevo: el sheet vuelve a mostrar el carrito
+    setLastOrder(null)
     const key = `${product.id}:${variantId ?? ''}`
     setCartItems(prev => {
       const existing = prev.find(item => cartItemKey(item) === key)
@@ -159,6 +164,11 @@ export default function CatalogShell({
   function clearCart() {
     setCartItems([])
     localStorage.removeItem(cartKey)
+  }
+
+  function handleOrderSuccess(order: CatalogLastOrder) {
+    setLastOrder(order)
+    clearCart()
   }
 
   const contextValue: CatalogShellContextValue = {
@@ -226,7 +236,9 @@ export default function CatalogShell({
               onIncreaseQuantity={increaseQuantity}
               onDecreaseQuantity={decreaseQuantity}
               onRemoveItem={removeItem}
-              onClearCart={clearCart}
+              lastOrder={lastOrder}
+              onOrderSuccess={handleOrderSuccess}
+              onNewOrder={() => setLastOrder(null)}
               embedded
             />
           </div>

@@ -50,6 +50,8 @@ export interface VariantQuickSelectorProps {
   /** When true, stock is ignored: all variant buttons are always clickable and
    *  "Agregar" only requires that all options are selected. Use in POS context. */
   allowOutOfStock?: boolean
+  /** Targets táctiles ≥44px (bottom sheet mobile); el panel hover usa la densidad default */
+  touchOptimized?: boolean
 }
 
 export default function VariantQuickSelector({
@@ -59,6 +61,7 @@ export default function VariantQuickSelector({
   onAddToCart,
   onVariantImageChange,
   allowOutOfStock = false,
+  touchOptimized = false,
 }: VariantQuickSelectorProps) {
   const [selectedValues, setSelectedValues] = useState<Record<string, string>>({})
 
@@ -129,7 +132,7 @@ export default function VariantQuickSelector({
       <div className="flex items-center justify-between">
         <PopNumber className="text-sm font-bold text-foreground" value={`$${currencyFormatter.format(displayPrice)}`} />
         {!allowOutOfStock && displayStock > 0 && displayStock <= 5 && (
-          <span className="text-xs text-amber-600 dark:text-amber-400">
+          <span className="text-xs text-warning">
             Últimas {displayStock}
           </span>
         )}
@@ -146,7 +149,7 @@ export default function VariantQuickSelector({
             <p className="mb-1.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
               {option.name}
             </p>
-            <div className="flex flex-wrap gap-1.5">
+            <div className={`flex flex-wrap ${touchOptimized ? 'gap-2.5' : 'gap-1.5'}`}>
               {option.values.map(optValue => {
                 const inStock = hasStockForValue(option.id, optValue.value)
                 const isSelected = selectedValues[option.id] === optValue.value
@@ -161,7 +164,8 @@ export default function VariantQuickSelector({
                       title={optValue.value}
                       onClick={e => { e.preventDefault(); e.stopPropagation(); handleSelect(option.id, optValue.value) }}
                       className={[
-                        'h-6 w-6 rounded-full border-2 transition-all duration-150',
+                        touchOptimized ? 'h-11 w-11' : 'h-6 w-6',
+                        'rounded-full border-2 transition-all duration-150',
                         isSelected
                           ? 'border-primary scale-110 shadow-sm ring-2 ring-primary/20'
                           : inStock
@@ -180,7 +184,8 @@ export default function VariantQuickSelector({
                     disabled={!allowOutOfStock && !inStock}
                     onClick={e => { e.preventDefault(); e.stopPropagation(); handleSelect(option.id, optValue.value) }}
                     className={[
-                      'px-2.5 py-0.5 rounded-md border text-xs font-medium transition-[transform,background-color,border-color,color] duration-150 ease-[var(--ease-out)] active:scale-[0.97]',
+                      touchOptimized ? 'px-4 py-2.5 text-sm' : 'px-2.5 py-0.5 text-xs',
+                      'rounded-md border font-medium transition-[transform,background-color,border-color,color] duration-150 ease-[var(--ease-out)] active:scale-[0.97]',
                       isSelected
                         ? 'bg-primary text-primary-foreground border-primary'
                         : inStock
@@ -201,12 +206,12 @@ export default function VariantQuickSelector({
       <Button
         type="button"
         size="sm"
-        className="w-full h-8 text-xs gap-1.5 mt-1"
+        className={touchOptimized ? 'w-full h-11 text-sm gap-1.5 mt-1' : 'w-full h-8 text-xs gap-1.5 mt-1'}
         disabled={!canAdd}
         onClick={handleAdd}
         title={!allSelected ? selectPrompt : undefined}
       >
-        <ShoppingCart className="h-3 w-3" />
+        <ShoppingCart className={touchOptimized ? 'h-4 w-4' : 'h-3 w-3'} />
         {addLabel}
       </Button>
     </div>

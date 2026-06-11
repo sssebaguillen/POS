@@ -40,6 +40,7 @@ export default function CatalogSearch({
   const containerRef = useRef<HTMLDivElement>(null)
   const [query, setQuery] = useState('')
   const [isOpen, setIsOpen] = useState(false)
+  const [activeIndex, setActiveIndex] = useState(-1)
   const [fetched, setFetched] = useState<SearchData | null>(null)
   const fetchingRef = useRef(false)
 
@@ -93,24 +94,46 @@ export default function CatalogSearch({
 
   const normalizedQuery = query.trim().toLowerCase()
 
-  const results = useMemo(() => {
+  const matches = useMemo(() => {
     if (!data || normalizedQuery === '') return []
-    return data.products
-      .filter(
-        p =>
-          p.name.toLowerCase().includes(normalizedQuery) ||
-          (p.brandName?.toLowerCase().includes(normalizedQuery) ?? false)
-      )
-      .slice(0, MAX_RESULTS)
+    return data.products.filter(
+      p =>
+        p.name.toLowerCase().includes(normalizedQuery) ||
+        (p.brandName?.toLowerCase().includes(normalizedQuery) ?? false)
+    )
   }, [data, normalizedQuery])
+
+  const results = useMemo(() => matches.slice(0, MAX_RESULTS), [matches])
 
   const showDropdown = isOpen && normalizedQuery !== ''
   const isLoading = showDropdown && !data
+
+  function moveActive(delta: number) {
+    if (results.length === 0) return
+    setIsOpen(true)
+    setActiveIndex(prev => {
+      const next = (prev + delta + results.length) % results.length
+      document
+        .getElementById(`catalog-search-option-${next}`)
+        ?.scrollIntoView({ block: 'nearest' })
+      return next
+    })
+  }
 
   function goToProduct(productId: string) {
     setIsOpen(false)
     setQuery('')
     router.push(`/catalogo/${slug}/${productId}`)
+  }
+
+  // Salida del typeahead: aplica la búsqueda como filtro de la grilla (?q=).
+  // Es el destino default de Enter sin ítem resaltado.
+  function goToResults() {
+    const term = query.trim()
+    if (!term) return
+    setIsOpen(false)
+    setQuery('')
+    router.push(`/catalogo/${slug}?q=${encodeURIComponent(term)}`)
   }
 
   return (
@@ -121,18 +144,32 @@ export default function CatalogSearch({
         role="combobox"
         aria-expanded={showDropdown}
         aria-controls="catalog-search-results"
+        aria-activedescendant={activeIndex >= 0 ? `catalog-search-option-${activeIndex}` : undefined}
         aria-label="Buscar producto"
         value={query}
         onChange={e => {
           setQuery(e.target.value)
           setIsOpen(true)
+          // El resaltado no persiste entre búsquedas distintas
+          setActiveIndex(-1)
         }}
         onFocus={() => setIsOpen(true)}
         onKeyDown={e => {
           if (e.key === 'Escape') setIsOpen(false)
+          if (e.key === 'ArrowDown') {
+            e.preventDefault()
+            moveActive(1)
+          }
+          if (e.key === 'ArrowUp') {
+            e.preventDefault()
+            moveActive(-1)
+          }
           if (e.key === 'Enter') {
             e.preventDefault()
-            if (results.length > 0) goToProduct(results[0].id)
+            // Con ítem resaltado va al producto; sin resaltado aplica la búsqueda
+            // a la grilla (nunca teletransporta al primer resultado)
+            if (activeIndex >= 0 && results[activeIndex]) goToProduct(results[activeIndex].id)
+            else if (matches.length > 0) goToResults()
           }
         }}
         placeholder="Buscar producto..."
@@ -155,7 +192,7 @@ export default function CatalogSearch({
             </p>
           ) : (
             <ul className="space-y-0.5">
-              {results.map(product => {
+              {results.map((product, index) => {
                 const categoryName = product.categoryId
                   ? data?.categoryNames.get(product.categoryId) ?? null
                   : null
@@ -164,10 +201,14 @@ export default function CatalogSearch({
                   <li key={product.id}>
                     <button
                       type="button"
+                      id={`catalog-search-option-${index}`}
                       role="option"
-                      aria-selected={false}
+                      aria-selected={index === activeIndex}
                       onClick={() => goToProduct(product.id)}
-                      className="flex w-full items-center gap-2.5 rounded-lg px-2 py-1.5 text-left transition-colors duration-150 hover:bg-hover-bg"
+                      onMouseMove={() => setActiveIndex(index)}
+                      className={`flex w-full items-center gap-2.5 rounded-lg px-2 py-1.5 text-left transition-colors duration-150 hover:bg-hover-bg ${
+                        index === activeIndex ? 'bg-hover-bg' : ''
+                      }`}
                     >
                       <span className="relative block h-10 w-10 shrink-0 overflow-hidden rounded-md bg-muted/40">
                         {product.imageUrl ? (
@@ -196,8 +237,8 @@ export default function CatalogSearch({
                             <span className="inline-flex shrink-0 items-center gap-0.5">
                               <Layers className="h-3 w-3" />
                               {product.variantCount > 1
-                                ? `${product.variantCount} variantes`
-                                : 'Variantes'}
+                                ? `${product.variantCount} opciones`
+                                : 'Opciones'}
                             </span>
                           )}
                         </span>
@@ -218,6 +259,17 @@ export default function CatalogSearch({
                 )
               })}
             </ul>
+          )}
+
+          {/* Salida a la grilla: cubre el caso de más matches que el tope del dropdown */}
+          {!isLoading && matches.length > 0 && (
+            <button
+              type="button"
+              onClick={goToResults}
+              className="mt-1 flex w-full items-center justify-center gap-1.5 rounded-lg border-t border-border/70 px-2 py-2.5 text-sm font-medium text-primary transition-colors duration-150 hover:bg-hover-bg"
+            >
+              Ver {matches.length === 1 ? 'el resultado' : `los ${matches.length} resultados`}
+            </button>
           )}
         </div>
       )}

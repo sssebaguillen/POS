@@ -85,7 +85,7 @@ export default function CatalogFooter({ business, slug }: CatalogFooterProps) {
             </a>
           ) : (
             <p className="mt-3 text-sm text-muted-foreground">
-              Este negocio todavía no configuró un canal de contacto.
+              Este negocio aún no publicó datos de contacto. Puedes hacer tu pedido desde el carrito.
             </p>
           )}
         </div>

@@ -17,6 +17,12 @@ export default function CatalogLoading() {
 
       <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-6 md:px-6 md:py-8">
         <div className="animate-pulse">
+          {/* Header de identidad de tienda */}
+          <div className="mb-4 space-y-2 md:mb-6">
+            <div className="h-8 w-56 rounded bg-muted" />
+            <div className="h-4 w-80 max-w-full rounded bg-muted/70" />
+          </div>
+
           {/* Fila única: chips de categorías + orden + filtros */}
           <div className="flex items-center gap-2 overflow-hidden">
             {Array.from({ length: 4 }).map((_, i) => (
@@ -29,14 +35,15 @@ export default function CatalogLoading() {
           </div>
 
           {/* Product grid */}
-          {/* Mismos breakpoints que ProductGrid para que el swap skeleton→contenido no salte */}
+          {/* Misma anatomía que ProductCard (p-4, imagen h-44 rounded-lg, mt-3 textos)
+              y mismos breakpoints que ProductGrid para que el swap no salte */}
           <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4 md:mt-6">
             {Array.from({ length: 8 }).map((_, i) => (
-              <div key={i} className="overflow-hidden rounded-xl border border-border/70 bg-card">
-                <div className="aspect-square bg-muted/60" />
-                <div className="space-y-2 p-3">
+              <div key={i} className="rounded-xl border border-border/70 bg-card p-4">
+                <div className="h-44 w-full rounded-lg bg-muted/60" />
+                <div className="mt-3 space-y-2">
                   <div className="h-4 w-3/4 rounded bg-muted" />
-                  <div className="h-4 w-1/3 rounded bg-muted/70" />
+                  <div className="h-5 w-1/3 rounded bg-muted/70" />
                 </div>
               </div>
             ))}

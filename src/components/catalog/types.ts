@@ -92,6 +92,8 @@ export interface CatalogProductDetail {
   has_variants: boolean
   computed_price: number
   original_price?: number | null
+  brand_name?: string | null
+  category_name?: string | null
   promo?: CatalogDetailPromo | null
 }
 

@@ -34,7 +34,7 @@ export default function ProductGrid({
         <button
           type="button"
           onClick={onClearFilters}
-          className="mt-2 text-xs text-primary hover:underline"
+          className="mt-3 inline-flex min-h-10 items-center rounded-lg border border-border bg-background px-4 text-sm font-medium text-primary transition-colors duration-150 hover:border-primary/40 hover:bg-muted"
         >
           Limpiar filtros
         </button>

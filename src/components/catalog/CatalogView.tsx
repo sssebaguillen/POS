@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { SlidersHorizontal, X } from 'lucide-react'
 import ProductGrid from '@/components/catalog/ProductGrid'
 import OffersCarousel from '@/components/catalog/OffersCarousel'
@@ -106,7 +107,13 @@ export default function CatalogView({
   categories,
   variantAttributeGroups,
 }: CatalogViewProps) {
-  const { addToCart } = useCatalogShell()
+  const { addToCart, business } = useCatalogShell()
+  const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+  // Búsqueda aplicada desde el typeahead del navbar ("Ver los N resultados").
+  // La URL es la fuente de verdad: compartible y sobrevive al back desde el detalle.
+  const searchQuery = (searchParams.get('q') ?? '').trim()
 
   const [filterValue, setFilterValue] = useState<ProductFilterValue>(EMPTY_FILTER)
   const [isFilterOpen, setIsFilterOpen] = useState(false)
@@ -124,7 +131,7 @@ export default function CatalogView({
   // track de la grilla (grid-template-columns 0px↔240px) junto con el panel.
   const showDesktopFilter = isFilterOpen && !isMobileView
 
-  const activeFilterCount = countActiveFilters(filterValue)
+  const activeFilterCount = countActiveFilters(filterValue) + (searchQuery ? 1 : 0)
 
   // Sección Ofertas: promos vigentes marcadas como destacadas. Colapsa animada
   // cuando hay filtros activos para no duplicar resultados.
@@ -133,6 +140,10 @@ export default function CatalogView({
     [products]
   )
   const offersOpen = activeFilterCount === 0
+
+  function clearSearchQuery() {
+    router.replace(pathname, { scroll: false })
+  }
 
   const filterCategories: FilterCategory[] = categories.map(c => ({ id: c.id, name: c.name }))
 
@@ -167,10 +178,18 @@ export default function CatalogView({
     })
   }, [variantAttributeGroups])
 
-  const filteredProducts = useMemo(
-    () => applyFilters(products, filterValue, normalizedVariantAttributeGroups),
-    [products, filterValue, normalizedVariantAttributeGroups]
-  )
+  const filteredProducts = useMemo(() => {
+    let base = products
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase()
+      base = base.filter(
+        p =>
+          p.name.toLowerCase().includes(q) ||
+          (p.brandName?.toLowerCase().includes(q) ?? false)
+      )
+    }
+    return applyFilters(base, filterValue, normalizedVariantAttributeGroups)
+  }, [products, searchQuery, filterValue, normalizedVariantAttributeGroups])
 
   // Solo los filtros que viven en el panel "Más filtros" (la categoría se ve en los chips)
   const panelFilterCount =
@@ -220,6 +239,15 @@ export default function CatalogView({
 
   return (
     <div className="space-y-4 md:space-y-6">
+      {/* Identidad de la tienda — la cara del negocio antes de filtros y grilla.
+          El único h1 de la página; el logo ya vive en el navbar */}
+      <header className="max-w-2xl">
+        <h1 className="text-2xl font-bold text-foreground md:text-3xl">{business.name}</h1>
+        {business.description && (
+          <p className="mt-1.5 text-sm text-muted-foreground md:text-base">{business.description}</p>
+        )}
+      </header>
+
       <section
         className={[
           'grid grid-cols-1 gap-4 lg:gap-y-6',
@@ -325,6 +353,19 @@ export default function CatalogView({
                   : `${filteredProducts.length} productos`}
               </p>
 
+              {/* Chip de búsqueda aplicada desde el navbar */}
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={clearSearchQuery}
+                  className={activeChipClass}
+                  aria-label={`Quitar búsqueda ${searchQuery}`}
+                >
+                  “{searchQuery}”
+                  <X className="h-3 w-3" />
+                </button>
+              )}
+
               {/* Chips removibles de filtros activos del panel */}
               {filterValue.brandIds.map(id => {
                 const brand = filterBrands.find(b => b.id === id)
@@ -375,7 +416,10 @@ export default function CatalogView({
             slug={slug}
             products={filteredProducts}
             totalCount={products.length}
-            onClearFilters={() => setFilterValue(EMPTY_FILTER)}
+            onClearFilters={() => {
+              setFilterValue(EMPTY_FILTER)
+              if (searchQuery) clearSearchQuery()
+            }}
             onAddToCart={addToCart}
           />
           </div>

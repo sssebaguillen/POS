@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
-import { ArrowLeft, ImageIcon, ShoppingCart } from 'lucide-react'
+import { ArrowLeft, Check, ImageIcon, ShoppingCart } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { promoBadgeLabel, promoCountdownLabel } from '@/lib/promotions'
 import type {
@@ -170,7 +170,7 @@ export default function ProductDetailView({
       stock: displayStock,
       imageUrl: displayImage,
       brandId: null,
-      brandName: null,
+      brandName: product.brand_name ?? null,
       hasVariants: product.has_variants,
       variantCount: variants.filter(v => v.is_active).length,
       originalPrice: selectedVariant
@@ -230,6 +230,11 @@ export default function ProductDetailView({
         <div className="flex flex-col gap-4">
           <div>
             <h1 className="text-2xl font-bold text-foreground">{product.name}</h1>
+            {(product.brand_name || product.category_name) && (
+              <p className="mt-1 text-sm text-muted-foreground">
+                {[product.category_name, product.brand_name].filter(Boolean).join(' · ')}
+              </p>
+            )}
             {(() => {
               const originalPrice = selectedVariant
                 ? (selectedVariant.original_price ?? null)
@@ -262,20 +267,17 @@ export default function ProductDetailView({
             })()}
           </div>
 
-          {/* Stock badge */}
+          {/* Stock badge — solo escasez o ausencia; la disponibilidad normal no
+              necesita badge (la ausencia de aviso ES la señal) */}
           {isOutOfStock ? (
             <span className="inline-flex items-center rounded-md bg-destructive/10 px-2.5 py-1 text-sm font-medium text-destructive w-fit">
               Sin stock disponible
             </span>
           ) : displayStock > 0 && displayStock <= 5 ? (
-            <span className="inline-flex items-center rounded-md bg-amber-100 px-2.5 py-1 text-sm font-medium text-amber-700 dark:bg-amber-950/40 dark:text-amber-400 w-fit">
+            <span className="inline-flex items-center rounded-md bg-warning/10 px-2.5 py-1 text-sm font-medium text-warning w-fit">
               Últimas {displayStock} unidades
             </span>
-          ) : (
-            <span className="inline-flex items-center rounded-md bg-promo/10 px-2.5 py-1 text-sm font-medium text-promo w-fit">
-              Disponible
-            </span>
-          )}
+          ) : null}
 
           {/* Variant options */}
           {product.has_variants &&
@@ -329,13 +331,16 @@ export default function ProductDetailView({
             )}
             <Button
               type="button"
-              className={`w-full h-11 gap-2 ${added ? 'bg-promo hover:bg-promo text-promo-foreground' : ''}`}
+              className="w-full h-11 gap-2"
               disabled={!canAdd}
               onClick={handleAddToCart}
             >
-              <ShoppingCart className="h-4 w-4" />
-              {added ? '✓ Agregado al carrito' : 'Agregar al carrito'}
+              {added ? <Check className="h-4 w-4" /> : <ShoppingCart className="h-4 w-4" />}
+              {added ? 'Agregado al carrito' : 'Agregar al carrito'}
             </Button>
+            <p className="mt-2 text-center text-xs text-muted-foreground">
+              No pagas ahora: el negocio coordina contigo la entrega y el pago.
+            </p>
           </div>
         </div>
       </div>

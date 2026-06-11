@@ -3,9 +3,10 @@
 import { useCallback, useRef, useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
-import { ImageIcon, Layers, Plus } from 'lucide-react'
+import { Check, ImageIcon, Layers, Plus } from 'lucide-react'
 import { createClient } from '@supabase/supabase-js'
 import { Button } from '@/components/ui/button'
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import VariantQuickSelector from '@/components/catalog/VariantQuickSelector'
 import { promoCountdownLabel } from '@/lib/promotions'
 import type { CatalogProduct, CatalogVariantOption, CatalogProductVariant } from '@/components/catalog/types'
@@ -91,7 +92,10 @@ export default function ProductCard({ product, slug, onAddToCart }: ProductCardP
   const [variantData, setVariantData] = useState<VariantData | null>(null)
   const [isLoadingVariants, setIsLoadingVariants] = useState(false)
   const [hoveredVariantImage, setHoveredVariantImage] = useState<string | null>(null)
+  const [optionsSheetOpen, setOptionsSheetOpen] = useState(false)
+  const [justAdded, setJustAdded] = useState(false)
   const fetchedRef = useRef(false)
+  const addedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const isOutOfStock = product.hasVariants ? false : product.stock <= 0
   const detailUrl = `/catalogo/${slug}/${product.id}`
@@ -146,14 +150,29 @@ export default function ProductCard({ product, slug, onAddToCart }: ProductCardP
   function handleAddSimple(e: React.MouseEvent) {
     e.preventDefault()
     onAddToCart(product, null, null)
+    setJustAdded(true)
+    if (addedTimerRef.current) clearTimeout(addedTimerRef.current)
+    addedTimerRef.current = setTimeout(() => setJustAdded(false), 1500)
   }
 
   function handleAddVariant(variantId: string | null, variantLabel: string | null, price: number, stock: number, variantImageUrl: string | null) {
     onAddToCart({ ...product, salePrice: price, stock }, variantId, variantLabel, variantImageUrl)
   }
 
+  function handleAddVariantFromSheet(variantId: string | null, variantLabel: string | null, price: number, stock: number, variantImageUrl: string | null) {
+    handleAddVariant(variantId, variantLabel, price, stock, variantImageUrl)
+    setOptionsSheetOpen(false)
+  }
+
+  function handleOpenOptionsSheet(e: React.MouseEvent) {
+    e.preventDefault()
+    e.stopPropagation()
+    fetchVariants()
+    setOptionsSheetOpen(true)
+  }
+
   const variantBadgeText =
-    product.variantCount > 1 ? `${product.variantCount} variantes` : 'Variantes'
+    product.variantCount > 1 ? `${product.variantCount} opciones` : 'Opciones'
 
   if (!product.hasVariants) {
     // Simple product — no hover panel, just a link card
@@ -195,9 +214,9 @@ export default function ProductCard({ product, slug, onAddToCart }: ProductCardP
             onClick={handleAddSimple}
             disabled={isOutOfStock}
             aria-label={`Agregar ${product.name} al carrito`}
-            className="shrink-0"
+            className="h-10 w-10 shrink-0 md:h-7 md:w-7"
           >
-            <Plus className="h-4 w-4" />
+            {justAdded ? <Check className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
           </Button>
         </div>
       </Link>
@@ -233,11 +252,19 @@ export default function ProductCard({ product, slug, onAddToCart }: ProductCardP
               Sin stock
             </span>
           )}
-          {/* Variants badge — visible before hover */}
-          <span className="absolute right-2 top-2 inline-flex items-center gap-1 rounded-md bg-black/55 px-1.5 py-0.5 text-[11px] font-medium text-white">
+          {/* Variants badge — informativo en desktop (hover abre el panel), tap target
+              en touch: abre el quick-selector en un bottom sheet */}
+          {/* min-h-11 en touch (target 44px), compacto en desktop donde el hover
+              ya abre el panel y el badge es informativo */}
+          <button
+            type="button"
+            onClick={handleOpenOptionsSheet}
+            aria-label={`Elegir opciones de ${product.name}`}
+            className="absolute right-2 top-2 inline-flex min-h-11 items-center gap-1 rounded-lg bg-black/55 px-3 text-xs font-medium text-white transition-colors duration-150 hover:bg-black/70 active:bg-black/70 md:min-h-7 md:rounded-md md:px-2 md:py-1 md:text-[11px]"
+          >
             <Layers className="h-3 w-3" />
             {variantBadgeText}
-          </span>
+          </button>
           <PromoBadges product={product} />
         </div>
         <div className="mt-3 min-w-0">
@@ -265,6 +292,33 @@ export default function ProductCard({ product, slug, onAddToCart }: ProductCardP
           />
         )}
       </div>
+
+      {/* Bottom sheet de opciones — camino primario en touch, donde no hay hover */}
+      <Sheet open={optionsSheetOpen} onOpenChange={setOptionsSheetOpen}>
+        <SheetContent side="bottom" className="max-h-[85vh] overflow-y-auto rounded-t-2xl pb-[max(env(safe-area-inset-bottom),1rem)]">
+          <SheetHeader className="pb-0">
+            <SheetTitle className="pr-10">{product.name}</SheetTitle>
+            {product.brandName && (
+              <p className="text-xs text-muted-foreground">{product.brandName}</p>
+            )}
+          </SheetHeader>
+          <div className="px-4 pb-2">
+            {isLoadingVariants || !variantData ? (
+              <div className="flex items-center justify-center py-8">
+                <div className="h-5 w-5 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+              </div>
+            ) : (
+              <VariantQuickSelector
+                product={product}
+                options={variantData.options}
+                variants={variantData.variants}
+                onAddToCart={handleAddVariantFromSheet}
+                touchOptimized
+              />
+            )}
+          </div>
+        </SheetContent>
+      </Sheet>
     </div>
   )
 }

@@ -18,8 +18,8 @@ export default function CatalogError({
   return (
     <main className="flex h-screen items-center justify-center bg-background px-6">
       <div className="flex max-w-sm flex-col items-center gap-4 text-center">
-        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-amber-100 dark:bg-amber-950/40">
-          <AlertTriangle className="h-6 w-6 text-amber-600 dark:text-amber-400" />
+        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-warning/10">
+          <AlertTriangle className="h-6 w-6 text-warning" />
         </div>
         <div>
           <h1 className="text-lg font-bold text-foreground">No pudimos cargar el catálogo</h1>

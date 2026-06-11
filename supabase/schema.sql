@@ -3040,6 +3040,8 @@ DECLARE
   v_computed_price  numeric;
   v_options_json    json;
   v_variants_json   json;
+  v_brand_name      text;
+  v_category_name   text;
 BEGIN
   SELECT id INTO v_business_id
   FROM public.businesses
@@ -3061,6 +3063,16 @@ BEGIN
   IF v_product IS NULL THEN
     RETURN json_build_object('success', false, 'error', 'Producto no encontrado');
   END IF;
+
+  SELECT b.name INTO v_brand_name
+  FROM public.brands b
+  WHERE b.id = v_product.brand_id
+    AND b.business_id = v_business_id;
+
+  SELECT c.name INTO v_category_name
+  FROM public.categories c
+  WHERE c.id = v_product.category_id
+    AND c.business_id = v_business_id;
 
   v_promo := public.find_applicable_promotion(v_business_id, v_product.id, v_product.category_id, v_product.brand_id);
 
@@ -3153,6 +3165,8 @@ BEGIN
       'has_variants',   v_product.has_variants,
       'computed_price', v_computed_price,
       'original_price', CASE WHEN v_computed_price < v_base_price THEN v_base_price END,
+      'brand_name',     v_brand_name,
+      'category_name',  v_category_name,
       'promo', CASE WHEN v_promo.id IS NOT NULL THEN json_build_object(
         'kind',           v_promo.kind,
         'percent',        v_promo.percent,
