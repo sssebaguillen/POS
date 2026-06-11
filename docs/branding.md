@@ -1,6 +1,16 @@
 # Branding & Naming — Pulsar POS (rebrand pendiente)
 
-> **Estado (2026-06-07): candidato líder = "Praddo" (NO decidido aún — rebrand sin ejecutar).** El nombre "Pulsar" se va a cambiar. Tras agotar
+> **Estado (2026-06-10): DOS co-líderes = "Praddo" y "Pulcra" (NO decidido — rebrand sin ejecutar).**
+> Cada uno rescata un eje distinto de Pulsar conservando partes centrales: Praddo el sonido
+> fuerte→cálido y la elegancia limpia; Pulcra el ADN fonético PUL- y la tesis de marca (impecable =
+> calidad y cuidado visibles). Pulcra "necesita trabajo" (quizá funcione sola como Praddo); el riesgo
+> de confusión con otro rubro (limpieza) se acepta como menor. **Doctrina SEO (2026-06-10):** rara vez
+> alguien busca un sistema de estos por nombre (salvo gigantes tipo Square/Shopify) — la gente busca
+> "SISTEMA POS" / "APP DE GESTIÓN" y ahí se compite contra todos igual. El nombre juega en la **primera
+> impresión** (naming+marca+landing+redes = captación), no en el SEO del nombre. → Las colisiones
+> fuera de rubro pesan menos que antes; lo decisivo sigue siendo marca/INPI y colisión de rubro.
+
+> **Estado anterior (2026-06-07): candidato líder = "Praddo".** El nombre "Pulsar" se va a cambiar. Tras agotar
 > la veta cósmico×terra con palabras reales/raras (Spica, Vega, Estela…) y descartarla por
 > disponibilidad/colisión/nombre-de-persona, se pivoteó a **inventado puro** (camino Stripe/Vercel):
 > prioridad al **sonido** sobre el significado literal. Ganó **Praddo** — onset fuerte `Pr-`,
@@ -35,6 +45,14 @@ mismo SEO).
 - **Acento en la primera sílaba** (trocaico).
 - **Consonante de ataque fuerte**, pero **terminación suave/abierta** (preferible en vocal, -a/-o).
   *Nota:* la "S" inicial de Spica también funciona y fluye cálida con la paleta, no solo la "P".
+
+### 2.1b Síntesis del usuario (2026-06-10) — el camino
+**Palabras-ancla que le resuenan:** *pulsar, nostra, ultra, tino, praddo, pulcra*. ADN común: vocal
+U dominante, clusters ricos (str/cr/pr), bisílabo trocaico, cierre -a/-o.
+**Qué debe evocar:** más de un sentido (preferentemente cósmico, no excluyente) + **fluidez, precisión,
+certeza, seguridad, confianza, paz**. Fluidez y paz NO son contradictorias: algo fluido pero certero da
+seguridad → uno está tranquilo de que sus datos y números están correctos y seguros. Escalera emocional:
+*fluido → certero → seguro → tranquilo*.
 
 ### 2.2 Significado / carácter
 - **Evocativo y abstracto, NO descriptivo de la función.** Nombrar el producto por lo que hace
@@ -145,6 +163,61 @@ exploración:
 > el usuario **quiere pensarlo más** antes de comprometerse. **El rebrand NO se ejecuta aún.** No tratar
 > "Praddo" como definitivo ni empezar a cambiar nombres en el código hasta confirmación explícita.
 
+**Diagnóstico del usuario sobre Praddo (2026-06-10) — por qué no está al 100%:** como palabra sola es
+**muy fuerte, limpia y elegante** (NO es débil). Lo que le falta: **no evoca las cualidades de la app**
+— rapidez, fluidez, precisión. Como mucho evoca seguridad, pero tira más a **tranquilidad/paz/armonía**
+(cualidades que SÍ transmite el lenguaje visual terra, así que no choca — pero no era la idea de
+Pulsar). → Criterio operativo para nuevas propuestas: buscar la limpieza/elegancia de Praddo **+**
+evocación de rapidez/fluidez/precisión.
+
+---
+
+## 4d. Co-líder — **Pulcra** (2026-06-10)
+
+Surgió de la síntesis del usuario (§2.1b): *pulcro/pulcra* = impecable, cuidado, limpio — **la tesis de
+diferenciación hecha nombre** (calidad y cuidado visibles en un rubro desprolijo). Conserva el ADN
+fonético **PUL-** de Pulsar sin desenterrar la familia (otra palabra, otro SEO). P fuerte + cluster
+`-cr-` + cierre `-a`, trocaica. Sin eje cósmico. El usuario: "me gusta pero necesita trabajo; quizá
+funcione sola como Praddo". Riesgo de confusión con rubro limpieza: aceptado como menor.
+
+**De-risking hecho (2026-06-10):**
+- **Dominios:** `pulcra.ar` ✅ LIBRE · `pulcra.app` ✅ LIBRE · `pulcra.com.ar` ❌ (reg. 2025-09 por
+  NEOLO SRL —hosting AR, probablemente parked—, vence **2026-09-09**, vigilable) · `pulcra.com` ❌
+  (2011, Pulcra Chemicals).
+- **SEO (región AR):** diccionarios dominan (RAE #1 — **el nombre se auto-define al googlearlo**,
+  ruido favorable). Pulcra Chemicals (química textil, Alemania — fuera de rubro). **Sin
+  software/POS/fintech.** Stores limpias.
+- **Handles:** `@pulcra.ar` IG **TOMADO** (tienda online argentina chica "Pulcra by Sarah.ar" — la
+  única molestia local). Fallbacks: `@pulcraapp` / `@pulcra.pos` / `@somospulcra`.
+- **Pendiente:** INPI Argentina (clase 9/42) — acción del usuario.
+
+---
+
+## 4c. ~~Soltra~~ — DESCARTADO (veta `-tra`, 2026-06-10)
+
+> **Descartado el 2026-06-10: al usuario no le gusta el "sol"** — muy literal, muy suave, "muy local,
+> limitado": no es su idea de lo cósmico. **Criterio afinado:** el eje cósmico buscado es el de Pulsar
+> (espacio profundo, vasto, potente — púlsares, quásares), NO astronomía doméstica/cotidiana como el
+> sol. Evitar raíces reales demasiado literales. Los chequeos de abajo quedan como registro. Surgió
+> explorando el cierre `-ltra`/`-tra` que abrió Nultra (ver §5). **Soltra = sol + -tra**:
+
+- **Doble sentido al nivel de Pulsar:** *sol* es LA estrella (eje cósmico, que Praddo no tiene) y a la
+  vez la palabra de calor por excelencia (eje terra/paleta). Mismo truco que Crisol (que estaba en la
+  lista por terminar en "sol"), invertido: acá el sol arranca la palabra.
+- **Fonética:** onset S fuerte (validado por el brief vía Spica), trocaico, 2 sílabas, cierre `-a` abierta.
+
+**De-risking hecho (2026-06-10):**
+- **Dominios:** `soltra.ar` ✅ LIBRE · `soltra.com.ar` ✅ LIBRE · `soltra.com` ❌ (tomado 2002) ·
+  `soltra.app` ❌ (tomado). Perfil AR-first igual a Praddo, salvo `.app` ocupado.
+- **SEO/colisión:** **sin software/POS/fintech.** Ruido fuera de rubro: cadena de departamentos de lujo
+  "Soltra" (Arizona/Texas, EE.UU.), ONG española SOLTRA (empleo inclusivo, León), shopsoltra.com.
+  La vieja "SOLTRA Edge" (ciberseguridad, discontinuada 2017) ya no rankea.
+- **Pendiente:** INPI Argentina (clase software) + handles de redes (acciones del usuario/browser).
+
+**Descartados de la misma camada:** Voltra (frío-tech, eco Voltron), Lustra (onset L blando, conjugación
+real de "lustrar"), Vetra (vacío, problema Vaddo), Siltra (colisión: software de la Seguridad Social
+española), Caltra/Toltra/Beltra (vacíos), Maltra/Sultra (raíz/sonido negativo).
+
 **Inventados verificados y descartados en el camino a Praddo** (por si se reabre):
 - *Prando* — libre en los 3 TLD, pero SEO contaminado (rankea bajo "grande/Brando"). Rechazado.
 - *Vaddo* — libre en los 3 TLD, pero patrón plano `C-V-C-C-V`, vacío. Rechazado.
@@ -181,6 +254,35 @@ exploración:
 - **Arcilla, Raíz, Teja, Ocre, Mate** — buenos en calidez/solidez pero no resuenan a física/cosmos.
   (Teja además: "estar de la teja" = estar loco; Mate: muy Cono Sur + varios sentidos.)
 - **Ámbar, Cobre, Roble, Trigo, Barro, Greda, Brasa** — tomados en `.com.ar`/`.ar`.
+
+### Veta `-tra` / `-ltra` (2026-06-10, exploración abierta)
+- **Nultra** — propuesto por el usuario (eco *Nostalgia, Ultra* de Frank Ocean + conserva vocales u-a
+  de Pulsar). Descartado: raíz "Nul-" se lee como *nulo/null* (fatal para un sistema que cobra),
+  onset N débil (el brief pide ataque fuerte), "ultra" cargado en español (ultras/política, Galaxy
+  Ultra) y temperatura frío-tech que pelea con la paleta terra. **Pero abrió la veta del cierre
+  `-tra`/`-ltra`**, que se sigue explorando con otro onset.
+- **Pultra** — suena a insulto. Descartado.
+- Regla acordada: no agregar consonante doble junto al cluster (ya hay 3 consonantes en `ltr`;
+  una cuarta se ve fea).
+
+### Veta italiana / romance (2026-06-10, exploración abierta)
+Tras cerrar la veta `-tra` (Soltra descartado, ver §4c), el usuario pidió explorar **guiño italiano
+sutil** (preferido) o portugués — no excesivamente italiano; argentinidad OK pero sin voseo. Insight:
+el almacén argentino ES herencia italiana (el "almacén del tano"); el lunfardo es italiano filtrado →
+guiño italiano = señal de calidez nativa para el target. Camada propuesta (sin verificar): Tocco ("un
+toco" lunfardo + il tocco=tap), Lampo, Presto, Strato, Tratto, Scatto, Stampa, Posta, Brio, Volo,
+Razzo, Vetta, Lesto, etc.
+
+- **Lumbra** — inventado (lumbre + alumbra + umbra del eclipse; triple eco cálido×cósmico; inventada
+  pero familiar — la mejor *palabra* de toda la búsqueda según ambos). **DESCARTADO por el usuario
+  (2026-06-10) por Lumbra AI** (startup de software/IA, Ciudad de México): el roadmap de la app es
+  expandirse cada vez más sobre IA (P12+), así que una startup con el nombre exacto en rubro
+  igual/similar y región cercana es colisión directa de futuro. **"La base es rescatable"** (el alma
+  lumbre/umbra/luz — derivar variantes). Otros hallazgos del de-risking: app "Lumbra" (fitness,
+  `io.lumbra`) domina la búsqueda "lumbra app" en ambas stores; canción "Lumbra" (Cali y El Dandee)
+  domina el SEO genérico en LATAM/ES (benigno, fuera de rubro); `@lumbra_oficial` IG tomado.
+  Dominios: `lumbra.com.ar` ✅ y `lumbra.app` ✅ LIBRES; `lumbra.ar` ❌ (vence **2026-07-21**,
+  vigilable) y `lumbra.com` ❌ (2003).
 
 ### Rechazos puntuales por colisión/asociación
 - **Chispa** — resuena a "chipá" (comida); el logo de rayo/spark está muy usado.
