@@ -80,15 +80,15 @@ function OfferSlide({
       className="w-full shrink-0 snap-center px-1"
     >
       <div className="grid grid-cols-1 items-center gap-4 sm:grid-cols-[minmax(0,45%)_1fr] sm:gap-6 lg:gap-8">
-        {/* Imagen completa, sin estirar */}
-        <Link href={detailUrl} className="relative block h-44 w-full overflow-hidden rounded-xl bg-card/60 sm:h-56 lg:h-72">
+        {/* Imagen cubre todo el contenedor sin deformar (recorta lo que sobra) */}
+        <Link href={detailUrl} className="relative block h-44 w-full overflow-hidden rounded-xl bg-muted/40 sm:h-56 lg:h-72">
           {product.imageUrl ? (
             <Image
               src={product.imageUrl}
               alt={product.name}
               fill
               unoptimized
-              className="object-contain"
+              className="object-cover"
               sizes="(max-width: 640px) 100vw, 40vw"
             />
           ) : (
@@ -196,7 +196,7 @@ export default function OffersCarousel({ offers, slug, onAddToCart }: OffersCaro
       role="region"
       aria-roledescription="carrusel"
       aria-label="Ofertas destacadas"
-      className="relative rounded-xl border border-promo/30 bg-promo/5 p-4"
+      className="offers-highlight relative rounded-xl border p-4"
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
       onFocusCapture={() => setIsPaused(true)}

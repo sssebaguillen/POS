@@ -17,15 +17,20 @@ export default function CatalogLoading() {
 
       <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-6 md:px-6 md:py-8">
         <div className="animate-pulse">
-          {/* Toolbar */}
-          <div className="flex items-center justify-end gap-2">
-            <div className="h-9 w-24 rounded-lg bg-muted/70" />
-            <div className="h-9 w-20 rounded-lg bg-muted/70" />
+          {/* Fila única: chips de categorías + orden + filtros */}
+          <div className="flex items-center gap-2 overflow-hidden">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="h-7 w-20 shrink-0 rounded-full bg-muted/70" />
+            ))}
+            <div className="ml-auto flex shrink-0 items-center gap-2">
+              <div className="h-9 w-36 rounded-lg bg-muted/70" />
+              <div className="h-9 w-28 rounded-lg bg-muted/70" />
+            </div>
           </div>
 
           {/* Product grid */}
           {/* Mismos breakpoints que ProductGrid para que el swap skeleton→contenido no salte */}
-          <div className="mt-6 grid grid-cols-2 gap-3 md:grid-cols-2 xl:grid-cols-3">
+          <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4 md:mt-6">
             {Array.from({ length: 8 }).map((_, i) => (
               <div key={i} className="overflow-hidden rounded-xl border border-border/70 bg-card">
                 <div className="aspect-square bg-muted/60" />

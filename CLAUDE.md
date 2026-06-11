@@ -102,7 +102,7 @@ const [mounted, setMounted] = useState(false)
 useEffect(() => setMounted(true), [])
 const themeForUi = mounted ? theme : 'dark' // SSR-safe default
 ```
-Applied in: `sidebar.tsx`, `theme.tsx` (ThemeToggle), `CatalogThemeProvider.tsx`, `CatalogView.tsx` (viewMode).
+Applied in: `sidebar.tsx`, `theme.tsx` (ThemeToggle), `CatalogThemeProvider.tsx`.
 
 ### POS — Sale Flow
 
@@ -374,8 +374,8 @@ src/
         ├── CatalogNavbar.tsx             # Sticky: logo+nombre | search (centro) | nav Inicio/Ofertas (solo md+) | theme toggle + carrito con badge. En mobile la nav vive en un hamburger que abre sidebar izquierdo (Sheet side=left) y el search baja a fila propia
         ├── CatalogSearch.tsx             # Typeahead del navbar: dropdown anclado al input (imagen, nombre, categoría · marca, variantes, precio con promo) que navega al detalle — NO filtra la grilla. En la main usa products/categories del server; en detalle/promos los trae lazy (RPCs anon) al primer tipeo
         ├── CatalogFooter.tsx             # Datos del negocio + nav Inicio/Ofertas + link WhatsApp
-        ├── CatalogView.tsx               # viewMode starts as 'grid' (SSR-safe); grilla + filtros + hero de ofertas. El carrito vive SOLO en el sheet global del shell (sin columna sticky propia)
-        ├── ProductGrid.tsx
+        ├── CatalogView.tsx               # Hero de ofertas + fila única (chips de categoría scrolleables + sort dropdown + "Más filtros") + línea de feedback solo con filtros activos (conteo + chips removibles); todo el filtrado/orden vive acá. Drawer "Más filtros" reducido a marca/variantes/precio. El carrito vive SOLO en el sheet global del shell (sin columna sticky propia)
+        ├── ProductGrid.tsx               # Solo grilla + empty states (sin toolbar ni vista lista — eliminada 2026-06-11)
         ├── ProductCard.tsx               # Quick-selector de variantes en hover (prefetch lazy cacheado en mouseenter)
         ├── VariantQuickSelector.tsx
         ├── ProductDetailView.tsx         # Detalle con selección de variantes; agrega al carrito vía contexto del shell

@@ -460,6 +460,17 @@
   }
 }
 
+/* ─── Catalog offers highlight ────────────────────────────────────────────────
+   Sección de Ofertas destacadas: card sólida con un halo cálido difuso por
+   detrás (ámbar de marca, sin offset) — destaca la sección sin teñir su
+   superficie. Borde apenas tintado para que el contorno acompañe el glow.
+─────────────────────────────────────────────────────────────────────────────── */
+.offers-highlight {
+  background: var(--card);
+  border-color: color-mix(in oklab, var(--primary) 20%, var(--border));
+  box-shadow: 0 0 36px -4px color-mix(in oklab, var(--primary) 16%, transparent);
+}
+
 /* ─── Catalog card hover (variant products) ───────────────────────────────────
    Using plain CSS :hover selectors to avoid Tailwind v4 class-scanning issues
    with new files. Both effects (border lift + panel reveal) fire when any part
@@ -619,6 +630,38 @@
 
 @media (prefers-reduced-motion: reduce) {
   .t-dropdown { transition: none !important; }
+}
+
+/* ───────────────────────────────────────────────────────────────────────────
+   Card resize (transitions-dev) — colapso vertical de contenido de alto auto.
+   Variante grid-template-rows (0fr/1fr) del snippet: height:auto no se puede
+   tweenear, el track de grid sí. Usa los tokens --resize-* del skill.
+─────────────────────────────────────────────────────────────────────────────── */
+:root {
+  --resize-dur: 300ms;
+  --resize-ease: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.t-collapse {
+  display: grid;
+  grid-template-rows: 1fr;
+  transition:
+    grid-template-rows var(--resize-dur) var(--resize-ease),
+    opacity            var(--resize-dur) var(--resize-ease);
+}
+.t-collapse > * {
+  min-height: 0;
+  /* Solo clip vertical: el pliegue es en Y; dejar X visible permite que glows
+     y sombras laterales del contenido no se corten (box-shadow no genera scroll) */
+  overflow-y: clip;
+}
+.t-collapse[data-open="false"] {
+  grid-template-rows: 0fr;
+  opacity: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .t-collapse { transition: none !important; }
 }
 
 /* ───────────────────────────────────────────────────────────────────────────
