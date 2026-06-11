@@ -6,6 +6,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Supplier } from './types'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
+import { FieldErrorMessage, ShakeOnError } from '@/components/shared/ShakeError'
 
 interface Props {
   value: string | null
@@ -142,15 +143,18 @@ export default function SupplierSelectDropdown({ value, onChange, businessId, su
               </button>
             ) : (
               <div className="space-y-2">
-                <Input
-                  autoFocus
-                  value={newName}
-                  onChange={e => { setNewName(e.target.value); setCreateError(null) }}
-                  placeholder="Nombre del proveedor"
-                  className="h-8 text-sm"
-                  onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleCreate() } }}
-                />
-                {createError && <p className="text-xs text-destructive">{createError}</p>}
+                <ShakeOnError error={createError}>
+                  <Input
+                    autoFocus
+                    value={newName}
+                    onChange={e => { setNewName(e.target.value); setCreateError(null) }}
+                    placeholder="Nombre del proveedor"
+                    className="h-8 text-sm"
+                    aria-invalid={createError ? true : undefined}
+                    onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleCreate() } }}
+                  />
+                </ShakeOnError>
+                <FieldErrorMessage error={createError} />
                 <div className="flex gap-2">
                   <Button size="sm" className="flex-1 h-7 text-xs" onClick={handleCreate} disabled={creating || !newName.trim()}>
                     {creating ? 'Creando...' : 'Crear'}

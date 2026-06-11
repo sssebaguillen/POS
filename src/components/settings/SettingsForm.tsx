@@ -13,6 +13,7 @@ import { CURRENCIES, type SupportedCurrencyCode } from '@/lib/constants/currenci
 import { Upload } from 'lucide-react'
 import { usePillIndicator } from '@/hooks/usePillIndicator'
 import { BUSINESS_SLUG_REGEX } from '@/lib/validation'
+import { FieldErrorMessage, ShakeOnError } from '@/components/shared/ShakeError'
 import { ERR } from '@/lib/errors'
 
 interface SettingsFormProps {
@@ -100,6 +101,7 @@ export default function SettingsForm({
   const [businessSlug, setBusinessSlug] = useState(business.slug)
   const [slugLoading, setSlugLoading] = useState(false)
   const [slugError, setSlugError] = useState('')
+  const [slugErrorNonce, setSlugErrorNonce] = useState(0)
   const [slugSuccess, setSlugSuccess] = useState('')
   const [logoPreviewError, setLogoPreviewError] = useState(false)
   const [logoInputTab, setLogoInputTab] = useState<'upload' | 'url'>('url')
@@ -265,6 +267,7 @@ export default function SettingsForm({
 
     if (!BUSINESS_SLUG_REGEX.test(slug)) {
       setSlugError(ERR.SET41)
+      setSlugErrorNonce(n => n + 1)
       setSlugSuccess('')
       return
     }
@@ -575,24 +578,27 @@ export default function SettingsForm({
                 <label htmlFor="business-slug" className="text-xs uppercase tracking-wide text-muted-foreground">
                   URL de tu catálogo
                 </label>
-                <Input
-                  id="business-slug"
-                  value={businessSlug}
-                  onChange={event => {
-                    setBusinessSlug(event.target.value)
-                    setSlugError('')
-                    setSlugSuccess('')
-                  }}
-                  placeholder="mi-negocio"
-                  disabled={!isOwner || slugLoading}
-                />
+                <ShakeOnError error={slugError} nonce={slugErrorNonce}>
+                  <Input
+                    id="business-slug"
+                    value={businessSlug}
+                    onChange={event => {
+                      setBusinessSlug(event.target.value)
+                      setSlugError('')
+                      setSlugSuccess('')
+                    }}
+                    placeholder="mi-negocio"
+                    disabled={!isOwner || slugLoading}
+                    aria-invalid={!!slugError || undefined}
+                  />
+                </ShakeOnError>
                 <p className="text-xs text-muted-foreground">
                   Vista previa: <span className="font-mono">{catalogPreviewUrl}</span>
                 </p>
                 {!isOwner && (
                   <p className="text-xs text-muted-foreground">Solo el owner puede cambiar esta URL.</p>
                 )}
-                {slugError && <p className="text-xs text-destructive">{slugError}</p>}
+                <FieldErrorMessage error={slugError} />
                 {slugSuccess && <p className={SUCCESS_CLASS}>{slugSuccess}</p>}
                 <div className="flex justify-end">
                   <Button

@@ -77,6 +77,8 @@ export default function EditProductModal({
     setField,
     errors,
     setErrors,
+    errorNonce,
+    bumpErrorNonce,
     isPriceEdited,
     selectedListIds,
     setSelectedListIds,
@@ -207,6 +209,7 @@ export default function EditProductModal({
     const validationErrors = validate()
     if (Object.keys(validationErrors).length > 0) {
       setErrors(validationErrors)
+      bumpErrorNonce()
       return
     }
 
@@ -292,6 +295,7 @@ export default function EditProductModal({
   async function handleSubmitWithVariants() {
     if (!form.name.trim()) {
       setErrors({ name: 'El nombre es obligatorio' })
+      bumpErrorNonce()
       return
     }
 
@@ -396,7 +400,7 @@ export default function EditProductModal({
               )}
 
               <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
-                <FieldGroup label="Nombre" required error={errors.name}>
+                <FieldGroup label="Nombre" required error={errors.name} nonce={errorNonce}>
                   <Input
                     value={form.name}
                     onChange={event => setField('name', event.target.value)}
@@ -598,7 +602,7 @@ export default function EditProductModal({
               {/* Precios */}
               {!hasVariants && (
                 <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
-                  <FieldGroup label="Costo" error={errors.cost}>
+                  <FieldGroup label="Costo" error={errors.cost} nonce={errorNonce}>
                     <div className="relative">
                       <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-hint">{currencySymbol}</span>
                       <Input
@@ -634,6 +638,7 @@ export default function EditProductModal({
                     }
                     required
                     error={errors.price}
+                    nonce={errorNonce}
                   >
                     <div className="relative">
                       <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-hint">{currencySymbol}</span>
@@ -656,7 +661,7 @@ export default function EditProductModal({
               {/* Stock + Código de barras */}
               {!hasVariants && (
                 <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
-                  <FieldGroup label="Stock actual" required error={errors.stock}>
+                  <FieldGroup label="Stock actual" required error={errors.stock} nonce={errorNonce}>
                     <Input
                       type="number"
                       min="0"
@@ -668,7 +673,7 @@ export default function EditProductModal({
                     />
                   </FieldGroup>
 
-                  <FieldGroup label="Stock mínimo" error={errors.min_stock}>
+                  <FieldGroup label="Stock mínimo" error={errors.min_stock} nonce={errorNonce}>
                     <Input
                       type="number"
                       min="0"

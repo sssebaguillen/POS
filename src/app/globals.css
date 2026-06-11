@@ -777,6 +777,59 @@
 }
 
 /* ───────────────────────────────────────────────────────────────────────────
+   Error state shake (transitions-dev) — per-segment shake + reveal del mensaje.
+   El borde rojo lo sigue gobernando aria-invalid (ui/input.tsx, transition-colors);
+   acá vive solo el tween. Sin auto-revert: el error es estado React y se limpia
+   al tipear, un timer CSS desincronizaría aria-invalid.
+─────────────────────────────────────────────────────────────────────────────── */
+:root {
+  --shake-distance: 6px;
+  --shake-overshoot: 4px;
+  --shake-dur-a: 80ms;
+  --shake-dur-b: 60ms;
+  --shake-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --revert-dur: 280ms;
+}
+
+.t-input {
+  will-change: transform;
+}
+
+/* %-stops = duraciones acumuladas de cada tramo (A, A, B, B sobre 280ms):
+   28.57%, 57.14%, 78.57%, 100%. Recalcular si cambia --shake-dur-a/b. */
+.t-input.is-shaking {
+  animation: t-input-shake calc(
+      var(--shake-dur-a) * 2 + var(--shake-dur-b) * 2
+    ) linear;
+}
+@keyframes t-input-shake {
+  0%      { transform: translateX(0);                                animation-timing-function: var(--shake-ease); }
+  28.57%  { transform: translateX(var(--shake-distance));            animation-timing-function: var(--shake-ease); }
+  57.14%  { transform: translateX(calc(var(--shake-distance) * -1)); animation-timing-function: var(--shake-ease); }
+  78.57%  { transform: translateX(var(--shake-overshoot));           animation-timing-function: var(--shake-ease); }
+  100%    { transform: translateX(0); }
+}
+
+.t-error-msg {
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    opacity    var(--revert-dur, 280ms) ease-out,
+    visibility 0s linear var(--revert-dur, 280ms);
+}
+.t-error-msg.is-error {
+  opacity: 1;
+  visibility: visible;
+  transition:
+    opacity    var(--revert-dur, 280ms) ease-out,
+    visibility 0s linear 0s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .t-input { animation: none !important; transform: none !important; }
+}
+
+/* ───────────────────────────────────────────────────────────────────────────
    Reduced motion — keep opacity/color fades, drop movement and scale.
 ─────────────────────────────────────────────────────────────────────────────── */
 @media (prefers-reduced-motion: reduce) {

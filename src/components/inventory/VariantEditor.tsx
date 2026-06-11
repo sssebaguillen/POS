@@ -14,6 +14,7 @@ import type { AttributeType, ProductOption, ProductVariant } from '@/lib/types'
 import { useCurrency } from '@/lib/context/CurrencyContext'
 import { getCurrencySymbol } from '@/lib/format'
 import { validateImageUrl } from '@/lib/validation'
+import { FieldErrorMessage, ShakeOnError } from '@/components/shared/ShakeError'
 
 // ─── Draft types (UI-only) ────────────────────────────────────────────────────
 
@@ -873,15 +874,17 @@ export default function VariantEditor({
                                           {imageTab === 'url' && (
                                             <div className="flex flex-col gap-2">
                                               <div className="flex gap-2">
-                                                <Input
-                                                  value={urlInput}
-                                                  onChange={e => {
-                                                    setVariantExternalUrlInputs(prev => ({ ...prev, [key]: e.target.value }))
-                                                    setVariantUrlErrors(prev => ({ ...prev, [key]: '' }))
-                                                  }}
-                                                  placeholder="https://..."
-                                                  aria-invalid={!!urlError}
-                                                />
+                                                <ShakeOnError error={urlError} className="flex-1 min-w-0">
+                                                  <Input
+                                                    value={urlInput}
+                                                    onChange={e => {
+                                                      setVariantExternalUrlInputs(prev => ({ ...prev, [key]: e.target.value }))
+                                                      setVariantUrlErrors(prev => ({ ...prev, [key]: '' }))
+                                                    }}
+                                                    placeholder="https://..."
+                                                    aria-invalid={!!urlError}
+                                                  />
+                                                </ShakeOnError>
                                                 <button
                                                   type="button"
                                                   onClick={() => {
@@ -896,7 +899,7 @@ export default function VariantEditor({
                                                   OK
                                                 </button>
                                               </div>
-                                              {urlError && <p className="text-caption text-destructive">{urlError}</p>}
+                                              <FieldErrorMessage error={urlError} className="text-caption" />
                                             </div>
                                           )}
                                         </div>

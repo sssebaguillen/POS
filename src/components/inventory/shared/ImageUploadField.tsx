@@ -4,6 +4,7 @@ import { Upload } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { validateImageUrl } from '@/lib/validation'
+import { FieldErrorMessage, ShakeOnError } from '@/components/shared/ShakeError'
 import type { ImageUploadController } from '@/hooks/useImageUpload'
 
 interface Props {
@@ -106,16 +107,18 @@ export default function ImageUploadField({ controller }: Props) {
         {tab === 'url' && (
           <div className="flex flex-col gap-2">
             <div className="flex gap-2">
-              <Input
-                value={externalUrlInput}
-                onChange={e => {
-                  setExternalUrlInput(e.target.value)
-                  setUrlError('')
-                  if (source === 'url') clearUrl()
-                }}
-                placeholder="https://..."
-                aria-invalid={!!urlError}
-              />
+              <ShakeOnError error={urlError} className="flex-1 min-w-0">
+                <Input
+                  value={externalUrlInput}
+                  onChange={e => {
+                    setExternalUrlInput(e.target.value)
+                    setUrlError('')
+                    if (source === 'url') clearUrl()
+                  }}
+                  placeholder="https://..."
+                  aria-invalid={!!urlError}
+                />
+              </ShakeOnError>
               <Button
                 type="button"
                 onClick={() => confirmExternalUrl(validateImageUrl)}
@@ -124,7 +127,7 @@ export default function ImageUploadField({ controller }: Props) {
                 Confirmar
               </Button>
             </div>
-            {urlError && <p className="text-caption text-destructive">{urlError}</p>}
+            <FieldErrorMessage error={urlError} className="text-caption" />
             {url && source === 'url' && (
               <div className="flex items-start gap-3">
                 {imgError ? (

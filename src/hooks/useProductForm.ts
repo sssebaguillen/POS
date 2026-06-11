@@ -34,6 +34,9 @@ export interface ProductFormController<T extends ProductFormBase> {
   setField: <K extends keyof T>(field: K, value: T[K]) => void
   errors: Record<string, string>
   setErrors: React.Dispatch<React.SetStateAction<Record<string, string>>>
+  /** Replay del shake de error en FieldGroup: pasa como `nonce` y bumpea en cada intento fallido. */
+  errorNonce: number
+  bumpErrorNonce: () => void
   isPriceEdited: boolean
   setIsPriceEdited: (next: boolean) => void
   selectedListIds: Set<string>
@@ -58,6 +61,8 @@ export function useProductForm<T extends ProductFormBase>({
 }: UseProductFormOptions<T>): ProductFormController<T> {
   const [form, setForm] = useState<T>(initial)
   const [errors, setErrors] = useState<Record<string, string>>({})
+  const [errorNonce, setErrorNonce] = useState(0)
+  const bumpErrorNonce = useCallback(() => setErrorNonce(n => n + 1), [])
   const [isPriceEdited, setIsPriceEdited] = useState<boolean>(initialIsPriceEdited)
   const [selectedListIds, setSelectedListIds] = useState<Set<string>>(
     () => initialSelectedListIds ?? defaultSelectedListIds()
@@ -183,6 +188,8 @@ export function useProductForm<T extends ProductFormBase>({
     setField,
     errors,
     setErrors,
+    errorNonce,
+    bumpErrorNonce,
     isPriceEdited,
     setIsPriceEdited,
     selectedListIds,

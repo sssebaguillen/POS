@@ -9,6 +9,7 @@ import type { CatalogCartItem } from '@/components/catalog/types'
 import { computeQuantityDiscount } from '@/lib/promotions'
 import posthog from 'posthog-js'
 import PopNumber from '@/components/shared/PopNumber'
+import { FieldErrorMessage, ShakeOnError } from '@/components/shared/ShakeError'
 
 // Descuento de línea por promo de cantidad (2x1, 3x2, 2da al X%). Las promos
 // unitarias ya vienen aplicadas en salePrice. Espeja lo que create_catalog_order
@@ -130,6 +131,7 @@ export default function CartPanel({
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({})
+  const [errorNonce, setErrorNonce] = useState(0)
 
   const subtotal = useMemo(
     () => cartItems.reduce((acc, item) => acc + lineTotal(item), 0),
@@ -220,6 +222,7 @@ export default function CartPanel({
     const errors = validateForm()
     if (Object.keys(errors).length > 0) {
       setFieldErrors(errors)
+      setErrorNonce(n => n + 1)
       focusFirstError(errors)
       return
     }
@@ -501,38 +504,42 @@ export default function CartPanel({
               <label htmlFor="catalog-name" className="text-xs uppercase tracking-wide text-muted-foreground">
                 Nombre
               </label>
-              <Input
-                id="catalog-name"
-                value={customerName}
-                onChange={event => {
-                  setCustomerName(event.target.value)
-                  clearFieldError('name')
-                }}
-                placeholder="Tu nombre"
-                autoComplete="name"
-                aria-invalid={fieldErrors.name ? true : undefined}
-              />
-              {fieldErrors.name && <p className="text-xs text-destructive">{fieldErrors.name}</p>}
+              <ShakeOnError error={fieldErrors.name} nonce={errorNonce}>
+                <Input
+                  id="catalog-name"
+                  value={customerName}
+                  onChange={event => {
+                    setCustomerName(event.target.value)
+                    clearFieldError('name')
+                  }}
+                  placeholder="Tu nombre"
+                  autoComplete="name"
+                  aria-invalid={fieldErrors.name ? true : undefined}
+                />
+              </ShakeOnError>
+              <FieldErrorMessage error={fieldErrors.name} />
             </div>
 
             <div className="space-y-1.5">
               <label htmlFor="catalog-phone" className="text-xs uppercase tracking-wide text-muted-foreground">
                 Teléfono
               </label>
-              <Input
-                id="catalog-phone"
-                type="tel"
-                inputMode="tel"
-                value={customerPhone}
-                onChange={event => {
-                  setCustomerPhone(event.target.value)
-                  clearFieldError('phone')
-                }}
-                placeholder="Ej: 11 2345-6789"
-                autoComplete="tel"
-                aria-invalid={fieldErrors.phone ? true : undefined}
-              />
-              {fieldErrors.phone && <p className="text-xs text-destructive">{fieldErrors.phone}</p>}
+              <ShakeOnError error={fieldErrors.phone} nonce={errorNonce}>
+                <Input
+                  id="catalog-phone"
+                  type="tel"
+                  inputMode="tel"
+                  value={customerPhone}
+                  onChange={event => {
+                    setCustomerPhone(event.target.value)
+                    clearFieldError('phone')
+                  }}
+                  placeholder="Ej: 11 2345-6789"
+                  autoComplete="tel"
+                  aria-invalid={fieldErrors.phone ? true : undefined}
+                />
+              </ShakeOnError>
+              <FieldErrorMessage error={fieldErrors.phone} />
             </div>
 
             <div className="space-y-1.5">
@@ -571,18 +578,20 @@ export default function CartPanel({
                 <label htmlFor="catalog-address" className="text-xs uppercase tracking-wide text-muted-foreground">
                   Dirección
                 </label>
-                <Input
-                  id="catalog-address"
-                  value={address}
-                  onChange={event => {
-                    setAddress(event.target.value)
-                    clearFieldError('address')
-                  }}
-                  placeholder="Calle y número"
-                  autoComplete="street-address"
-                  aria-invalid={fieldErrors.address ? true : undefined}
-                />
-                {fieldErrors.address && <p className="text-xs text-destructive">{fieldErrors.address}</p>}
+                <ShakeOnError error={fieldErrors.address} nonce={errorNonce}>
+                  <Input
+                    id="catalog-address"
+                    value={address}
+                    onChange={event => {
+                      setAddress(event.target.value)
+                      clearFieldError('address')
+                    }}
+                    placeholder="Calle y número"
+                    autoComplete="street-address"
+                    aria-invalid={fieldErrors.address ? true : undefined}
+                  />
+                </ShakeOnError>
+                <FieldErrorMessage error={fieldErrors.address} />
               </div>
             )}
 

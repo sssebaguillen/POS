@@ -12,6 +12,7 @@ import { useToast } from '@/hooks/useToast'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import SalesHeatmap from '@/components/stats/SalesHeatmap'
 import PopNumber from '@/components/shared/PopNumber'
+import { FieldErrorMessage, ShakeOnError } from '@/components/shared/ShakeError'
 import type { UserRole } from '@/lib/operator'
 import { OPERATOR_ROLE_LABELS, PROFILE_ROLE_LABELS } from '@/lib/constants/domain'
 import { useFormatMoney } from '@/lib/context/CurrencyContext'
@@ -131,6 +132,7 @@ export default function OperatorMeView({
   const [currentPinError, setCurrentPinError] = useState('')
   const [newPinError, setNewPinError] = useState('')
   const [confirmPinError, setConfirmPinError] = useState('')
+  const [pinErrorNonce, setPinErrorNonce] = useState(0)
   const currentPinRef = useRef<HTMLInputElement>(null)
   const newPinRef = useRef<HTMLInputElement>(null)
   const confirmPinRef = useRef<HTMLInputElement>(null)
@@ -240,12 +242,12 @@ export default function OperatorMeView({
     let hasError = false
 
     if (!currentPin) {
-      setCurrentPinError('Ingresá tu PIN actual.')
+      setCurrentPinError('Ingresa tu PIN actual.')
       hasError = true
     }
 
     if (!newPin) {
-      setNewPinError('Ingresá el nuevo PIN.')
+      setNewPinError('Ingresa el nuevo PIN.')
       hasError = true
     } else if (!/^\d{4}$|^\d{6}$/.test(newPin)) {
       setNewPinError('Debe tener exactamente 4 o 6 dígitos.')
@@ -253,7 +255,7 @@ export default function OperatorMeView({
     }
 
     if (!confirmPin) {
-      setConfirmPinError('Repetí el nuevo PIN.')
+      setConfirmPinError('Repite el nuevo PIN.')
       hasError = true
     } else if (newPin && confirmPin !== newPin) {
       setConfirmPinError('Los PINs no coinciden.')
@@ -261,6 +263,7 @@ export default function OperatorMeView({
     }
 
     if (hasError) {
+      setPinErrorNonce(n => n + 1)
       if (!currentPin) {
         currentPinRef.current?.focus()
       } else if (!newPin || !/^\d{4}$|^\d{6}$/.test(newPin)) {
@@ -282,6 +285,7 @@ export default function OperatorMeView({
     if (verifyError || verifyResult?.success !== true) {
       setSavingPin(false)
       setCurrentPinError('PIN incorrecto.')
+      setPinErrorNonce(n => n + 1)
       currentPinRef.current?.focus()
       return
     }
@@ -498,6 +502,7 @@ export default function OperatorMeView({
               <form onSubmit={handleChangePin} className="grid gap-4 md:grid-cols-3">
                 <div className="space-y-1.5">
                   <label htmlFor="pin-current" className="text-xs uppercase tracking-wide text-muted-foreground">PIN actual</label>
+                  <ShakeOnError error={currentPinError} nonce={pinErrorNonce}>
                   <Input
                     ref={currentPinRef}
                     id="pin-current"
@@ -514,13 +519,13 @@ export default function OperatorMeView({
                     }}
                     placeholder="4 o 6 dígitos"
                   />
-                  {currentPinError && (
-                    <p id="pin-current-error" role="alert" aria-live="polite" className="text-xs text-destructive">{currentPinError}</p>
-                  )}
+                  </ShakeOnError>
+                  <FieldErrorMessage id="pin-current-error" error={currentPinError} />
                 </div>
 
                 <div className="space-y-1.5">
                   <label htmlFor="pin-new" className="text-xs uppercase tracking-wide text-muted-foreground">PIN nuevo</label>
+                  <ShakeOnError error={newPinError} nonce={pinErrorNonce}>
                   <Input
                     ref={newPinRef}
                     id="pin-new"
@@ -542,13 +547,13 @@ export default function OperatorMeView({
                     }}
                     placeholder="4 o 6 dígitos"
                   />
-                  {newPinError && (
-                    <p id="pin-new-error" role="alert" aria-live="polite" className="text-xs text-destructive">{newPinError}</p>
-                  )}
+                  </ShakeOnError>
+                  <FieldErrorMessage id="pin-new-error" error={newPinError} />
                 </div>
 
                 <div className="space-y-1.5">
                   <label htmlFor="pin-confirm" className="text-xs uppercase tracking-wide text-muted-foreground">Confirmar PIN nuevo</label>
+                  <ShakeOnError error={confirmPinError} nonce={pinErrorNonce}>
                   <Input
                     ref={confirmPinRef}
                     id="pin-confirm"
@@ -568,11 +573,10 @@ export default function OperatorMeView({
                         setConfirmPinError('Los PINs no coinciden.')
                       }
                     }}
-                    placeholder="Repetí el PIN"
+                    placeholder="Repite el PIN"
                   />
-                  {confirmPinError && (
-                    <p id="pin-confirm-error" role="alert" aria-live="polite" className="text-xs text-destructive">{confirmPinError}</p>
-                  )}
+                  </ShakeOnError>
+                  <FieldErrorMessage id="pin-confirm-error" error={confirmPinError} />
                 </div>
 
                 <div className="md:col-span-3 flex justify-end">

@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input'
 import ConfirmModal from '@/components/shared/ConfirmModal'
 import type { Supplier } from './types'
 import EditSupplierModal from './EditSupplierModal'
+import { FieldErrorMessage, ShakeOnError } from '@/components/shared/ShakeError'
 import posthog from 'posthog-js'
 
 interface Props {
@@ -40,6 +41,7 @@ export default function SuppliersPanel({ suppliers, businessId, operatorId, supa
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [confirmingDelete, setConfirmingDelete] = useState<Supplier | null>(null)
   const [formError, setFormError] = useState<string | null>(null)
+  const [formErrorNonce, setFormErrorNonce] = useState(0)
   const [highlightId, setHighlightId] = useState<string | null>(null)
   const [search, setSearch] = useState('')
 
@@ -67,7 +69,7 @@ export default function SuppliersPanel({ suppliers, businessId, operatorId, supa
   }
 
   async function handleCreate() {
-    if (!form.name.trim()) { setFormError('El nombre es obligatorio'); return }
+    if (!form.name.trim()) { setFormError('El nombre es obligatorio'); setFormErrorNonce(n => n + 1); return }
     setSaving(true)
     const { data: rpcResult, error } = await supabase.rpc('create_supplier', {
       p_operator_id: operatorId,
@@ -83,6 +85,7 @@ export default function SuppliersPanel({ suppliers, businessId, operatorId, supa
     const result = rpcResult as { success: boolean; error?: string; supplier?: Supplier } | null
     if (error || !result?.success || !result.supplier) {
       setFormError(result?.error ?? error?.message ?? 'No se pudo crear el proveedor')
+      setFormErrorNonce(n => n + 1)
       return
     }
     const newSupplier = result.supplier
@@ -121,7 +124,9 @@ export default function SuppliersPanel({ suppliers, businessId, operatorId, supa
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div className="space-y-1">
               <label className="text-xs text-hint">Nombre <span className="text-destructive">*</span></label>
-              <Input value={form.name} onChange={e => updateForm('name', e.target.value)} placeholder="Nombre" maxLength={100} />
+              <ShakeOnError error={formError} nonce={formErrorNonce}>
+                <Input value={form.name} onChange={e => updateForm('name', e.target.value)} placeholder="Nombre" maxLength={100} aria-invalid={formError ? true : undefined} />
+              </ShakeOnError>
             </div>
             <div className="space-y-1">
               <label className="text-xs text-hint">Contacto</label>
@@ -140,7 +145,7 @@ export default function SuppliersPanel({ suppliers, businessId, operatorId, supa
               <Input value={form.address} onChange={e => updateForm('address', e.target.value)} placeholder="Dirección" maxLength={200} />
             </div>
           </div>
-          {formError && <p className="text-xs text-destructive">{formError}</p>}
+          <FieldErrorMessage error={formError} />
           <div className="flex gap-2 pt-1">
             <Button className="h-9 rounded-lg text-sm font-semibold bg-primary hover:bg-primary/90 text-primary-foreground" onClick={handleCreate} disabled={saving}>
               {saving ? 'Guardando...' : 'Crear proveedor'}

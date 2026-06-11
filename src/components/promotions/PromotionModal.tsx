@@ -11,6 +11,7 @@ import SelectDropdown from '@/components/ui/SelectDropdown'
 import { isPromotionLive, type Promotion, type PromotionKind } from '@/lib/promotions'
 import { coveredProductIds, describePromotion, type NamedRef, type PromoProductRef } from '@/components/promotions/types'
 import { translateDbError, ERR } from '@/lib/errors'
+import { FieldErrorMessage, ShakeOnError } from '@/components/shared/ShakeError'
 
 // Tipo visible en la UI — los dos de cantidad mapean al kind 'quantity' (N/K/P)
 type UiKind = 'percent' | 'offer_price' | 'nxm' | 'second_unit'
@@ -122,6 +123,7 @@ export default function PromotionModal({
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [attempted, setAttempted] = useState(false)
+  const [attemptNonce, setAttemptNonce] = useState(0)
 
   useEffect(() => {
     if (open) {
@@ -266,15 +268,14 @@ export default function PromotionModal({
   const isValid = Object.keys(fieldErrors).length === 0
 
   function fieldError(key: 'name' | 'value' | 'scope' | 'dates') {
-    const message = attempted ? fieldErrors[key] : undefined
-    if (!message) return null
-    return <p className="text-caption text-destructive">{message}</p>
+    return <FieldErrorMessage error={attempted ? fieldErrors[key] : undefined} className="text-caption" />
   }
 
   async function handleSave() {
     if (saving) return
     if (!isValid) {
       setAttempted(true)
+      setAttemptNonce(n => n + 1)
       return
     }
     if (!operatorId) {
@@ -342,14 +343,16 @@ export default function PromotionModal({
           {/* Nombre */}
           <div className="space-y-1">
             <label className="block text-label text-subtle mb-1.5">Nombre</label>
-            <Input
-              value={form.name}
-              onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
-              placeholder="Ej: Oferta de la semana"
-              className={fieldCls}
-              aria-invalid={attempted && !!fieldErrors.name}
-              autoFocus
-            />
+            <ShakeOnError error={attempted ? fieldErrors.name : undefined} nonce={attemptNonce}>
+              <Input
+                value={form.name}
+                onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
+                placeholder="Ej: Oferta de la semana"
+                className={fieldCls}
+                aria-invalid={attempted && !!fieldErrors.name}
+                autoFocus
+              />
+            </ShakeOnError>
             {fieldError('name')}
           </div>
 
@@ -379,7 +382,7 @@ export default function PromotionModal({
           {form.uiKind === 'percent' && (
             <div className="space-y-1">
               <label className="block text-label text-subtle mb-1.5">Porcentaje de descuento</label>
-              <div className="relative w-28">
+              <ShakeOnError error={attempted ? fieldErrors.value : undefined} nonce={attemptNonce} className="relative w-28">
                 <Input
                   type="number" min={0} max={100} step="any"
                   value={form.percent}
@@ -389,14 +392,14 @@ export default function PromotionModal({
                   aria-invalid={attempted && !!fieldErrors.value}
                 />
                 <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-hint pointer-events-none">%</span>
-              </div>
+              </ShakeOnError>
               {fieldError('value')}
             </div>
           )}
           {form.uiKind === 'offer_price' && (
             <div className="space-y-1">
               <label className="block text-label text-subtle mb-1.5">Precio de oferta</label>
-              <div className="relative w-36">
+              <ShakeOnError error={attempted ? fieldErrors.value : undefined} nonce={attemptNonce} className="relative w-36">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-hint pointer-events-none">$</span>
                 <Input
                   type="number" min={0} step="any"
@@ -406,7 +409,7 @@ export default function PromotionModal({
                   className={`${fieldCls} tabular-nums pl-7`}
                   aria-invalid={attempted && !!fieldErrors.value}
                 />
-              </div>
+              </ShakeOnError>
               <p className="text-caption text-hint">Solo para productos sin variantes. Si el producto tiene variantes, usa porcentaje.</p>
               {fieldError('value')}
             </div>
@@ -414,7 +417,7 @@ export default function PromotionModal({
           {form.uiKind === 'nxm' && (
             <div className="space-y-1">
               <label className="block text-label text-subtle mb-1.5">Cantidades</label>
-              <div className="flex items-center gap-2 text-sm text-body">
+              <ShakeOnError error={attempted ? fieldErrors.value : undefined} nonce={attemptNonce} className="flex items-center gap-2 text-sm text-body">
                 <span>Lleva</span>
                 <Input
                   type="number" min={2} max={100} step={1}
@@ -430,7 +433,7 @@ export default function PromotionModal({
                   className={`${fieldCls} w-16 text-center tabular-nums`}
                   aria-invalid={attempted && !!fieldErrors.value}
                 />
-              </div>
+              </ShakeOnError>
               {fieldError('value')}
             </div>
           )}
@@ -438,7 +441,7 @@ export default function PromotionModal({
             <div className="space-y-1">
               <label className="block text-label text-subtle mb-1.5">La 2da unidad paga el…</label>
               <div className="flex items-center gap-2">
-                <div className="relative w-28">
+                <ShakeOnError error={attempted ? fieldErrors.value : undefined} nonce={attemptNonce} className="relative w-28">
                   <Input
                     type="number" min={0} max={99} step="any"
                     value={form.secondUnitPct}
@@ -447,7 +450,7 @@ export default function PromotionModal({
                     aria-invalid={attempted && !!fieldErrors.value}
                   />
                   <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-hint pointer-events-none">%</span>
-                </div>
+                </ShakeOnError>
                 <span className="text-sm text-hint">del precio</span>
               </div>
               {fieldError('value')}
@@ -488,7 +491,7 @@ export default function PromotionModal({
                   </button>
                 </div>
               ) : (
-                <div className="relative">
+                <ShakeOnError error={attempted ? fieldErrors.scope : undefined} nonce={attemptNonce} className="relative">
                   <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-hint pointer-events-none z-10" />
                   <Input
                     type="text"
@@ -527,26 +530,30 @@ export default function PromotionModal({
                       )}
                     </div>
                   )}
-                </div>
+                </ShakeOnError>
               )
             )}
             {effectiveScopeType === 'category' && (
-              <SelectDropdown
-                value={form.categoryId ?? ''}
-                onChange={v => setForm(f => ({ ...f, categoryId: v || null }))}
-                options={categories.map(c => ({ value: c.id, label: c.name }))}
-                placeholder="Elegir categoría..."
-                usePortal
-              />
+              <ShakeOnError error={attempted ? fieldErrors.scope : undefined} nonce={attemptNonce}>
+                <SelectDropdown
+                  value={form.categoryId ?? ''}
+                  onChange={v => setForm(f => ({ ...f, categoryId: v || null }))}
+                  options={categories.map(c => ({ value: c.id, label: c.name }))}
+                  placeholder="Elegir categoría..."
+                  usePortal
+                />
+              </ShakeOnError>
             )}
             {effectiveScopeType === 'brand' && (
-              <SelectDropdown
-                value={form.brandId ?? ''}
-                onChange={v => setForm(f => ({ ...f, brandId: v || null }))}
-                options={brands.map(b => ({ value: b.id, label: b.name }))}
-                placeholder="Elegir marca..."
-                usePortal
-              />
+              <ShakeOnError error={attempted ? fieldErrors.scope : undefined} nonce={attemptNonce}>
+                <SelectDropdown
+                  value={form.brandId ?? ''}
+                  onChange={v => setForm(f => ({ ...f, brandId: v || null }))}
+                  options={brands.map(b => ({ value: b.id, label: b.name }))}
+                  placeholder="Elegir marca..."
+                  usePortal
+                />
+              </ShakeOnError>
             )}
             {fieldError('scope')}
           </div>
@@ -555,7 +562,7 @@ export default function PromotionModal({
           <div className="space-y-3.5 border-t border-edge/60 pt-4">
             <div className="space-y-1">
               <label className="block text-label text-subtle mb-1.5">Vigencia (opcional)</label>
-              <div className="grid grid-cols-2 gap-2">
+              <ShakeOnError error={attempted ? fieldErrors.dates : undefined} nonce={attemptNonce} className="grid grid-cols-2 gap-2">
                 <div className="space-y-0.5">
                   <span className="text-[10px] text-hint uppercase tracking-wide">Desde</span>
                   <DatePicker
@@ -572,7 +579,7 @@ export default function PromotionModal({
                     className="w-full"
                   />
                 </div>
-              </div>
+              </ShakeOnError>
               <p className="text-caption text-hint">Sin fechas, la promo queda vigente hasta que la pauses o archives.</p>
               {fieldError('dates')}
             </div>
