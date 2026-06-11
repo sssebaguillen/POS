@@ -60,7 +60,7 @@ function PromoBadges({ product }: { product: CatalogProduct }) {
   const countdown = promoCountdownLabel(product.promo.endsAt)
   return (
     <div className="absolute left-2 bottom-2 flex flex-col items-start gap-1">
-      <span className="rounded-md bg-emerald-600/95 px-2 py-0.5 text-xs font-bold text-white shadow-sm">
+      <span className="rounded-md bg-promo/95 px-2 py-0.5 text-xs font-bold text-promo-foreground shadow-sm">
         {product.promo.label}
       </span>
       {countdown && (
@@ -80,7 +80,7 @@ function PriceBlock({ product }: { product: CatalogProduct }) {
           ${currencyFormatter.format(product.originalPrice)}
         </span>
       )}
-      <span className={product.originalPrice !== null ? 'text-emerald-600 dark:text-emerald-400' : undefined}>
+      <span className={product.originalPrice !== null ? 'text-promo' : undefined}>
         ${currencyFormatter.format(product.salePrice)}
       </span>
     </p>

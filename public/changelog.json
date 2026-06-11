@@ -1,6 +1,21 @@
 {
-  "current": "0.0.8",
+  "current": "0.0.8.1",
   "releases": [
+    {
+      "version": "0.0.8.1",
+      "kind": "feature",
+      "date": "2026-06-11",
+      "label": "Catálogo online renovado",
+      "changes": [
+        { "type": "new", "text": "Tu catálogo online estrena barra de navegación: arriba y siempre visible, con el logo y nombre de tu negocio, los accesos a Inicio y Ofertas, el buscador y el carrito. Funciona igual en todas las páginas del catálogo, también al ver un producto." },
+        { "type": "new", "text": "El buscador ahora muestra resultados al instante mientras el cliente escribe: cada resultado trae la foto, el nombre, la categoría y marca, si tiene variantes y el precio (con su oferta si corresponde). Al tocar uno, va directo al producto." },
+        { "type": "new", "text": "El catálogo ahora tiene pie de página con los datos de tu negocio, los accesos a Inicio y Ofertas y un botón para escribirte por WhatsApp." },
+        { "type": "improvement", "text": "La página de cada producto dejó de ser un callejón sin salida: antes no tenía forma de ver el carrito ni de seguir navegando, ahora tiene la misma barra de navegación, el buscador y el pedido a un toque." },
+        { "type": "improvement", "text": "El carrito ahora es uno solo en todo el catálogo: se abre desde el botón de la barra como un panel lateral en computadora y desde abajo en el celular, con una transición suave. La barra 'Ver pedido' del celular ahora también acompaña al cliente en las páginas de producto y de ofertas." },
+        { "type": "improvement", "text": "En el celular, la navegación del catálogo vive en un menú lateral que se abre con el botón de menú, como en cualquier app: la barra queda despejada y el buscador tiene su propio espacio." },
+        { "type": "improvement", "text": "Pulimos las animaciones del carrusel de ofertas: el botón 'Agregar al carrito' confirma con una transición suave del texto, las flechas responden al tacto y todo respeta la preferencia de menos movimiento del teléfono." }
+      ]
+    },
     {
       "version": "0.0.8",
       "kind": "feature",

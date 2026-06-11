@@ -27,6 +27,8 @@
   --color-destructive-foreground: var(--destructive-foreground);
   --color-warning: var(--warning);
   --color-warning-foreground: var(--warning-foreground);
+  --color-promo: var(--promo);
+  --color-promo-foreground: var(--promo-foreground);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
@@ -49,6 +51,19 @@
   /* Easing curves — stronger than the built-in CSS keywords */
   --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
   --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+
+  /* transitions.dev — panel reveal (carrito del catálogo) */
+  --panel-open-dur: 400ms;
+  --panel-close-dur: 350ms;
+  --panel-translate-y: 100px;
+  --panel-blur: 2px;
+  --panel-ease: cubic-bezier(0.22, 1, 0.36, 1);
+
+  /* transitions.dev — text states swap (botón Agregar del carrusel de ofertas) */
+  --text-swap-dur: 150ms;
+  --text-swap-translate-y: 4px;
+  --text-swap-blur: 2px;
+  --text-swap-ease: ease-in-out;
 
   /* Layout background — warm ivory */
   --app-bg: #fbfaf2;
@@ -81,6 +96,10 @@
      the espresso --primary so caution reads distinct from the brand accent. */
   --warning: #9a5e0e;
   --warning-foreground: #ffffff;
+  /* Promo — verde unificado del catálogo (badges de oferta, precio rebajado).
+     Distinto de --primary (marca) y --warning (precaución). */
+  --promo: #059669;
+  --promo-foreground: #ffffff;
 
   /* Borders & inputs */
   --border: #e0d4c0;
@@ -162,6 +181,10 @@
      distinct from the orange --primary that carries brand warmth in dark mode. */
   --warning: #e6a93a;
   --warning-foreground: #1a0800;
+  /* Promo — emerald-500: legible como texto sobre fondo oscuro y funciona
+     como bg de badge. */
+  --promo: #10b981;
+  --promo-foreground: #ffffff;
 
   /* Borders & inputs — very subtle, just enough to separate layers */
   --border: #2a2926;
@@ -453,6 +476,81 @@
 
 .catalog-card:hover .catalog-card-panel {
   display: block;
+}
+
+/* ───────────────────────────────────────────────────────────────────────────
+   Panel reveal (transitions-dev) — carrito del catálogo.
+   Adaptado a Radix Sheet: el contenido se desmonta al cerrar y Radix espera
+   animationend (no transitions), así que el translate+fade+blur del snippet
+   vive en @keyframes, con dirección según data-side (right desktop / bottom
+   mobile). Lee las variables semánticas --panel-* de :root.
+─────────────────────────────────────────────────────────────────────────────── */
+@keyframes t-panel-cart-in-right {
+  from { transform: translateX(var(--panel-translate-y)); opacity: 0; filter: blur(var(--panel-blur)); }
+  to   { transform: translateX(0); opacity: 1; filter: blur(0); }
+}
+@keyframes t-panel-cart-out-right {
+  from { transform: translateX(0); opacity: 1; filter: blur(0); }
+  to   { transform: translateX(var(--panel-translate-y)); opacity: 0; filter: blur(var(--panel-blur)); }
+}
+@keyframes t-panel-cart-in-bottom {
+  from { transform: translateY(var(--panel-translate-y)); opacity: 0; filter: blur(var(--panel-blur)); }
+  to   { transform: translateY(0); opacity: 1; filter: blur(0); }
+}
+@keyframes t-panel-cart-out-bottom {
+  from { transform: translateY(0); opacity: 1; filter: blur(0); }
+  to   { transform: translateY(var(--panel-translate-y)); opacity: 0; filter: blur(var(--panel-blur)); }
+}
+
+[data-slot='sheet-content'].t-panel-cart {
+  will-change: transform, opacity, filter;
+}
+[data-slot='sheet-content'].t-panel-cart[data-side='right'][data-state='open'] {
+  animation: t-panel-cart-in-right var(--panel-open-dur) var(--panel-ease) both;
+}
+[data-slot='sheet-content'].t-panel-cart[data-side='right'][data-state='closed'] {
+  animation: t-panel-cart-out-right var(--panel-close-dur) var(--panel-ease) both;
+}
+[data-slot='sheet-content'].t-panel-cart[data-side='bottom'][data-state='open'] {
+  animation: t-panel-cart-in-bottom var(--panel-open-dur) var(--panel-ease) both;
+}
+[data-slot='sheet-content'].t-panel-cart[data-side='bottom'][data-state='closed'] {
+  animation: t-panel-cart-out-bottom var(--panel-close-dur) var(--panel-ease) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-slot='sheet-content'].t-panel-cart { animation: none !important; }
+}
+
+/* ───────────────────────────────────────────────────────────────────────────
+   Text states swap (transitions-dev) — el texto viejo sale hacia arriba con
+   blur, el nuevo entra desde abajo. Orquestado en JS (tres fases con reflow).
+─────────────────────────────────────────────────────────────────────────────── */
+.t-text-swap {
+  display: inline-block;
+  transform: translateY(0);
+  filter: blur(0);
+  opacity: 1;
+  transition:
+    transform var(--text-swap-dur) var(--text-swap-ease),
+    filter    var(--text-swap-dur) var(--text-swap-ease),
+    opacity   var(--text-swap-dur) var(--text-swap-ease);
+  will-change: transform, filter, opacity;
+}
+.t-text-swap.is-exit {
+  transform: translateY(calc(var(--text-swap-translate-y) * -1));
+  filter: blur(var(--text-swap-blur));
+  opacity: 0;
+}
+.t-text-swap.is-enter-start {
+  transform: translateY(var(--text-swap-translate-y));
+  filter: blur(var(--text-swap-blur));
+  opacity: 0;
+  transition: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .t-text-swap { transition: none !important; }
 }
 
 /* ─── Theme toggle — View Transition circle expand ────────────────────────────

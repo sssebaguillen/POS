@@ -36,14 +36,40 @@ function OfferSlide({
   onAddToCart: OffersCarouselProps['onAddToCart']
 }) {
   const [added, setAdded] = useState(false)
+  const labelRef = useRef<HTMLSpanElement>(null)
   const countdown = product.promo ? promoCountdownLabel(product.promo.endsAt) : null
   const detailUrl = `/catalogo/${slug}/${product.id}`
   const canQuickAdd = !product.hasVariants && product.stock > 0
 
+  // transitions-dev 04 (text states swap), tres fases: exit arriba con blur →
+  // swap de textContent + salto abajo sin transición (reflow) → enter a reposo.
+  // El span se renderiza con texto estático para que React no pise el textContent.
+  function swapText(next: string) {
+    const el = labelRef.current
+    if (!el) return
+    const dur =
+      parseFloat(
+        getComputedStyle(document.documentElement).getPropertyValue('--text-swap-dur')
+      ) || 150
+    el.classList.add('is-exit')
+    setTimeout(() => {
+      el.textContent = next
+      el.classList.remove('is-exit')
+      el.classList.add('is-enter-start')
+      void el.offsetHeight // reflow: garantiza que el enter transicione
+      el.classList.remove('is-enter-start')
+    }, dur)
+  }
+
   function handleAdd() {
+    if (added) return
     onAddToCart(product, null, null)
     setAdded(true)
-    setTimeout(() => setAdded(false), 1500)
+    swapText('✓ Agregado')
+    setTimeout(() => {
+      swapText('Agregar al carrito')
+      setAdded(false)
+    }, 1500)
   }
 
   return (
@@ -76,7 +102,7 @@ function OfferSlide({
         <div className="min-w-0 pb-2 sm:py-2">
           {product.promo && (
             <p className="flex flex-wrap items-center gap-1.5">
-              <span className="rounded-md bg-emerald-600/95 px-2 py-0.5 text-xs font-bold text-white shadow-sm">
+              <span className="rounded-md bg-promo/95 px-2 py-0.5 text-xs font-bold text-promo-foreground shadow-sm">
                 {product.promo.label}
               </span>
               {countdown && (
@@ -98,7 +124,7 @@ function OfferSlide({
                 ${currencyFormatter.format(product.originalPrice)}
               </span>
             )}
-            <span className={product.originalPrice !== null ? 'text-emerald-600 dark:text-emerald-400' : 'text-foreground'}>
+            <span className={product.originalPrice !== null ? 'text-promo' : 'text-foreground'}>
               ${currencyFormatter.format(product.salePrice)}
             </span>
           </p>
@@ -108,10 +134,10 @@ function OfferSlide({
               <Button
                 type="button"
                 onClick={handleAdd}
-                className={`gap-1.5 ${added ? 'bg-emerald-600 hover:bg-emerald-600 text-white' : ''}`}
+                className={`gap-1.5 ${added ? 'bg-promo hover:bg-promo text-promo-foreground' : ''}`}
               >
                 <ShoppingCart className="h-4 w-4" />
-                {added ? '✓ Agregado' : 'Agregar al carrito'}
+                <span ref={labelRef} className="t-text-swap">Agregar al carrito</span>
               </Button>
             )}
             <Button asChild type="button" variant={canQuickAdd ? 'outline' : 'default'}>
@@ -170,7 +196,7 @@ export default function OffersCarousel({ offers, slug, onAddToCart }: OffersCaro
       role="region"
       aria-roledescription="carrusel"
       aria-label="Ofertas destacadas"
-      className="relative rounded-xl border border-emerald-300/60 bg-emerald-50/50 p-4 dark:border-emerald-700/50 dark:bg-emerald-950/20"
+      className="relative rounded-xl border border-promo/30 bg-promo/5 p-4"
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
       onFocusCapture={() => setIsPaused(true)}
@@ -179,7 +205,7 @@ export default function OffersCarousel({ offers, slug, onAddToCart }: OffersCaro
     >
       <Link
         href={`/catalogo/${slug}/promotions`}
-        className="group mb-3 inline-flex items-center gap-1.5 text-sm font-bold text-emerald-700 transition-colors hover:text-emerald-600 dark:text-emerald-300 dark:hover:text-emerald-200"
+        className="group mb-3 inline-flex items-center gap-1.5 text-sm font-bold text-promo transition-colors hover:text-promo/80"
       >
         <BadgePercent className="h-4 w-4" />
         Ofertas
@@ -189,7 +215,7 @@ export default function OffersCarousel({ offers, slug, onAddToCart }: OffersCaro
       <div
         ref={trackRef}
         onScroll={handleScroll}
-        className="flex snap-x snap-mandatory overflow-x-auto scroll-smooth [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        className="flex snap-x snap-mandatory overflow-x-auto motion-safe:scroll-smooth [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
         {offers.map((product, index) => (
           <OfferSlide
@@ -210,7 +236,7 @@ export default function OffersCarousel({ offers, slug, onAddToCart }: OffersCaro
             type="button"
             aria-label="Oferta anterior"
             onClick={() => scrollToIndex((activeIndex - 1 + offers.length) % offers.length)}
-            className="absolute left-2 top-1/2 hidden h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-border/70 bg-card/90 text-foreground shadow-sm transition-colors hover:bg-card sm:flex"
+            className="absolute left-2 top-1/2 hidden h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-border/70 bg-card/90 text-foreground shadow-sm transition-[transform,background-color] duration-150 ease-[var(--ease-out)] hover:bg-card active:scale-95 sm:flex"
           >
             <ChevronLeft className="h-5 w-5" />
           </button>
@@ -218,7 +244,7 @@ export default function OffersCarousel({ offers, slug, onAddToCart }: OffersCaro
             type="button"
             aria-label="Oferta siguiente"
             onClick={() => scrollToIndex((activeIndex + 1) % offers.length)}
-            className="absolute right-2 top-1/2 hidden h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-border/70 bg-card/90 text-foreground shadow-sm transition-colors hover:bg-card sm:flex"
+            className="absolute right-2 top-1/2 hidden h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-border/70 bg-card/90 text-foreground shadow-sm transition-[transform,background-color] duration-150 ease-[var(--ease-out)] hover:bg-card active:scale-95 sm:flex"
           >
             <ChevronRight className="h-5 w-5" />
           </button>
@@ -232,10 +258,10 @@ export default function OffersCarousel({ offers, slug, onAddToCart }: OffersCaro
                 aria-label={`Ir a oferta ${index + 1}`}
                 aria-current={index === activeIndex}
                 onClick={() => scrollToIndex(index)}
-                className={`h-1.5 rounded-full transition-all duration-200 ${
+                className={`h-1.5 rounded-full transition-[width,background-color] duration-200 ease-[var(--ease-out)] ${
                   index === activeIndex
-                    ? 'w-5 bg-emerald-600 dark:bg-emerald-400'
-                    : 'w-1.5 bg-emerald-600/30 hover:bg-emerald-600/50 dark:bg-emerald-400/30'
+                    ? 'w-5 bg-promo'
+                    : 'w-1.5 bg-promo/30 hover:bg-promo/50'
                 }`}
               />
             ))}

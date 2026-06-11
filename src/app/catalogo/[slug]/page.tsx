@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation'
 import { createClient } from '@supabase/supabase-js'
 import CatalogView from '@/components/catalog/CatalogView'
+import CatalogShell from '@/components/catalog/CatalogShell'
 import { mapCatalogProductRow, type CatalogProductRow } from '@/components/catalog/mapProducts'
 import type { CatalogVariantAttributeGroup } from '@/components/catalog/types'
 
@@ -102,24 +103,31 @@ export default async function CatalogSlugPage({ params }: CatalogPageProps) {
     }
   }
 
+  const mappedProducts = products.map(mapCatalogProductRow)
+  const mappedCategories = categories.map(category => ({
+    id: category.id,
+    name: category.name,
+  }))
+
   return (
-    <main className="h-screen overflow-y-auto bg-background px-4 py-6 md:px-6 md:py-8">
+    <CatalogShell
+      slug={slug}
+      business={{
+        id: business.id,
+        name: business.name,
+        description: business.description,
+        logoUrl: business.logo_url,
+        whatsapp: business.whatsapp,
+      }}
+      products={mappedProducts}
+      categories={mappedCategories}
+    >
       <CatalogView
         slug={slug}
-        business={{
-          id: business.id,
-          name: business.name,
-          description: business.description,
-          logoUrl: business.logo_url,
-          whatsapp: business.whatsapp,
-        }}
-        products={products.map(mapCatalogProductRow)}
-        categories={categories.map(category => ({
-          id: category.id,
-          name: category.name,
-        }))}
+        products={mappedProducts}
+        categories={mappedCategories}
         variantAttributeGroups={variantAttributeGroups}
       />
-    </main>
+    </CatalogShell>
   )
 }

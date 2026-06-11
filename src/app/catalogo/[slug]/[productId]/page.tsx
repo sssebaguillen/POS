@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation'
 import { createClient } from '@supabase/supabase-js'
 import ProductDetailView from '@/components/catalog/ProductDetailView'
+import CatalogShell from '@/components/catalog/CatalogShell'
 import type {
   CatalogProductDetail,
   CatalogVariantOption,
@@ -19,6 +20,9 @@ interface PageProps {
 interface BusinessRow {
   id: string
   name: string
+  description: string | null
+  logo_url: string | null
+  whatsapp: string | null
 }
 
 interface RpcResult {
@@ -64,15 +68,22 @@ export default async function CatalogProductDetailPage({ params }: PageProps) {
   }
 
   return (
-    <main className="min-h-screen bg-background px-4 py-6 md:px-6 md:py-8">
+    <CatalogShell
+      slug={slug}
+      business={{
+        id: business.id,
+        name: business.name,
+        description: business.description,
+        logoUrl: business.logo_url,
+        whatsapp: business.whatsapp,
+      }}
+    >
       <ProductDetailView
         slug={slug}
-        businessId={business.id}
-        businessName={business.name}
         product={rpcData.product}
         options={rpcData.options ?? []}
         variants={rpcData.variants ?? []}
       />
-    </main>
+    </CatalogShell>
   )
 }

@@ -1,58 +1,21 @@
 'use client'
 
-import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
 import { ArrowLeft, BadgePercent } from 'lucide-react'
-import CatalogHeader from '@/components/catalog/CatalogHeader'
 import ProductCard from '@/components/catalog/ProductCard'
-import {
-  addItemToStoredCart,
-  catalogCartKey,
-  getStoredCartCount,
-} from '@/lib/catalog-cart'
-import type { CatalogBusiness, CatalogProduct } from '@/components/catalog/types'
+import { useCatalogShell } from '@/components/catalog/CatalogShell'
+import type { CatalogProduct } from '@/components/catalog/types'
 
 interface PromotionsViewProps {
-  business: CatalogBusiness
   slug: string
   products: CatalogProduct[]
 }
 
-export default function PromotionsView({ business, slug, products }: PromotionsViewProps) {
-  const router = useRouter()
-  const cartKey = catalogCartKey(business.id)
-  const [cartCount, setCartCount] = useState(0)
-
-  useEffect(() => {
-    setCartCount(getStoredCartCount(cartKey))
-  }, [cartKey])
-
-  function addToCart(
-    product: CatalogProduct,
-    variantId: string | null = null,
-    variantLabel: string | null = null,
-    variantImageUrl: string | null = null
-  ) {
-    if (!product.hasVariants && product.stock <= 0) return
-    const nextItems = addItemToStoredCart(cartKey, {
-      product,
-      quantity: 1,
-      variantId,
-      variantLabel,
-      variantImageUrl,
-    })
-    setCartCount(nextItems.reduce((acc, item) => acc + item.quantity, 0))
-  }
+export default function PromotionsView({ slug, products }: PromotionsViewProps) {
+  const { business, addToCart } = useCatalogShell()
 
   return (
-    <div className="mx-auto w-full max-w-7xl space-y-4 md:space-y-6">
-      <CatalogHeader
-        business={business}
-        cartCount={cartCount}
-        onToggleMobileCart={() => router.push(`/catalogo/${slug}`)}
-      />
-
+    <div className="space-y-4 md:space-y-6">
       <div>
         <Link
           href={`/catalogo/${slug}`}
@@ -62,7 +25,7 @@ export default function PromotionsView({ business, slug, products }: PromotionsV
           Volver al catálogo
         </Link>
 
-        <h2 className="mt-4 flex items-center gap-2 text-xl font-bold text-emerald-700 dark:text-emerald-300">
+        <h2 className="mt-4 flex items-center gap-2 text-xl font-bold text-promo">
           <BadgePercent className="h-5 w-5" />
           Todas las ofertas
         </h2>

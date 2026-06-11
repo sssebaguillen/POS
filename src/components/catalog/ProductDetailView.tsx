@@ -12,14 +12,12 @@ import type {
   CatalogProductVariant,
 } from '@/components/catalog/types'
 import PopNumber from '@/components/shared/PopNumber'
-import { addItemToStoredCart, catalogCartKey } from '@/lib/catalog-cart'
+import { useCatalogShell } from '@/components/catalog/CatalogShell'
 
 const currencyFormatter = new Intl.NumberFormat('es-AR')
 
 interface Props {
   slug: string
-  businessId: string
-  businessName: string
   product: CatalogProductDetail
   options: CatalogVariantOption[]
   variants: CatalogProductVariant[]
@@ -59,12 +57,11 @@ function getAvailableValues(
 
 export default function ProductDetailView({
   slug,
-  businessId,
   product,
   options,
   variants,
 }: Props) {
-  const cartKey = catalogCartKey(businessId)
+  const { addToCart } = useCatalogShell()
   const productWithDefaultVariant = product as CatalogProductDetailWithDefaultVariant
 
   // Selected option value per option id
@@ -193,13 +190,7 @@ export default function ProductDetailView({
         : null,
     }
 
-    addItemToStoredCart(cartKey, {
-      product: cartItemProduct,
-      quantity: 1,
-      variantId,
-      variantLabel: label,
-      variantImageUrl: selectedVariant?.image_url ?? null,
-    })
+    addToCart(cartItemProduct, variantId, label, selectedVariant?.image_url ?? null)
 
     setAdded(true)
     setTimeout(() => setAdded(false), 2000)
@@ -252,13 +243,13 @@ export default function ProductDetailView({
                         ${currencyFormatter.format(originalPrice)}
                       </span>
                     )}
-                    <span className={originalPrice !== null ? 'text-emerald-600 dark:text-emerald-400' : undefined}>
+                    <span className={originalPrice !== null ? 'text-promo' : undefined}>
                       <PopNumber value={`$${currencyFormatter.format(displayPrice)}`} />
                     </span>
                   </p>
                   {product.promo && (
                     <p className="mt-1.5 flex items-center gap-1.5">
-                      <span className="rounded-md bg-emerald-600/95 px-2 py-0.5 text-xs font-bold text-white">
+                      <span className="rounded-md bg-promo/95 px-2 py-0.5 text-xs font-bold text-promo-foreground">
                         {promoBadgeLabel(product.promo)}
                       </span>
                       {countdown && (
@@ -281,7 +272,7 @@ export default function ProductDetailView({
               Últimas {displayStock} unidades
             </span>
           ) : (
-            <span className="inline-flex items-center rounded-md bg-emerald-100 px-2.5 py-1 text-sm font-medium text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400 w-fit">
+            <span className="inline-flex items-center rounded-md bg-promo/10 px-2.5 py-1 text-sm font-medium text-promo w-fit">
               Disponible
             </span>
           )}
@@ -338,7 +329,7 @@ export default function ProductDetailView({
             )}
             <Button
               type="button"
-              className={`w-full h-11 gap-2 ${added ? 'bg-emerald-600 hover:bg-emerald-600 text-white' : ''}`}
+              className={`w-full h-11 gap-2 ${added ? 'bg-promo hover:bg-promo text-promo-foreground' : ''}`}
               disabled={!canAdd}
               onClick={handleAddToCart}
             >

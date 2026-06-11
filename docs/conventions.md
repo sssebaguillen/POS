@@ -26,6 +26,7 @@ When renaming a route, update: the folder under `src/app/(app)/`, the matching c
 - **Background:** CSS var `--background` | **Surface:** `--surface` | **Primary:** `#7a3e10` (warm brown, overridable via `businesses.settings.primary_color`)
 - **Typography:** DM Sans — 7 semantic classes in `globals.css`: `.text-display`, `.text-heading`, `.text-subheading`, `.text-body`, `.text-caption`, `.text-label`, `.text-metric`
 - Custom properties: `--body-secondary`, `--support`
+- **Semantic tokens:** `--warning`/`--warning-foreground` (precaución) y `--promo`/`--promo-foreground` (verde unificado del catálogo: badges de oferta, precio rebajado, estados "agregado"). Usar `text-promo`/`bg-promo/...` — nunca `emerald-*` hardcodeado.
 - Cards: `rounded-xl` / `rounded-2xl`, subtle border, class `surface-card`
 - Dropdowns/popovers: class `surface-elevated`
 - Sidebar: class `surface-sidebar`
@@ -316,6 +317,8 @@ DB enum (`payments.method`): `'cash' | 'card' | 'transfer' | 'mercadopago'` — 
 | `/auth/callback` | PKCE handler | public |
 | `/auth/update-password` | New password form | public (session set by callback) |
 | `/catalogo/[slug]` | Public catalog | public (anon, uses RPCs) |
+| `/catalogo/[slug]/promotions` | Public catalog — offers page | public (anon, uses RPCs) |
+| `/catalogo/[slug]/[productId]` | Public catalog — product detail | public (anon, uses RPCs) |
 | `/operator-select` | Operator selection | requires Supabase session |
 | `/pos` | POS terminal | any active operator |
 | `/inventory` | Inventory (read) | `permissions.stock` |

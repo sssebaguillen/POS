@@ -241,7 +241,7 @@ export default function CartPanel({
     return (
       <aside className={asideClassName}>
         <div className="flex flex-col items-center gap-4 py-6 text-center">
-          <CheckCircle2 className="h-12 w-12 text-emerald-500" />
+          <CheckCircle2 className="h-12 w-12 text-promo" />
           <div>
             <p className="text-base font-semibold text-foreground">
               Pedido enviado{orderNumber != null ? ` #${orderNumber}` : ''}
@@ -312,7 +312,7 @@ export default function CartPanel({
                         <p className="mt-0.5 text-sm text-muted-foreground">
                           <PopNumber value={`$${currencyFormatter.format(lineTotal(item))}`} />
                           {item.product.promo && (lineDiscount(item) > 0 || item.product.originalPrice !== null) && (
-                            <span className="ml-1.5 rounded bg-emerald-100 px-1 py-0.5 text-[10px] font-semibold text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300">
+                            <span className="ml-1.5 rounded bg-promo/10 px-1 py-0.5 text-[10px] font-semibold text-promo">
                               {item.product.promo.label}
                             </span>
                           )}

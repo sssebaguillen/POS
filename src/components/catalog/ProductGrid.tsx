@@ -2,14 +2,13 @@
 
 import Image from 'next/image'
 import Link from 'next/link'
-import { ChevronRight, ImageIcon, LayoutGrid, List, Plus, Search, SlidersHorizontal } from 'lucide-react'
+import { ChevronRight, ImageIcon, LayoutGrid, List, Plus, SlidersHorizontal } from 'lucide-react'
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import ProductCard from '@/components/catalog/ProductCard'
 
 import type { CatalogProduct } from '@/components/catalog/types'
 import type { ProductFilterValue } from '@/components/shared/ProductFilter'
-import { EMPTY_FILTER } from '@/components/shared/ProductFilter'
 
 type ViewMode = 'grid' | 'list'
 
@@ -17,7 +16,7 @@ interface ProductGridProps {
   slug: string
   products: CatalogProduct[]
   filterValue: ProductFilterValue
-  onFilterChange: (next: ProductFilterValue) => void
+  onClearFilters: () => void
   onAddToCart: (product: CatalogProduct, variantId: string | null, variantLabel: string | null) => void
   viewMode: ViewMode
   onViewModeChange: (mode: ViewMode) => void
@@ -83,7 +82,7 @@ export default function ProductGrid({
   slug,
   products,
   filterValue,
-  onFilterChange,
+  onClearFilters,
   onAddToCart,
   viewMode,
   onViewModeChange,
@@ -97,19 +96,7 @@ export default function ProductGrid({
     <div className="space-y-4">
       {/* Toolbar */}
       <div className="rounded-xl border border-border/70 bg-card p-4">
-        <div className="flex items-center gap-2">
-          {/* Search input */}
-          <div className="relative min-w-0 flex-1">
-            <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground pointer-events-none" />
-            <input
-              type="text"
-              value={filterValue.search}
-              onChange={e => onFilterChange({ ...filterValue, search: e.target.value })}
-              placeholder="Buscar producto..."
-              className="h-9 w-full rounded-lg border border-border bg-background pl-8 pr-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/40"
-            />
-          </div>
-
+        <div className="flex items-center justify-end gap-2">
           {/* Filters button */}
           <button
             type="button"
@@ -177,7 +164,7 @@ export default function ProductGrid({
           <p className="text-sm text-muted-foreground">No se encontraron productos.</p>
           <button
             type="button"
-            onClick={() => onFilterChange(EMPTY_FILTER)}
+            onClick={onClearFilters}
             className="mt-2 text-xs text-primary hover:underline"
           >
             Limpiar filtros
@@ -228,11 +215,11 @@ export default function ProductGrid({
                         ${currencyFormatter.format(product.originalPrice)}
                       </span>
                     )}
-                    <span className={product.originalPrice !== null ? 'text-emerald-600 dark:text-emerald-400' : undefined}>
+                    <span className={product.originalPrice !== null ? 'text-promo' : undefined}>
                       ${currencyFormatter.format(product.salePrice)}
                     </span>
                     {product.promo && (
-                      <span className="ml-1.5 rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300">
+                      <span className="ml-1.5 rounded bg-promo/10 px-1.5 py-0.5 text-[10px] font-semibold text-promo">
                         {product.promo.label}
                       </span>
                     )}

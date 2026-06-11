@@ -261,7 +261,13 @@ src/
 │   │   └── logout/route.ts               # Only deletes cookies — NEVER restores owner session
 │   └── catalogo/
 │       ├── layout.tsx                    # CatalogThemeProvider wrapper
-│       └── [slug]/page.tsx
+│       ├── error.tsx                     # Error temporal amigable (es) con Reintentar — cubre los throw de RPC de las 3 páginas
+│       ├── not-found.tsx                 # Slug/producto inexistente → "Este catálogo no existe"
+│       └── [slug]/
+│           ├── page.tsx
+│           ├── loading.tsx               # Skeleton espejo de ProductGrid (mismos breakpoints) — cubre también detalle y promotions
+│           ├── promotions/page.tsx       # Página pública de ofertas del negocio
+│           └── [productId]/page.tsx      # Detalle de producto — envuelto en CatalogShell (navbar + carrito + footer)
 └── components/
     ├── shared/
     │   ├── AppShell.tsx                  # Layout shell with SidebarContext
@@ -364,11 +370,20 @@ src/
     ├── operator-profile/
     │   └── OperatorProfileView.tsx       # Operator personal profile (/operator/me)
     └── catalog/
-        ├── CatalogView.tsx               # viewMode starts as 'grid' (SSR-safe), useEffect reads localStorage
-        ├── CatalogHeader.tsx
+        ├── CatalogShell.tsx              # Shell de las 3 páginas públicas: ES el contenedor de scroll (h-screen overflow-y-auto — el body global tiene overflow:hidden), contexto de carrito, navbar sticky, footer, cart sheet global (bottom mobile / right desktop) y barra inferior mobile "Ver pedido". Carrito hidratado de localStorage con mounted pattern; en la main revalida contra products frescos, en detalle/promos usa getStoredCartItemsUnvalidated
+        ├── CatalogNavbar.tsx             # Sticky: logo+nombre | search (centro) | nav Inicio/Ofertas (solo md+) | theme toggle + carrito con badge. En mobile la nav vive en un hamburger que abre sidebar izquierdo (Sheet side=left) y el search baja a fila propia
+        ├── CatalogSearch.tsx             # Typeahead del navbar: dropdown anclado al input (imagen, nombre, categoría · marca, variantes, precio con promo) que navega al detalle — NO filtra la grilla. En la main usa products/categories del server; en detalle/promos los trae lazy (RPCs anon) al primer tipeo
+        ├── CatalogFooter.tsx             # Datos del negocio + nav Inicio/Ofertas + link WhatsApp
+        ├── CatalogView.tsx               # viewMode starts as 'grid' (SSR-safe); grilla + filtros + hero de ofertas. El carrito vive SOLO en el sheet global del shell (sin columna sticky propia)
         ├── ProductGrid.tsx
-        ├── CartPanel.tsx
+        ├── ProductCard.tsx               # Quick-selector de variantes en hover (prefetch lazy cacheado en mouseenter)
+        ├── VariantQuickSelector.tsx
+        ├── ProductDetailView.tsx         # Detalle con selección de variantes; agrega al carrito vía contexto del shell
+        ├── OffersCarousel.tsx            # Hero de ofertas destacadas (promos con show_in_catalog)
+        ├── PromotionsView.tsx            # Vista de /catalogo/[slug]/promotions
+        ├── CartPanel.tsx                 # Checkout anónimo; prop `embedded` para el sheet mobile; tras enviar muestra link wa.me explícito (popup blockers matan window.open post-await). El pedido queda registrado en /orders al submit — WhatsApp es coordinación opcional, no el canal de entrega
         ├── CatalogThemeProvider.tsx
+        ├── mapProducts.ts
         └── types.ts
 ```
 

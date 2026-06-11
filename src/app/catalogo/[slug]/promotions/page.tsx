@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation'
 import { createClient } from '@supabase/supabase-js'
 import PromotionsView from '@/components/catalog/PromotionsView'
+import CatalogShell from '@/components/catalog/CatalogShell'
 import { mapCatalogProductRow, type CatalogProductRow } from '@/components/catalog/mapProducts'
 
 interface BusinessRow {
@@ -47,18 +48,17 @@ export default async function CatalogPromotionsPage({ params }: PromotionsPagePr
     .filter(product => product.promo !== null)
 
   return (
-    <main className="min-h-screen bg-background px-4 py-6 md:px-6 md:py-8">
-      <PromotionsView
-        slug={slug}
-        business={{
-          id: business.id,
-          name: business.name,
-          description: business.description,
-          logoUrl: business.logo_url,
-          whatsapp: business.whatsapp,
-        }}
-        products={products}
-      />
-    </main>
+    <CatalogShell
+      slug={slug}
+      business={{
+        id: business.id,
+        name: business.name,
+        description: business.description,
+        logoUrl: business.logo_url,
+        whatsapp: business.whatsapp,
+      }}
+    >
+      <PromotionsView slug={slug} products={products} />
+    </CatalogShell>
   )
 }

@@ -55,10 +55,18 @@ export function getStoredCartItems(cartKey: string, products: CatalogProduct[]):
   })
 }
 
-export function getStoredCartCount(cartKey: string): number {
+// Lee los items guardados tal cual (sin revalidar contra productos frescos) —
+// para rutas que no cargan el listado completo (detalle, /promotions). El
+// checkout re-precia server-side, así que el precio guardado es solo display.
+export function getStoredCartItemsUnvalidated(cartKey: string): CatalogCartItem[] {
   const stored = readStoredCart(cartKey)
-  if (!stored) return 0
-  return stored.items.reduce((acc, item) => acc + item.quantity, 0)
+  if (!stored) return []
+  return stored.items.map(item => ({
+    ...item,
+    variantId: item.variantId ?? null,
+    variantLabel: item.variantLabel ?? null,
+    variantImageUrl: item.variantImageUrl ?? null,
+  }))
 }
 
 // Upsert directo a localStorage para agregar al carrito desde rutas que no montan

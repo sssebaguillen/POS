@@ -151,6 +151,14 @@ Comprobar si vale la pena (y qué tan sencillo es) soportar productos vendidos p
 - **Smoke UI en browser pendiente** (el smoke fue server-side: RPCs al centavo + build/tsc/lint): crear una promo de cada tipo desde `/promotions` y verla en POS y catálogo.
 - v2 diferida: 2x1 *cruzado* (combinatoria multi-producto), precio de oferta por variante, redondeo configurable del % de promo.
 
+### Catálogo público — pulido de diseño pendiente (2026-06-10)
+
+> Contexto: ronda de conversión post-critique del catálogo ✅ (2026-06-10, commit `976e991`, changelog `0.0.8`): carrito mobile = bottom sheet + barra inferior fija con total; link `wa.me` explícito tras enviar el pedido (popup blockers de iOS Safari); `error.tsx`/`not-found.tsx`/`loading.tsx` propios de `/catalogo`; aclaración "no pagas ahora" en el checkout; voseo→tuteo en errores; `type="tel"`/`inputMode`/`autocomplete` en el form; subtotal redundante eliminado; verde unificado en `emerald`. Queda el pulido de diseño:
+
+- ✅ **(2026-06-11) Shell del catálogo + tokenización del verde.** `CatalogShell` (contenedor de scroll — el body global tiene `overflow:hidden` — + contexto de carrito compartido entre las 3 páginas, cart sheet global bottom/right, barra mobile "Ver pedido" en todas las páginas), `CatalogNavbar` sticky (logo+nombre, nav Inicio/Ofertas, theme toggle, carrito con badge), `CatalogSearch` (typeahead con dropdown anclado al input — imagen, nombre, categoría · marca, variantes, precio con promo — navega al detalle, NO filtra la grilla; en detalle/promos trae los datos lazy vía RPCs anon), `CatalogFooter` (negocio + nav + WhatsApp; sin "creado con Pulsar" hasta cerrar el rebrand). El detalle de producto quedó con navbar/carrito/footer (cerrado el hallazgo P2 del critique). `CatalogHeader` eliminado. Tokens `--promo`/`--promo-foreground` en globals.css; cero `emerald-*` hardcodeado en el catálogo.
+- **Sección Ofertas/destacados de la main page:** el contenedor del carrusel usa fondo `--promo` traslúcido (mismo lenguaje que los badges de éxito) — no es el diseño correcto para esta sección. Rediseñar el tratamiento visual del hero de ofertas (`OffersCarousel.tsx`).
+- Menores del critique aún abiertos: touch targets chicos (swatches 24px en `VariantQuickSelector`, dots del carrusel 6px), filtros ocultos por default en desktop.
+
 ### Lista de precios del catálogo configurable (DESPUÉS de ofertas)
 
 Hoy el catálogo público **no aplica ninguna lista** — `get_catalog_products`/`get_catalog_product_with_variants` llaman `compute_effective_price(..., p_list_id := NULL, ...)` → muestran el precio base/variante. La función **ya acepta** `p_list_id`/`p_list_multiplier` (+ redondeo por lista, ver nota P7i). Feature: elegir desde `/settings` qué lista usa el catálogo (ej. `businesses.settings.catalog_price_list_id`) y pasársela a las RPCs en vez de NULL. Cambio acotado. Mismo dominio que ofertas (pricing del catálogo) → encararlos en secuencia.
