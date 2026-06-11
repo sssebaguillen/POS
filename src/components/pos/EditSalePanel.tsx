@@ -65,7 +65,7 @@ export default function EditSalePanel({
             </p>
             <button
               onClick={() => removeItem(item.id)}
-              className="text-faint hover:text-red-400 transition-[transform,color] duration-150 ease-[var(--ease-out)] active:scale-95 shrink-0"
+              className="text-faint hover:text-destructive transition-[transform,color] duration-150 ease-[var(--ease-out)] active:scale-95 shrink-0"
             >
               <Trash2 size={14} />
             </button>

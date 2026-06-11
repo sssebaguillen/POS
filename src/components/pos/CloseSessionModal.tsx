@@ -93,8 +93,8 @@ export default function CloseSessionModal({ open, sessionId, operatorId, onClose
 
   function formatDiff(diff: number | null) {
     if (diff === null) return null
-    if (diff === 0) return { label: 'Cuadra exacto', color: 'text-emerald-600 dark:text-emerald-400' }
-    if (diff > 0) return { label: `+${formatMoney(diff)} sobrante`, color: 'text-emerald-600 dark:text-emerald-400' }
+    if (diff === 0) return { label: 'Cuadra exacto', color: 'text-promo' }
+    if (diff > 0) return { label: `+${formatMoney(diff)} sobrante`, color: 'text-promo' }
     return { label: `${formatMoney(diff)} faltante`, color: 'text-destructive' }
   }
 

@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
-import { CreditCard, Plus, Printer, X } from 'lucide-react'
+import { AlertCircle, CreditCard, Plus, Printer, X } from 'lucide-react'
 import ReceiptPreviewModal from '@/components/pos/ReceiptPreviewModal'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -347,7 +347,7 @@ export default function PaymentModal({
                       {availableMethodOptions.map((m, idx) => {
                         const isSelected = primaryMethod === m.id
                         const numKey = idx < 4 ? String(idx + 1) : null
-                        const confirmKey = m.id === 'card' ? 'Esp.' : null
+                        const confirmKey = m.id === 'card' ? 'Espacio' : null
                         const kbdCls = `text-[10px] font-mono leading-none px-1 py-px rounded border opacity-50 border-current text-current`
                         return (
                           <button
@@ -384,11 +384,11 @@ export default function PaymentModal({
                         {cashReceived && validCash >= total && (
                           <div className="flex justify-between text-sm px-1">
                             <span className="text-subtle">Vuelto</span>
-                            <span className="font-bold text-emerald-600">{formatMoney(singleChange)}</span>
+                            <span className="font-bold text-promo">{formatMoney(singleChange)}</span>
                           </div>
                         )}
                         {cashReceived && validCash < total && (
-                          <p className="text-xs text-red-500 px-1">
+                          <p className="text-xs text-destructive px-1">
                             Falta {formatMoney(total - validCash)}
                           </p>
                         )}
@@ -402,7 +402,7 @@ export default function PaymentModal({
                           <span className="font-semibold text-heading tabular-nums">{formatMoney(creditAvailable)}</span>
                         </div>
                         {creditOverLimit && (
-                          <p className="text-xs text-red-500">
+                          <p className="text-xs text-destructive">
                             El monto supera el crédito disponible ({formatMoney(creditAvailable)})
                           </p>
                         )}
@@ -459,7 +459,7 @@ export default function PaymentModal({
                         <button
                           type="button"
                           onClick={exitMixedMode}
-                          className="text-hint hover:text-red-500 transition-[transform,color] duration-150 ease-[var(--ease-out)] active:scale-95"
+                          className="text-hint hover:text-destructive transition-[transform,color] duration-150 ease-[var(--ease-out)] active:scale-95"
                         >
                           <X size={14} />
                         </button>
@@ -496,11 +496,11 @@ export default function PaymentModal({
                         {mixedChange > 0 && (
                           <div className="flex justify-between text-sm px-1">
                             <span className="text-subtle">Vuelto</span>
-                            <span className="font-bold text-emerald-600">{formatMoney(mixedChange)}</span>
+                            <span className="font-bold text-promo">{formatMoney(mixedChange)}</span>
                           </div>
                         )}
                         {mixedTotal < total && validPrimary > 0 && validSecondary > 0 && (
-                          <p className="text-xs text-red-500 px-1">
+                          <p className="text-xs text-destructive px-1">
                             Falta {formatMoney(total - mixedTotal)}
                           </p>
                         )}
@@ -510,7 +510,16 @@ export default function PaymentModal({
                 )}
 
                 {error && (
-                  <p className="text-xs text-red-500 px-1">{error}</p>
+                  <div
+                    role="alert"
+                    className="rounded-xl border border-destructive/20 bg-destructive/10 px-3 py-2.5 flex items-start gap-2.5"
+                  >
+                    <AlertCircle size={16} className="text-destructive shrink-0 mt-0.5" />
+                    <div className="min-w-0 space-y-0.5">
+                      <p className="text-sm font-semibold text-destructive">{error}</p>
+                      <p className="text-xs text-body">El carrito sigue cargado. Puedes intentar de nuevo.</p>
+                    </div>
+                  </div>
                 )}
 
                 <div className="space-y-2">

@@ -466,27 +466,35 @@ const CartPanel = forwardRef<CartPanelHandle, Props>(function CartPanel({ busine
                                   />
                                 ) : (
                                   <>
-                                    <p
-                                      className={`text-xs tabular-nums ${
-                                        item.priceIsManual || isFreeLine ? 'text-primary font-medium' : promoLabel ? 'text-emerald-600 dark:text-emerald-400 font-medium' : 'text-hint'
-                                      }`}
-                                    >
-                                      {formatMoney(effectivePrice)} c/u
-                                    </p>
-                                    {promoLabel && (
-                                      <span className="text-[9px] font-semibold leading-none px-1 py-0.5 rounded bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300 whitespace-nowrap">
-                                        {promoLabel}
-                                      </span>
-                                    )}
-                                    {canOverridePrice && (
+                                    {canOverridePrice ? (
                                       <button
                                         type="button"
                                         onClick={() => startPriceEdit(itemId, effectivePrice, 'unit')}
-                                        className="text-faint hover:text-primary transition-[transform,color] duration-150 ease-[var(--ease-out)] active:scale-95"
                                         aria-label="Editar precio unitario"
+                                        className="flex items-center gap-1 rounded-md px-1.5 py-2 -mx-1.5 -my-2 hover:bg-hover-bg transition-[background-color] duration-150 ease-[var(--ease-out)]"
                                       >
-                                        <Pencil size={10} />
+                                        <span
+                                          className={`text-xs tabular-nums ${
+                                            item.priceIsManual ? 'text-primary font-medium' : promoLabel ? 'text-promo font-medium' : 'text-hint'
+                                          }`}
+                                        >
+                                          {formatMoney(effectivePrice)} c/u
+                                        </span>
+                                        <Pencil size={10} className="text-faint shrink-0" />
                                       </button>
+                                    ) : (
+                                      <p
+                                        className={`text-xs tabular-nums ${
+                                          item.priceIsManual || isFreeLine ? 'text-primary font-medium' : promoLabel ? 'text-promo font-medium' : 'text-hint'
+                                        }`}
+                                      >
+                                        {formatMoney(effectivePrice)} c/u
+                                      </p>
+                                    )}
+                                    {promoLabel && (
+                                      <span className="text-[9px] font-semibold leading-none px-1 py-0.5 rounded bg-promo/10 text-promo whitespace-nowrap">
+                                        {promoLabel}
+                                      </span>
                                     )}
                                   </>
                                 )}
@@ -499,8 +507,8 @@ const CartPanel = forwardRef<CartPanelHandle, Props>(function CartPanel({ busine
                               if (!indicator) return null
                               const isRed = indicator.type === 'zero' || indicator.type === 'negative'
                               return (
-                                <span className={`inline-flex items-center gap-1 leading-none ${isRed ? 'text-red-500 dark:text-red-400' : 'text-amber-500 dark:text-amber-400'}`}>
-                                  <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${isRed ? 'bg-red-500 dark:bg-red-400' : 'bg-amber-400 dark:bg-amber-400'}`} />
+                                <span className={`inline-flex items-center gap-1 leading-none ${isRed ? 'text-destructive' : 'text-warning'}`}>
+                                  <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${isRed ? 'bg-destructive' : 'bg-warning'}`} />
                                   {indicator.label && (
                                     <span className="text-[10px] font-medium tabular-nums">{indicator.label}</span>
                                   )}
@@ -546,28 +554,30 @@ const CartPanel = forwardRef<CartPanelHandle, Props>(function CartPanel({ busine
                               }}
                               className="w-20 text-right text-sm bg-surface border border-primary rounded px-1 py-0.5 tabular-nums focus:outline-none"
                             />
+                          ) : canOverridePrice ? (
+                            <button
+                              type="button"
+                              onClick={() => startPriceEdit(itemId, effectiveTotal, 'total')}
+                              aria-label="Editar total"
+                              className="inline-flex items-center justify-end gap-1 rounded-md px-1.5 py-1.5 -mx-1.5 -my-1.5 hover:bg-hover-bg transition-[background-color] duration-150 ease-[var(--ease-out)]"
+                            >
+                              <span className={`text-sm font-semibold tabular-nums ${item.priceIsManual ? 'text-primary' : 'text-heading'}`}>
+                                <PopNumber value={formatMoney(effectiveTotal)} />
+                              </span>
+                              <Pencil size={10} className="text-faint shrink-0" />
+                            </button>
                           ) : (
                             <p className={`text-sm font-semibold tabular-nums ${item.priceIsManual || isFreeLine ? 'text-primary' : 'text-heading'}`}>
                               <PopNumber value={formatMoney(effectiveTotal)} />
                             </p>
                           )}
-                          <div className="flex items-center justify-end gap-1.5 mt-1">
-                            {canOverridePrice && !isEditingTotal && (
-                              <button
-                                type="button"
-                                onClick={() => startPriceEdit(itemId, effectiveTotal, 'total')}
-                                className="text-faint hover:text-primary transition-[transform,color] duration-150 ease-[var(--ease-out)] active:scale-95"
-                                aria-label="Editar total"
-                              >
-                                <Pencil size={12} />
-                              </button>
-                            )}
+                          <div className="flex justify-end mt-0.5">
                             <button
                               onClick={() => removeItem(itemId)}
                               aria-label="Quitar del carrito"
-                              className="text-faint hover:text-red-400 transition-[transform,color] duration-150 ease-[var(--ease-out)] active:scale-95"
+                              className="w-8 h-8 -mr-1.5 -mb-1.5 rounded-md flex items-center justify-center text-faint hover:text-destructive hover:bg-hover-bg transition-[transform,background-color,color] duration-150 ease-[var(--ease-out)] active:scale-95"
                             >
-                              <Trash2 size={12} />
+                              <Trash2 size={14} />
                             </button>
                           </div>
                         </div>
@@ -581,6 +591,21 @@ const CartPanel = forwardRef<CartPanelHandle, Props>(function CartPanel({ busine
             {/* Footer totals */}
             <div className="border-t border-edge-soft p-4 space-y-3">
               <div className="space-y-1.5 text-sm">
+                {!isEmpty && (
+                  <div className="flex justify-end">
+                    <button
+                      type="button"
+                      onClick={e => { handleCancelSale(); e.currentTarget.blur() }}
+                      className={`text-xs py-1 transition-colors duration-150 ease-[var(--ease-out)] ${
+                        isConfirmingClear
+                          ? 'text-destructive font-medium'
+                          : 'text-hint hover:text-destructive'
+                      }`}
+                    >
+                      {isConfirmingClear ? '¿Vaciar carrito?' : 'Vaciar carrito'}
+                    </button>
+                  </div>
+                )}
                 <div className="flex justify-between text-subtle">
                   <span>Subtotal</span>
                   <span className="tabular-nums">{formatMoney(adjustedSubtotal)}</span>
@@ -595,14 +620,10 @@ const CartPanel = forwardRef<CartPanelHandle, Props>(function CartPanel({ busine
                     <span className="tabular-nums">-{formatMoney(discountAmount)}</span>
                   </div>
                 )}
-                <div className="flex justify-between font-semibold text-heading text-2xl pt-2 border-t border-edge-soft leading-none">
-                  <span>Total</span>
-                  <PopNumber className="tabular-nums" value={formatMoney(adjustedTotal)} />
-                </div>
               </div>
 
               {hasStockWarning && (
-                <p className="text-xs text-amber-600 dark:text-amber-400 text-center">
+                <p className="text-xs text-warning text-center">
                   Hay ítems con stock insuficiente
                 </p>
               )}
@@ -670,7 +691,7 @@ const CartPanel = forwardRef<CartPanelHandle, Props>(function CartPanel({ busine
                     type="button"
                     onClick={() => setSelectedCustomer(null)}
                     aria-label="Quitar cliente asignado"
-                    className="text-hint hover:text-red-500 transition-[transform,color] duration-150 ease-[var(--ease-out)] active:scale-95 shrink-0"
+                    className="w-8 h-8 -my-1.5 -mr-1.5 rounded-md flex items-center justify-center text-hint hover:text-destructive hover:bg-hover-bg transition-[transform,background-color,color] duration-150 ease-[var(--ease-out)] active:scale-95 shrink-0"
                   >
                     <X size={14} />
                   </button>
@@ -748,7 +769,7 @@ const CartPanel = forwardRef<CartPanelHandle, Props>(function CartPanel({ busine
                     type="button"
                     onClick={removeDiscount}
                     aria-label="Quitar descuento"
-                    className="text-hint hover:text-red-500 transition-[transform,color] duration-150 ease-[var(--ease-out)] active:scale-95 shrink-0"
+                    className="w-8 h-8 -my-1.5 -mr-1.5 rounded-md flex items-center justify-center text-hint hover:text-destructive hover:bg-hover-bg transition-[transform,background-color,color] duration-150 ease-[var(--ease-out)] active:scale-95 shrink-0"
                   >
                     <X size={14} />
                   </button>
@@ -898,27 +919,21 @@ const CartPanel = forwardRef<CartPanelHandle, Props>(function CartPanel({ busine
                 </div>
               )}
 
-              <div className="grid grid-cols-2 gap-2">
-                <Button
-                  variant={isConfirmingClear ? 'destructive' : 'cancel'}
-                  className="h-10 rounded-xl text-sm font-medium"
-                  disabled={isEmpty}
-                  onClick={e => { handleCancelSale(); e.currentTarget.blur() }}
-                >
-                  {isConfirmingClear ? '¿Vaciar carrito?' : 'Vaciar'}
-                </Button>
-                <Button
-                  className={`h-10 rounded-xl text-sm font-semibold text-primary-foreground ${
-                    hasStockWarning
-                      ? 'bg-orange-500 hover:bg-orange-600'
-                      : 'bg-primary hover:bg-primary/90'
-                  }`}
-                  disabled={isEmpty}
-                  onClick={() => setShowPayment(true)}
-                >
-                  Cobrar
-                </Button>
-              </div>
+              <Button
+                className={`h-14 w-full rounded-xl px-5 flex items-center justify-between text-base font-semibold ${
+                  hasStockWarning
+                    ? 'bg-warning hover:bg-warning/90 text-warning-foreground'
+                    : 'bg-primary hover:bg-primary/90 text-primary-foreground'
+                }`}
+                disabled={isEmpty}
+                onClick={() => setShowPayment(true)}
+              >
+                <span>Cobrar</span>
+                <PopNumber
+                  className="tabular-nums text-lg font-bold"
+                  value={isEmpty ? '—' : formatMoney(adjustedTotal)}
+                />
+              </Button>
             </div>
           </>
         ) : (

@@ -432,7 +432,7 @@ export default function SalesHistoryPanel({ businessId, businessName, operatorId
             {filteredHistory.length} ventas · {formatMoney(historyTotal)}
           </p>
           {receiptError && (
-            <p className="text-xs text-red-500">{receiptError}</p>
+            <p className="text-xs text-destructive">{receiptError}</p>
           )}
         </div>
 
@@ -559,8 +559,8 @@ export default function SalesHistoryPanel({ businessId, businessName, operatorId
                               disabled={isDeleting}
                               className={`text-[11px] px-2.5 py-1 rounded-lg border transition-[transform,background-color,border-color,color] duration-150 ease-[var(--ease-out)] active:scale-[0.97] disabled:opacity-50 ${
                                 confirmingDeleteId === sale.id
-                                  ? 'border-red-400 bg-red-500 text-white dark:bg-red-600 dark:border-red-600 font-medium'
-                                  : 'border-red-200 text-red-500 bg-surface hover:bg-red-50 dark:border-red-500/30 dark:text-red-400 dark:bg-transparent dark:hover:bg-red-500/10'
+                                  ? 'border-destructive bg-destructive text-destructive-foreground font-medium'
+                                  : 'border-destructive/30 text-destructive bg-surface hover:bg-destructive/10'
                               }`}
                             >
                               {isDeleting ? '…' : confirmingDeleteId === sale.id ? '¿Eliminar?' : 'Eliminar'}

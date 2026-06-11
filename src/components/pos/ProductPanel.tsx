@@ -517,7 +517,7 @@ const ProductCard = memo(function ProductCard({
             {formatMoney(basePrice)}
           </span>
         )}
-        <span className={hasUnitPromo ? 'text-emerald-600 dark:text-emerald-400 font-semibold' : undefined}>
+        <span className={hasUnitPromo ? 'text-promo font-semibold' : undefined}>
           {product.has_variants ? 'Desde ' : ''}{formatMoney(displayPrice)}
         </span>
       </p>
@@ -525,7 +525,7 @@ const ProductCard = memo(function ProductCard({
       {promoLabel && (
         <span
           aria-hidden="true"
-          className="absolute top-2 left-2 text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/60 dark:text-emerald-300"
+          className="absolute top-2 left-2 text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-promo/10 text-promo"
         >
           {promoLabel}
         </span>
@@ -536,8 +536,8 @@ const ProductCard = memo(function ProductCard({
           aria-hidden="true"
           className={`absolute top-2 right-2 text-[10px] font-medium px-1.5 py-0.5 rounded-full ${
             product.stock === 0
-              ? 'bg-red-100 text-red-600 dark:bg-red-900 dark:text-red-300'
-              : 'bg-amber-100 text-amber-700 dark:bg-amber-900/60 dark:text-amber-400'
+              ? 'bg-destructive/10 text-destructive'
+              : 'bg-warning/10 text-warning'
           }`}
         >
           {stockLabel}
@@ -549,9 +549,9 @@ const ProductCard = memo(function ProductCard({
           aria-hidden="true"
           className={`absolute top-2 right-2 text-[10px] font-medium px-1.5 py-0.5 rounded-full ${
             variantStockTone === 'zero'
-              ? 'bg-red-100 text-red-600 dark:bg-red-900 dark:text-red-300'
+              ? 'bg-destructive/10 text-destructive'
               : variantStockTone === 'low'
-                ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/60 dark:text-amber-400'
+                ? 'bg-warning/10 text-warning'
                 : 'bg-primary/80 text-primary-foreground border border-primary/20'
           }`}
         >

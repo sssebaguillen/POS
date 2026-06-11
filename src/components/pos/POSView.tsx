@@ -398,8 +398,8 @@ export default function POSView({ products, businessId, businessName, freeLineEn
                   size={16}
                   className={
                     scanFeedback === 'found'
-                      ? 'text-emerald-500'
-                      : 'text-red-400'
+                      ? 'text-promo'
+                      : 'text-destructive'
                   }
                 />
               ) : (
@@ -415,9 +415,9 @@ export default function POSView({ products, businessId, businessName, freeLineEn
               className={[
                 'pl-9 h-9 text-sm bg-card rounded-lg transition-colors',
                 scanFeedback === 'found'
-                  ? 'bg-emerald-50 border-emerald-300 dark:bg-emerald-950/30 dark:border-emerald-700'
+                  ? 'bg-promo/10 border-promo/30'
                   : scanFeedback === 'not-found'
-                    ? 'bg-red-50 border-red-300 dark:bg-red-950/30 dark:border-red-700'
+                    ? 'bg-destructive/10 border-destructive/30'
                     : 'bg-card border-edge',
               ].join(' ')}
             />
@@ -427,7 +427,7 @@ export default function POSView({ products, businessId, businessName, freeLineEn
                 aria-live="assertive"
                 className={[
                   'absolute left-0 -bottom-5 z-10 text-[11px] font-medium animate-fade-in',
-                  scanFeedback === 'found' ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500 dark:text-red-400',
+                  scanFeedback === 'found' ? 'text-promo' : 'text-destructive',
                 ].join(' ')}
               >
                 {scanFeedback === 'found' ? 'Producto agregado' : 'Código no encontrado'}
@@ -514,7 +514,7 @@ export default function POSView({ products, businessId, businessName, freeLineEn
               {scanFeedback ? (
                 <ScanBarcode
                   size={16}
-                  className={scanFeedback === 'found' ? 'text-emerald-500' : 'text-red-400'}
+                  className={scanFeedback === 'found' ? 'text-promo' : 'text-destructive'}
                 />
               ) : (
                 <Search size={16} className="text-hint" />

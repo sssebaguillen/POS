@@ -30,14 +30,14 @@ export default function CashSessionWidget({ session, onOpenClick, onCloseClick }
 
   if (!session) {
     return (
-      <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-700 dark:text-amber-400">
+      <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-warning/10 border border-warning/20 text-warning">
         <AlertTriangle size={14} className="shrink-0" />
         <span className="text-xs font-medium flex-1">No hay caja abierta</span>
         <Button
           size="sm"
           variant="outline"
           onClick={onOpenClick}
-          className="h-6 text-xs px-2 border-amber-500/30 text-amber-700 dark:text-amber-400 hover:bg-amber-500/10"
+          className="h-6 text-xs px-2 border-warning/30 text-warning hover:bg-warning/10"
         >
           Abrir caja
         </Button>
@@ -46,11 +46,11 @@ export default function CashSessionWidget({ session, onOpenClick, onCloseClick }
   }
 
   return (
-    <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
-      <Vault size={14} className="shrink-0 text-emerald-600 dark:text-emerald-400" />
+    <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-promo/10 border border-promo/20">
+      <Vault size={14} className="shrink-0 text-promo" />
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-1.5">
-          <span className="text-xs font-medium text-emerald-700 dark:text-emerald-400">Caja abierta</span>
+          <span className="text-xs font-medium text-promo">Caja abierta</span>
           <span className="text-xs text-muted-foreground">· {formatTime(session.opened_at)}</span>
         </div>
         <p className="text-xs text-muted-foreground truncate">

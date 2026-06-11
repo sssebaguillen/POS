@@ -166,7 +166,7 @@ export default function ReceiptPreviewModal({ receipt, onClose, autoPrintOnOpen 
             <ReceiptTemplate receipt={receipt} showPreview />
 
             {error && (
-              <p className="text-xs text-red-500 px-1">{error}</p>
+              <p className="text-xs text-destructive px-1">{error}</p>
             )}
 
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
