@@ -274,6 +274,34 @@ export interface StatsBreakdownOperator {
   count: number
 }
 
+export interface PromoImpactRow {
+  promotion_id: string
+  name: string
+  kind: 'percent' | 'offer_price' | 'quantity'
+  percent: number | null
+  group_size: number | null
+  affected_units: number | null
+  pay_percent: number | null
+  archived: boolean
+  sales_count: number
+  units_sold: number
+  revenue: number
+  discount_total: number
+}
+
+export interface PromoImpactTotals {
+  promo_sales_count: number
+  total_sales_count: number
+  promo_units: number
+  promo_revenue: number
+  promo_discount_total: number
+}
+
+export interface PromoImpact {
+  totals: PromoImpactTotals
+  data: PromoImpactRow[]
+}
+
 export interface OperatorSalesStatsRow {
   operator_id: string | null
   operator_name: string

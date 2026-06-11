@@ -4741,6 +4741,67 @@ $$;
 ALTER FUNCTION "public"."get_sale_detail"("p_sale_id" "uuid", "p_business_id" "uuid") OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."get_promo_impact"("p_business_id" "uuid", "p_from" "date" DEFAULT NULL::"date", "p_to" "date" DEFAULT NULL::"date") RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'extensions'
+    AS $$
+DECLARE
+  v_data   jsonb;
+  v_totals jsonb;
+BEGIN
+  PERFORM public.assert_tenant(p_business_id);
+
+  SELECT jsonb_agg(row) INTO v_data
+  FROM (
+    SELECT
+      pr.id                              AS promotion_id,
+      pr.name,
+      pr.kind,
+      pr.percent,
+      pr.group_size,
+      pr.affected_units,
+      pr.pay_percent,
+      (pr.archived_at IS NOT NULL)       AS archived,
+      count(DISTINCT s.id)               AS sales_count,
+      sum(si.quantity)                   AS units_sold,
+      sum(si.total)                      AS revenue,
+      sum(si.promo_discount)             AS discount_total
+    FROM sale_items si
+    JOIN sales s      ON s.id = si.sale_id
+    JOIN promotions pr ON pr.id = si.promotion_id
+    WHERE s.business_id = p_business_id
+      AND s.status = 'completed'
+      AND (p_from IS NULL OR s.created_at::date >= p_from)
+      AND (p_to   IS NULL OR s.created_at::date <= p_to)
+    GROUP BY pr.id
+    ORDER BY sum(si.total) DESC
+  ) row;
+
+  SELECT jsonb_build_object(
+    'promo_sales_count',    COALESCE(count(DISTINCT s.id) FILTER (WHERE si.promotion_id IS NOT NULL), 0),
+    'total_sales_count',    COALESCE(count(DISTINCT s.id), 0),
+    'promo_units',          COALESCE(sum(si.quantity)      FILTER (WHERE si.promotion_id IS NOT NULL), 0),
+    'promo_revenue',        COALESCE(sum(si.total)         FILTER (WHERE si.promotion_id IS NOT NULL), 0),
+    'promo_discount_total', COALESCE(sum(si.promo_discount) FILTER (WHERE si.promotion_id IS NOT NULL), 0)
+  ) INTO v_totals
+  FROM sale_items si
+  JOIN sales s ON s.id = si.sale_id
+  WHERE s.business_id = p_business_id
+    AND s.status = 'completed'
+    AND (p_from IS NULL OR s.created_at::date >= p_from)
+    AND (p_to   IS NULL OR s.created_at::date <= p_to);
+
+  RETURN jsonb_build_object(
+    'totals', v_totals,
+    'data',   COALESCE(v_data, '[]'::jsonb)
+  );
+END;
+$$;
+
+
+ALTER FUNCTION "public"."get_promo_impact"("p_business_id" "uuid", "p_from" "date", "p_to" "date") OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."get_sales_by_brand_detail"("p_business_id" "uuid", "p_from" "date" DEFAULT NULL::"date", "p_to" "date" DEFAULT NULL::"date", "p_limit" integer DEFAULT 50, "p_offset" integer DEFAULT 0) RETURNS "jsonb"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public', 'extensions'
@@ -13504,6 +13565,12 @@ GRANT ALL ON FUNCTION "public"."get_product_with_variants"("p_product_id" "uuid"
 REVOKE ALL ON FUNCTION "public"."get_sale_detail"("p_sale_id" "uuid", "p_business_id" "uuid") FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."get_sale_detail"("p_sale_id" "uuid", "p_business_id" "uuid") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."get_sale_detail"("p_sale_id" "uuid", "p_business_id" "uuid") TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "public"."get_promo_impact"("p_business_id" "uuid", "p_from" "date", "p_to" "date") FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."get_promo_impact"("p_business_id" "uuid", "p_from" "date", "p_to" "date") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."get_promo_impact"("p_business_id" "uuid", "p_from" "date", "p_to" "date") TO "service_role";
 
 
 

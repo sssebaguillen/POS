@@ -16,8 +16,9 @@ import { cn } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
 import { normalizeOperatorSalesStatsRows } from '@/lib/mappers'
 import type {
-  DailySnapshotRow, OperatorSalesStatsRow, StatsKpis, StatsEvolution, StatsBreakdown, SalesHeatmapCell, DeadStockSummary,
+  DailySnapshotRow, OperatorSalesStatsRow, StatsKpis, StatsEvolution, StatsBreakdown, SalesHeatmapCell, DeadStockSummary, PromoImpact,
 } from '@/lib/types'
+import { promoBadgeLabel } from '@/lib/promotions'
 import SalesHeatmap from '@/components/stats/SalesHeatmap'
 import {
   LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -50,6 +51,7 @@ interface StatsQueryData {
   operators: OperatorSalesStatsRow[]
   dailySnapshots: DailySnapshotRow[]
   heatmapCells: SalesHeatmapCell[]
+  promoImpact: PromoImpact | null
 }
 
 interface Props {
@@ -62,6 +64,7 @@ interface Props {
   dailySnapshots: DailySnapshotRow[]
   heatmapCells: SalesHeatmapCell[]
   deadStockSummary: DeadStockSummary | null
+  promoImpact: PromoImpact | null
   period: string
   from?: string
   to?: string
@@ -101,6 +104,7 @@ export default function StatsView({
   dailySnapshots: initialDailySnapshots,
   heatmapCells: initialHeatmapCells,
   deadStockSummary,
+  promoImpact: initialPromoImpact,
   period: initialPeriod,
   from: initialFrom,
   to: initialTo,
@@ -125,7 +129,7 @@ export default function StatsView({
     queryKey: ['stats', businessId, period, from, to],
     queryFn: async () => {
       const resolvedRange = resolveDateRange(period, from, to)
-      const [kpisResult, evolutionResult, breakdownResult, topProductsResult, operatorsResult, dailySnapshotsResult, heatmapResult] = await Promise.all([
+      const [kpisResult, evolutionResult, breakdownResult, topProductsResult, operatorsResult, dailySnapshotsResult, heatmapResult, promoImpactResult] = await Promise.all([
         supabase.rpc('get_stats_kpis', {
           p_business_id: businessId,
           p_from: resolvedRange.from,
@@ -163,6 +167,11 @@ export default function StatsView({
           p_from: resolvedRange.from,
           p_to: resolvedRange.to,
         }),
+        supabase.rpc('get_promo_impact', {
+          p_business_id: businessId,
+          p_from: resolvedRange.from,
+          p_to: resolvedRange.to,
+        }),
       ])
 
       return {
@@ -175,6 +184,7 @@ export default function StatsView({
         ),
         dailySnapshots: (dailySnapshotsResult.data as unknown as { data: DailySnapshotRow[] } | null)?.data ?? [],
         heatmapCells: (heatmapResult.data as unknown as { data: SalesHeatmapCell[] } | null)?.data ?? [],
+        promoImpact: promoImpactResult.data as unknown as PromoImpact | null,
       }
     },
     initialData: isInitialPeriod
@@ -186,6 +196,7 @@ export default function StatsView({
           operators: initialOperators,
           dailySnapshots: initialDailySnapshots,
           heatmapCells: initialHeatmapCells,
+          promoImpact: initialPromoImpact,
         }
       : undefined,
     initialDataUpdatedAt: isInitialPeriod ? mountedAt : undefined,
@@ -200,6 +211,7 @@ export default function StatsView({
   const operators = data?.operators ?? []
   const dailySnapshots = data?.dailySnapshots ?? []
   const heatmapCells = data?.heatmapCells ?? []
+  const promoImpact = data?.promoImpact ?? null
 
   function syncDateUrl(nextPeriod: DateRangePeriod, nextFrom?: string, nextTo?: string) {
     if (typeof window === 'undefined') return
@@ -270,6 +282,12 @@ export default function StatsView({
         : (b.transactions ?? 0) - (a.transactions ?? 0)
     )
     .slice(0, 5)
+
+  const promoTotals = promoImpact?.totals ?? null
+  const promoRows = promoImpact?.data ?? []
+  const promoShare = promoTotals && promoTotals.total_sales_count > 0
+    ? (promoTotals.promo_sales_count / promoTotals.total_sales_count) * 100
+    : 0
 
   const snapshotTrendData = dailySnapshots.map(snapshot => ({
     label: formatSnapshotLabel(snapshot.snapshot_date),
@@ -828,6 +846,73 @@ export default function StatsView({
                   ))
                 )}
               </div>
+            </div>
+
+            {/* Impacto de promociones */}
+            <div className="surface-card p-6 space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-3">
+                    <p className="font-semibold text-heading font-display">Impacto de promociones</p>
+                    <Link href="/promotions" className="text-xs text-primary font-medium hover:underline whitespace-nowrap">
+                      Ver promociones →
+                    </Link>
+                  </div>
+                  <p className="text-sm text-hint">
+                    Cuánto vendiste con promoción aplicada y cuánto descuento resignaste en el período.
+                  </p>
+                </div>
+                {promoTotals && promoTotals.promo_sales_count > 0 && (
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 shrink-0">
+                    <div className="rounded-xl border border-edge px-3 py-2 min-w-[132px]">
+                      <p className="text-[11px] uppercase tracking-wide text-hint">Ventas con promo</p>
+                      <p className="text-sm font-semibold text-heading">
+                        {promoTotals.promo_sales_count} de {promoTotals.total_sales_count}
+                        <span className="text-xs font-medium text-hint"> · {promoShare.toFixed(0)}%</span>
+                      </p>
+                    </div>
+                    <div className="rounded-xl border border-edge px-3 py-2 min-w-[132px]">
+                      <p className="text-[11px] uppercase tracking-wide text-hint">Facturado con promo</p>
+                      <p className="text-sm font-semibold text-heading">{formatMoney(promoTotals.promo_revenue)}</p>
+                    </div>
+                    <div className="rounded-xl border border-edge px-3 py-2 min-w-[132px]">
+                      <p className="text-[11px] uppercase tracking-wide text-hint">Descuento resignado</p>
+                      <p className="text-sm font-semibold text-heading">{formatMoney(promoTotals.promo_discount_total)}</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {promoRows.length === 0 ? (
+                <p className="text-sm text-hint">Sin ventas con promoción en este período.</p>
+              ) : (
+                <div className="space-y-3">
+                  <div className="hidden sm:flex items-center gap-3 text-[11px] uppercase tracking-wide text-hint">
+                    <span className="w-5 shrink-0" />
+                    <span className="flex-1">Promoción</span>
+                    <span className="w-16 text-right shrink-0">Ventas</span>
+                    <span className="w-24 text-right shrink-0">Facturado</span>
+                    <span className="w-24 text-right shrink-0">Resignado</span>
+                  </div>
+                  {promoRows.map((row, idx) => (
+                    <div key={row.promotion_id} className="flex items-center gap-3">
+                      <span className="text-xs text-hint w-5 shrink-0">#{idx + 1}</span>
+                      <span className="flex-1 min-w-0 flex items-center gap-2">
+                        <span className="text-sm text-body truncate">{row.name}</span>
+                        <span className="text-[11px] font-semibold text-primary bg-primary/10 border border-primary/20 rounded-full px-2 py-0.5 shrink-0">
+                          {promoBadgeLabel(row)}
+                        </span>
+                        {row.archived && (
+                          <span className="text-[11px] text-hint shrink-0">Archivada</span>
+                        )}
+                      </span>
+                      <span className="hidden sm:block text-sm text-body w-16 text-right shrink-0">{row.sales_count}</span>
+                      <span className="text-sm font-semibold text-body w-24 text-right shrink-0">{formatMoney(row.revenue)}</span>
+                      <span className="hidden sm:block text-sm text-subtle w-24 text-right shrink-0">−{formatMoney(row.discount_total)}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
           </div>
