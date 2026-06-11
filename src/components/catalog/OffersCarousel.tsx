@@ -119,6 +119,9 @@ function OfferSlide({
             <p className="mt-0.5 text-sm text-muted-foreground">{product.brandName}</p>
           )}
           <p className="mt-2 text-2xl font-bold lg:text-3xl">
+            {product.hasVariants && product.variantCount > 1 && (
+              <span className="mr-1.5 text-base font-medium text-muted-foreground lg:text-lg">Desde</span>
+            )}
             {product.originalPrice !== null && (
               <span className="mr-2 text-base font-medium text-muted-foreground line-through lg:text-lg">
                 ${currencyFormatter.format(product.originalPrice)}

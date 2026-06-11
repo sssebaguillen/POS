@@ -436,7 +436,25 @@ const ProductCard = memo(function ProductCard({
     priceList: activePriceList,
     overrides: priceListOverrides,
   })
-  const basePrice = Number.isFinite(rawPrice) ? rawPrice : (product.price ?? 0)
+  // "Desde" = mínimo entre las variantes activas (el price del padre trae la variante
+  // default, que puede no ser la más barata). applyUnitPromo es monótona, así que
+  // aplicar la promo sobre el mínimo base equivale al mínimo de los precios con promo.
+  const minVariantBase = useMemo(() => {
+    if (!product.has_variants || !product.variant_prices?.length) return null
+    const bases = product.variant_prices
+      .map(vp => resolveDisplayPrice({
+        cost: vp.cost,
+        price: vp.price,
+        productId: product.id,
+        brandId: product.brand_id,
+        priceList: activePriceList,
+        overrides: priceListOverrides,
+        variantPrice: vp.price,
+      }))
+      .filter(p => Number.isFinite(p) && p > 0)
+    return bases.length > 0 ? Math.min(...bases) : null
+  }, [product.has_variants, product.variant_prices, product.id, product.brand_id, activePriceList, priceListOverrides])
+  const basePrice = minVariantBase ?? (Number.isFinite(rawPrice) ? rawPrice : (product.price ?? 0))
   const promo = findApplicablePromo({
     promotions,
     productId: product.id,

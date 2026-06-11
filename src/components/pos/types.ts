@@ -10,6 +10,9 @@ export interface PosCategory {
 export interface ProductWithCategory extends Product {
   brand?: { id: string; name: string } | null
   categories?: { name: string; icon: string } | null
+  // price/cost de cada variante activa — la card calcula el "Desde" con el mínimo
+  // efectivo (lista + promo), no con la variante default (que puede ser la más cara)
+  variant_prices?: { price: number; cost: number }[]
 }
 
 export type ActiveFilter =

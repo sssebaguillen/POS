@@ -245,6 +245,9 @@ export default function CatalogSearch({
                       </span>
 
                       <span className="shrink-0 text-right text-sm font-semibold">
+                        {product.hasVariants && product.variantCount > 1 && (
+                          <span className="mr-1 text-xs font-medium text-muted-foreground">Desde</span>
+                        )}
                         {product.originalPrice !== null && (
                           <span className="mr-1.5 text-xs font-medium text-muted-foreground line-through">
                             ${currencyFormatter.format(product.originalPrice)}

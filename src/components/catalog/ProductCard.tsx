@@ -74,8 +74,14 @@ function PromoBadges({ product }: { product: CatalogProduct }) {
 }
 
 function PriceBlock({ product }: { product: CatalogProduct }) {
+  // sale_price de productos con variantes ya es el mínimo entre variantes activas
+  // (get_catalog_products) — el "Desde" lo hace explícito cuando hay más de una
+  const showDesde = product.hasVariants && product.variantCount > 1
   return (
     <p className="mt-1 text-base font-bold text-foreground">
+      {showDesde && (
+        <span className="mr-1 text-xs font-medium text-muted-foreground">Desde</span>
+      )}
       {product.originalPrice !== null && (
         <span className="mr-1.5 text-sm font-medium text-muted-foreground line-through">
           ${currencyFormatter.format(product.originalPrice)}

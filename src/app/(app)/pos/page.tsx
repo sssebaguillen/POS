@@ -79,6 +79,7 @@ export default async function POSPage() {
     image_source: 'upload' | 'url' | null
   }>()
   const posTotalStockMap = new Map<string, number>()
+  const posVariantPricesMap = new Map<string, { price: number; cost: number }[]>()
 
   const [dvResult, totalStockResult] = await Promise.all([
     defaultVariantIds.length > 0
@@ -88,7 +89,7 @@ export default async function POSPage() {
         .in('id', defaultVariantIds)
       : Promise.resolve({ data: [] }),
     variantProductIds.length > 0
-      ? supabase.from('product_variants').select('product_id, stock').eq('business_id', businessId).eq('is_active', true).in('product_id', variantProductIds)
+      ? supabase.from('product_variants').select('product_id, stock, price, cost').eq('business_id', businessId).eq('is_active', true).in('product_id', variantProductIds)
       : Promise.resolve({ data: [] }),
   ])
 
@@ -107,8 +108,11 @@ export default async function POSPage() {
     }
   }
   if (totalStockResult.data) {
-    for (const v of totalStockResult.data as { product_id: string; stock: number }[]) {
+    for (const v of totalStockResult.data as { product_id: string; stock: number; price: number; cost: number }[]) {
       posTotalStockMap.set(v.product_id, (posTotalStockMap.get(v.product_id) ?? 0) + Number(v.stock))
+      const prices = posVariantPricesMap.get(v.product_id) ?? []
+      prices.push({ price: Number(v.price), cost: Number(v.cost) })
+      posVariantPricesMap.set(v.product_id, prices)
     }
   }
 
@@ -143,6 +147,7 @@ export default async function POSPage() {
           min_stock: Number(product.min_stock),
           sales_count: Number(product.sales_count),
           has_variants: typedProduct.has_variants ?? false,
+          variant_prices: typedProduct.has_variants ? (posVariantPricesMap.get(product.id) ?? []) : undefined,
           brand_id: product.brand_id ?? null,
           brand: unwrapRelation(product.brands),
           image_url: defaultVariant?.image_url ?? product.image_url ?? null,

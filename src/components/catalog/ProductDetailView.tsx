@@ -98,7 +98,21 @@ export default function ProductDetailView({
 
   const displayVariant = selectedVariant ?? defaultDisplayVariant
 
-  const displayPrice = displayVariant?.price ?? product.computed_price
+  // Sin variante seleccionada, el precio mostrado es el MÍNIMO entre las activas
+  // ("Desde $X") — la imagen/stock siguen a la variante default (displayVariant)
+  const minPriceVariant: CatalogProductVariant | null = (() => {
+    if (!product.has_variants) return null
+    const candidates = variants.filter(v => v.is_active && v.price > 0)
+    if (candidates.length === 0) return null
+    return candidates.reduce((min, v) => (v.price < min.price ? v : min))
+  })()
+  const activeVariantCount = variants.filter(v => v.is_active).length
+  const showDesde = !selectedVariant && product.has_variants && activeVariantCount > 1
+
+  const displayPrice = selectedVariant?.price
+    ?? minPriceVariant?.price
+    ?? displayVariant?.price
+    ?? product.computed_price
 
   const displayStock = displayVariant?.stock ?? product.stock
 
@@ -238,11 +252,14 @@ export default function ProductDetailView({
             {(() => {
               const originalPrice = selectedVariant
                 ? (selectedVariant.original_price ?? null)
-                : (product.original_price ?? null)
+                : (minPriceVariant?.original_price ?? product.original_price ?? null)
               const countdown = product.promo ? promoCountdownLabel(product.promo.ends_at) : null
               return (
                 <>
                   <p className="mt-2 text-3xl font-bold text-foreground">
+                    {showDesde && (
+                      <span className="mr-2 text-xl font-medium text-muted-foreground">Desde</span>
+                    )}
                     {originalPrice !== null && (
                       <span className="mr-2 text-xl font-medium text-muted-foreground line-through">
                         ${currencyFormatter.format(originalPrice)}

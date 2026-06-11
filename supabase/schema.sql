@@ -3235,10 +3235,28 @@ BEGIN
       p.category_id,
       p.name,
       CASE
-        WHEN p.has_variants AND pv_def.id IS NOT NULL THEN
-          public.compute_effective_price(
-            pv_def.cost::numeric, pv_def.price::numeric, pv_def.price::numeric,
-            NULL, NULL, p.id, p.brand_id)
+        WHEN p.has_variants THEN
+          COALESCE(
+            (SELECT MIN(ep.price)
+             FROM (
+               SELECT public.compute_effective_price(
+                 pv.cost::numeric, pv.price::numeric, pv.price::numeric,
+                 NULL, NULL, p.id, p.brand_id) AS price
+               FROM product_variants pv
+               WHERE pv.product_id = p.id AND pv.is_active = true
+             ) ep
+             WHERE ep.price > 0),
+            CASE
+              WHEN pv_def.id IS NOT NULL THEN
+                public.compute_effective_price(
+                  pv_def.cost::numeric, pv_def.price::numeric, pv_def.price::numeric,
+                  NULL, NULL, p.id, p.brand_id)
+              ELSE
+                public.compute_effective_price(
+                  p.cost::numeric, p.price::numeric, NULL,
+                  NULL, NULL, p.id, p.brand_id)
+            END
+          )
         ELSE
           public.compute_effective_price(
             p.cost::numeric, p.price::numeric, NULL,
