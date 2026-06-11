@@ -8102,7 +8102,7 @@ CREATE TABLE IF NOT EXISTS "public"."audit_log" (
     "new_data" "jsonb",
     "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
     CONSTRAINT "audit_log_actor_role_check" CHECK (("actor_role" = ANY (ARRAY['owner'::"text", 'manager'::"text", 'cashier'::"text", 'custom'::"text", 'customer'::"text"]))),
-    CONSTRAINT "audit_log_entity_type_check" CHECK (("entity_type" = ANY (ARRAY['sale'::"text", 'product'::"text", 'category'::"text", 'brand'::"text", 'expense'::"text", 'supplier'::"text", 'price_list'::"text", 'setting'::"text", 'operator'::"text", 'customer'::"text", 'catalog_order'::"text"])))
+    CONSTRAINT "audit_log_entity_type_check" CHECK (("entity_type" = ANY (ARRAY['sale'::"text", 'product'::"text", 'category'::"text", 'brand'::"text", 'expense'::"text", 'supplier'::"text", 'price_list'::"text", 'setting'::"text", 'operator'::"text", 'customer'::"text", 'catalog_order'::"text", 'promotion'::"text"])))
 );
 
 

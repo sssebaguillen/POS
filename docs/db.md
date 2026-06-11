@@ -317,7 +317,7 @@ Append-only audit trail of business mutations. Indefinite retention. RLS enabled
 | operator_id | uuid nullable | FK → operators(id). **NULL = owner ("Dueño")** — owner has no row in `operators` |
 | actor_role | text | snapshot of role at action time (`'owner'`, `'manager'`, `'cashier'`, `'custom'`) |
 | action | text | e.g. `sale_created`, `sale_updated`, `sale_deleted`, `product_created`, `product_updated`, `product_deleted`, `product_bulk_deleted`, `product_bulk_status`, `product_bulk_category`, `product_bulk_brand`, `category_*`, `brand_*` |
-| entity_type | text | `'sale' \| 'product' \| 'category' \| 'brand' \| 'expense' \| 'supplier' \| 'price_list' \| 'setting' \| 'operator' \| 'customer' \| 'catalog_order'` |
+| entity_type | text | `'sale' \| 'product' \| 'category' \| 'brand' \| 'expense' \| 'supplier' \| 'price_list' \| 'setting' \| 'operator' \| 'customer' \| 'catalog_order' \| 'promotion'` |
 | entity_id | uuid nullable | id of affected entity (null for bulk) |
 | entity_label | text nullable | snapshot label for display (sales have no label — show total from `new_data`/`old_data`) |
 | old_data | jsonb nullable | full pre-state snapshot for `*_updated` / `*_deleted` |
