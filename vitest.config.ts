@@ -1,4 +1,4 @@
-import { defineConfig } from 'vitest/config'
+import { configDefaults, defineConfig } from 'vitest/config'
 import path from 'path'
 
 // Pin timezone so date/locale-dependent tests are deterministic across machines/CI.
@@ -13,6 +13,9 @@ export default defineConfig({
   },
   test: {
     environment: 'node',
+    // .claude/ aloja worktrees de agentes (copias del repo) — sin esto, vitest
+    // corre cada suite dos veces y contamina el resultado.
+    exclude: [...configDefaults.exclude, '**/.claude/**'],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json-summary'],

@@ -10,7 +10,7 @@ sus STOP conditions, y actualizar su fila al terminar.
 
 | Plan | Title | Priority | Effort | Depends on | Status |
 |------|-------|----------|--------|------------|--------|
-| 001  | (v2) Integrar rama cloud `claude/test-coverage-analysis-3BbFX` + actualizar a era promos + suite de promotions.ts | P1 | M–L | — | TODO |
+| 001  | (v2) Integrar rama cloud `claude/test-coverage-analysis-3BbFX` + actualizar a era promos + suite de promotions.ts | P1 | M–L | — | DONE (2026-06-12, PR #7 mergeado a master; 387 tests verdes, CI "Tests / Unit tests" activo en cada PR) |
 | 002  | Reemplazar `xlsx` abandonado (CVEs) por `@e965/xlsx` | P1 | S | — | DONE (2026-06-12, branch `worktree-agent-aea44f204ce54b923`, mergeado en master) |
 | 003  | Remover deps `hono` + `@hono/node-server` sin uso | P2 | S | — | DONE (2026-06-12, branch `worktree-agent-ad05e35f07f411cec`, mergeado en master) |
 | 004  | Re-asentar REVOKE/GRANT de RPCs reemplazadas post-auditoría | P2 | M | — | TODO |
