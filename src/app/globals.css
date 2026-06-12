@@ -791,13 +791,13 @@
   --revert-dur: 280ms;
 }
 
-.t-input {
-  will-change: transform;
-}
-
 /* %-stops = duraciones acumuladas de cada tramo (A, A, B, B sobre 280ms):
-   28.57%, 57.14%, 78.57%, 100%. Recalcular si cambia --shake-dur-a/b. */
+   28.57%, 57.14%, 78.57%, 100%. Recalcular si cambia --shake-dur-a/b.
+   will-change vive SOLO en .is-shaking: permanente en .t-input creaba un
+   stacking context en cada wrapper y atrapaba los dropdowns z-indexados
+   de adentro debajo de hermanos posteriores del DOM. */
 .t-input.is-shaking {
+  will-change: transform;
   animation: t-input-shake calc(
       var(--shake-dur-a) * 2 + var(--shake-dur-b) * 2
     ) linear;
