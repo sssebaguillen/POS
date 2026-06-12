@@ -114,11 +114,12 @@ describe('POST /api/operator/switch — owner flow', () => {
 })
 
 describe('POST /api/operator/switch — operator PIN flow', () => {
+  // New 8-key permission shape — no analysis/operators_write (old keys)
   const operatorRow = {
     profile_id: 'op-1',
     name: 'Ana',
     role: 'cashier',
-    permissions: { ...OWNER_PERMISSIONS, analysis: false, operators_write: false },
+    permissions: { ...OWNER_PERMISSIONS, reports: false, manage_operators: false },
   }
 
   it('rejects a PIN that is not exactly 4 digits', async () => {
@@ -142,7 +143,10 @@ describe('POST /api/operator/switch — operator PIN flow', () => {
     const signed = res.cookies.get('operator_session')!.value
     const operator = await getActiveOperator({ get: () => ({ value: signed }) })
     expect(operator?.role).toBe('cashier')
-    expect(operator?.permissions.analysis).toBe(false)
+    // New shape: reports replaces old 'analysis'; manage_operators replaces 'operators_write'
+    expect(operator?.permissions.reports).toBe(false)
+    expect(operator?.permissions.manage_operators).toBe(false)
+    expect(operator?.permissions.inventory_read).toBe(true)
   })
 
   it('accepts the operator row when returned as a single-element array', async () => {
