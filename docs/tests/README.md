@@ -1,6 +1,6 @@
 # Tests — Pulsar POS
 
-Tests de regresión manual + scripts SQL automatizables para validar los flujos críticos antes de incorporar usuarios de alto volumen.
+Tests de regresión manual + scripts SQL automatizables + **suite de tests unitarios automatizados (Vitest)** para validar los flujos críticos antes de incorporar usuarios de alto volumen.
 
 ## Estructura
 
@@ -16,6 +16,17 @@ Tests de regresión manual + scripts SQL automatizables para validar los flujos 
 | `08-auditoria-seguridad.md` | Auditoría RLS + RPC SECURITY DEFINER + GRANTs + Storage + API/frontend | Resultados |
 | `09-auditoria-calidad.md` | Auditoría de calidad de código (deuda, duplicación, dead code, tipos, convenciones) | Resultados |
 | `10-stress-gastos.md` | Stress de gastos operativos + mercadería (mueven stock) + reconciliación E1–E5/R11 | Resultados |
+| `11-tests-unitarios.md` | Suite Vitest: lógica de negocio (`lib/`) + API routes + flujo de cobro (`components/pos/`) — cobertura, casos y hallazgos | Automatizado (Vitest + RTL) |
+
+## Cómo ejecutar los tests unitarios (Vitest)
+
+```bash
+npm test          # corre toda la suite una vez (CI)
+npm run test:watch  # modo watch (desarrollo)
+npx vitest run --coverage   # con reporte de cobertura
+```
+
+Detalle completo de qué cubre cada archivo en `11-tests-unitarios.md`.
 
 ## Cómo ejecutar los tests SQL
 
