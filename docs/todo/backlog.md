@@ -332,3 +332,19 @@ El owner sube un PDF o foto de la factura de una compra recién hecha y el siste
 - Datos sensibles: el export contiene info crítica del negocio → entregar vía descarga autenticada (no link público), idealmente con la sesión del dueño.
 
 **Prioridad:** importante para confianza/adopción y como pieza del borrado de cuenta, pero **no urgente** (sin usuarios reales). Empezar por el export completo; el import queda como fase 2.
+
+---
+
+## Auditoría del camino del dinero (2026-06-12) — pendientes
+
+> Auditoría con la skill `improve` (4 subagentes, scope: POS → precios/promos → catálogo → pedidos → caja). Planes autocontenidos en `plans/` (commiteados). Ejecutados y en producción el mismo día: 002 (xlsx→@e965/xlsx), 003 (hono fuera), 006 (lint verde), 001 v2 (suite cloud integrada: **387 tests + CI "Tests / Unit tests" en cada PR**, PR #7). Hallazgos descartados documentados en `plans/README.md` ("considered and rejected") — no re-auditar.
+
+**Pendientes con plan escrito (ejecutar con el flujo executor+review o a mano):**
+- **Plan 004 — Re-asentar REVOKE/GRANT** (`plans/004-reassert-rpc-grants.md`): migración nueva que re-asienta grants de ~12 RPCs reemplazadas post-auditoría de seguridad sin REVOKE/GRANT explícito (CREATE OR REPLACE preserva grants → no es vuln activa, pero un futuro DROP+CREATE abriría PUBLIC EXECUTE en silencio). El executor crea la migración; **aplicarla a la DB la decide el dueño** + sincronizar `supabase/schema.sql`.
+- **Plan 005 — Centralizar `round2`** (`plans/005-centralize-money-rounding.md`): `Math.round(v*100)/100` duplicado en cart.store, ambos CartPanel y promotions.ts → `round2` en `lib/format.ts`; incluye redondear `adjustedSubtotal` del POS. **Desbloqueado** (dependía de la red de tests, ya aterrizada).
+
+**Deuda derivada de la sesión (sin plan, anotar nomás):**
+- **Refactor selectivo de los 19 `react-hooks/set-state-in-effect`** (hoy en `warn`, decisión 2026-06-12, comentado en `eslint.config.mjs`): mounted pattern (regla 25) + reset-de-estado-al-abrir-modal. Con la suite de tests como red ya se puede encarar de a poco; prioridad: POSView/CartPanel (camino del dinero). Son además los componentes que React Compiler no optimiza.
+- **Lint warnings de `.agents/`** (~120, scripts de skills de diseño): opcional agregar `.agents/**` a `globalIgnores` de eslint.
+- **Deploy Vercel ~3m20** (analizado 2026-06-12, sano para el tamaño de la app): si se quiere afeitar → (a) subir sourcemaps de Sentry solo en producción (hoy corre en previews), (b) probar `next build --turbopack` (el compile de 59s es el chunk más grande; experimento seguro con la suite de tests como red).
+- **Doc drift en CLAUDE.md**: (a) referencia `docs/backlog.md` pero el archivo vive en `docs/todo/backlog.md`; (b) dice que el polling de pedidos es cada 30s pero `UnreadBadge`/`OrdersView` usan 10s.
