@@ -48,4 +48,5 @@ export interface SaleItem {
 export interface SaleDetail extends SaleRow {
   items: SaleItem[]
   operator_name: string | null
+  customer_name: string | null
 }

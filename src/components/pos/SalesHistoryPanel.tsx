@@ -179,6 +179,7 @@ export default function SalesHistoryPanel({ businessId, businessName, operatorId
       ...sale,
       payment_method: isPaymentMethod(result.data.payment_method) ? result.data.payment_method : null,
       operator_name: result.data.operator_name ?? null,
+      customer_name: result.data.customer_name ?? null,
       items: (result.data.items ?? []).map((row: SaleItemQueryRow) => ({
         id: row.id,
         product_id: row.product_id,
@@ -346,6 +347,7 @@ export default function SalesHistoryPanel({ businessId, businessName, operatorId
         ...sale,
         payment_method: isPaymentMethod(result.data.payment_method) ? result.data.payment_method : null,
         operator_name: result.data.operator_name ?? null,
+        customer_name: result.data.customer_name ?? null,
         items: (result.data.items ?? []).map((row: SaleItemQueryRow) => ({
           id: row.id,
           product_id: row.product_id,
@@ -362,7 +364,7 @@ export default function SalesHistoryPanel({ businessId, businessName, operatorId
     }))
 
     const headers = [
-      'id', 'fecha', 'hora', 'vendedor', 'estado',
+      'id', 'fecha', 'hora', 'vendedor', 'cliente', 'estado',
       'producto', 'variante', 'cantidad', 'precio_unitario', 'subtotal_linea',
       'metodo_pago', 'total_venta',
     ]
@@ -372,12 +374,13 @@ export default function SalesHistoryPanel({ businessId, businessName, operatorId
       const dateStr = new Date(sale.created_at).toLocaleDateString('es-AR')
       const timeStr = formatTime(sale.created_at)
       const actor = detail?.operator_name ?? 'Dueño'
+      const customer = detail?.customer_name ?? '-'
       const method = normalizePayment(sale.payment_method)
       const total = sale.total.toFixed(2)
       const items = detail?.items ?? []
 
       if (items.length === 0) {
-        rows.push([sale.id, dateStr, timeStr, actor, sale.status ?? '', '', '', '', '', '', method, total])
+        rows.push([sale.id, dateStr, timeStr, actor, customer, sale.status ?? '', '', '', '', '', '', method, total])
         continue
       }
 
@@ -386,7 +389,7 @@ export default function SalesHistoryPanel({ businessId, businessName, operatorId
         const variantLabel = item.variant_label ?? ''
         const lineTotal = (item.quantity * item.unit_price).toFixed(2)
         rows.push([
-          sale.id, dateStr, timeStr, actor, sale.status ?? '',
+          sale.id, dateStr, timeStr, actor, customer, sale.status ?? '',
           productLabel, variantLabel,
           String(item.quantity), item.unit_price.toFixed(2), lineTotal,
           method, total,
@@ -544,7 +547,12 @@ export default function SalesHistoryPanel({ businessId, businessName, operatorId
                           </span>
                         </div>
 
-                        <p className="text-[11px] text-hint mb-2.5">Por: {detail.operator_name ?? 'Dueño'}</p>
+                        <p className="text-[11px] text-hint mb-2.5">
+                          Por: {detail.operator_name ?? 'Dueño'}
+                          {detail.customer_name && (
+                            <span> · Cliente: {detail.customer_name}</span>
+                          )}
+                        </p>
 
                         <div className="flex items-center justify-between gap-2 mt-2.5">
                           <div className="flex gap-1.5">

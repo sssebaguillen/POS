@@ -19,6 +19,7 @@ export interface SaleDetailPayload {
   status: string | null
   payment_method: string | null
   operator_name: string | null
+  customer_name: string | null
   items: SaleItemRow[] | null
 }
 

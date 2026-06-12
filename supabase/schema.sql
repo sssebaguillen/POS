@@ -4694,6 +4694,7 @@ BEGIN
   SELECT json_build_object(
     'success',        true,
     'operator_name',  COALESCE(direct_op.name, session_op.name),
+    'customer_name',  cust.name,
     'payment_method', pay.method,
     'items', (
       SELECT json_agg(json_build_object(
@@ -4725,6 +4726,7 @@ BEGIN
   LEFT JOIN operators direct_op  ON direct_op.id = s.operator_id
   LEFT JOIN cash_sessions cs     ON cs.id = s.session_id
   LEFT JOIN operators session_op ON session_op.id = cs.opened_by
+  LEFT JOIN customers cust       ON cust.id = s.customer_id
   LEFT JOIN LATERAL (
     SELECT method FROM payments
     WHERE sale_id = p_sale_id

@@ -37,6 +37,7 @@ interface SaleItem {
 
 interface SaleDetail extends SalesHistoryRow {
   items: SaleItem[]
+  customer_name: string | null
 }
 
 interface Cursor {
@@ -159,6 +160,7 @@ function SalesHistoryTable({ businessId, businessName, operatorId, from, to, ope
       status: result.data.status ?? row.status,
       method: isPaymentMethod(result.data.payment_method) ? result.data.payment_method : row.method,
       operator_name: result.data.operator_name ?? null,
+      customer_name: result.data.customer_name ?? null,
       items: (result.data.items ?? []).map((item) => ({
         id: item.id,
         product_id: item.product_id ?? '',
@@ -547,9 +549,12 @@ function SalesHistoryTable({ businessId, businessName, operatorId, from, to, ope
                         </span>
                       </div>
 
-                      {detail.operator_name && (
-                        <p className="text-[11px] text-hint mb-2.5">Por: {detail.operator_name}</p>
-                      )}
+                      <p className="text-[11px] text-hint mb-2.5">
+                        Por: {detail.operator_name ?? 'Dueño'}
+                        {detail.customer_name && (
+                          <span> · Cliente: {detail.customer_name}</span>
+                        )}
+                      </p>
 
                       <div className="flex items-center justify-between gap-2 mt-3">
                         <div className="flex items-center gap-1.5">
