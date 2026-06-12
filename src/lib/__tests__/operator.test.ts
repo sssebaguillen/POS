@@ -12,6 +12,7 @@ import {
   getActiveOperator,
   OWNER_PERMISSIONS,
   DEFAULT_PERMISSIONS,
+  OPERATOR_MANAGEMENT_PERMISSION_KEYS,
   type ActiveOperator,
   type Permissions,
 } from '@/lib/operator'
@@ -47,29 +48,32 @@ describe('isUserRole', () => {
 })
 
 describe('parsePermissions', () => {
-  const validInput = {
-    sales: true,
-    stock: true,
-    stock_write: false,
-    analysis: false,
-    price_lists: true,
-    price_lists_write: false,
-    settings: false,
+  // New 8-key shape (current canonical shape)
+  const newShape: Permissions = {
+    online_orders: true,
+    pos_pricing: false,
+    inventory_read: true,
+    inventory_write: false,
+    reports: false,
     expenses: true,
+    settings: false,
+    manage_operators: false,
   }
 
-  it('parses a valid permission object', () => {
-    const result = parsePermissions(validInput)
+  it('parses a valid permission object (new 8-key shape)', () => {
+    const result = parsePermissions(newShape)
     expect(result).not.toBeNull()
-    expect(result!.sales).toBe(true)
+    expect(result!.online_orders).toBe(true)
     expect(result!.expenses).toBe(true)
     expect(result!.settings).toBe(false)
+    expect(result!.pos_pricing).toBe(false)
+    expect(result!.manage_operators).toBe(false)
   })
 
   it('returns null when a required boolean field is missing or wrong-typed', () => {
-    expect(parsePermissions({ ...validInput, sales: 'yes' })).toBeNull()
-    const missing: Partial<typeof validInput> = { ...validInput }
-    delete missing.stock
+    expect(parsePermissions({ ...newShape, online_orders: 'yes' })).toBeNull()
+    const missing = { ...newShape } as Partial<typeof newShape>
+    delete missing.reports
     expect(parsePermissions(missing)).toBeNull()
   })
 
@@ -79,17 +83,26 @@ describe('parsePermissions', () => {
     expect(parsePermissions(42)).toBeNull()
   })
 
-  it('soft-defaults newer fields (operators_write, price_override, free_line) to false', () => {
-    const result = parsePermissions(validInput)
-    expect(result!.operators_write).toBe(false)
-    expect(result!.price_override).toBe(false)
-    expect(result!.free_line).toBe(false)
+  it('returns null for old 11-flag shape (strict — F4 cutover, forces re-login)', () => {
+    // The old shape does not have the new keys → parsePermissions returns null
+    // (fail-closed: old cookies force operator re-selection)
+    const oldShape = {
+      sales: true,
+      stock: true,
+      stock_write: false,
+      analysis: false,
+      price_lists: true,
+      price_lists_write: false,
+      settings: false,
+      expenses: true,
+    }
+    expect(parsePermissions(oldShape)).toBeNull()
   })
 
-  it('honors newer fields when present', () => {
-    const result = parsePermissions({ ...validInput, price_override: true, free_line: true })
-    expect(result!.price_override).toBe(true)
-    expect(result!.free_line).toBe(true)
+  it('parses OWNER_PERMISSIONS correctly', () => {
+    const result = parsePermissions(OWNER_PERMISSIONS)
+    expect(result).not.toBeNull()
+    expect(result).toEqual(OWNER_PERMISSIONS)
   })
 })
 
@@ -100,31 +113,41 @@ describe('normalizePermissions', () => {
   })
 
   it('coerces only strict-true values to true', () => {
-    const result = normalizePermissions({ sales: true, stock: false })
-    expect(result.sales).toBe(true)
-    expect(result.stock).toBe(false)
-    expect(result.analysis).toBe(false)
+    // New keys: online_orders=true; everything else should be false
+    const result = normalizePermissions({ online_orders: true, pos_pricing: false })
+    expect(result.online_orders).toBe(true)
+    expect(result.pos_pricing).toBe(false)
+    expect(result.reports).toBe(false)
+    expect(result.manage_operators).toBe(false)
+  })
+
+  it('ignores unknown (old) keys without throwing', () => {
+    // Old keys are silently ignored; normalizePermissions is lenient (no strict validation)
+    const result = normalizePermissions({ sales: true, stock: false, inventory_read: true })
+    expect(result.inventory_read).toBe(true)
+    // Old key 'sales' is simply not present in the output
+    expect((result as Record<string, unknown>).sales).toBeUndefined()
+  })
+
+  it('normalizes OWNER_PERMISSIONS to itself', () => {
+    expect(normalizePermissions(OWNER_PERMISSIONS)).toEqual(OWNER_PERMISSIONS)
   })
 })
 
 describe('toOperatorManagementPermissions', () => {
-  it('projects all 11 management permission keys', () => {
+  it('projects all 8 management permission keys (new model)', () => {
     const result = toOperatorManagementPermissions(OWNER_PERMISSIONS)
-    expect(Object.keys(result).sort()).toEqual(
-      [
-        'analysis',
-        'expenses',
-        'free_line',
-        'operators_write',
-        'price_lists',
-        'price_lists_write',
-        'price_override',
-        'sales',
-        'settings',
-        'stock',
-        'stock_write',
-      ].sort()
-    )
+    expect(Object.keys(result).sort()).toEqual([...OPERATOR_MANAGEMENT_PERMISSION_KEYS].sort())
+  })
+
+  it('returns all-true for OWNER_PERMISSIONS', () => {
+    const result = toOperatorManagementPermissions(OWNER_PERMISSIONS)
+    expect(Object.values(result).every(v => v === true)).toBe(true)
+  })
+
+  it('returns all-false for DEFAULT_PERMISSIONS', () => {
+    const result = toOperatorManagementPermissions(DEFAULT_PERMISSIONS)
+    expect(Object.values(result).every(v => v === false)).toBe(true)
   })
 })
 
@@ -133,26 +156,38 @@ describe('hasPermission', () => {
     profile_id: 'op-1',
     name: 'Ana',
     role: 'cashier',
-    permissions: fullPermissions({ analysis: false }),
+    permissions: fullPermissions({ reports: false }),
   }
 
   it('returns true for a granted permission', () => {
-    expect(hasPermission(operator, 'sales')).toBe(true)
+    expect(hasPermission(operator, 'inventory_read')).toBe(true)
   })
 
   it('returns false for a denied permission', () => {
-    expect(hasPermission(operator, 'analysis')).toBe(false)
+    expect(hasPermission(operator, 'reports')).toBe(false)
+  })
+
+  it('returns true for pos_pricing (replaces old price_override)', () => {
+    expect(hasPermission(operator, 'pos_pricing')).toBe(true)
   })
 })
 
 describe('getPermissionLabel', () => {
-  it('returns the Spanish label for a known permission', () => {
-    expect(getPermissionLabel('sales')).toBe('Ventas')
-    expect(getPermissionLabel('stock_write')).toBe('Inventario (edición)')
+  it('returns the Spanish label for new permission keys', () => {
+    expect(getPermissionLabel('inventory_read')).toBe('Ver inventario')
+    expect(getPermissionLabel('inventory_write')).toBe('Editar inventario')
+    expect(getPermissionLabel('pos_pricing')).toBe('Ajustar precios en la venta')
+    expect(getPermissionLabel('online_orders')).toBe('Pedidos online')
+    expect(getPermissionLabel('reports')).toBe('Ver reportes y estadísticas')
+    expect(getPermissionLabel('expenses')).toBe('Registrar gastos')
+    expect(getPermissionLabel('settings')).toBe('Configuración')
+    expect(getPermissionLabel('manage_operators')).toBe('Gestionar operarios')
   })
 
   it('falls back to the raw key when unknown', () => {
     expect(getPermissionLabel('mystery')).toBe('mystery')
+    // Old keys fall back to raw string (not silently mapped)
+    expect(getPermissionLabel('sales')).toBe('sales')
   })
 })
 
@@ -201,8 +236,8 @@ describe('parseActiveOperator', () => {
     expect(parseActiveOperator({ ...valid, role: 'superadmin' })).toBeNull()
   })
 
-  it('rejects a missing/invalid permissions blob', () => {
-    expect(parseActiveOperator({ ...valid, permissions: { sales: 'nope' } })).toBeNull()
+  it('rejects a missing/invalid permissions blob (old shape is invalid)', () => {
+    expect(parseActiveOperator({ ...valid, permissions: { sales: true } })).toBeNull()
     expect(parseActiveOperator({ ...valid, permissions: null })).toBeNull()
   })
 
@@ -229,7 +264,7 @@ describe('operator_session HMAC signing', () => {
     profile_id: 'op-1',
     name: 'Ana',
     role: 'cashier',
-    permissions: fullPermissions({ analysis: false, operators_write: false }),
+    permissions: fullPermissions({ reports: false, manage_operators: false }),
   }
 
   it('produces a "payload.signature" base64url format', async () => {
@@ -243,7 +278,8 @@ describe('operator_session HMAC signing', () => {
     expect(result).not.toBeNull()
     expect(result!.profile_id).toBe('op-1')
     expect(result!.role).toBe('cashier')
-    expect(result!.permissions.sales).toBe(true)
+    expect(result!.permissions.inventory_read).toBe(true)
+    expect(result!.permissions.reports).toBe(false)
   })
 
   it('returns null when there is no cookie', async () => {
