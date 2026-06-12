@@ -62,6 +62,7 @@ function renderPanel(overrides: Partial<React.ComponentProps<typeof CartPanel>> 
     freeLineEnabled: false,
     activePriceList: null,
     priceListOverrides: [],
+    promotions: [],          // required since promos module shipped (2026-06-10)
     operatorId: 'op-1',
     permissions: OWNER_PERMISSIONS,
     ...overrides,
@@ -96,10 +97,11 @@ describe('CartPanel — items + quantity', () => {
   })
 })
 
-describe('CartPanel — discount (gated by price_override)', () => {
-  it('hides the discount trigger when price_override is not granted', () => {
+describe('CartPanel — discount (gated by pos_pricing)', () => {
+  it('hides the discount trigger when pos_pricing is not granted', () => {
     seedCart()
-    renderPanel({ permissions: { ...DEFAULT_PERMISSIONS, sales: true } })
+    // pos_pricing controls both price-editing and the discount button
+    renderPanel({ permissions: { ...DEFAULT_PERMISSIONS } })
     expect(screen.queryByRole('button', { name: /Desc\./ })).not.toBeInTheDocument()
   })
 
@@ -150,7 +152,7 @@ describe('CartPanel — discount (gated by price_override)', () => {
   })
 })
 
-describe('CartPanel — price override per line', () => {
+describe('CartPanel — price override per line (pos_pricing permission)', () => {
   it('overrides the unit price and marks the line as manual', async () => {
     const user = userEvent.setup()
     seedCart({ quantity: 2, total: 200 })
@@ -168,9 +170,10 @@ describe('CartPanel — price override per line', () => {
     expect(item.total).toBe(160) // 80 × 2
   })
 
-  it('does not show the price-edit control without price_override permission', () => {
+  it('does not show the price-edit control without pos_pricing permission', () => {
     seedCart()
-    renderPanel({ permissions: { ...DEFAULT_PERMISSIONS, sales: true } })
+    // pos_pricing=false means no price editing or discounting
+    renderPanel({ permissions: { ...DEFAULT_PERMISSIONS } })
     expect(screen.queryByRole('button', { name: 'Editar precio unitario' })).not.toBeInTheDocument()
   })
 })
