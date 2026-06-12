@@ -1,6 +1,26 @@
 {
-  "current": "0.0.8.1",
+  "current": "0.0.8.2",
   "releases": [
+    {
+      "version": "0.0.8.2",
+      "kind": "feature",
+      "date": "2026-06-13",
+      "label": "Promos más completas y pulido de venta",
+      "changes": [
+        { "type": "new", "text": "Las promos de precio de oferta ahora también aplican a productos con variantes: todas las variantes pasan al precio de la oferta, y las que ya cuestan menos conservan su precio — una oferta nunca sube un precio. Antes este tipo de promo solo admitía productos sin variantes." },
+        { "type": "new", "text": "Nuevo widget 'Impacto de promociones' en Estadísticas: cuántas ventas llevaron promo, cuánto facturaste con ellas y cuánto descuento resignaste, con el desglose promo por promo. Los datos se venían registrando desde que llegaron las promos; ahora por fin se ven." },
+        { "type": "new", "text": "El detalle de cada venta ahora muestra a qué cliente se le vendió, tanto en el historial del POS como en el Resumen. El CSV exportado del historial también incluye la columna de cliente." },
+        { "type": "improvement", "text": "Rediseñamos el cierre de venta en el POS: el botón 'Cobrar' ahora es protagonista, grande y con el total adentro; 'Vaciar' pasó a ser un enlace discreto. Los precios del carrito se tocan más fácil para editarlos y, si una venta falla, el aviso es claro y el carrito sigue cargado para reintentar." },
+        { "type": "improvement", "text": "Los filtros del catálogo ahora viven en una sola fila: las categorías siempre visibles como chips, el orden al lado y un panel 'Más filtros' para marca, variantes y precio. Los filtros activos se muestran como chips que se quitan con un toque, y el carrusel de ofertas se guarda con una animación suave mientras filtras." },
+        { "type": "improvement", "text": "El pedido del catálogo es más robusto: los datos se validan al instante al tocar 'Enviar', el carrito se limpia al confirmar (sin riesgo de pedidos duplicados), ves un resumen completo de lo pedido y funciona aunque el negocio no tenga WhatsApp configurado." },
+        { "type": "improvement", "text": "En el celular, elegir la variante de un producto del catálogo ahora abre un panel desde abajo, con botones más grandes y fáciles de tocar. El buscador además se puede recorrer con el teclado y ofrece 'Ver los N resultados' para filtrar la grilla completa." },
+        { "type": "improvement", "text": "Cuando un formulario tiene un dato inválido, el campo ahora se sacude suavemente y muestra el motivo debajo. Aplica en productos, promociones, el checkout del catálogo, PINs y configuración." },
+        { "type": "fix", "text": "El precio 'Desde' de los productos con variantes ahora muestra siempre la variante más barata, en el POS y en el catálogo. Antes podía mostrar el precio de la variante principal, que no siempre era la menor." },
+        { "type": "fix", "text": "Una promo de precio de oferta que no abarata nada (por ejemplo, una oferta de $200 sobre un producto de $140) ya no se muestra como oferta: no aparece en el carrusel ni en la página de ofertas del catálogo, y tampoco lleva etiqueta en la grilla ni en el POS." },
+        { "type": "fix", "text": "Corregimos el buscador de productos al crear una promoción: la lista de resultados quedaba escondida detrás de los campos de fecha y parecía transparente. Ahora se ve completa por encima del formulario." },
+        { "type": "fix", "text": "Crear, editar, pausar o archivar una promoción ahora queda registrado en el historial de actividad. Antes estos cambios pasaban sin dejar rastro." }
+      ]
+    },
     {
       "version": "0.0.8.1",
       "kind": "feature",

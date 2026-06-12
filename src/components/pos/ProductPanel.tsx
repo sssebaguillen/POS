@@ -439,7 +439,7 @@ const ProductCard = memo(function ProductCard({
   // "Desde" = mínimo entre las variantes activas (el price del padre trae la variante
   // default, que puede no ser la más barata). applyUnitPromo es monótona, así que
   // aplicar la promo sobre el mínimo base equivale al mínimo de los precios con promo.
-  const minVariantBase = useMemo(() => {
+  const variantBaseRange = useMemo(() => {
     if (!product.has_variants || !product.variant_prices?.length) return null
     const bases = product.variant_prices
       .map(vp => resolveDisplayPrice({
@@ -452,9 +452,9 @@ const ProductCard = memo(function ProductCard({
         variantPrice: vp.price,
       }))
       .filter(p => Number.isFinite(p) && p > 0)
-    return bases.length > 0 ? Math.min(...bases) : null
+    return bases.length > 0 ? { min: Math.min(...bases), max: Math.max(...bases) } : null
   }, [product.has_variants, product.variant_prices, product.id, product.brand_id, activePriceList, priceListOverrides])
-  const basePrice = minVariantBase ?? (Number.isFinite(rawPrice) ? rawPrice : (product.price ?? 0))
+  const basePrice = variantBaseRange?.min ?? (Number.isFinite(rawPrice) ? rawPrice : (product.price ?? 0))
   const promo = findApplicablePromo({
     promotions,
     productId: product.id,
@@ -464,7 +464,12 @@ const ProductCard = memo(function ProductCard({
   const promoUnitPrice = promo ? applyUnitPromo(promo, basePrice) : basePrice
   const hasUnitPromo = promo !== null && promoUnitPrice < basePrice
   const displayPrice = hasUnitPromo ? promoUnitPrice : basePrice
-  const promoLabel = promo ? promoBadgeLabel(promo) : null
+  // Promo real (espejo de get_catalog_products): un precio de oferta que no
+  // abarata ninguna variante (oferta >= base máxima) no muestra badge.
+  const maxBasePrice = variantBaseRange?.max ?? basePrice
+  const promoIsReal = promo !== null &&
+    (promo.kind !== 'offer_price' || applyUnitPromo(promo, maxBasePrice) < maxBasePrice)
+  const promoLabel = promoIsReal && promo ? promoBadgeLabel(promo) : null
 
   const displayName = product.name || 'Sin nombre'
 

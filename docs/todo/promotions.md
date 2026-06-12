@@ -51,12 +51,14 @@ El precio que paga el cliente queda en `unit_price`/`total` como siempre (línea
 
 ```
 ( ) Porcentaje de descuento   → kind='percent', percent           (cualquier scope)
-( ) Precio de oferta          → kind='offer_price', offer_price   (solo producto SIN variantes)
+( ) Precio de oferta          → kind='offer_price', offer_price   (scope producto; con variantes: todas a $X)
 ( ) Lleva X, paga Y           → kind='quantity', N/K/P=0          (scope producto)
 ( ) 2da unidad al X%          → kind='quantity', N=2/K=1/P        (scope producto)
 ```
 
-Precio de oferta sobre variantes: restringido en v1 (un precio fijo sobre N variantes con precios distintos es ambiguo; usar %). Si hace falta, el modelo acomoda `variant_id` en el scope sin migración conceptual.
+Promo "real" en catálogo y POS (mig. `20260612_05`): una promo solo se muestra (badge, sección Ofertas, objeto `promo` del detalle) si realmente abarata algo — `percent`/`quantity` siempre; `offer_price` solo si la oferta es menor al precio (sin variantes) o menor a alguna variante activa (con variantes). El checkout ya era correcto (solo registra `promotion_id` con descuento efectivo); esto alinea la presentación. Espejo TS: badge de `ProductPanel` (POS) vía `applyUnitPromo` sobre la base máxima.
+
+Precio de oferta sobre variantes: habilitado 2026-06-12 (mig. `20260612_04`) con semántica "todas las variantes a $X" — `apply_unit_promo`/`applyUnitPromo` aplican `min(oferta, precio)` por variante, así que una oferta nunca SUBE el precio de una variante más barata. La restricción de v1 era solo validación de alta (RPCs + filtro de UI); el pipeline de consumo siempre fue genérico por línea/variante. Si hace falta granularidad por variante, el modelo acomoda `variant_id` en el scope sin migración conceptual (precedencia: variante > producto > categoría > marca).
 
 ### 5. Ruta y permisos
 

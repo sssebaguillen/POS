@@ -1715,7 +1715,6 @@ DECLARE
   v_actor_role         text;
   v_stored_op_id       uuid;
   v_row                public.promotions%ROWTYPE;
-  v_has_variants       boolean;
 BEGIN
   IF p_operator_id IS NULL THEN
     RETURN jsonb_build_object('success', false, 'error', '403: Sesión de operador no encontrada');
@@ -1776,15 +1775,10 @@ BEGIN
   END IF;
 
   -- El target debe pertenecer al negocio
-  IF p_product_id IS NOT NULL THEN
-    SELECT has_variants INTO v_has_variants
-    FROM products WHERE id = p_product_id AND business_id = v_caller_business_id;
-    IF NOT FOUND THEN
-      RETURN jsonb_build_object('success', false, 'error', 'Producto no encontrado');
-    END IF;
-    IF p_kind = 'offer_price' AND v_has_variants THEN
-      RETURN jsonb_build_object('success', false, 'error', 'El precio de oferta no aplica a productos con variantes; usa porcentaje');
-    END IF;
+  IF p_product_id IS NOT NULL AND NOT EXISTS (
+    SELECT 1 FROM products WHERE id = p_product_id AND business_id = v_caller_business_id
+  ) THEN
+    RETURN jsonb_build_object('success', false, 'error', 'Producto no encontrado');
   END IF;
   IF p_category_id IS NOT NULL AND NOT EXISTS (
     SELECT 1 FROM categories WHERE id = p_category_id AND business_id = v_caller_business_id
@@ -3036,6 +3030,7 @@ DECLARE
   v_business_id     uuid;
   v_product         record;
   v_promo           public.promotions;
+  v_promo_real      boolean;
   v_base_price      numeric;
   v_computed_price  numeric;
   v_options_json    json;
@@ -3085,6 +3080,28 @@ BEGIN
     v_product.id,
     v_product.brand_id
   );
+
+  -- Promo real: offer_price solo cuenta si abarata algo (sin variantes: oferta
+  -- < precio; con variantes: alguna variante activa cuesta más que la oferta).
+  IF v_promo.id IS NOT NULL AND v_promo.kind = 'offer_price' THEN
+    IF v_product.has_variants THEN
+      SELECT EXISTS (
+        SELECT 1 FROM public.product_variants pv
+        WHERE pv.product_id = p_product_id
+          AND pv.business_id = v_business_id
+          AND pv.is_active = true
+          AND public.compute_effective_price(
+                pv.cost::numeric, pv.price::numeric, pv.price::numeric,
+                NULL, NULL, v_product.id, v_product.brand_id) > v_promo.offer_price
+      ) INTO v_promo_real;
+    ELSE
+      v_promo_real := v_promo.offer_price < v_base_price;
+    END IF;
+    IF NOT v_promo_real THEN
+      v_promo := NULL;
+    END IF;
+  END IF;
+
   v_computed_price := public.apply_unit_promo(v_promo.kind, v_promo.percent, v_promo.offer_price, v_base_price);
 
   SELECT json_agg(
@@ -3287,7 +3304,27 @@ BEGIN
       AND p.is_active      = true
       AND p.show_in_catalog = true
   ) base
-  LEFT JOIN LATERAL public.find_applicable_promotion(v_business_id, base.id, base.category_id, base.brand_id) fp ON true
+  LEFT JOIN LATERAL public.find_applicable_promotion(v_business_id, base.id, base.category_id, base.brand_id) fp0 ON true
+  -- fp = fp0 solo si la promo es real (abarata algo); si no, todas sus columnas
+  -- quedan NULL y el producto se proyecta sin promo.
+  LEFT JOIN LATERAL (
+    SELECT fp0.*
+    WHERE fp0.id IS NOT NULL
+      AND (
+        fp0.kind <> 'offer_price'
+        OR CASE
+             WHEN base.has_variants THEN EXISTS (
+               SELECT 1 FROM product_variants pv
+               WHERE pv.product_id = base.id
+                 AND pv.is_active = true
+                 AND public.compute_effective_price(
+                       pv.cost::numeric, pv.price::numeric, pv.price::numeric,
+                       NULL, NULL, base.id, base.brand_id) > fp0.offer_price
+             )
+             ELSE fp0.offer_price < base.base_price
+           END
+      )
+  ) fp ON true
   ORDER BY base.name ASC;
 END;
 $$;
@@ -7580,7 +7617,6 @@ DECLARE
   v_stored_op_id       uuid;
   v_old                public.promotions%ROWTYPE;
   v_row                public.promotions%ROWTYPE;
-  v_has_variants       boolean;
 BEGIN
   IF p_operator_id IS NULL THEN
     RETURN jsonb_build_object('success', false, 'error', '403: Sesión de operador no encontrada');
@@ -7649,15 +7685,10 @@ BEGIN
     RETURN jsonb_build_object('success', false, 'error', 'La fecha de fin debe ser posterior a la de inicio');
   END IF;
 
-  IF p_product_id IS NOT NULL THEN
-    SELECT has_variants INTO v_has_variants
-    FROM products WHERE id = p_product_id AND business_id = v_caller_business_id;
-    IF NOT FOUND THEN
-      RETURN jsonb_build_object('success', false, 'error', 'Producto no encontrado');
-    END IF;
-    IF p_kind = 'offer_price' AND v_has_variants THEN
-      RETURN jsonb_build_object('success', false, 'error', 'El precio de oferta no aplica a productos con variantes; usa porcentaje');
-    END IF;
+  IF p_product_id IS NOT NULL AND NOT EXISTS (
+    SELECT 1 FROM products WHERE id = p_product_id AND business_id = v_caller_business_id
+  ) THEN
+    RETURN jsonb_build_object('success', false, 'error', 'Producto no encontrado');
   END IF;
   IF p_category_id IS NOT NULL AND NOT EXISTS (
     SELECT 1 FROM categories WHERE id = p_category_id AND business_id = v_caller_business_id

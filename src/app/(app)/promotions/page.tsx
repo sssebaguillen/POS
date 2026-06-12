@@ -19,7 +19,7 @@ export default async function PromotionsPage() {
       .order('created_at', { ascending: false }),
     supabase
       .from('products')
-      .select('id, name, has_variants, category_id, brand_id')
+      .select('id, name, category_id, brand_id')
       .eq('business_id', businessId)
       .eq('is_active', true)
       .order('name'),
@@ -44,7 +44,6 @@ export default async function PromotionsPage() {
       products={(products ?? []).map(p => ({
         id: p.id,
         name: p.name,
-        has_variants: p.has_variants ?? false,
         category_id: p.category_id ?? null,
         brand_id: p.brand_id ?? null,
       }))}

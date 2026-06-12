@@ -137,25 +137,11 @@ export default function PromotionModal({
   const requiresProductScope = form.uiKind === 'offer_price' || form.uiKind === 'nxm' || form.uiKind === 'second_unit'
   const effectiveScopeType: ScopeType = requiresProductScope ? 'product' : form.scopeType
 
-  // Precio de oferta no aplica a productos con variantes (un precio fijo sobre N variantes es ambiguo)
-  const selectableProducts = useMemo(
-    () => (form.uiKind === 'offer_price' ? products.filter(p => !p.has_variants) : products),
-    [products, form.uiKind]
-  )
-
   const filteredProducts = useMemo(() => {
     const q = productQuery.trim().toLowerCase()
     if (!q) return []
-    return selectableProducts.filter(p => p.name.toLowerCase().includes(q)).slice(0, 8)
-  }, [selectableProducts, productQuery])
-
-  // Matches que existen pero quedaron fuera por la regla de variantes (precio de oferta)
-  const variantExcludedCount = useMemo(() => {
-    if (form.uiKind !== 'offer_price') return 0
-    const q = productQuery.trim().toLowerCase()
-    if (!q) return 0
-    return products.filter(p => p.has_variants && p.name.toLowerCase().includes(q)).length
-  }, [products, form.uiKind, productQuery])
+    return products.filter(p => p.name.toLowerCase().includes(q)).slice(0, 8)
+  }, [products, productQuery])
 
   const selectedProduct = form.productId ? products.find(p => p.id === form.productId) ?? null : null
 
@@ -410,7 +396,7 @@ export default function PromotionModal({
                   aria-invalid={attempted && !!fieldErrors.value}
                 />
               </ShakeOnError>
-              <p className="text-caption text-hint">Solo para productos sin variantes. Si el producto tiene variantes, usa porcentaje.</p>
+              <p className="text-caption text-hint">Si el producto tiene variantes, todas pasan a este precio. Las que ya cuestan menos conservan su precio.</p>
               {fieldError('value')}
             </div>
           )}
@@ -516,17 +502,7 @@ export default function PromotionModal({
                           ))}
                         </div>
                       ) : (
-                        <div className="px-3 py-2.5 space-y-0.5">
-                          <p className="text-sm text-hint">Sin resultados para «{productQuery.trim()}»</p>
-                          {variantExcludedCount > 0 && (
-                            <p className="text-caption text-hint">
-                              {variantExcludedCount === 1
-                                ? 'Hay 1 producto con variantes que coincide,'
-                                : `Hay ${variantExcludedCount} productos con variantes que coinciden,`}{' '}
-                              pero el precio de oferta no admite variantes. Usa una promo de porcentaje.
-                            </p>
-                          )}
-                        </div>
+                        <p className="px-3 py-2.5 text-sm text-hint">Sin resultados para «{productQuery.trim()}»</p>
                       )}
                     </div>
                   )}

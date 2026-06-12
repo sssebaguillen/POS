@@ -4,7 +4,6 @@ import { formatMoney } from '@/lib/format'
 export interface PromoProductRef {
   id: string
   name: string
-  has_variants: boolean
   category_id: string | null
   brand_id: string | null
 }
