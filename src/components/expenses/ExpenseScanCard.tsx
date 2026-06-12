@@ -40,7 +40,7 @@ async function spreadsheetToText(file: File): Promise<string> {
   const isCsv = file.type === 'text/csv' || file.name.toLowerCase().endsWith('.csv')
   if (isCsv) return await file.text()
   // Excel: convertir la primera hoja a CSV. xlsx se importa dinámico para no engordar el bundle.
-  const XLSX = await import('xlsx')
+  const XLSX = await import('@e965/xlsx')
   const buf = await file.arrayBuffer()
   const wb = XLSX.read(buf, { type: 'array' })
   const firstSheet = wb.Sheets[wb.SheetNames[0]]
