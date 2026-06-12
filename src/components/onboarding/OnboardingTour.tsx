@@ -133,6 +133,7 @@ export default function OnboardingTour({ open, profileId, onboardingState }: Onb
     placement: currentStep?.placement ?? 'right',
     strategy: 'fixed',
     whileElementsMounted: autoUpdate,
+    // eslint-disable-next-line react-hooks/refs -- API canónico de floating-ui: arrow({ element: ref }) lee .current fuera del render
     middleware: [offset(14), flip({ padding: 16 }), shift({ padding: 16 }), arrow({ element: arrowRef })],
   })
 

@@ -12,7 +12,17 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Agent worktrees — do not lint .claude/
+    ".claude/**",
   ]),
+  {
+    rules: {
+      // Mounted pattern (CLAUDE.md regla 25) y reset-de-estado-al-abrir-modal son
+      // patrones deliberados del repo; la regla queda en warn hasta el refactor
+      // selectivo post-beta (decisión 2026-06-12).
+      "react-hooks/set-state-in-effect": "warn",
+    },
+  },
 ]);
 
 export default eslintConfig;
