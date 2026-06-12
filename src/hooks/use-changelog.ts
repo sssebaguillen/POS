@@ -62,16 +62,11 @@ export function useChangelog(initialLastSeenVersion: string | null) {
   const rawUnread = lastSeenIdx === -1 ? releases : releases.slice(0, lastSeenIdx)
 
   // Mostrar todos los features, pero limitar los parches a los más recientes.
-  // releases viene newest-first, así que el filtro toma los primeros N parches.
-  let patchesShown = 0
-  const unreadReleases = rawUnread.filter(r => {
-    if (r.kind !== 'patch') return true
-    if (patchesShown < PATCH_VISIBLE_LIMIT) {
-      patchesShown += 1
-      return true
-    }
-    return false
-  })
+  // releases viene newest-first, así que se toman los primeros N parches.
+  const visiblePatches = new Set(
+    rawUnread.filter(r => r.kind === 'patch').slice(0, PATCH_VISIBLE_LIMIT)
+  )
+  const unreadReleases = rawUnread.filter(r => r.kind !== 'patch' || visiblePatches.has(r))
   const hiddenPatchCount = rawUnread.length - unreadReleases.length
 
   const hasUnread = rawUnread.length > 0
