@@ -21,7 +21,7 @@ describe('unwrapRpc', () => {
 
   it('returns ok:false with a translated message on a Postgrest error', () => {
     const result = unwrapRpc(
-      { data: null, error: { message: 'duplicate key value', details: '', hint: '', code: '23505', name: 'e' } },
+      { data: null, error: { message: 'duplicate key value', details: '', hint: '', code: '23505', name: 'e', toJSON: () => ({ name: 'e', message: 'duplicate key value', details: '', hint: '', code: '23505' }) } },
       'fallback'
     )
     expect(result.ok).toBe(false)
@@ -80,6 +80,8 @@ describe('createSaleTransaction', () => {
             unit_price_override: null,
             override_reason: null,
             free_line_description: null,
+            promotion_id: null,
+            promo_discount: 0,
           },
         ],
         payments: [{ method: 'cash', amount: 90 }],

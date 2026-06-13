@@ -33,11 +33,13 @@ const saleItems: SaleItemInput[] = [
     unit_price_override: null,
     override_reason: null,
     free_line_description: null,
+    promotion_id: null,
+    promo_discount: 0,
   },
 ]
 
 const receiptItems: ReceiptItemInput[] = [
-  { ...saleItems[0], name: 'Producto', icon: null, variant_label: null },
+  { ...saleItems[0], name: 'Producto', icon: null, variant_label: null, promo_label: null },
 ]
 
 function renderModal(overrides: Partial<React.ComponentProps<typeof PaymentModal>> = {}) {

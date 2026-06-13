@@ -7,7 +7,8 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import CartPanel from '@/components/pos/CartPanel'
 import { useCartStore } from '@/lib/store/cart.store'
 import { OWNER_PERMISSIONS, DEFAULT_PERMISSIONS } from '@/lib/operator'
-import type { CartItem, Product } from '@/lib/types'
+import type { Product } from '@/lib/types'
+import type { CartItem } from '@/lib/types/cart'
 
 vi.mock('next/navigation', () => ({ useRouter: () => ({ push: vi.fn(), refresh: vi.fn() }) }))
 vi.mock('@/lib/supabase/client', () => ({ createClient: () => ({}) }))

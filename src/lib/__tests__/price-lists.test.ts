@@ -6,7 +6,8 @@ import {
   resolveCartItemPrice,
   getMarginPercent,
 } from '@/lib/price-lists'
-import type { CartItem, PriceList, PriceListOverride, Product } from '@/lib/types'
+import type { PriceList, PriceListOverride, Product } from '@/lib/types'
+import type { CartItem } from '@/lib/types/cart'
 
 // --- fixtures ---
 

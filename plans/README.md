@@ -18,7 +18,7 @@ su fila al terminar.
 | 004  | Re-asentar REVOKE/GRANT de RPCs reemplazadas post-auditoría | P2 | M | — | TODO (al ejecutarlo, excluir las 16 funciones que el 009 ya re-asienta) |
 | 005  | Centralizar `round2` + redondear subtotal del POS | P3 | S–M | 001 | TODO (desbloqueado — la red de tests del 001 ya aterrizó) |
 | 006  | Lint en verde: set-state-in-effect→warn, fix immutability/refs, ignorar .claude/ | P1 | S | — | DONE (2026-06-12, branch `worktree-agent-a09fe70642328e424`, mergeado en master) |
-| 007  | Typecheck en verde (8 errores de tipos en tests) + gates lint/typecheck en CI | P1 | S | — | TODO |
+| 007  | Typecheck en verde (8 errores de tipos en tests) + gates lint/typecheck en CI | P1 | S | — | DONE (2026-06-13; 8 errores arreglados, script `typecheck` + steps Lint/Typecheck en CI; nota: `PostgrestError.toJSON` exigió devolver la forma del error, no `{}` como decía el plan) |
 | 008  | Guard de `{success:false}` en los 5 consumidores de `get_product_with_variants` (4 crashean hoy) | P1 | S | 007 (soft — usa `npm run typecheck`) | TODO |
 | 009  | Migración SQL: día contable en TZ del negocio para 16 RPCs de stats (hoy filtran por día UTC) | P1 | L | — | TODO (crea la migración; aplicarla la decide el dueño) |
 | 010  | App: "hoy"/rangos en TZ del negocio (server seed UTC + offset -03:00 hardcodeado) | P1 | M | 009 **aplicada a la DB** | TODO |

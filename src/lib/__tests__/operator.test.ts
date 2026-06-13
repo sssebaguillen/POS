@@ -126,7 +126,7 @@ describe('normalizePermissions', () => {
     const result = normalizePermissions({ sales: true, stock: false, inventory_read: true })
     expect(result.inventory_read).toBe(true)
     // Old key 'sales' is simply not present in the output
-    expect((result as Record<string, unknown>).sales).toBeUndefined()
+    expect((result as unknown as Record<string, unknown>).sales).toBeUndefined()
   })
 
   it('normalizes OWNER_PERMISSIONS to itself', () => {
