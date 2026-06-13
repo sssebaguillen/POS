@@ -1,4 +1,4 @@
-import type { OperatorSalesStatsRow, PriceList, PriceListOverride, UserRole } from '@/lib/types'
+import type { OperatorSalesStatsRow, PriceList, PriceListOverride, ProductWithVariants, UserRole } from '@/lib/types'
 import { isUserRole } from '@/lib/operator'
 
 type RelationValue<T> = T | T[] | null | undefined
@@ -77,6 +77,17 @@ function normalizeOperatorRole(input: OperatorSalesStatsRowInput, operatorId: st
   }
 
   return 'custom'
+}
+
+/**
+ * get_product_with_variants devuelve {success:true, product, options, variants}
+ * o {success:false, error}. Este guard es el ÚNICO punto de narrowing — castear
+ * el resultado directo a ProductWithVariants crashea en el shape de error.
+ */
+export function unwrapProductWithVariants(rpc: unknown): ProductWithVariants | null {
+  if (!rpc || typeof rpc !== 'object') return null
+  if ((rpc as { success?: boolean }).success !== true) return null
+  return rpc as unknown as ProductWithVariants
 }
 
 export function normalizeOperatorSalesStatsRows(value: unknown): OperatorSalesStatsRow[] {

@@ -4,7 +4,26 @@ import {
   normalizePriceList,
   normalizePriceListOverride,
   normalizeOperatorSalesStatsRows,
+  unwrapProductWithVariants,
 } from '@/lib/mappers'
+
+describe('unwrapProductWithVariants', () => {
+  it('devuelve el objeto cuando success es true', () => {
+    const ok = { success: true, product: { id: 'p1' }, options: [], variants: [] }
+    expect(unwrapProductWithVariants(ok)).toBe(ok)
+  })
+  it('devuelve null para el shape de error {success:false}', () => {
+    expect(unwrapProductWithVariants({ success: false, error: 'Product not found' })).toBeNull()
+  })
+  it('devuelve null para null/undefined', () => {
+    expect(unwrapProductWithVariants(null)).toBeNull()
+    expect(unwrapProductWithVariants(undefined)).toBeNull()
+  })
+  it('devuelve null para basura sin success', () => {
+    expect(unwrapProductWithVariants({ product: {} })).toBeNull()
+    expect(unwrapProductWithVariants('texto')).toBeNull()
+  })
+})
 
 describe('unwrapRelation', () => {
   it('returns the first element of an array', () => {

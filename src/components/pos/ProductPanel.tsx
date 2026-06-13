@@ -6,6 +6,7 @@ import { useCartStore } from '@/lib/store/cart.store'
 import { resolveDisplayPrice } from '@/lib/price-lists'
 import { applyUnitPromo, findApplicablePromo, promoBadgeLabel, type Promotion } from '@/lib/promotions'
 import type { Product, ProductWithVariants, ProductVariant } from '@/lib/types'
+import { unwrapProductWithVariants } from '@/lib/mappers'
 import type { ProductWithCategory, ActiveFilter } from '@/components/pos/types'
 import type { PriceList, PriceListOverride } from '@/lib/types'
 import { useFormatMoney } from '@/lib/context/CurrencyContext'
@@ -257,7 +258,7 @@ function VariantSelectorContent({
     })
     supabase.rpc('get_product_with_variants', { p_product_id: product.id }).then(({ data: rpc }) => {
       setLoading(false)
-      if (rpc) setData(rpc as ProductWithVariants)
+      setData(unwrapProductWithVariants(rpc))
     })
   }, [product.id, supabase])
 

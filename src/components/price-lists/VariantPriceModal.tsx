@@ -9,6 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { useFormatMoney } from '@/lib/context/CurrencyContext'
 import { calculateProductPrice, getMarginPercent } from '@/lib/price-lists'
 import type { PriceList, PriceListOverride, ProductVariant, ProductWithVariants } from '@/lib/types'
+import { unwrapProductWithVariants } from '@/lib/mappers'
 import type { PriceListProduct } from '@/components/price-lists/types'
 
 interface VariantPriceModalProps {
@@ -50,7 +51,7 @@ export default function VariantPriceModal({
     setData(null)
     supabase.rpc('get_product_with_variants', { p_product_id: product.id }).then(({ data: rpc }) => {
       setLoading(false)
-      if (rpc) setData(rpc as ProductWithVariants)
+      setData(unwrapProductWithVariants(rpc))
     })
   }, [open, product.id, supabase])
 

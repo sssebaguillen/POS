@@ -6,7 +6,8 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { ChevronDown, ChevronRight, X } from 'lucide-react'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
-import type { PriceList, PriceListOverride, ProductOption, ProductVariant, ProductWithVariants } from '@/lib/types'
+import type { PriceList, PriceListOverride, ProductOption, ProductVariant } from '@/lib/types'
+import { unwrapProductWithVariants } from '@/lib/mappers'
 import type { InventoryBrand, InventoryCategory, InventoryProduct } from '@/components/inventory/types'
 import { translateDbError } from '@/lib/errors'
 import FieldGroup from '@/components/inventory/FieldGroup'
@@ -137,7 +138,7 @@ export default function EditProductModal({
     })
     supabase.rpc('get_product_with_variants', { p_product_id: product.id }).then(({ data }) => {
       setVariantLoading(false)
-      const result = data as ProductWithVariants | null
+      const result = unwrapProductWithVariants(data)
       if (result?.options) setVariantOptions(result.options)
       if (result?.variants) setVariantVariants(result.variants)
     })

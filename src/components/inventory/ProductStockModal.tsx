@@ -8,6 +8,7 @@ import { createClient } from '@/lib/supabase/client'
 import { useFormatMoney } from '@/lib/context/CurrencyContext'
 import { translateDbError } from '@/lib/errors'
 import type { ProductWithVariants, ProductVariant } from '@/lib/types'
+import { unwrapProductWithVariants } from '@/lib/mappers'
 
 interface ProductStockModalProps {
   productId: string
@@ -34,8 +35,13 @@ export default function ProductStockModal({ productId, businessId, onClose }: Pr
           setLoading(false)
           return
         }
-        const result = rpc as ProductWithVariants | null
-        if (result && result.product.business_id !== businessId) {
+        const result = unwrapProductWithVariants(rpc)
+        if (!result) {
+          setError('Producto no encontrado')
+          setLoading(false)
+          return
+        }
+        if (result.product.business_id !== businessId) {
           setError('Producto no encontrado')
           setLoading(false)
           return

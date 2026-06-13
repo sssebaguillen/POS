@@ -17,7 +17,8 @@ import OpenSessionModal from '@/components/pos/OpenSessionModal'
 import CloseSessionModal from '@/components/pos/CloseSessionModal'
 import ProductFilter, { EMPTY_FILTER, type ProductFilterValue } from '@/components/shared/ProductFilter'
 import type { ProductWithCategory, ActiveFilter } from '@/components/pos/types'
-import type { PriceList, PriceListOverride, ProductVariant, ProductWithVariants } from '@/lib/types'
+import type { PriceList, PriceListOverride, ProductVariant } from '@/lib/types'
+import { unwrapProductWithVariants } from '@/lib/mappers'
 import type { Promotion } from '@/lib/promotions'
 import { getCartItemId, type CartItem } from '@/lib/types/cart'
 import type { ActiveOperator } from '@/lib/operator'
@@ -217,7 +218,7 @@ export default function POSView({ products, businessId, businessName, freeLineEn
     const { data: variantFull } = await supabase.rpc('get_product_with_variants', {
       p_product_id: parentProduct.id,
     })
-    const result = variantFull as ProductWithVariants | null
+    const result = unwrapProductWithVariants(variantFull)
     const variantDetail = result?.variants.find(v => v.id === (data as { id: string }).id)
 
     const variant: ProductVariant = {
