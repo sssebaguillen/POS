@@ -13601,12 +13601,14 @@ GRANT ALL ON FUNCTION "public"."get_catalog_business"("p_slug" "text") TO "servi
 
 
 
+REVOKE ALL ON FUNCTION "public"."get_catalog_categories"("p_slug" "text") FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."get_catalog_categories"("p_slug" "text") TO "anon";
 GRANT ALL ON FUNCTION "public"."get_catalog_categories"("p_slug" "text") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."get_catalog_categories"("p_slug" "text") TO "service_role";
 
 
 
+REVOKE ALL ON FUNCTION "public"."get_catalog_default_variant_prices"("p_slug" "text") FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."get_catalog_default_variant_prices"("p_slug" "text") TO "anon";
 GRANT ALL ON FUNCTION "public"."get_catalog_default_variant_prices"("p_slug" "text") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."get_catalog_default_variant_prices"("p_slug" "text") TO "service_role";
@@ -13644,6 +13646,7 @@ GRANT ALL ON FUNCTION "public"."get_catalog_products"("p_slug" "text") TO "servi
 
 
 
+REVOKE ALL ON FUNCTION "public"."get_catalog_variant_filters"("p_slug" "text") FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."get_catalog_variant_filters"("p_slug" "text") TO "anon";
 GRANT ALL ON FUNCTION "public"."get_catalog_variant_filters"("p_slug" "text") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."get_catalog_variant_filters"("p_slug" "text") TO "service_role";
