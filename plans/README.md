@@ -24,7 +24,7 @@ su fila al terminar.
 | 010  | App: "hoy"/rangos en TZ del negocio (server seed UTC + offset -03:00 hardcodeado) | P1 | M | 009 **aplicada a la DB** | DONE (2026-06-13; `resolveDateRange` acepta `timeZone` + `todayInTimeZone`/`shiftDateString`; `getBusinessTimezone` en business.ts; offset `-03:00` eliminado de los 3 sitios; `operator/me` pasa `from`/`to` `date` directo a los RPCs post-009; timezone threaded en 12 pages + 7 views; 394 tests/typecheck/lint/build verdes. Smoke UI en browser pendiente) |
 | 011  | RPC `get_low_stock_summary` — el dashboard deja de traer 5000 productos por carga | P2 | S–M | — | TODO (gate interno: aplicar su migración antes del swap de UI) |
 | 012  | Tests de los gates de ruta/permisos de `proxy.ts` (~14 casos, firma HMAC real) | P2 | M | 007 (soft) | TODO |
-| 013  | Higiene de deps: pin `@posthog/cli`, `shadcn` fuera de dependencies, declarar `@radix-ui/react-visually-hidden` | P3 | S | — | TODO |
+| 013  | Higiene de deps: pin `@posthog/cli`, `shadcn` fuera de dependencies, declarar `@radix-ui/react-visually-hidden` | P3 | S | — | DONE (2026-06-13; `@posthog/cli` `latest`→`^0.7.11`, `shadcn` eliminado de dependencies, `@radix-ui/react-visually-hidden ^1.2.3` declarado; `npm install` eliminó el árbol transitivo de shadcn del lockfile (−2960 líneas, todas deps del CLI: @inquirer/ts-morph/@antfu/ni/etc.); `@posthog/cli` quedó en 0.7.11; 398 tests/lint/build verdes) |
 | 014  | Imágenes: decidir optimización Next/Vercel vs `unoptimized` global documentado (11 componentes) | P3 | S | — | TODO (gate: decisión de cuota Vercel del operador) |
 
 Status values: TODO | IN PROGRESS | DONE | BLOCKED (con motivo en una línea) | REJECTED (con justificación)
