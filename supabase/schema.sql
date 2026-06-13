@@ -2815,20 +2815,29 @@ CREATE OR REPLACE FUNCTION "public"."get_business_balance"("p_business_id" "uuid
     SET "search_path" TO 'public', 'extensions'
     AS $$
 DECLARE
-  v_from        date := COALESCE(p_from, date_trunc('month', CURRENT_DATE)::date);
-  v_to          date := COALESCE(p_to, CURRENT_DATE);
+  v_timezone    text;
+  v_from        date;
+  v_to          date;
   v_income      numeric := 0;
   v_expenses    numeric := 0;
   v_by_category jsonb;
 BEGIN
   PERFORM public.assert_tenant(p_business_id);
 
+  SELECT timezone INTO v_timezone FROM public.businesses WHERE id = p_business_id;
+  IF v_timezone IS NULL OR v_timezone = '' THEN
+    v_timezone := 'America/Argentina/Buenos_Aires';
+  END IF;
+
+  v_from := COALESCE(p_from, date_trunc('month', (now() AT TIME ZONE v_timezone)::date)::date);
+  v_to   := COALESCE(p_to, (now() AT TIME ZONE v_timezone)::date);
+
   SELECT COALESCE(SUM(total), 0)
   INTO v_income
   FROM public.sales
   WHERE business_id = p_business_id
     AND status = 'completed'
-    AND created_at::date BETWEEN v_from AND v_to;
+    AND (created_at AT TIME ZONE v_timezone)::date BETWEEN v_from AND v_to;
 
   SELECT COALESCE(SUM(amount), 0)
   INTO v_expenses
@@ -3715,7 +3724,7 @@ $$;
 ALTER FUNCTION "public"."get_operator_sales_sparkline"("p_business_id" "uuid", "p_operator_id" "uuid", "p_days" integer) OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."get_operator_stats"("p_operator_id" "uuid", "p_date_from" timestamp with time zone DEFAULT NULL::timestamp with time zone, "p_date_to" timestamp with time zone DEFAULT NULL::timestamp with time zone) RETURNS json
+CREATE OR REPLACE FUNCTION "public"."get_operator_stats"("p_operator_id" "uuid", "p_date_from" "date" DEFAULT NULL::"date", "p_date_to" "date" DEFAULT NULL::"date") RETURNS json
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public', 'extensions'
     AS $$
@@ -3723,6 +3732,7 @@ DECLARE
   v_caller_id uuid;
   v_business_id uuid;
   v_operator_business_id uuid;
+  v_timezone text;
   v_total_sales int;
   v_total_revenue numeric;
   v_top_products json;
@@ -3748,6 +3758,11 @@ BEGIN
     RETURN json_build_object('success', false, 'error', 'unauthorized');
   END IF;
 
+  SELECT timezone INTO v_timezone FROM public.businesses WHERE id = v_business_id;
+  IF v_timezone IS NULL OR v_timezone = '' THEN
+    v_timezone := 'America/Argentina/Buenos_Aires';
+  END IF;
+
   -- Totales
   SELECT
     COUNT(*)::int,
@@ -3757,8 +3772,8 @@ BEGIN
   WHERE operator_id = p_operator_id
     AND business_id = v_business_id
     AND status = 'completed'
-    AND (p_date_from IS NULL OR created_at >= p_date_from)
-    AND (p_date_to   IS NULL OR created_at <= p_date_to);
+    AND (p_date_from IS NULL OR (created_at AT TIME ZONE v_timezone)::date >= p_date_from)
+    AND (p_date_to   IS NULL OR (created_at AT TIME ZONE v_timezone)::date <= p_date_to);
 
   -- Top 5 productos vendidos por este operario
   SELECT json_agg(t) INTO v_top_products
@@ -3773,8 +3788,8 @@ BEGIN
     WHERE s.operator_id = p_operator_id
       AND s.business_id = v_business_id
       AND s.status = 'completed'
-      AND (p_date_from IS NULL OR s.created_at >= p_date_from)
-      AND (p_date_to   IS NULL OR s.created_at <= p_date_to)
+      AND (p_date_from IS NULL OR (s.created_at AT TIME ZONE v_timezone)::date >= p_date_from)
+      AND (p_date_to   IS NULL OR (s.created_at AT TIME ZONE v_timezone)::date <= p_date_to)
     GROUP BY p.id, p.name
     ORDER BY total_quantity DESC
     LIMIT 5
@@ -3793,8 +3808,8 @@ BEGIN
     WHERE s.operator_id = p_operator_id
       AND s.business_id = v_business_id
       AND s.status = 'completed'
-      AND (p_date_from IS NULL OR s.created_at >= p_date_from)
-      AND (p_date_to   IS NULL OR s.created_at <= p_date_to)
+      AND (p_date_from IS NULL OR (s.created_at AT TIME ZONE v_timezone)::date >= p_date_from)
+      AND (p_date_to   IS NULL OR (s.created_at AT TIME ZONE v_timezone)::date <= p_date_to)
     ORDER BY s.created_at DESC
     LIMIT 50
   ) t;
@@ -3813,7 +3828,7 @@ END;
 $$;
 
 
-ALTER FUNCTION "public"."get_operator_stats"("p_operator_id" "uuid", "p_date_from" timestamp with time zone, "p_date_to" timestamp with time zone) OWNER TO "postgres";
+ALTER FUNCTION "public"."get_operator_stats"("p_operator_id" "uuid", "p_date_from" "date", "p_date_to" "date") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."get_overstock"("p_business_id" "uuid", "p_limit" integer DEFAULT 500, "p_offset" integer DEFAULT 0) RETURNS "jsonb"
@@ -3911,12 +3926,13 @@ $$;
 ALTER FUNCTION "public"."get_overstock"("p_business_id" "uuid", "p_limit" integer, "p_offset" integer) OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."get_owner_stats"("p_date_from" timestamp with time zone DEFAULT NULL::timestamp with time zone, "p_date_to" timestamp with time zone DEFAULT NULL::timestamp with time zone) RETURNS json
+CREATE OR REPLACE FUNCTION "public"."get_owner_stats"("p_date_from" "date" DEFAULT NULL::"date", "p_date_to" "date" DEFAULT NULL::"date") RETURNS json
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public', 'extensions'
     AS $$
 DECLARE
   v_business_id   uuid;
+  v_timezone      text;
   v_total_sales   int;
   v_total_revenue numeric;
   v_top_products  json;
@@ -3930,6 +3946,11 @@ BEGIN
     RETURN json_build_object('success', false, 'error', 'caller_not_found');
   END IF;
 
+  SELECT timezone INTO v_timezone FROM public.businesses WHERE id = v_business_id;
+  IF v_timezone IS NULL OR v_timezone = '' THEN
+    v_timezone := 'America/Argentina/Buenos_Aires';
+  END IF;
+
   -- Totales: ventas sin operador asignado (hechas por el owner)
   SELECT
     COUNT(*)::int,
@@ -3939,8 +3960,8 @@ BEGIN
   WHERE business_id = v_business_id
     AND operator_id IS NULL
     AND status = 'completed'
-    AND (p_date_from IS NULL OR created_at >= p_date_from)
-    AND (p_date_to   IS NULL OR created_at <= p_date_to);
+    AND (p_date_from IS NULL OR (created_at AT TIME ZONE v_timezone)::date >= p_date_from)
+    AND (p_date_to   IS NULL OR (created_at AT TIME ZONE v_timezone)::date <= p_date_to);
 
   -- Top 5 productos
   SELECT json_agg(t) INTO v_top_products
@@ -3955,8 +3976,8 @@ BEGIN
     WHERE s.business_id = v_business_id
       AND s.operator_id IS NULL
       AND s.status = 'completed'
-      AND (p_date_from IS NULL OR s.created_at >= p_date_from)
-      AND (p_date_to   IS NULL OR s.created_at <= p_date_to)
+      AND (p_date_from IS NULL OR (s.created_at AT TIME ZONE v_timezone)::date >= p_date_from)
+      AND (p_date_to   IS NULL OR (s.created_at AT TIME ZONE v_timezone)::date <= p_date_to)
     GROUP BY p.id, p.name
     ORDER BY total_quantity DESC
     LIMIT 5
@@ -3975,8 +3996,8 @@ BEGIN
     WHERE s.business_id = v_business_id
       AND s.operator_id IS NULL
       AND s.status = 'completed'
-      AND (p_date_from IS NULL OR s.created_at >= p_date_from)
-      AND (p_date_to   IS NULL OR s.created_at <= p_date_to)
+      AND (p_date_from IS NULL OR (s.created_at AT TIME ZONE v_timezone)::date >= p_date_from)
+      AND (p_date_to   IS NULL OR (s.created_at AT TIME ZONE v_timezone)::date <= p_date_to)
     ORDER BY s.created_at DESC
     LIMIT 50
   ) t;
@@ -3995,7 +4016,7 @@ END;
 $$;
 
 
-ALTER FUNCTION "public"."get_owner_stats"("p_date_from" timestamp with time zone, "p_date_to" timestamp with time zone) OWNER TO "postgres";
+ALTER FUNCTION "public"."get_owner_stats"("p_date_from" "date", "p_date_to" "date") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."get_period_comparison"("p_business_id" "uuid", "p_from" "date", "p_to" "date") RETURNS "jsonb"
@@ -4124,8 +4145,9 @@ CREATE OR REPLACE FUNCTION "public"."get_product_demand_shifts"(
     SET "search_path" TO 'public', 'extensions'
     AS $$
 declare
-  v_to        date := coalesce(p_to, current_date);
-  v_from      date := coalesce(p_from, coalesce(p_to, current_date) - 29);
+  v_timezone  text;
+  v_to        date;
+  v_from      date;
   v_len       int;
   v_prev_to   date;
   v_prev_from date;
@@ -4137,6 +4159,15 @@ begin
   if auth.uid() is not null then
     perform public.assert_tenant(p_business_id);
   end if;
+
+  select timezone into v_timezone from public.businesses where id = p_business_id;
+  if v_timezone is null or v_timezone = '' then
+    v_timezone := 'America/Argentina/Buenos_Aires';
+  end if;
+
+  v_to   := coalesce(p_to, (now() at time zone v_timezone)::date);
+  v_from := coalesce(p_from, coalesce(p_to, (now() at time zone v_timezone)::date) - 29);
+
   if v_to < v_from then raise exception 'p_to debe ser >= p_from'; end if;
 
   v_len       := (v_to - v_from) + 1;
@@ -4148,14 +4179,14 @@ begin
       select si.product_id, sum(si.quantity)::numeric as units, sum(si.total) as revenue
       from sale_items si join sales s on s.id = si.sale_id
       where s.business_id = p_business_id and s.status = 'completed' and si.product_id is not null
-        and s.created_at::date between v_from and v_to
+        and (s.created_at at time zone v_timezone)::date between v_from and v_to
       group by si.product_id
     ),
     prev as (
       select si.product_id, sum(si.quantity)::numeric as units, sum(si.total) as revenue
       from sale_items si join sales s on s.id = si.sale_id
       where s.business_id = p_business_id and s.status = 'completed' and si.product_id is not null
-        and s.created_at::date between v_prev_from and v_prev_to
+        and (s.created_at at time zone v_timezone)::date between v_prev_from and v_prev_to
       group by si.product_id
     ),
     joined as (
@@ -4254,8 +4285,9 @@ CREATE OR REPLACE FUNCTION "public"."get_payment_mix_shift"(
     SET "search_path" TO 'public', 'extensions'
     AS $$
 declare
-  v_to        date := coalesce(p_to, current_date);
-  v_from      date := coalesce(p_from, coalesce(p_to, current_date) - 29);
+  v_timezone  text;
+  v_to        date;
+  v_from      date;
   v_len       int;
   v_prev_to   date;
   v_prev_from date;
@@ -4264,6 +4296,15 @@ begin
   if auth.uid() is not null then
     perform public.assert_tenant(p_business_id);
   end if;
+
+  select timezone into v_timezone from public.businesses where id = p_business_id;
+  if v_timezone is null or v_timezone = '' then
+    v_timezone := 'America/Argentina/Buenos_Aires';
+  end if;
+
+  v_to   := coalesce(p_to, (now() at time zone v_timezone)::date);
+  v_from := coalesce(p_from, coalesce(p_to, (now() at time zone v_timezone)::date) - 29);
+
   if v_to < v_from then raise exception 'p_to debe ser >= p_from'; end if;
 
   v_len       := (v_to - v_from) + 1;
@@ -4275,14 +4316,14 @@ begin
       select pay.method, sum(pay.amount) as amount, count(distinct s.id) as tx
       from payments pay join sales s on s.id = pay.sale_id
       where s.business_id = p_business_id and s.status = 'completed' and pay.status = 'completed'
-        and s.created_at::date between v_from and v_to
+        and (s.created_at at time zone v_timezone)::date between v_from and v_to
       group by pay.method
     ),
     prev as (
       select pay.method, sum(pay.amount) as amount, count(distinct s.id) as tx
       from payments pay join sales s on s.id = pay.sale_id
       where s.business_id = p_business_id and s.status = 'completed' and pay.status = 'completed'
-        and s.created_at::date between v_prev_from and v_prev_to
+        and (s.created_at at time zone v_timezone)::date between v_prev_from and v_prev_to
       group by pay.method
     ),
     tot as (
@@ -4357,8 +4398,9 @@ CREATE OR REPLACE FUNCTION "public"."get_channel_signals"(
     SET "search_path" TO 'public', 'extensions'
     AS $$
 declare
-  v_to        date := coalesce(p_to, current_date);
-  v_from      date := coalesce(p_from, coalesce(p_to, current_date) - 29);
+  v_timezone  text;
+  v_to        date;
+  v_from      date;
   v_len       int;
   v_prev_to   date;
   v_prev_from date;
@@ -4367,6 +4409,15 @@ begin
   if auth.uid() is not null then
     perform public.assert_tenant(p_business_id);
   end if;
+
+  select timezone into v_timezone from public.businesses where id = p_business_id;
+  if v_timezone is null or v_timezone = '' then
+    v_timezone := 'America/Argentina/Buenos_Aires';
+  end if;
+
+  v_to   := coalesce(p_to, (now() at time zone v_timezone)::date);
+  v_from := coalesce(p_from, coalesce(p_to, (now() at time zone v_timezone)::date) - 29);
+
   if v_to < v_from then raise exception 'p_to debe ser >= p_from'; end if;
 
   v_len       := (v_to - v_from) + 1;
@@ -4376,12 +4427,12 @@ begin
   return (
     with co as (
       select
-        (created_at::date between v_from and v_to)           as is_cur,
-        (created_at::date between v_prev_from and v_prev_to) as is_prev,
+        ((created_at at time zone v_timezone)::date between v_from and v_to)           as is_cur,
+        ((created_at at time zone v_timezone)::date between v_prev_from and v_prev_to) as is_prev,
         status, total
       from catalog_orders
       where business_id = p_business_id
-        and created_at::date between v_prev_from and v_to
+        and (created_at at time zone v_timezone)::date between v_prev_from and v_to
     ),
     funnel as (
       select
@@ -4399,13 +4450,13 @@ begin
     ),
     sales_ch as (
       select
-        coalesce(sum(total) filter (where source = 'catalog' and created_at::date between v_from and v_to), 0)           as catalog_cur,
-        coalesce(sum(total) filter (where source = 'pos'     and created_at::date between v_from and v_to), 0)           as pos_cur,
-        coalesce(sum(total) filter (where source = 'catalog' and created_at::date between v_prev_from and v_prev_to), 0) as catalog_prev,
-        coalesce(sum(total) filter (where source = 'pos'     and created_at::date between v_prev_from and v_prev_to), 0) as pos_prev
+        coalesce(sum(total) filter (where source = 'catalog' and (created_at at time zone v_timezone)::date between v_from and v_to), 0)           as catalog_cur,
+        coalesce(sum(total) filter (where source = 'pos'     and (created_at at time zone v_timezone)::date between v_from and v_to), 0)           as pos_cur,
+        coalesce(sum(total) filter (where source = 'catalog' and (created_at at time zone v_timezone)::date between v_prev_from and v_prev_to), 0) as catalog_prev,
+        coalesce(sum(total) filter (where source = 'pos'     and (created_at at time zone v_timezone)::date between v_prev_from and v_prev_to), 0) as pos_prev
       from sales
       where business_id = p_business_id and status = 'completed'
-        and created_at::date between v_prev_from and v_to
+        and (created_at at time zone v_timezone)::date between v_prev_from and v_to
     ),
     calc as (
       select f.*, sc.*,
@@ -4785,10 +4836,16 @@ CREATE OR REPLACE FUNCTION "public"."get_promo_impact"("p_business_id" "uuid", "
     SET "search_path" TO 'public', 'extensions'
     AS $$
 DECLARE
+  v_timezone text;
   v_data   jsonb;
   v_totals jsonb;
 BEGIN
   PERFORM public.assert_tenant(p_business_id);
+
+  SELECT timezone INTO v_timezone FROM public.businesses WHERE id = p_business_id;
+  IF v_timezone IS NULL OR v_timezone = '' THEN
+    v_timezone := 'America/Argentina/Buenos_Aires';
+  END IF;
 
   SELECT jsonb_agg(row) INTO v_data
   FROM (
@@ -4810,8 +4867,8 @@ BEGIN
     JOIN promotions pr ON pr.id = si.promotion_id
     WHERE s.business_id = p_business_id
       AND s.status = 'completed'
-      AND (p_from IS NULL OR s.created_at::date >= p_from)
-      AND (p_to   IS NULL OR s.created_at::date <= p_to)
+      AND (p_from IS NULL OR (s.created_at AT TIME ZONE v_timezone)::date >= p_from)
+      AND (p_to   IS NULL OR (s.created_at AT TIME ZONE v_timezone)::date <= p_to)
     GROUP BY pr.id
     ORDER BY sum(si.total) DESC
   ) row;
@@ -4827,8 +4884,8 @@ BEGIN
   JOIN sales s ON s.id = si.sale_id
   WHERE s.business_id = p_business_id
     AND s.status = 'completed'
-    AND (p_from IS NULL OR s.created_at::date >= p_from)
-    AND (p_to   IS NULL OR s.created_at::date <= p_to);
+    AND (p_from IS NULL OR (s.created_at AT TIME ZONE v_timezone)::date >= p_from)
+    AND (p_to   IS NULL OR (s.created_at AT TIME ZONE v_timezone)::date <= p_to);
 
   RETURN jsonb_build_object(
     'totals', v_totals,
@@ -4846,10 +4903,16 @@ CREATE OR REPLACE FUNCTION "public"."get_sales_by_brand_detail"("p_business_id" 
     SET "search_path" TO 'public', 'extensions'
     AS $$
 DECLARE
+  v_timezone text;
   v_rows  jsonb;
   v_total bigint;
 BEGIN
   PERFORM public.assert_tenant(p_business_id);
+
+  SELECT timezone INTO v_timezone FROM public.businesses WHERE id = p_business_id;
+  IF v_timezone IS NULL OR v_timezone = '' THEN
+    v_timezone := 'America/Argentina/Buenos_Aires';
+  END IF;
 
   SELECT COUNT(DISTINCT COALESCE(b.id::text, 'sin-marca'))
   INTO v_total
@@ -4859,8 +4922,8 @@ BEGIN
   LEFT JOIN public.brands b ON b.id = p.brand_id
   WHERE s.business_id = p_business_id
     AND s.status = 'completed'
-    AND (p_from IS NULL OR s.created_at::date >= p_from)
-    AND (p_to   IS NULL OR s.created_at::date <= p_to);
+    AND (p_from IS NULL OR (s.created_at AT TIME ZONE v_timezone)::date >= p_from)
+    AND (p_to   IS NULL OR (s.created_at AT TIME ZONE v_timezone)::date <= p_to);
 
   SELECT jsonb_agg(row_to_json(r))
   INTO v_rows
@@ -4878,8 +4941,8 @@ BEGIN
     LEFT JOIN public.brands b ON b.id = p.brand_id
     WHERE s.business_id = p_business_id
       AND s.status = 'completed'
-      AND (p_from IS NULL OR s.created_at::date >= p_from)
-      AND (p_to   IS NULL OR s.created_at::date <= p_to)
+      AND (p_from IS NULL OR (s.created_at AT TIME ZONE v_timezone)::date >= p_from)
+      AND (p_to   IS NULL OR (s.created_at AT TIME ZONE v_timezone)::date <= p_to)
     GROUP BY b.id, b.name
     ORDER BY revenue DESC
     LIMIT p_limit OFFSET p_offset
@@ -4901,10 +4964,16 @@ CREATE OR REPLACE FUNCTION "public"."get_sales_by_category_detail"("p_business_i
     SET "search_path" TO 'public', 'extensions'
     AS $$
 DECLARE
+  v_timezone text;
   v_rows  jsonb;
   v_total bigint;
 BEGIN
   PERFORM public.assert_tenant(p_business_id);
+
+  SELECT timezone INTO v_timezone FROM public.businesses WHERE id = p_business_id;
+  IF v_timezone IS NULL OR v_timezone = '' THEN
+    v_timezone := 'America/Argentina/Buenos_Aires';
+  END IF;
 
   SELECT COUNT(DISTINCT COALESCE(c.id::text, 'sin-categoria'))
   INTO v_total
@@ -4914,8 +4983,8 @@ BEGIN
   LEFT JOIN public.categories c ON c.id = p.category_id
   WHERE s.business_id = p_business_id
     AND s.status = 'completed'
-    AND (p_from IS NULL OR s.created_at::date >= p_from)
-    AND (p_to   IS NULL OR s.created_at::date <= p_to);
+    AND (p_from IS NULL OR (s.created_at AT TIME ZONE v_timezone)::date >= p_from)
+    AND (p_to   IS NULL OR (s.created_at AT TIME ZONE v_timezone)::date <= p_to);
 
   SELECT jsonb_agg(row_to_json(r))
   INTO v_rows
@@ -4934,8 +5003,8 @@ BEGIN
     LEFT JOIN public.categories c ON c.id = p.category_id
     WHERE s.business_id = p_business_id
       AND s.status = 'completed'
-      AND (p_from IS NULL OR s.created_at::date >= p_from)
-      AND (p_to   IS NULL OR s.created_at::date <= p_to)
+      AND (p_from IS NULL OR (s.created_at AT TIME ZONE v_timezone)::date >= p_from)
+      AND (p_to   IS NULL OR (s.created_at AT TIME ZONE v_timezone)::date <= p_to)
     GROUP BY c.id, c.name, c.icon
     ORDER BY revenue DESC
     LIMIT p_limit OFFSET p_offset
@@ -4957,9 +5026,15 @@ CREATE OR REPLACE FUNCTION "public"."get_sales_by_operator_detail"("p_business_i
     SET "search_path" TO 'public', 'extensions'
     AS $$
 DECLARE
+  v_timezone text;
   v_rows jsonb;
 BEGIN
   PERFORM public.assert_tenant(p_business_id);
+
+  SELECT timezone INTO v_timezone FROM public.businesses WHERE id = p_business_id;
+  IF v_timezone IS NULL OR v_timezone = '' THEN
+    v_timezone := 'America/Argentina/Buenos_Aires';
+  END IF;
 
   SELECT jsonb_agg(row_to_json(r))
   INTO v_rows
@@ -4977,8 +5052,8 @@ BEGIN
     LEFT JOIN public.sale_items si ON si.sale_id = s.id
     WHERE s.business_id = p_business_id
       AND s.status = 'completed'
-      AND (p_from IS NULL OR s.created_at::date >= p_from)
-      AND (p_to   IS NULL OR s.created_at::date <= p_to)
+      AND (p_from IS NULL OR (s.created_at AT TIME ZONE v_timezone)::date >= p_from)
+      AND (p_to   IS NULL OR (s.created_at AT TIME ZONE v_timezone)::date <= p_to)
     GROUP BY op.id, op.name, op.role
     ORDER BY revenue DESC
   ) r;
@@ -4998,10 +5073,16 @@ CREATE OR REPLACE FUNCTION "public"."get_sales_by_payment_detail"("p_business_id
     SET "search_path" TO 'public', 'extensions'
     AS $$
 DECLARE
+  v_timezone    text;
   v_rows        jsonb;
   v_collections jsonb;
 BEGIN
   PERFORM public.assert_tenant(p_business_id);
+
+  SELECT timezone INTO v_timezone FROM public.businesses WHERE id = p_business_id;
+  IF v_timezone IS NULL OR v_timezone = '' THEN
+    v_timezone := 'America/Argentina/Buenos_Aires';
+  END IF;
 
   SELECT jsonb_agg(row_to_json(r))
   INTO v_rows
@@ -5016,8 +5097,8 @@ BEGIN
     WHERE s.business_id = p_business_id
       AND s.status = 'completed'
       AND pay.status = 'completed'
-      AND (p_from IS NULL OR s.created_at::date >= p_from)
-      AND (p_to   IS NULL OR s.created_at::date <= p_to)
+      AND (p_from IS NULL OR (s.created_at AT TIME ZONE v_timezone)::date >= p_from)
+      AND (p_to   IS NULL OR (s.created_at AT TIME ZONE v_timezone)::date <= p_to)
     GROUP BY pay.method
     ORDER BY total_amount DESC
   ) r;
@@ -5033,8 +5114,8 @@ BEGIN
     FROM public.customer_account_movements m
     WHERE m.business_id = p_business_id
       AND m.type = 'payment'
-      AND (p_from IS NULL OR m.created_at::date >= p_from)
-      AND (p_to   IS NULL OR m.created_at::date <= p_to)
+      AND (p_from IS NULL OR (m.created_at AT TIME ZONE v_timezone)::date >= p_from)
+      AND (p_to   IS NULL OR (m.created_at AT TIME ZONE v_timezone)::date <= p_to)
     GROUP BY m.method
     ORDER BY total_amount DESC
   ) c;
@@ -5414,6 +5495,7 @@ CREATE OR REPLACE FUNCTION "public"."get_stats_breakdown"("p_business_id" "uuid"
     SET "search_path" TO 'public', 'extensions'
     AS $$
 declare
+  v_timezone     text;
   v_from         date;
   v_to           date;
   v_by_category  jsonb;
@@ -5423,8 +5505,13 @@ declare
 begin
   perform public.assert_tenant(p_business_id);
 
-  v_to   := coalesce(p_to,   current_date);
-  v_from := coalesce(p_from, date_trunc('month', current_date)::date);
+  select timezone into v_timezone from public.businesses where id = p_business_id;
+  if v_timezone is null or v_timezone = '' then
+    v_timezone := 'America/Argentina/Buenos_Aires';
+  end if;
+
+  v_to   := coalesce(p_to,   (now() at time zone v_timezone)::date);
+  v_from := coalesce(p_from, date_trunc('month', (now() at time zone v_timezone)::date)::date);
 
   select coalesce(jsonb_agg(
     jsonb_build_object(
@@ -5448,7 +5535,7 @@ begin
     left join categories c on c.id = p.category_id
     where s.business_id = p_business_id
       and s.status = 'completed'
-      and s.created_at::date between v_from and v_to
+      and (s.created_at at time zone v_timezone)::date between v_from and v_to
     group by c.id, c.name
   ) sub;
 
@@ -5474,7 +5561,7 @@ begin
     left join brands b on b.id = p.brand_id
     where s.business_id = p_business_id
       and s.status = 'completed'
-      and s.created_at::date between v_from and v_to
+      and (s.created_at at time zone v_timezone)::date between v_from and v_to
     group by b.id, b.name
   ) sub;
 
@@ -5496,7 +5583,7 @@ begin
     join payments py on py.sale_id = s.id
     where s.business_id = p_business_id
       and s.status = 'completed'
-      and s.created_at::date between v_from and v_to
+      and (s.created_at at time zone v_timezone)::date between v_from and v_to
     group by py.method
   ) sub;
 
@@ -5520,7 +5607,7 @@ begin
     left join operators o on o.id = s.operator_id
     where s.business_id = p_business_id
       and s.status = 'completed'
-      and s.created_at::date between v_from and v_to
+      and (s.created_at at time zone v_timezone)::date between v_from and v_to
     group by o.id, o.name
   ) sub;
 
@@ -5542,14 +5629,20 @@ CREATE OR REPLACE FUNCTION "public"."get_stats_evolution"("p_business_id" "uuid"
     SET "search_path" TO 'public', 'extensions'
     AS $$
 declare
+  v_timezone  text;
   v_from      date;
   v_to        date;
   v_days      int;
 begin
   perform public.assert_tenant(p_business_id);
 
-  v_to   := coalesce(p_to,   current_date);
-  v_from := coalesce(p_from, date_trunc('month', current_date)::date);
+  select timezone into v_timezone from public.businesses where id = p_business_id;
+  if v_timezone is null or v_timezone = '' then
+    v_timezone := 'America/Argentina/Buenos_Aires';
+  end if;
+
+  v_to   := coalesce(p_to,   (now() at time zone v_timezone)::date);
+  v_from := coalesce(p_from, date_trunc('month', (now() at time zone v_timezone)::date)::date);
   v_days := (v_to - v_from) + 1;
 
   if v_days <= 60 then
@@ -5573,24 +5666,24 @@ begin
             to_char(day_series.d, 'YYYY-MM-DD') as d_str,
             to_char(day_series.d, 'DD/MM')       as d_label,
             coalesce(sum(s.total) filter (
-              where s.created_at::date = day_series.d::date
+              where (s.created_at at time zone v_timezone)::date = day_series.d::date
             ), 0) as revenue,
             count(s.id) filter (
-              where s.created_at::date = day_series.d::date
+              where (s.created_at at time zone v_timezone)::date = day_series.d::date
             )::int as cnt,
             coalesce(sum(s.total) filter (
-              where s.created_at::date = (day_series.d - v_days * interval '1 day')::date
+              where (s.created_at at time zone v_timezone)::date = (day_series.d - v_days * interval '1 day')::date
             ), 0) as prev_revenue,
             count(s.id) filter (
-              where s.created_at::date = (day_series.d - v_days * interval '1 day')::date
+              where (s.created_at at time zone v_timezone)::date = (day_series.d - v_days * interval '1 day')::date
             )::int as prev_cnt
           from generate_series(v_from, v_to, '1 day'::interval) as day_series(d)
           left join sales s
             on s.business_id = p_business_id
             and s.status = 'completed'
             and (
-              s.created_at::date = day_series.d::date
-              or s.created_at::date = (day_series.d - v_days * interval '1 day')::date
+              (s.created_at at time zone v_timezone)::date = day_series.d::date
+              or (s.created_at at time zone v_timezone)::date = (day_series.d - v_days * interval '1 day')::date
             )
           group by day_series.d
         ) sub
@@ -5617,16 +5710,16 @@ begin
             to_char(weeks.week_start, 'YYYY-MM-DD') as ws_str,
             to_char(weeks.week_start, 'DD/MM')       as ws_label,
             coalesce(sum(s.total) filter (
-              where date_trunc('week', s.created_at)::date = weeks.week_start
+              where date_trunc('week', s.created_at at time zone v_timezone)::date = weeks.week_start
             ), 0) as revenue,
             count(s.id) filter (
-              where date_trunc('week', s.created_at)::date = weeks.week_start
+              where date_trunc('week', s.created_at at time zone v_timezone)::date = weeks.week_start
             )::int as cnt,
             coalesce(sum(s.total) filter (
-              where date_trunc('week', s.created_at)::date = (weeks.week_start - v_days * interval '1 day')::date
+              where date_trunc('week', s.created_at at time zone v_timezone)::date = (weeks.week_start - v_days * interval '1 day')::date
             ), 0) as prev_revenue,
             count(s.id) filter (
-              where date_trunc('week', s.created_at)::date = (weeks.week_start - v_days * interval '1 day')::date
+              where date_trunc('week', s.created_at at time zone v_timezone)::date = (weeks.week_start - v_days * interval '1 day')::date
             )::int as prev_cnt
           from (
             select distinct date_trunc('week', d)::date as week_start
@@ -5636,8 +5729,8 @@ begin
             on s.business_id = p_business_id
             and s.status = 'completed'
             and (
-              date_trunc('week', s.created_at)::date = weeks.week_start
-              or date_trunc('week', s.created_at)::date = (weeks.week_start - v_days * interval '1 day')::date
+              date_trunc('week', s.created_at at time zone v_timezone)::date = weeks.week_start
+              or date_trunc('week', s.created_at at time zone v_timezone)::date = (weeks.week_start - v_days * interval '1 day')::date
             )
           group by weeks.week_start
         ) sub
@@ -5656,6 +5749,7 @@ CREATE OR REPLACE FUNCTION "public"."get_stats_kpis"("p_business_id" "uuid", "p_
     SET "search_path" TO 'public', 'extensions'
     AS $$
 DECLARE
+  v_timezone    text;
   v_from        date;
   v_to          date;
   v_prev_from   date;
@@ -5677,8 +5771,13 @@ DECLARE
 BEGIN
   PERFORM public.assert_tenant(p_business_id);
 
-  v_to   := COALESCE(p_to,   CURRENT_DATE);
-  v_from := COALESCE(p_from, date_trunc('month', CURRENT_DATE)::date);
+  SELECT timezone INTO v_timezone FROM public.businesses WHERE id = p_business_id;
+  IF v_timezone IS NULL OR v_timezone = '' THEN
+    v_timezone := 'America/Argentina/Buenos_Aires';
+  END IF;
+
+  v_to   := COALESCE(p_to,   (now() AT TIME ZONE v_timezone)::date);
+  v_from := COALESCE(p_from, date_trunc('month', (now() AT TIME ZONE v_timezone)::date)::date);
 
   v_days      := (v_to - v_from) + 1;
   v_prev_to   := v_from - interval '1 day';
@@ -5697,7 +5796,7 @@ BEGIN
   ) si_totals ON true
   WHERE s.business_id = p_business_id
     AND s.status = 'completed'
-    AND s.created_at::date BETWEEN v_from AND v_to;
+    AND (s.created_at AT TIME ZONE v_timezone)::date BETWEEN v_from AND v_to;
 
   SELECT
     COUNT(*)::int,
@@ -5711,17 +5810,17 @@ BEGIN
   ) si_totals ON true
   WHERE s.business_id = p_business_id
     AND s.status = 'completed'
-    AND s.created_at::date BETWEEN v_prev_from AND v_prev_to;
+    AND (s.created_at AT TIME ZONE v_timezone)::date BETWEEN v_prev_from AND v_prev_to;
 
   SELECT
-    to_char(s.created_at::date, 'YYYY-MM-DD'),
+    to_char((s.created_at AT TIME ZONE v_timezone)::date, 'YYYY-MM-DD'),
     ROUND(SUM(s.total), 2)
   INTO v_peak_day, v_peak_revenue
   FROM sales s
   WHERE s.business_id = p_business_id
     AND s.status = 'completed'
-    AND s.created_at::date BETWEEN v_from AND v_to
-  GROUP BY s.created_at::date
+    AND (s.created_at AT TIME ZONE v_timezone)::date BETWEEN v_from AND v_to
+  GROUP BY (s.created_at AT TIME ZONE v_timezone)::date
   ORDER BY SUM(s.total) DESC
   LIMIT 1;
 
@@ -5740,14 +5839,14 @@ BEGIN
   INTO v_day_of_week
   FROM (
     SELECT
-      EXTRACT(DOW FROM s.created_at)::int AS dow_num,
+      EXTRACT(DOW FROM (s.created_at AT TIME ZONE v_timezone))::int AS dow_num,
       SUM(s.total)                         AS revenue,
       COUNT(*)                             AS cnt
     FROM sales s
     WHERE s.business_id = p_business_id
       AND s.status = 'completed'
-      AND s.created_at::date BETWEEN v_from AND v_to
-    GROUP BY EXTRACT(DOW FROM s.created_at)::int
+      AND (s.created_at AT TIME ZONE v_timezone)::date BETWEEN v_from AND v_to
+    GROUP BY EXTRACT(DOW FROM (s.created_at AT TIME ZONE v_timezone))::int
   ) dow_data;
 
   RETURN jsonb_build_object(
@@ -5776,18 +5875,24 @@ CREATE OR REPLACE FUNCTION "public"."get_top_products_detail"("p_business_id" "u
     SET "search_path" TO 'public', 'extensions'
     AS $$
 declare
+  v_timezone text;
   v_data  jsonb;
   v_total int;
 begin
   perform public.assert_tenant(p_business_id);
+
+  select timezone into v_timezone from public.businesses where id = p_business_id;
+  if v_timezone is null or v_timezone = '' then
+    v_timezone := 'America/Argentina/Buenos_Aires';
+  end if;
 
   select count(distinct si.product_id) into v_total
   from sale_items si
   join sales s on s.id = si.sale_id
   where s.business_id = p_business_id
     and s.status = 'completed'
-    and (p_from is null or s.created_at::date >= p_from)
-    and (p_to   is null or s.created_at::date <= p_to);
+    and (p_from is null or (s.created_at at time zone v_timezone)::date >= p_from)
+    and (p_to   is null or (s.created_at at time zone v_timezone)::date <= p_to);
 
   select jsonb_agg(row)
   into v_data
@@ -5813,8 +5918,8 @@ begin
     left join brands b     on b.id = p.brand_id
     where s.business_id = p_business_id
       and s.status = 'completed'
-      and (p_from is null or s.created_at::date >= p_from)
-      and (p_to   is null or s.created_at::date <= p_to)
+      and (p_from is null or (s.created_at at time zone v_timezone)::date >= p_from)
+      and (p_to   is null or (s.created_at at time zone v_timezone)::date <= p_to)
     group by p.id, p.name, p.sku, c.name, b.name, p.price, p.cost, pv_def.price, pv_def.cost
     order by units_sold desc
     limit p_limit offset p_offset
@@ -13531,9 +13636,9 @@ GRANT ALL ON FUNCTION "public"."get_operator_sales_sparkline"("p_business_id" "u
 
 
 
-REVOKE ALL ON FUNCTION "public"."get_operator_stats"("p_operator_id" "uuid", "p_date_from" timestamp with time zone, "p_date_to" timestamp with time zone) FROM PUBLIC;
-GRANT ALL ON FUNCTION "public"."get_operator_stats"("p_operator_id" "uuid", "p_date_from" timestamp with time zone, "p_date_to" timestamp with time zone) TO "authenticated";
-GRANT ALL ON FUNCTION "public"."get_operator_stats"("p_operator_id" "uuid", "p_date_from" timestamp with time zone, "p_date_to" timestamp with time zone) TO "service_role";
+REVOKE ALL ON FUNCTION "public"."get_operator_stats"("p_operator_id" "uuid", "p_date_from" "date", "p_date_to" "date") FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."get_operator_stats"("p_operator_id" "uuid", "p_date_from" "date", "p_date_to" "date") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."get_operator_stats"("p_operator_id" "uuid", "p_date_from" "date", "p_date_to" "date") TO "service_role";
 
 
 
@@ -13543,9 +13648,9 @@ GRANT ALL ON FUNCTION "public"."get_overstock"("p_business_id" "uuid", "p_limit"
 
 
 
-REVOKE ALL ON FUNCTION "public"."get_owner_stats"("p_date_from" timestamp with time zone, "p_date_to" timestamp with time zone) FROM PUBLIC;
-GRANT ALL ON FUNCTION "public"."get_owner_stats"("p_date_from" timestamp with time zone, "p_date_to" timestamp with time zone) TO "authenticated";
-GRANT ALL ON FUNCTION "public"."get_owner_stats"("p_date_from" timestamp with time zone, "p_date_to" timestamp with time zone) TO "service_role";
+REVOKE ALL ON FUNCTION "public"."get_owner_stats"("p_date_from" "date", "p_date_to" "date") FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."get_owner_stats"("p_date_from" "date", "p_date_to" "date") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."get_owner_stats"("p_date_from" "date", "p_date_to" "date") TO "service_role";
 
 
 
@@ -13683,11 +13788,17 @@ CREATE OR REPLACE FUNCTION "public"."get_margin_analysis"("p_business_id" "uuid"
     SET "search_path" TO 'public', 'extensions'
     AS $$
 declare
+  v_timezone text;
   v_data    jsonb;
   v_total   int;
   v_totals  jsonb;
 begin
   if auth.uid() is not null then perform public.assert_tenant(p_business_id); end if;
+
+  select timezone into v_timezone from public.businesses where id = p_business_id;
+  if v_timezone is null or v_timezone = '' then
+    v_timezone := 'America/Argentina/Buenos_Aires';
+  end if;
 
   select count(distinct si.product_id) into v_total
   from sale_items si
@@ -13695,8 +13806,8 @@ begin
   where s.business_id = p_business_id
     and s.status = 'completed'
     and si.product_id is not null
-    and (p_from is null or s.created_at::date >= p_from)
-    and (p_to   is null or s.created_at::date <= p_to);
+    and (p_from is null or (s.created_at at time zone v_timezone)::date >= p_from)
+    and (p_to   is null or (s.created_at at time zone v_timezone)::date <= p_to);
 
   select jsonb_build_object(
     'revenue',              coalesce(sum(t.revenue), 0),
@@ -13720,8 +13831,8 @@ begin
     left join product_variants pv on pv.id = si.variant_id
     where s.business_id = p_business_id
       and s.status = 'completed'
-      and (p_from is null or s.created_at::date >= p_from)
-      and (p_to   is null or s.created_at::date <= p_to)
+      and (p_from is null or (s.created_at at time zone v_timezone)::date >= p_from)
+      and (p_to   is null or (s.created_at at time zone v_timezone)::date <= p_to)
     group by si.product_id
   ) t;
 
@@ -13750,8 +13861,8 @@ begin
     left join brands b     on b.id = p.brand_id
     where s.business_id = p_business_id
       and s.status = 'completed'
-      and (p_from is null or s.created_at::date >= p_from)
-      and (p_to   is null or s.created_at::date <= p_to)
+      and (p_from is null or (s.created_at at time zone v_timezone)::date >= p_from)
+      and (p_to   is null or (s.created_at at time zone v_timezone)::date <= p_to)
     group by p.id, p.name, p.sku, c.name, b.name
     order by margin_pct asc nulls last, revenue desc
     limit p_limit offset p_offset
