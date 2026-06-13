@@ -87,7 +87,6 @@ function OfferSlide({
               src={product.imageUrl}
               alt={product.name}
               fill
-              unoptimized
               className="object-cover"
               sizes="(max-width: 640px) 100vw, 40vw"
             />

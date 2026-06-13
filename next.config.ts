@@ -28,6 +28,12 @@ const nextConfig: NextConfig = {
     position: 'bottom-right',
   },
   images: {
+    // Decisión deliberada (2026-06-13): sin Image Optimization de Vercel — el
+    // catálogo es tráfico anónimo y el plan actual (Hobby) no banca la cuota de
+    // transformaciones. Fuente única de verdad: antes vivía como `unoptimized`
+    // suelto en 11 componentes. Si se sube a Vercel Pro, borrar esta línea y los
+    // srcset/AVIF vuelven solos (remotePatterns ya está listo para Supabase).
+    unoptimized: true,
     remotePatterns: supabaseHostname
       ? [{ protocol: 'https', hostname: supabaseHostname }]
       : [],

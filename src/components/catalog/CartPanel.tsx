@@ -34,7 +34,6 @@ function CartItemImage({ imageUrl, name }: { imageUrl: string; name: string }) {
         src={imageUrl}
         alt={name}
         fill
-        unoptimized
         className={`object-cover transition-opacity duration-300 ${loaded ? 'opacity-100' : 'opacity-0'}`}
         sizes="40px"
         onLoad={() => setLoaded(true)}

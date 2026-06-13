@@ -229,7 +229,6 @@ export default function ProductDetailView({
               src={displayImage}
               alt={product.name}
               fill
-              unoptimized
               className="object-cover"
               sizes="(max-width: 768px) 100vw, 50vw"
             />

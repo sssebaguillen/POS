@@ -216,7 +216,6 @@ export default function CatalogSearch({
                             src={product.imageUrl}
                             alt={product.name}
                             fill
-                            unoptimized
                             className="object-cover"
                             sizes="40px"
                           />

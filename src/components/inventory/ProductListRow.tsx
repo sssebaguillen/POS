@@ -77,7 +77,6 @@ const ProductListRow = memo(function ProductListRow({
                 fill
                 sizes="48px"
                 className="object-cover"
-                unoptimized={product.image_source === 'url'}
               />
             </div>
           ) : (

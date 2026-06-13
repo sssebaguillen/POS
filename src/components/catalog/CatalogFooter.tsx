@@ -25,7 +25,6 @@ export default function CatalogFooter({ business, slug }: CatalogFooterProps) {
                   src={business.logoUrl}
                   alt={business.name}
                   fill
-                  unoptimized
                   className="object-cover"
                   sizes="36px"
                 />

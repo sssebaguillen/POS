@@ -219,7 +219,7 @@ export default function OrderDetailPanel({ orderId, operatorId, onClose, onStatu
                     <li key={item.id} className="flex items-start gap-3 rounded-lg border border-border/70 p-3">
                       <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-md bg-muted/40">
                         {item.image_url ? (
-                          <Image src={item.image_url} alt={item.product_name} fill unoptimized className="object-cover" sizes="48px" />
+                          <Image src={item.image_url} alt={item.product_name} fill className="object-cover" sizes="48px" />
                         ) : (
                           <div className="flex h-full w-full items-center justify-center text-muted-foreground">
                             <ImageIcon size={18} />

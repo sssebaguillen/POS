@@ -515,7 +515,6 @@ const ProductCard = memo(function ProductCard({
             fill
             sizes="(max-width: 768px) 50vw, 140px"
             className="object-cover"
-            unoptimized={product.image_source === 'url'}
             priority={index === 0}
           />
         </div>

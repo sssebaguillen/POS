@@ -33,7 +33,6 @@ function BusinessAvatar({ business }: { business: CatalogBusiness }) {
           src={business.logoUrl}
           alt={business.name}
           fill
-          unoptimized
           className="object-cover"
           sizes="36px"
         />
