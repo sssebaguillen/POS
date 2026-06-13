@@ -13,6 +13,7 @@ import type { ProductWithCategory } from '@/components/pos/types'
 import type { ReceiptItemInput } from '@/lib/printer/types'
 import { createClient } from '@/lib/supabase/client'
 import { resolveCartItemPrice, resolveDisplayPrice } from '@/lib/price-lists'
+import { round2 } from '@/lib/format'
 import { findApplicablePromo, promoBadgeLabel, resolvePromoLine, type Promotion } from '@/lib/promotions'
 import type { PriceList, PriceListOverride } from '@/lib/types'
 import type { CustomerSelection } from '@/lib/types/pos'
@@ -124,7 +125,7 @@ const CartPanel = forwardRef<CartPanelHandle, Props>(function CartPanel({ busine
         variant_id: item.variant_id ?? null,
         quantity: item.quantity,
         unit_price: line.unitPrice,
-        total: Math.round((item.quantity * line.unitPrice - (promo?.kind === 'quantity' ? line.promoDiscount : 0)) * 100) / 100,
+        total: round2(item.quantity * line.unitPrice - (promo?.kind === 'quantity' ? line.promoDiscount : 0)),
         unit_price_override: item.priceIsManual ? baseUnitPrice : null,
         override_reason: null,
         free_line_description: null,
@@ -162,7 +163,7 @@ const CartPanel = forwardRef<CartPanelHandle, Props>(function CartPanel({ busine
     return map
   }, [adjustedItems])
 
-  const adjustedSubtotal = adjustedItems.reduce((sum, i) => sum + i.total, 0)
+  const adjustedSubtotal = round2(adjustedItems.reduce((sum, i) => sum + i.total, 0))
   const discountAmount = resolveDiscountAmount(adjustedSubtotal, discountMode, discountValue)
   const adjustedTotal = Math.max(0, adjustedSubtotal - discountAmount)
   const receiptItems = useMemo<ReceiptItemInput[]>(() => {

@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import type { Product, ProductVariant } from '@/lib/types'
 import { getCartItemId, type CartItem } from '@/lib/types/cart'
+import { round2 } from '@/lib/format'
 
 export type DiscountMode = 'fixed' | 'percent'
 
@@ -15,7 +16,7 @@ export function resolveDiscountAmount(subtotal: number, mode: DiscountMode, valu
   if (!value || value <= 0 || subtotal <= 0) return 0
   const raw = mode === 'percent' ? (subtotal * value) / 100 : value
   const clamped = Math.min(Math.max(0, raw), subtotal)
-  return Math.round(clamped * 100) / 100
+  return round2(clamped)
 }
 
 interface CartStore {

@@ -4,6 +4,8 @@
 //   computeQuantityDiscount  ↔ compute_quantity_promo_discount
 // Plan y semántica: docs/todo/promotions.md
 
+import { round2 } from '@/lib/format'
+
 export type PromotionKind = 'percent' | 'offer_price' | 'quantity'
 
 export interface Promotion {
@@ -49,8 +51,6 @@ export function normalizePromotion(row: Record<string, unknown>): Promotion {
     created_at: row.created_at as string,
   }
 }
-
-const round2 = (v: number) => Math.round(v * 100) / 100
 
 export function isPromotionLive(promo: Promotion, at: Date = new Date()): boolean {
   if (!promo.is_active || promo.archived_at !== null) return false

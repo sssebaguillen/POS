@@ -12,6 +12,10 @@ export function formatNumber(value: number): string {
   return value.toLocaleString('es-AR')
 }
 
+// Redondeo a 2 decimales para CÁLCULO de montos (no formato). Único punto de
+// verdad del patrón Math.round(v*100)/100 en el camino del dinero.
+export const round2 = (v: number): number => Math.round(v * 100) / 100
+
 export function formatMemberSince(value: string): string {
   return new Date(value).toLocaleDateString('es-AR', {
     day: '2-digit',

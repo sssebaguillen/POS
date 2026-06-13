@@ -5,6 +5,7 @@ import {
   formatNumber,
   formatMoney,
   formatMemberSince,
+  round2,
 } from '@/lib/format'
 
 describe('toTitleCase', () => {
@@ -72,6 +73,24 @@ describe('formatMoney', () => {
 
   it('handles negative amounts', () => {
     expect(formatMoney(-50)).toBe('$-50,00')
+  })
+})
+
+describe('round2', () => {
+  it('collapses binary float drift to 2 decimals', () => {
+    // 0.1 + 0.2 === 0.30000000000000004 sin redondear → el subtotal del POS
+    // acumula este drift antes de calcular el descuento.
+    expect(round2(0.1 + 0.2)).toBe(0.3)
+  })
+
+  it('rounds a third decimal to the nearest centavo', () => {
+    expect(round2(3.333)).toBe(3.33)
+    expect(round2(3.336)).toBe(3.34)
+  })
+
+  it('leaves already-2dp values untouched', () => {
+    expect(round2(1234.56)).toBe(1234.56)
+    expect(round2(0)).toBe(0)
   })
 })
 

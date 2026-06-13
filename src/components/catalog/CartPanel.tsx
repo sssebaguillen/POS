@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import type { CatalogCartItem } from '@/components/catalog/types'
 import { computeQuantityDiscount } from '@/lib/promotions'
+import { round2 } from '@/lib/format'
 import posthog from 'posthog-js'
 import PopNumber from '@/components/shared/PopNumber'
 import { FieldErrorMessage, ShakeOnError } from '@/components/shared/ShakeError'
@@ -21,7 +22,7 @@ function lineDiscount(item: CatalogCartItem): number {
 }
 
 export function lineTotal(item: CatalogCartItem): number {
-  return Math.round((item.product.salePrice * item.quantity - lineDiscount(item)) * 100) / 100
+  return round2(item.product.salePrice * item.quantity - lineDiscount(item))
 }
 
 function CartItemImage({ imageUrl, name }: { imageUrl: string; name: string }) {

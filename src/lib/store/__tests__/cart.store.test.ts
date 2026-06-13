@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { useCartStore, resolveDiscountAmount } from '@/lib/store/cart.store'
+import { round2 } from '@/lib/format'
 import type { Product, ProductVariant } from '@/lib/types'
 
 // --- fixtures ---
@@ -80,6 +81,12 @@ describe('resolveDiscountAmount', () => {
     it('rounds to two decimal places', () => {
       // 10% of 33.33 = 3.333 → 3.33
       expect(resolveDiscountAmount(33.33, 'percent', 10)).toBe(3.33)
+    })
+
+    it('computes against a round2-corrected subtotal (no float drift)', () => {
+      // El POS redondea el subtotal antes del descuento: round2(0.1+0.2)=0.3,
+      // 10% de 0.3 = 0.03 (sin redondear el subtotal daría 0.030000000000000002).
+      expect(resolveDiscountAmount(round2(0.1 + 0.2), 'percent', 10)).toBe(0.03)
     })
   })
 
