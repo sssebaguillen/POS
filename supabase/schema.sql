@@ -13631,6 +13631,7 @@ GRANT ALL ON FUNCTION "public"."get_catalog_orders_unread_count"() TO "service_r
 
 
 
+REVOKE ALL ON FUNCTION "public"."get_catalog_product_with_variants"("p_slug" "text", "p_product_id" "uuid") FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."get_catalog_product_with_variants"("p_slug" "text", "p_product_id" "uuid") TO "anon";
 GRANT ALL ON FUNCTION "public"."get_catalog_product_with_variants"("p_slug" "text", "p_product_id" "uuid") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."get_catalog_product_with_variants"("p_slug" "text", "p_product_id" "uuid") TO "service_role";
@@ -17111,6 +17112,12 @@ GRANT ALL ON FUNCTION "public"."matches"("anyelement", "text", "text") TO "postg
 GRANT ALL ON FUNCTION "public"."matches"("anyelement", "text", "text") TO "anon";
 GRANT ALL ON FUNCTION "public"."matches"("anyelement", "text", "text") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."matches"("anyelement", "text", "text") TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "public"."normalize_permissions"("p" "jsonb") FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."normalize_permissions"("p" "jsonb") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."normalize_permissions"("p" "jsonb") TO "service_role";
 
 
 
