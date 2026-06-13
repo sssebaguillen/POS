@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import BreakdownDetailView from '@/components/stats/BreakdownDetailView'
 import type { CategorySalesRow, BrandRow } from '@/components/stats/BreakdownDetailView'
-import { requireAuthenticatedBusinessId } from '@/lib/business'
+import { requireAuthenticatedBusinessId, getBusinessTimezone } from '@/lib/business'
 import { resolveDateRange } from '@/lib/date-utils'
 
 interface SearchParams {
@@ -19,10 +19,11 @@ export default async function BreakdownDetailPage({
   const params = await searchParams
   const supabase = await createClient()
   const businessId = await requireAuthenticatedBusinessId(supabase)
+  const timezone = await getBusinessTimezone(supabase, businessId)
 
   const period = params.period ?? 'mes'
   const tab = params.tab === 'brand' ? 'brand' : 'category'
-  const { from, to } = resolveDateRange(period, params.from, params.to)
+  const { from, to } = resolveDateRange(period, params.from, params.to, timezone)
 
   let rows: CategorySalesRow[] | BrandRow[]
   if (tab === 'brand') {

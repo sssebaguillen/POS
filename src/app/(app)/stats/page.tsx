@@ -3,7 +3,7 @@ export const runtime = 'edge'
 import { createClient } from '@/lib/supabase/server'
 import StatsView from '@/components/stats/StatsView'
 import type { TopProductRow } from '@/components/stats/StatsView'
-import { requireAuthenticatedBusinessId } from '@/lib/business'
+import { requireAuthenticatedBusinessId, getBusinessTimezone } from '@/lib/business'
 import { resolveDateRange } from '@/lib/date-utils'
 import { normalizeOperatorSalesStatsRows } from '@/lib/mappers'
 import type { DailySnapshotRow, OperatorSalesStatsRow, StatsKpis, StatsEvolution, StatsBreakdown, SalesHeatmapCell, DeadStockSummary, PromoImpact } from '@/lib/types'
@@ -22,9 +22,10 @@ export default async function StatsPage({
   const params = await searchParams
   const supabase = await createClient()
   const businessId = await requireAuthenticatedBusinessId(supabase)
+  const timezone = await getBusinessTimezone(supabase, businessId)
 
   const period = params.period ?? 'mes'
-  const { from, to } = resolveDateRange(period, params.from, params.to)
+  const { from, to } = resolveDateRange(period, params.from, params.to, timezone)
 
   const [
     { data: kpisRaw },
@@ -116,6 +117,7 @@ export default async function StatsPage({
       period={period}
       from={params.from}
       to={params.to}
+      timezone={timezone}
     />
   )
 }

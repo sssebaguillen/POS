@@ -3,7 +3,7 @@ export const runtime = 'edge'
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import { requireAuthenticatedBusinessId } from '@/lib/business'
+import { requireAuthenticatedBusinessId, getBusinessTimezone } from '@/lib/business'
 import { getActiveOperator, hasPermission } from '@/lib/operator'
 import { resolveDateRange } from '@/lib/date-utils'
 import ActivityView from '@/components/activity/ActivityView'
@@ -62,6 +62,7 @@ export default async function ActivityPage({
   const params = await searchParams
   const supabase = await createClient()
   const businessId = await requireAuthenticatedBusinessId(supabase)
+  const timezone = await getBusinessTimezone(supabase, businessId)
 
   const cookieStore = await cookies()
   const activeOperator = await getActiveOperator(cookieStore)
@@ -74,7 +75,7 @@ export default async function ActivityPage({
   const operatorFilter = params.operator ?? null
 
   const period = parseActivityPeriod(params.period)
-  const { from: dateFrom, to: dateTo } = resolveDateRange(period, params.from, params.to)
+  const { from: dateFrom, to: dateTo } = resolveDateRange(period, params.from, params.to, timezone)
 
   const rpcOperatorId =
     operatorFilter === OWNER_OPERATOR_FILTER_VALUE

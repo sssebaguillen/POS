@@ -34,6 +34,7 @@ interface Props {
   period: DateRangePeriod
   from?: string
   to?: string
+  timezone: string
   canUpdateStock?: boolean
 }
 
@@ -50,6 +51,7 @@ export default function ExpensesView({
   period: initialPeriod,
   from: initialFrom,
   to: initialTo,
+  timezone,
   canUpdateStock = false,
 }: Props) {
   useEffect(() => { trackFeatureUsed('expenses') }, [])
@@ -72,7 +74,7 @@ export default function ExpensesView({
   const { data, isFetching } = useQuery<ExpensesQueryData>({
     queryKey: ['expenses', businessId, period, from, to],
     queryFn: async () => {
-      const resolvedRange = resolveDateRange(period, from, to)
+      const resolvedRange = resolveDateRange(period, from, to, timezone)
       const [balanceResult, expensesResult] = await Promise.all([
         supabase.rpc('get_business_balance', {
           p_business_id: businessId,

@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import TopProductsDetailView from '@/components/stats/TopProductsDetailView'
 import type { TopProductRow } from '@/components/stats/TopProductsDetailView'
-import { requireAuthenticatedBusinessId } from '@/lib/business'
+import { requireAuthenticatedBusinessId, getBusinessTimezone } from '@/lib/business'
 import { resolveDateRange } from '@/lib/date-utils'
 import type { StatsKpis } from '@/lib/types'
 
@@ -20,13 +20,14 @@ export default async function TopProductsDetailPage({
   const params = await searchParams
   const supabase = await createClient()
   const businessId = await requireAuthenticatedBusinessId(supabase)
+  const timezone = await getBusinessTimezone(supabase, businessId)
 
   const period = params.period ?? 'mes'
   const page = Number(params.page ?? 1)
   const limit = 50
   const offset = (page - 1) * limit
 
-  const { from, to } = resolveDateRange(period, params.from, params.to)
+  const { from, to } = resolveDateRange(period, params.from, params.to, timezone)
 
   const [{ data: result }, { data: kpisRaw }] = await Promise.all([
     supabase.rpc('get_top_products_detail', {

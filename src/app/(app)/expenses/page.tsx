@@ -2,7 +2,7 @@ import { cookies } from 'next/headers'
 import { createClient } from '@/lib/supabase/server'
 import ExpensesView from '@/components/expenses/ExpensesView'
 import type { Expense, BusinessBalance } from '@/components/expenses/types'
-import { requireAuthenticatedBusinessId } from '@/lib/business'
+import { requireAuthenticatedBusinessId, getBusinessTimezone } from '@/lib/business'
 import { resolveDateRange, VALID_PERIODS, type DateRangePeriod } from '@/lib/date-utils'
 import { getActiveOperator } from '@/lib/operator'
 
@@ -22,6 +22,7 @@ export default async function ExpensesPage({
   const cookieStore = await cookies()
   const activeOperator = await getActiveOperator(cookieStore)
   const businessId = await requireAuthenticatedBusinessId(supabase)
+  const timezone = await getBusinessTimezone(supabase, businessId)
 
   const period: DateRangePeriod =
     params.period && VALID_PERIODS.includes(params.period as DateRangePeriod)
@@ -29,7 +30,7 @@ export default async function ExpensesPage({
       : 'mes'
   const from = params.from ?? undefined
   const to = params.to ?? undefined
-  const resolvedRange = resolveDateRange(period, from, to)
+  const resolvedRange = resolveDateRange(period, from, to, timezone)
 
   const [balanceResult, expensesResult] = await Promise.all([
     supabase.rpc('get_business_balance', {
@@ -68,6 +69,7 @@ export default async function ExpensesPage({
       period={period}
       from={from}
       to={to}
+      timezone={timezone}
       canUpdateStock={activeOperator === null || activeOperator.permissions.inventory_write === true}
     />
   )

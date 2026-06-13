@@ -44,6 +44,7 @@ interface Props {
   period: string
   from?: string
   to?: string
+  timezone: string
 }
 
 const MONTHS_ES = [
@@ -87,6 +88,7 @@ export default function ReportView({
   period: initialPeriod,
   from: initialFrom,
   to: initialTo,
+  timezone,
 }: Props) {
   const pathname = usePathname()
   const formatMoney = useFormatMoney()
@@ -102,7 +104,7 @@ export default function ReportView({
   const { data, isFetching } = useQuery<ReportData>({
     queryKey: ['stats-report', businessId, period, from, to],
     queryFn: async () => {
-      const resolved = resolveDateRange(period, from, to)
+      const resolved = resolveDateRange(period, from, to, timezone)
       const baseArgs = { p_business_id: businessId, p_from: resolved.from, p_to: resolved.to }
       const [kpisRes, comparisonRes, breakdownRes, topRes, operatorsRes, snapshotsRes] = await Promise.all([
         supabase.rpc('get_stats_kpis', baseArgs),
@@ -153,7 +155,7 @@ export default function ReportView({
     }
   }
 
-  const resolvedRange = resolveDateRange(period, from, to)
+  const resolvedRange = resolveDateRange(period, from, to, timezone)
   const rangeLabel = `${formatDayLabel(resolvedRange.from)} — ${formatDayLabel(resolvedRange.to)}`
   const emittedAt = new Date().toLocaleString('es-AR', {
     day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit',

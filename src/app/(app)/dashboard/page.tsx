@@ -4,7 +4,7 @@ import { cookies } from 'next/headers'
 import { createClient } from '@/lib/supabase/server'
 import DashboardView from '@/components/dashboard/DashboardView'
 import type { BusinessBalance } from '@/components/expenses/types'
-import { requireAuthenticatedBusinessContext } from '@/lib/business'
+import { requireAuthenticatedBusinessContext, getBusinessTimezone } from '@/lib/business'
 import { getActiveOperator } from '@/lib/operator'
 import { normalizePriceList } from '@/lib/mappers'
 import { resolveDateRange } from '@/lib/date-utils'
@@ -20,10 +20,11 @@ export default async function DashboardPage() {
   const activeOperator = await getActiveOperator(cookieStore)
 
   const { userId, businessId } = await requireAuthenticatedBusinessContext(supabase)
+  const timezone = await getBusinessTimezone(supabase, businessId)
 
   // Seed del período inicial ("hoy") para el primer paint del Resumen sin parpadeo.
   // Los demás períodos los refetchea DashboardView client-side por React Query.
-  const hoy = resolveDateRange('hoy')
+  const hoy = resolveDateRange('hoy', undefined, undefined, timezone)
 
   const [
     { data: kpisRaw },
@@ -131,6 +132,7 @@ export default async function DashboardPage() {
       }))}
       businessId={businessId}
       businessName={business?.name ?? ''}
+      timezone={timezone}
       initialKpis={initialKpis}
       initialBalance={initialBalance}
       initialHeatmap={initialHeatmap}

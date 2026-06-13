@@ -7,6 +7,7 @@ import {
   getDateRange,
   getPreviousPeriodRange,
   resolveDateRange,
+  todayInTimeZone,
   periodNeedsCustomDates,
   buildDateParams,
 } from '@/lib/date-utils'
@@ -192,6 +193,41 @@ describe('resolveDateRange', () => {
     expect(resolveDateRange('trimestre')).toEqual({ from: null, to: null })
     expect(resolveDateRange('año')).toEqual({ from: null, to: null })
     expect(resolveDateRange('personalizado')).toEqual({ from: null, to: null })
+  })
+})
+
+describe('resolveDateRange con timezone', () => {
+  const TZ = 'America/Argentina/Buenos_Aires'
+
+  it('a las 22:00 ART, "hoy" es el día local aunque UTC ya sea mañana', () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-06-13T01:00:00Z')) // = 2026-06-12 22:00 ART
+    expect(todayInTimeZone(TZ)).toBe('2026-06-12')
+    expect(todayInTimeZone('UTC')).toBe('2026-06-13')
+    expect(resolveDateRange('hoy', undefined, undefined, TZ)).toEqual({
+      from: '2026-06-12',
+      to: '2026-06-12',
+    })
+  })
+
+  it('semana → lunes local cuando el día local es domingo (retrocede 6 días)', () => {
+    vi.useFakeTimers()
+    // 2026-06-15 es lunes; 2026-06-14 domingo. 02:00Z del 15 = 23:00 ART del 14 (domingo ART).
+    vi.setSystemTime(new Date('2026-06-15T02:00:00Z'))
+    expect(todayInTimeZone(TZ)).toBe('2026-06-14') // domingo local
+    expect(resolveDateRange('semana', undefined, undefined, TZ)).toEqual({
+      from: '2026-06-08', // lunes anterior
+      to: '2026-06-14',
+    })
+  })
+
+  it('mes → primero del mes local', () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-06-13T01:00:00Z')) // 2026-06-12 22:00 ART
+    expect(resolveDateRange('mes', undefined, undefined, TZ)).toEqual({
+      from: '2026-06-01',
+      to: '2026-06-12',
+    })
   })
 })
 

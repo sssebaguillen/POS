@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { DEFAULT_TIMEZONE } from '@/lib/constants/domain'
 
 type ServerSupabaseClient = Awaited<ReturnType<typeof createClient>>
 
@@ -53,4 +54,17 @@ export async function requireAuthenticatedBusinessId(
 ): Promise<string> {
   const context = await requireAuthenticatedBusinessContext(supabase)
   return context.businessId
+}
+
+export async function getBusinessTimezone(
+  supabase: ServerSupabaseClient,
+  businessId: string
+): Promise<string> {
+  const { data } = await supabase
+    .from('businesses')
+    .select('timezone')
+    .eq('id', businessId)
+    .single()
+  const tz = (data as { timezone?: string | null } | null)?.timezone
+  return tz && tz.length > 0 ? tz : DEFAULT_TIMEZONE
 }

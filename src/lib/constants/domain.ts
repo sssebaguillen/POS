@@ -25,5 +25,5 @@ export const PROFILE_ROLE_LABELS: Record<string, string> = {
   owner: 'Dueño',
 }
 
-// Argentina standard timezone offset (UTC-3, no DST)
-export const BUSINESS_TIMEZONE_OFFSET = '-03:00'
+// Timezone IANA por defecto del negocio (mismo fallback que los RPCs de stats)
+export const DEFAULT_TIMEZONE = 'America/Argentina/Buenos_Aires'

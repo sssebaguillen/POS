@@ -36,6 +36,7 @@ interface Props {
   period: string
   from?: string
   to?: string
+  timezone: string
   metric?: string
 }
 
@@ -63,6 +64,7 @@ export default function TrendsDetailView({
   period: initialPeriod,
   from: initialFrom,
   to: initialTo,
+  timezone,
   metric,
 }: Props) {
   const pathname = usePathname()
@@ -81,7 +83,7 @@ export default function TrendsDetailView({
   const { data, isFetching } = useQuery<StatsTrendsComparison>({
     queryKey: ['stats-trends', businessId, period, from, to],
     queryFn: async () => {
-      const resolved = resolveDateRange(period, from, to)
+      const resolved = resolveDateRange(period, from, to, timezone)
       const { data: rpcResult } = await supabase.rpc('get_period_comparison', {
         p_business_id: businessId,
         p_from: resolved.from,

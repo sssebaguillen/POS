@@ -100,15 +100,55 @@ function formatDateLocal(date: Date): string {
   return `${y}-${m}-${d}`
 }
 
+// "Hoy" (YYYY-MM-DD) en una timezone IANA. en-CA formatea como YYYY-MM-DD.
+export function todayInTimeZone(timeZone: string): string {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(new Date())
+}
+
+// Suma días a un YYYY-MM-DD sin pasar por timezones (mediodía UTC evita bordes DST).
+function shiftDateString(dateStr: string, deltaDays: number): string {
+  const [y, m, d] = dateStr.split('-').map(Number)
+  const base = new Date(Date.UTC(y, m - 1, d, 12))
+  base.setUTCDate(base.getUTCDate() + deltaDays)
+  return base.toISOString().slice(0, 10)
+}
+
 export function resolveDateRange(
   period: DateRangePeriod | string,
   from?: string,
-  to?: string
+  to?: string,
+  timeZone?: string
 ): DateRangeStrings {
   // Explicit dates always take precedence (trimestre, año, personalizado)
   if (from && to) return { from, to }
 
   if (period === 'personalizado' || period === 'trimestre' || period === 'año') {
+    return { from: from ?? null, to: to ?? null }
+  }
+
+  // Día contable en la timezone del negocio (server edge = UTC; cliente = TZ del browser).
+  if (timeZone) {
+    const today = todayInTimeZone(timeZone)
+
+    if (period === 'hoy') return { from: today, to: today }
+
+    if (period === 'semana') {
+      const [y, m, d] = today.split('-').map(Number)
+      // El día de la semana de una fecha calendario no depende de la TZ.
+      const weekday = new Date(Date.UTC(y, m - 1, d)).getUTCDay()
+      const start = shiftDateString(today, weekday === 0 ? -6 : 1 - weekday)
+      return { from: start, to: today }
+    }
+
+    if (period === 'mes') {
+      return { from: `${today.slice(0, 7)}-01`, to: today }
+    }
+
     return { from: from ?? null, to: to ?? null }
   }
 

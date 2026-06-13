@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import PaymentMethodDetailView from '@/components/stats/PaymentMethodDetailView'
 import type { PaymentMethodRow } from '@/components/stats/PaymentMethodDetailView'
-import { requireAuthenticatedBusinessId } from '@/lib/business'
+import { requireAuthenticatedBusinessId, getBusinessTimezone } from '@/lib/business'
 import { resolveDateRange } from '@/lib/date-utils'
 
 interface SearchParams {
@@ -18,9 +18,10 @@ export default async function PaymentMethodsDetailPage({
   const params = await searchParams
   const supabase = await createClient()
   const businessId = await requireAuthenticatedBusinessId(supabase)
+  const timezone = await getBusinessTimezone(supabase, businessId)
 
   const period = params.period ?? 'mes'
-  const { from, to } = resolveDateRange(period, params.from, params.to)
+  const { from, to } = resolveDateRange(period, params.from, params.to, timezone)
 
   const { data: rpcResult } = await supabase.rpc('get_sales_by_payment_detail', {
     p_business_id: businessId,

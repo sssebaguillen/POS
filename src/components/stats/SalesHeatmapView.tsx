@@ -35,6 +35,7 @@ interface Props {
   period: string
   from?: string
   to?: string
+  timezone: string
   metric?: string
 }
 
@@ -48,6 +49,7 @@ export default function SalesHeatmapView({
   period: initialPeriod,
   from: initialFrom,
   to: initialTo,
+  timezone,
   metric,
 }: Props) {
   const pathname = usePathname()
@@ -66,7 +68,7 @@ export default function SalesHeatmapView({
   const { data, isFetching } = useQuery<SalesHeatmapCell[]>({
     queryKey: ['stats-heatmap', businessId, period, from, to],
     queryFn: async () => {
-      const resolved = resolveDateRange(period, from, to)
+      const resolved = resolveDateRange(period, from, to, timezone)
       const { data: rpcResult } = await supabase.rpc('get_sales_heatmap', {
         p_business_id: businessId,
         p_from: resolved.from,

@@ -4,7 +4,7 @@ import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import ReportView, { type ReportData } from '@/components/stats/ReportView'
-import { requireAuthenticatedBusinessId } from '@/lib/business'
+import { requireAuthenticatedBusinessId, getBusinessTimezone } from '@/lib/business'
 import { getActiveOperator, hasPermission } from '@/lib/operator'
 import { resolveDateRange } from '@/lib/date-utils'
 import { normalizeOperatorSalesStatsRows } from '@/lib/mappers'
@@ -46,6 +46,7 @@ export default async function StatsReportPage({
   const params = await searchParams
   const supabase = await createClient()
   const businessId = await requireAuthenticatedBusinessId(supabase)
+  const timezone = await getBusinessTimezone(supabase, businessId)
 
   const cookieStore = await cookies()
   const activeOperator = await getActiveOperator(cookieStore)
@@ -54,7 +55,7 @@ export default async function StatsReportPage({
   }
 
   const period = params.period ?? 'mes'
-  const { from, to } = resolveDateRange(period, params.from, params.to)
+  const { from, to } = resolveDateRange(period, params.from, params.to, timezone)
 
   const [
     { data: business },
@@ -108,6 +109,7 @@ export default async function StatsReportPage({
       period={period}
       from={params.from}
       to={params.to}
+      timezone={timezone}
     />
   )
 }

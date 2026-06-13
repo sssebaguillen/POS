@@ -5,9 +5,9 @@ import OperatorMeView from '@/components/operator/OperatorMeView'
 import { createClient } from '@/lib/supabase/server'
 import { resolveDateRange, VALID_PERIODS, type DateRangePeriod } from '@/lib/date-utils'
 import { getActiveOperator, type UserRole } from '@/lib/operator'
-import { BUSINESS_TIMEZONE_OFFSET, type OperatorRole } from '@/lib/constants/domain'
+import { type OperatorRole } from '@/lib/constants/domain'
 import { formatMemberSince } from '@/lib/format'
-import { requireAuthenticatedBusinessId } from '@/lib/business'
+import { requireAuthenticatedBusinessId, getBusinessTimezone } from '@/lib/business'
 import type { SalesHeatmapCell } from '@/lib/types'
 
 const OWNER_OPERATOR_SENTINEL = '00000000-0000-0000-0000-000000000000'
@@ -61,13 +61,6 @@ function getPeriod(value: string | undefined): DateRangePeriod {
   return 'mes'
 }
 
-function toRangeTimestamps(from: string | null, to: string | null): { from: string | null; to: string | null } {
-  return {
-    from: from ? `${from}T00:00:00${BUSINESS_TIMEZONE_OFFSET}` : null,
-    to: to ? `${to}T23:59:59.999${BUSINESS_TIMEZONE_OFFSET}` : null,
-  }
-}
-
 export default async function OperatorMePage({
   searchParams,
 }: {
@@ -91,9 +84,9 @@ export default async function OperatorMePage({
   }
 
   const businessId = await requireAuthenticatedBusinessId(supabase)
+  const timezone = await getBusinessTimezone(supabase, businessId)
   const period = getPeriod(params.period)
-  const { from, to } = resolveDateRange(period, params.from, params.to)
-  const statsRange = toRangeTimestamps(from, to)
+  const { from, to } = resolveDateRange(period, params.from, params.to, timezone)
 
   let operatorName = activeOperator.name
   let operatorRole: UserRole = activeOperator.role
@@ -130,8 +123,8 @@ export default async function OperatorMePage({
         .eq('id', activeOperator.profile_id)
         .single<OwnerProfileRow>(),
       supabase.rpc('get_owner_stats', {
-        p_date_from: statsRange.from,
-        p_date_to: statsRange.to,
+        p_date_from: from,
+        p_date_to: to,
       }),
       supabase.rpc('get_sales_heatmap', {
         p_business_id: businessId,
@@ -185,8 +178,8 @@ export default async function OperatorMePage({
         .single<OperatorProfileRow>(),
       supabase.rpc('get_operator_stats', {
         p_operator_id: activeOperator.profile_id,
-        p_date_from: statsRange.from,
-        p_date_to: statsRange.to,
+        p_date_from: from,
+        p_date_to: to,
       }),
       supabase.rpc('get_sales_heatmap', {
         p_business_id: businessId,
@@ -244,6 +237,7 @@ export default async function OperatorMePage({
         period={period}
         from={params.from}
         to={params.to}
+        timezone={timezone}
         totalSales={totalSales}
         totalRevenue={totalRevenue}
         topProducts={topProducts}

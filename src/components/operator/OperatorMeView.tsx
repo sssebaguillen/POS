@@ -19,7 +19,6 @@ import { useFormatMoney } from '@/lib/context/CurrencyContext'
 import { resolveDateRange, buildDateParams, periodNeedsCustomDates } from '@/lib/date-utils'
 import type { SalesHeatmapCell } from '@/lib/types'
 
-const BUSINESS_TIMEZONE_OFFSET = '-03:00'
 const OWNER_OPERATOR_SENTINEL = '00000000-0000-0000-0000-000000000000'
 
 interface OperatorStatsRpcResult {
@@ -72,6 +71,7 @@ interface OperatorMeViewProps {
   period: DateRangePeriod
   from?: string
   to?: string
+  timezone: string
   totalSales: number
   totalRevenue: number
   topProducts: OperatorTopProduct[]
@@ -114,6 +114,7 @@ export default function OperatorMeView({
   period: initialPeriod,
   from: initialFrom,
   to: initialTo,
+  timezone,
   totalSales: initialTotalSales,
   totalRevenue: initialTotalRevenue,
   topProducts: initialTopProducts,
@@ -148,21 +149,17 @@ export default function OperatorMeView({
   const { data, isFetching } = useQuery<OperatorStatsQueryData>({
     queryKey: ['operator-stats', operatorId, period, from, to],
     queryFn: async () => {
-      const resolvedRange = resolveDateRange(period, from, to)
-      const statsRange = {
-        from: resolvedRange.from ? `${resolvedRange.from}T00:00:00${BUSINESS_TIMEZONE_OFFSET}` : null,
-        to: resolvedRange.to ? `${resolvedRange.to}T23:59:59.999${BUSINESS_TIMEZONE_OFFSET}` : null,
-      }
+      const resolvedRange = resolveDateRange(period, from, to, timezone)
 
       const statsPromise = operatorRole === 'owner'
         ? supabase.rpc('get_owner_stats', {
-            p_date_from: statsRange.from,
-            p_date_to: statsRange.to,
+            p_date_from: resolvedRange.from,
+            p_date_to: resolvedRange.to,
           })
         : supabase.rpc('get_operator_stats', {
             p_operator_id: operatorId,
-            p_date_from: statsRange.from,
-            p_date_to: statsRange.to,
+            p_date_from: resolvedRange.from,
+            p_date_to: resolvedRange.to,
           })
 
       const heatmapPromise = supabase.rpc('get_sales_heatmap', {

@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import TrendsDetailView from '@/components/stats/TrendsDetailView'
-import { requireAuthenticatedBusinessId } from '@/lib/business'
+import { requireAuthenticatedBusinessId, getBusinessTimezone } from '@/lib/business'
 import { resolveDateRange } from '@/lib/date-utils'
 import type { StatsTrendsComparison } from '@/lib/types'
 
@@ -21,9 +21,10 @@ export default async function TrendsDetailPage({
   const params = await searchParams
   const supabase = await createClient()
   const businessId = await requireAuthenticatedBusinessId(supabase)
+  const timezone = await getBusinessTimezone(supabase, businessId)
 
   const period = params.period ?? 'mes'
-  const { from, to } = resolveDateRange(period, params.from, params.to)
+  const { from, to } = resolveDateRange(period, params.from, params.to, timezone)
 
   const { data: rpcResult } = await supabase.rpc('get_period_comparison', {
     p_business_id: businessId,
@@ -51,6 +52,7 @@ export default async function TrendsDetailPage({
       period={period}
       from={params.from}
       to={params.to}
+      timezone={timezone}
       metric={params.metric}
     />
   )

@@ -68,6 +68,7 @@ interface Props {
   period: string
   from?: string
   to?: string
+  timezone: string
 }
 
 function formatSnapshotLabel(snapshotDate: string): string {
@@ -108,6 +109,7 @@ export default function StatsView({
   period: initialPeriod,
   from: initialFrom,
   to: initialTo,
+  timezone,
 }: Props) {
   const pathname = usePathname()
   const formatMoney = useFormatMoney()
@@ -128,7 +130,7 @@ export default function StatsView({
   const { data, isFetching } = useQuery<StatsQueryData>({
     queryKey: ['stats', businessId, period, from, to],
     queryFn: async () => {
-      const resolvedRange = resolveDateRange(period, from, to)
+      const resolvedRange = resolveDateRange(period, from, to, timezone)
       const [kpisResult, evolutionResult, breakdownResult, topProductsResult, operatorsResult, dailySnapshotsResult, heatmapResult, promoImpactResult] = await Promise.all([
         supabase.rpc('get_stats_kpis', {
           p_business_id: businessId,

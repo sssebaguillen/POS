@@ -85,6 +85,7 @@ interface Props {
   products: ProductRecord[]
   businessId: string | null
   businessName: string
+  timezone: string
   // Seed server-side del período inicial ("hoy") para primer paint sin parpadeo
   initialKpis: StatsKpis | null
   initialBalance: BusinessBalance | null
@@ -123,6 +124,7 @@ export default function DashboardView({
   products,
   businessId,
   businessName,
+  timezone,
   initialKpis,
   initialBalance,
   initialHeatmap,
@@ -162,8 +164,8 @@ export default function DashboardView({
   )
 
   const resolved = useMemo(
-    () => resolveDateRange(period, fromDate || undefined, toDate || undefined),
-    [period, fromDate, toDate]
+    () => resolveDateRange(period, fromDate || undefined, toDate || undefined, timezone),
+    [period, fromDate, toDate, timezone]
   )
   const isInitialRange = period === 'hoy' && !fromDate && !toDate
 

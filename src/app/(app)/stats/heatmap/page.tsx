@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import SalesHeatmapView from '@/components/stats/SalesHeatmapView'
-import { requireAuthenticatedBusinessId } from '@/lib/business'
+import { requireAuthenticatedBusinessId, getBusinessTimezone } from '@/lib/business'
 import { resolveDateRange } from '@/lib/date-utils'
 import type { SalesHeatmapCell } from '@/lib/types'
 
@@ -21,9 +21,10 @@ export default async function SalesHeatmapPage({
   const params = await searchParams
   const supabase = await createClient()
   const businessId = await requireAuthenticatedBusinessId(supabase)
+  const timezone = await getBusinessTimezone(supabase, businessId)
 
   const period = params.period ?? 'mes'
-  const { from, to } = resolveDateRange(period, params.from, params.to)
+  const { from, to } = resolveDateRange(period, params.from, params.to, timezone)
 
   const { data: rpcResult } = await supabase.rpc('get_sales_heatmap', {
     p_business_id: businessId,
@@ -40,6 +41,7 @@ export default async function SalesHeatmapPage({
       period={period}
       from={params.from}
       to={params.to}
+      timezone={timezone}
       metric={params.metric}
     />
   )
