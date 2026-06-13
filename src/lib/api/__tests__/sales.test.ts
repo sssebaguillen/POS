@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import type { SupabaseClient } from '@supabase/supabase-js'
+import { PostgrestError, type SupabaseClient } from '@supabase/supabase-js'
 import { unwrapRpc } from '@/lib/api/_helpers'
 import {
   createSaleTransaction,
@@ -21,7 +21,7 @@ describe('unwrapRpc', () => {
 
   it('returns ok:false with a translated message on a Postgrest error', () => {
     const result = unwrapRpc(
-      { data: null, error: { message: 'duplicate key value', details: '', hint: '', code: '23505', name: 'e', toJSON: () => ({ name: 'e', message: 'duplicate key value', details: '', hint: '', code: '23505' }) } },
+      { data: null, error: new PostgrestError({ message: 'duplicate key value', details: '', hint: '', code: '23505' }) },
       'fallback'
     )
     expect(result.ok).toBe(false)
