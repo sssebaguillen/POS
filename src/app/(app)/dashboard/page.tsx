@@ -30,7 +30,7 @@ export default async function DashboardPage() {
     { data: kpisRaw },
     { data: balanceRaw },
     { data: heatmapRaw },
-    { data: products },
+    { data: lowStockRaw },
     { data: business },
     { data: profile },
     { data: recentActivityRaw },
@@ -39,11 +39,7 @@ export default async function DashboardPage() {
     supabase.rpc('get_stats_kpis', { p_business_id: businessId, p_from: hoy.from, p_to: hoy.to }),
     supabase.rpc('get_business_balance', { p_business_id: businessId, p_from: hoy.from, p_to: hoy.to }),
     supabase.rpc('get_sales_heatmap', { p_business_id: businessId, p_from: hoy.from, p_to: hoy.to }),
-    supabase
-      .from('products')
-      .select('id, name, category_id, stock, min_stock, is_active')
-      .eq('business_id', businessId)
-      .limit(5000),
+    supabase.rpc('get_low_stock_summary', { p_business_id: businessId }),
     supabase
       .from('businesses')
       .select('name, settings')
@@ -72,6 +68,11 @@ export default async function DashboardPage() {
   const initialKpis = (kpisRaw as unknown as StatsKpis | null)
   const initialBalance = (balanceRaw as unknown as BusinessBalance | null)
   const initialHeatmap = (heatmapRaw as unknown as { data: SalesHeatmapCell[] } | null)?.data ?? []
+  const lowStockSummary = (lowStockRaw as unknown as {
+    out_count: number
+    low_count: number
+    products: { id: string; name: string; stock: number; min_stock: number }[]
+  } | null) ?? { out_count: 0, low_count: 0, products: [] }
 
   const onboarding = parseOnboardingState(profile?.onboarding_state)
   const isOwnerProfile = profile?.role === 'owner'
@@ -122,14 +123,7 @@ export default async function DashboardPage() {
   return (
     <DashboardView
       operators={operators}
-      products={(products ?? []).map(product => ({
-        id: product.id,
-        name: product.name,
-        category_id: product.category_id,
-        stock: Number(product.stock),
-        min_stock: Number(product.min_stock),
-        is_active: Boolean(product.is_active),
-      }))}
+      lowStockSummary={lowStockSummary}
       businessId={businessId}
       businessName={business?.name ?? ''}
       timezone={timezone}

@@ -71,18 +71,22 @@ export interface RecentActivityRow {
   new_data: Record<string, unknown> | null
 }
 
-interface ProductRecord {
+interface LowStockItem {
   id: string
   name: string
-  category_id: string | null
   stock: number
   min_stock: number
-  is_active: boolean
+}
+
+interface LowStockSummary {
+  out_count: number
+  low_count: number
+  products: LowStockItem[]
 }
 
 interface Props {
   operators: SalesHistoryOperator[]
-  products: ProductRecord[]
+  lowStockSummary: LowStockSummary
   businessId: string | null
   businessName: string
   timezone: string
@@ -121,7 +125,7 @@ function computeTrend(
 
 export default function DashboardView({
   operators,
-  products,
+  lowStockSummary,
   businessId,
   businessName,
   timezone,
@@ -222,30 +226,22 @@ export default function DashboardView({
     transactions: computeTrend(transactions, overview.kpis?.prev_total_sales ?? 0, trendLabel, showTrend),
   }
 
-  const lowStockProducts = useMemo(
-    () => products.filter(p => p.is_active && p.stock <= p.min_stock),
-    [products]
-  )
-  const outOfStockCount = useMemo(() => lowStockProducts.filter(p => p.stock <= 0).length, [lowStockProducts])
-  const lowStockCount = useMemo(() => lowStockProducts.filter(p => p.stock > 0).length, [lowStockProducts])
-  const outOfStock = useMemo(
-    () => lowStockProducts.filter(p => p.stock <= 0).sort((a, b) => a.stock - b.stock),
-    [lowStockProducts]
-  )
-  const lowStock = useMemo(
-    () => lowStockProducts.filter(p => p.stock > 0).sort((a, b) => a.stock - b.stock),
-    [lowStockProducts]
-  )
+  // Subconjunto crítico ya filtrado y ordenado server-side por get_low_stock_summary
+  // (is_active AND stock <= min_stock; sin stock primero, luego stock asc, luego nombre).
+  const lowStockProducts = lowStockSummary.products
+  const outOfStockCount = lowStockSummary.out_count
+  const lowStockCount = lowStockSummary.low_count
+  const outOfStock = useMemo(() => lowStockProducts.filter(p => p.stock <= 0), [lowStockProducts])
+  const lowStock = useMemo(() => lowStockProducts.filter(p => p.stock > 0), [lowStockProducts])
   // Compact peek for the "Stock crítico" KPI: a faithful 2-item miniature of the
   // alerts widget — same priority order (sin stock first, then stock bajo) and the
   // same severity tokens, so glance and detail read as one system.
   const alertPreview = useMemo(() => {
-    const rows = [
-      ...outOfStock.map(p => ({ id: p.id, name: p.name, tone: 'out' as const })),
-      ...lowStock.map(p => ({ id: p.id, name: p.name, tone: 'low' as const })),
-    ]
-    return { rows: rows.slice(0, 2), remaining: Math.max(0, rows.length - 2) }
-  }, [outOfStock, lowStock])
+    const rows = lowStockProducts
+      .slice(0, 2)
+      .map(p => ({ id: p.id, name: p.name, tone: p.stock <= 0 ? ('out' as const) : ('low' as const) }))
+    return { rows, remaining: Math.max(0, lowStockProducts.length - rows.length) }
+  }, [lowStockProducts])
 
   const historyRange = useMemo(
     () => ({ from: periodRange.from.toISOString(), to: periodRange.to.toISOString() }),

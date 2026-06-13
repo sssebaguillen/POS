@@ -3605,6 +3605,49 @@ $$;
 ALTER FUNCTION "public"."get_expenses_list"("p_business_id" "uuid", "p_from" "date", "p_to" "date", "p_category" "text", "p_limit" integer, "p_offset" integer) OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."get_low_stock_summary"("p_business_id" "uuid") RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'extensions'
+    AS $$
+DECLARE
+  v_out_count int;
+  v_low_count int;
+  v_products  jsonb;
+BEGIN
+  PERFORM public.assert_tenant(p_business_id);
+
+  SELECT
+    COUNT(*) FILTER (WHERE stock <= 0),
+    COUNT(*) FILTER (WHERE stock > 0)
+  INTO v_out_count, v_low_count
+  FROM products
+  WHERE business_id = p_business_id
+    AND is_active = true
+    AND stock <= COALESCE(min_stock, 0);
+
+  SELECT COALESCE(
+    jsonb_agg(
+      jsonb_build_object('id', id, 'name', name, 'stock', stock, 'min_stock', COALESCE(min_stock, 0))
+      ORDER BY (stock <= 0) DESC, stock ASC, name ASC
+    ), '[]'::jsonb)
+  INTO v_products
+  FROM products
+  WHERE business_id = p_business_id
+    AND is_active = true
+    AND stock <= COALESCE(min_stock, 0);
+
+  RETURN jsonb_build_object(
+    'out_count', v_out_count,
+    'low_count', v_low_count,
+    'products',  v_products
+  );
+END;
+$$;
+
+
+ALTER FUNCTION "public"."get_low_stock_summary"("p_business_id" "uuid") OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."get_mercaderia_expense_items"("p_expense_id" "uuid", "p_business_id" "uuid") RETURNS TABLE("id" "uuid", "product_id" "uuid", "product_name" "text", "variant_id" "uuid", "variant_label" "text", "quantity" integer, "unit_cost" numeric, "update_cost" boolean, "stock" integer)
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public'
@@ -13621,6 +13664,12 @@ GRANT ALL ON FUNCTION "public"."get_dead_stock"("p_business_id" "uuid", "p_days_
 REVOKE ALL ON FUNCTION "public"."get_expenses_list"("p_business_id" "uuid", "p_from" "date", "p_to" "date", "p_category" "text", "p_limit" integer, "p_offset" integer) FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."get_expenses_list"("p_business_id" "uuid", "p_from" "date", "p_to" "date", "p_category" "text", "p_limit" integer, "p_offset" integer) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."get_expenses_list"("p_business_id" "uuid", "p_from" "date", "p_to" "date", "p_category" "text", "p_limit" integer, "p_offset" integer) TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "public"."get_low_stock_summary"("p_business_id" "uuid") FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."get_low_stock_summary"("p_business_id" "uuid") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."get_low_stock_summary"("p_business_id" "uuid") TO "service_role";
 
 
 
