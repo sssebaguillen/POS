@@ -98,10 +98,12 @@ export default function OnboardingWizard({
   const [categoryError, setCategoryError] = useState<string | null>(null)
   const [categorySaving, setCategorySaving] = useState(false)
   const [categories, setCategories] = useState<CategoryRow[]>(initialCategories)
+  const [createdCategoryId, setCreatedCategoryId] = useState<string | undefined>(undefined)
   const [brandName, setBrandName] = useState('')
   const [brandError, setBrandError] = useState<string | null>(null)
   const [brandSaving, setBrandSaving] = useState(false)
   const [brands, setBrands] = useState<InventoryBrand[]>(initialBrands)
+  const [createdBrandId, setCreatedBrandId] = useState<string | undefined>(undefined)
 
   const filteredCurrencies = useMemo(() => {
     const q = currencyInput.trim().toLowerCase()
@@ -211,7 +213,10 @@ export default function OnboardingWizard({
     setCategoryIcon(DEFAULT_ICON)
     setCategoryColor(DEFAULT_COLOR)
     setIconSearch('')
-    if (createdId) setCategories(prev => [...prev, { id: createdId, name: trimmed, icon: iconValue }])
+    if (createdId) {
+      setCategories(prev => [...prev, { id: createdId, name: trimmed, icon: iconValue }])
+      setCreatedCategoryId(createdId)
+    }
     setCategorySaving(false)
     setStep(2)
   }
@@ -257,6 +262,7 @@ export default function OnboardingWizard({
     withStepDone('brand')
     setBrandName('')
     if (nextBrand) {
+      setCreatedBrandId(nextBrand.id)
       setBrands(prev =>
         prev.some(brand => brand.id === nextBrand.id)
           ? prev
@@ -536,6 +542,8 @@ export default function OnboardingWizard({
                 priceLists={priceLists}
                 categories={categories}
                 brands={brands}
+                initialCategoryId={createdCategoryId}
+                initialBrandId={createdBrandId}
                 onCreated={() => {}}
                 onSuccess={() => {
                   withStepDone('product')

@@ -14,6 +14,11 @@ const eslintConfig = defineConfig([
     "next-env.d.ts",
     // Agent worktrees — do not lint .claude/
     ".claude/**",
+    // Artefactos generados por Playwright (reporte/trace minificado, screenshots).
+    "e2e/report/**",
+    "e2e/screenshots/**",
+    "test-results/**",
+    "playwright-report/**",
   ]),
   {
     rules: {

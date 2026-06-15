@@ -67,7 +67,9 @@ export default function PaymentModal({
 }: Props) {
   // Single-mode state
   const [primaryMethod, setPrimaryMethod] = useState<PaymentMethod>('cash')
-  const [cashReceived, setCashReceived] = useState('')
+  // Efectivo arranca con el total exacto: Confirmar queda habilitado y Enter
+  // cierra al toque (pago justo, vuelto $0). Si el cliente da de más, se sobreescribe.
+  const [cashReceived, setCashReceived] = useState(() => String(total))
 
   // Mixed-mode state
   const [isMixed, setIsMixed] = useState(false)
@@ -126,7 +128,7 @@ export default function PaymentModal({
 
   function handlePrimaryMethodChange(method: PaymentMethod) {
     setPrimaryMethod(method)
-    setCashReceived('')
+    setCashReceived(method === 'cash' ? String(total) : '')
     if (method === secondaryMethod) {
       const next = mixedAvailableMethods.find(m => m !== method)
       if (next) setSecondaryMethod(next)
@@ -379,6 +381,7 @@ export default function PaymentModal({
                           placeholder="0"
                           value={cashReceived}
                           onChange={e => setCashReceived(e.target.value)}
+                          onFocus={e => e.target.select()}
                           className="text-lg font-bold h-11"
                         />
                         {cashReceived && validCash >= total && (

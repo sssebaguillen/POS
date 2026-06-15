@@ -89,9 +89,11 @@ describe('PaymentModal — rendering', () => {
     expect(screen.getByRole('button', { name: /Confirmar venta/ })).toBeInTheDocument()
   })
 
-  it('defaults to cash with the confirm button disabled until an amount is entered', () => {
+  it('defaults to cash with the received amount prefilled to the total and confirm enabled', () => {
     renderModal()
-    expect(confirmButton()).toBeDisabled()
+    // Fix: efectivo prellena "Monto recibido" con el total → pago justo en un paso.
+    expect(screen.getByPlaceholderText('0')).toHaveValue(100)
+    expect(confirmButton()).toBeEnabled()
   })
 })
 

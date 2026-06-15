@@ -11,7 +11,7 @@ import { getBusinessIdByUserId } from '@/lib/business'
 import { CURRENCIES } from '@/lib/constants/currencies'
 import { CurrencyProvider } from '@/lib/context/CurrencyContext'
 import { parseOnboardingState } from '@/components/onboarding/onboarding-types'
-import OnboardingTour from '@/components/onboarding/OnboardingTour'
+import OnboardingTourGate from '@/components/onboarding/OnboardingTourGate'
 import NewOrderNotifier from '@/components/orders/NewOrderNotifier'
 import NewInsightNotifier from '@/components/insights/NewInsightNotifier'
 
@@ -193,8 +193,7 @@ export default async function AppLayout({
         <PostHogIdentify userId={user.id} businessId={businessId} />
       )}
       {showTour && onboardingProfileId ? (
-        <OnboardingTour
-          open={showTour}
+        <OnboardingTourGate
           profileId={onboardingProfileId}
           onboardingState={onboardingStateRaw}
         />

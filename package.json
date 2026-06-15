@@ -10,6 +10,8 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
+    "e2e": "playwright test",
+    "e2e:report": "playwright show-report e2e/report",
     "supabase:db:push": "supabase db push",
     "supabase:function:deploy:refresh-daily-snapshots": "supabase functions deploy refresh-daily-snapshots --project-ref zrnthcznbrplzpmxmkwk"
   },
@@ -41,6 +43,7 @@
     "zustand": "^5.0.11"
   },
   "devDependencies": {
+    "@playwright/test": "^1.60.0",
     "@posthog/cli": "^0.7.11",
     "@tailwindcss/postcss": "^4",
     "@testing-library/jest-dom": "^6.9.1",

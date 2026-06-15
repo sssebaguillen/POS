@@ -2649,38 +2649,8 @@ $$;
 ALTER FUNCTION "public"."delete_sale"("p_sale_id" "uuid", "p_business_id" "uuid", "p_operator_id" "uuid") OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."find_applicable_promotion"("p_business_id" "uuid", "p_product_id" "uuid", "p_category_id" "uuid", "p_brand_id" "uuid", "p_at" timestamp with time zone DEFAULT "now"()) RETURNS "public"."promotions"
-    LANGUAGE "sql" STABLE
-    SET "search_path" TO 'public', 'extensions'
-    AS $$
--- Promo vigente más aplicable para un producto. Resolución determinística: más específica
--- gana (producto > categoría > marca); a igual especificidad, la más reciente. Sin stacking.
--- Sin guard de tenant: helper del path del catálogo público (como compute_effective_price).
--- Espejo TS: findApplicablePromo (src/lib/promotions.ts).
-  SELECT pr.*
-  FROM public.promotions pr
-  WHERE pr.business_id = p_business_id
-    AND pr.is_active = true
-    AND pr.archived_at IS NULL
-    AND (pr.starts_at IS NULL OR pr.starts_at <= p_at)
-    AND (pr.ends_at IS NULL OR pr.ends_at >= p_at)
-    AND (
-      (pr.product_id IS NOT NULL AND pr.product_id = p_product_id)
-      OR (pr.category_id IS NOT NULL AND pr.category_id = p_category_id)
-      OR (pr.brand_id IS NOT NULL AND pr.brand_id = p_brand_id)
-    )
-  ORDER BY
-    CASE
-      WHEN pr.product_id IS NOT NULL THEN 0
-      WHEN pr.category_id IS NOT NULL THEN 1
-      ELSE 2
-    END,
-    pr.created_at DESC
-  LIMIT 1;
-$$;
-
-
-ALTER FUNCTION "public"."find_applicable_promotion"("p_business_id" "uuid", "p_product_id" "uuid", "p_category_id" "uuid", "p_brand_id" "uuid", "p_at" timestamp with time zone) OWNER TO "postgres";
+-- NOTA: find_applicable_promotion (RETURNS public.promotions) se define MÁS ABAJO,
+-- después del CREATE TABLE promotions — su tipo de retorno exige la tabla creada.
 
 
 CREATE OR REPLACE FUNCTION "public"."get_active_session"() RETURNS "jsonb"
@@ -9125,6 +9095,46 @@ ALTER TABLE ONLY "public"."products"
 
 ALTER TABLE ONLY "public"."profiles"
     ADD CONSTRAINT "profiles_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."promotions"
+    ADD CONSTRAINT "promotions_pkey" PRIMARY KEY ("id");
+
+
+-- Definida aquí (no en la sección de funciones) porque RETURNS public.promotions
+-- exige que la tabla promotions ya exista. Espejo TS: findApplicablePromo (src/lib/promotions.ts).
+CREATE OR REPLACE FUNCTION "public"."find_applicable_promotion"("p_business_id" "uuid", "p_product_id" "uuid", "p_category_id" "uuid", "p_brand_id" "uuid", "p_at" timestamp with time zone DEFAULT "now"()) RETURNS "public"."promotions"
+    LANGUAGE "sql" STABLE
+    SET "search_path" TO 'public', 'extensions'
+    AS $$
+-- Promo vigente más aplicable para un producto. Resolución determinística: más específica
+-- gana (producto > categoría > marca); a igual especificidad, la más reciente. Sin stacking.
+-- Sin guard de tenant: helper del path del catálogo público (como compute_effective_price).
+  SELECT pr.*
+  FROM public.promotions pr
+  WHERE pr.business_id = p_business_id
+    AND pr.is_active = true
+    AND pr.archived_at IS NULL
+    AND (pr.starts_at IS NULL OR pr.starts_at <= p_at)
+    AND (pr.ends_at IS NULL OR pr.ends_at >= p_at)
+    AND (
+      (pr.product_id IS NOT NULL AND pr.product_id = p_product_id)
+      OR (pr.category_id IS NOT NULL AND pr.category_id = p_category_id)
+      OR (pr.brand_id IS NOT NULL AND pr.brand_id = p_brand_id)
+    )
+  ORDER BY
+    CASE
+      WHEN pr.product_id IS NOT NULL THEN 0
+      WHEN pr.category_id IS NOT NULL THEN 1
+      ELSE 2
+    END,
+    pr.created_at DESC
+  LIMIT 1;
+$$;
+
+
+ALTER FUNCTION "public"."find_applicable_promotion"("p_business_id" "uuid", "p_product_id" "uuid", "p_category_id" "uuid", "p_brand_id" "uuid", "p_at" timestamp with time zone) OWNER TO "postgres";
 
 
 

@@ -15,7 +15,8 @@ export default defineConfig({
     environment: 'node',
     // .claude/ aloja worktrees de agentes (copias del repo) — sin esto, vitest
     // corre cada suite dos veces y contamina el resultado.
-    exclude: [...configDefaults.exclude, '**/.claude/**'],
+    // e2e/ son specs de Playwright (otro runner) — vitest no debe agarrarlas.
+    exclude: [...configDefaults.exclude, '**/.claude/**', 'e2e/**'],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json-summary'],

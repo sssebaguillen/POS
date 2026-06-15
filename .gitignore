@@ -13,6 +13,14 @@
 # testing
 /coverage
 
+# e2e / playwright (artefactos generados — spec, config y scripts SÍ se commitean)
+/test-results/
+/e2e/report/
+/e2e/screenshots/
+/e2e/diagnostic-report.txt
+/playwright-report/
+/playwright/.cache/
+
 # next.js
 /.next/
 /out/

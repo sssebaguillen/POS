@@ -1,0 +1,67 @@
+name: E2E
+
+# Suite E2E del flujo crítico (registro → wizard → producto → venta → caja)
+# contra un build de producción + Supabase LOCAL. Es pesada (~5-8 min, levanta
+# Docker), así que NO gatea cada PR: corre manual y de noche. Los unit tests
+# (test.yml) siguen gateando cada PR de forma rápida.
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 6 * * *' # 06:00 UTC = 03:00 ART
+
+jobs:
+  e2e:
+    name: Flujo crítico (Playwright)
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install psql client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Bootstrap Supabase local + schema.sql
+        run: bash scripts/e2e-db-setup.sh
+
+      - name: Export local Supabase env
+        run: |
+          eval "$(supabase status -o env | sed 's/^/export /')"
+          {
+            echo "NEXT_PUBLIC_SUPABASE_URL=$API_URL"
+            echo "NEXT_PUBLIC_SUPABASE_ANON_KEY=$ANON_KEY"
+            echo "SUPABASE_SERVICE_ROLE_KEY=$SERVICE_ROLE_KEY"
+            echo "OPERATOR_SESSION_SECRET=$(openssl rand -hex 48)"
+          } >> "$GITHUB_ENV"
+
+      - name: Build (producción, apuntando al Supabase local)
+        run: npm run build
+
+      - name: Install Playwright browser
+        run: npx playwright install --with-deps chromium
+
+      - name: Run E2E
+        run: npm run e2e
+
+      - name: Upload report + screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-report
+          path: |
+            e2e/report
+            e2e/screenshots
+            e2e/diagnostic-report.txt
+          retention-days: 7

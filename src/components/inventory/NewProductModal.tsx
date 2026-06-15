@@ -42,6 +42,9 @@ interface Props {
   onSuccess?: (product: InventoryProduct) => void
   /** Pre-fill the product name field. */
   initialName?: string
+  /** Pre-select category/brand (used by onboarding wizard to carry over the just-created ones). */
+  initialCategoryId?: string
+  initialBrandId?: string
 }
 
 const EMPTY_FORM: ProductFormBase = {
@@ -69,6 +72,8 @@ export default function NewProductModal({
   onCreated,
   onSuccess,
   initialName,
+  initialCategoryId,
+  initialBrandId,
 }: Props) {
   // Precio base manual: no se ata a ninguna lista al crear. Las listas son tiers opt-in.
   const defaultPriceList = null
@@ -117,6 +122,26 @@ export default function NewProductModal({
   const supabase = useMemo(() => createClient(), [])
   const currency = useCurrency()
   const currencySymbol = getCurrencySymbol(currency)
+
+  // Carry over la categoría/marca recién creadas en el wizard (preselección).
+  useEffect(() => {
+    if (!open) return
+    if (initialCategoryId) {
+      const cat = categories.find(c => c.id === initialCategoryId)
+      if (cat) {
+        startTransition(() => setField('category_id', cat.id))
+        setCategoryInput(cat.name)
+      }
+    }
+    if (initialBrandId) {
+      const br = brands.find(b => b.id === initialBrandId)
+      if (br) {
+        startTransition(() => setField('brand_id', br.id))
+        setBrandInput(br.name)
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, initialCategoryId, initialBrandId])
 
   const filteredBrands = useMemo(() => {
     const query = brandInput.trim().toLowerCase()
