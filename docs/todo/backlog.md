@@ -309,10 +309,10 @@ El owner sube un PDF o foto de la factura de una compra recién hecha y el siste
 
 ## CONTEXT.md — Discrepancias con la DB en vivo
 
-> **🤖 SCHEDULE-OK — Reconciliar docs contra el schema real.** El agente tiene acceso **read-only** a Supabase (`list_tables`, `list_migrations`, `generate_typescript_types`, etc.). Tarea: verificar cada fila de la tabla de abajo contra el schema en vivo y **corregir la documentación** (`docs/db.md`, `docs/CONTEXT.md` si existe, y referencias en `CLAUDE.md`) para que reflejen la realidad. Incluye el mismatch de **`docs/db.md` documenta `invoices`** que no está en `supabase/schema.sql` ("P10 docs mismatch" en Otras P-Phases) — confirmar si la tabla existe en la DB y alinear el doc.
+> **🤖 SCHEDULE-OK — Reconciliar docs contra el schema real.** **Fuente de verdad: `supabase/schema.sql`** (dump mantenido en sync) + las migraciones en `supabase/migrations/`. El agente NO tiene acceso a la DB en vivo — todo se verifica contra el repo. Tarea: verificar cada fila de la tabla de abajo contra `schema.sql` y **corregir la documentación** (`docs/db.md`, `docs/CONTEXT.md` si existe, y referencias en `CLAUDE.md`) para que reflejen la realidad. Incluye el mismatch de **`docs/db.md` documenta `invoices`** que no aparece en `supabase/schema.sql` ("P10 docs mismatch" en Otras P-Phases) — confirmar contra `schema.sql` y alinear el doc.
 > - **Criterios de aceptación:** (1) cada discrepancia confirmada se corrige en el doc correspondiente; (2) las filas ya alineadas se eliminan de esta tabla; (3) NO se toca código ni el schema — solo markdown; (4) un PR de docs, sin migraciones.
-> - **Solo-lectura:** verificar contra el schema, **nunca** ejecutar SQL de escritura ni aplicar migraciones.
-> - **Si una discrepancia revela que el problema está en el CÓDIGO, no en el doc** (ej. el doc está bien y la DB/código divergió de forma riesgosa): NO lo arregles — anotalo en "⚠️ Preguntas del agente automático" y seguí. Acá solo se reconcilian docs.
+> - **Si una fila no se puede confirmar contra `schema.sql`** (ej. depende de estado de datos en vivo, no del schema): NO adivines — anotala en "⚠️ Preguntas del agente automático" y seguí.
+> - **Si una discrepancia revela que el problema está en el CÓDIGO, no en el doc** (ej. el doc está bien y el código divergió de forma riesgosa): NO lo arregles — anotalo en "⚠️ Preguntas del agente automático" y seguí. Acá solo se reconcilian docs.
 
 | Área | CONTEXT.md dice | Realidad |
 |------|-----------------|----------|
