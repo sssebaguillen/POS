@@ -201,6 +201,14 @@ Comprobar si vale la pena (y qué tan sencillo es) soportar productos vendidos p
 - ✅ **(2026-06-11) Shell del catálogo + tokenización del verde.** `CatalogShell` (contenedor de scroll — el body global tiene `overflow:hidden` — + contexto de carrito compartido entre las 3 páginas, cart sheet global bottom/right, barra mobile "Ver pedido" en todas las páginas), `CatalogNavbar` sticky (logo+nombre, nav Inicio/Ofertas, theme toggle, carrito con badge), `CatalogSearch` (typeahead con dropdown anclado al input — imagen, nombre, categoría · marca, variantes, precio con promo — navega al detalle, NO filtra la grilla; en detalle/promos trae los datos lazy vía RPCs anon), `CatalogFooter` (negocio + nav + WhatsApp; sin "creado con Pulsar" hasta cerrar el rebrand). El detalle de producto quedó con navbar/carrito/footer (cerrado el hallazgo P2 del critique). `CatalogHeader` eliminado. Tokens `--promo`/`--promo-foreground` en globals.css; cero `emerald-*` hardcodeado en el catálogo.
 - **Sección Ofertas/destacados de la main page:** el contenedor del carrusel usa fondo `--promo` traslúcido (mismo lenguaje que los badges de éxito) — no es el diseño correcto para esta sección. Rediseñar el tratamiento visual del hero de ofertas (`OffersCarousel.tsx`).
 - **🤖 SCHEDULE-OK** — Menores del critique aún abiertos: touch targets chicos (swatches 24px en `VariantQuickSelector` → ≥44px recomendado, dots del carrusel 6px). Fix mecánico de tamaños/clases, sin decisión de diseño. (El "filtros ocultos por default en desktop" SÍ es decisión de UX → dejar fuera, NEEDS-OWNER.)
+- **🤖 SCHEDULE-OK — Accesibilidad del catálogo público.** Barrido de a11y acotado sobre `src/components/catalog/`:
+  - **Criterios de aceptación:** (1) toda `<img>` de producto/logo tiene `alt` descriptivo (nombre del producto / negocio); imágenes decorativas → `alt=""`. (2) Botones solo-ícono (carrito, theme toggle, flechas del carrusel, cerrar) tienen `aria-label`. (3) Inputs del checkout con `<label>` asociado o `aria-label`. (4) Estados de foco visibles en elementos interactivos (no remover outline sin reemplazo).
+  - **Alcance:** mecánico, sin rediseño. Si para arreglar el foco hace falta un cambio visual de diseño (no solo restaurar outline) → eso es decisión de UX, **marcar en "⚠️ Preguntas"** y dejarlo.
+  - Verificar con build/lint; no toca lógica.
+- **🤖 SCHEDULE-OK — Higiene de tokens del catálogo (base de theming).** Barrer colores hardcodeados restantes en `src/components/catalog/` → variables CSS (`--primary`, `--promo`, `--border`, etc.), prerequisito natural de [[Temas del catálogo]] sin tocar arquitectura.
+  - **EXCEPCIÓN explícita:** el mapa de colores de `VariantQuickSelector` (rojo→#ef4444, azul→#3b82f6, …) **NO se toca** — son colores semánticos de variantes de producto que deben verse igual en cualquier tema. No es deuda.
+  - **Criterios de aceptación:** (1) cero colores hex/rgb hardcodeados en clases de Tailwind del catálogo salvo la excepción; los `emerald-/amber-` sueltos (si quedan) pasan a `--promo`/token correspondiente; (2) sin cambio visual perceptible (mismo render claro y oscuro — verificar ambos); (3) un PR acotado.
+  - Si un color hardcodeado no tiene token equivalente y crear uno nuevo es decisión de diseño (qué token, qué valor claro/oscuro) → **marcar en "⚠️ Preguntas"**, no inventar el token.
 
 ### 🤖 SCHEDULE-OK — Lista de precios del catálogo configurable (DESPUÉS de ofertas)
 
@@ -216,6 +224,28 @@ Hoy el catálogo público **no aplica ninguna lista** — `get_catalog_products`
   - Qué pasa si la lista elegida se **archiva/borra** después (¿fallback a precio base? ¿bloquear el borrado?). Es decisión de producto.
   - Si el selector debe mostrar también el override por marca/producto de esa lista o solo el multiplicador base.
 - Migración: solo si hace falta tocar las firmas de las RPCs de catálogo (probablemente no — ya aceptan los params). Si se toca SQL → crear migración + schema.sql en sync, **no aplicar a DB**.
+
+### 🔒 NEEDS-OWNER — Temas del catálogo (presets de diseño por negocio) — post-rebrand
+
+> Planteado 2026-06-16. Idea grande; la dirección inicial es **dejar solo las bases**, no construir el sistema completo.
+
+**Visión:** que el dueño elija un **tema** para su catálogo público según su rubro — ej. "Tienda de ropa", "Almacén/Kiosco", "Genérico/Estándar" (y a futuro: ferretería, gastronomía, etc.). Cada tema = paquete curado de tokens (paleta, tipografía, radios/sombras, quizá densidad y layout de grilla). Más adelante, opcionalmente, customización fina (colores/logo/tipografía a medida).
+
+**Qué existe hoy (NO confundir):**
+- `CatalogThemeProvider` maneja **solo claro/oscuro**, no presets visuales.
+- Personalización ya disponible: `businesses.settings.primary_color` (configurable en `/settings`, aplicado en `layout.tsx`). El sistema de diseño ya usa tokens CSS (`--primary`, `--promo`, …) con valores claro/oscuro en `globals.css`; el catálogo ya tokenizó el verde.
+- O sea: "elegir color principal" ya está; falta el concepto de **tema = bundle** y el de **tema default** explícito.
+
+**Dirección acordada (no implementar aún):**
+- Arrancar con **el diseño actual como "tema default"**, dejándolo como **tema configurable** (un solo valor hoy, ej. `businesses.settings.catalog_theme = 'default'`), para sumar más temas después sin re-arquitectura.
+- **Presets curados primero**, NO customización total. La customización libre (color/logo/tipografía a elección) es mucho más cara: contraste/accesibilidad (WCAG), paridad claro/oscuro, carga/peso de fuentes, y matriz de QA por combinación. Diferir hasta tener demanda real.
+
+**Por qué NEEDS-OWNER / por qué diferida:**
+1. **Depende del rebrand** ([[project_naming_rebrand]], bloqueante de go-to-market): tipografía/logo/colores son decisiones de marca; el footer del catálogo ya esconde "creado con Pulsar" esperando esto. Construir el sistema de temas antes de cerrar la marca es construir sobre arena.
+2. **Pre-beta sin usuarios** ([[project_estado_beta]]): es diferenciador, no blocker de validación.
+3. **YAGNI con N=1:** la abstracción de tokens hay que extraerla de **dos temas reales** diseñados en concreto, no adivinarla con uno solo. Diseñar el 2º tema antes de generalizar.
+
+**Lo único que paga sin riesgo desde ya (no requiere decidir nada):** seguir la **higiene de tokens** (cero colores hardcodeados en el catálogo, todo vía variable CSS). Eso es deuda técnica acotada y es prerequisito natural de cualquier theming futuro — podría tagearse 🤖 SCHEDULE-OK por separado si se quiere avanzar la base sin tocar arquitectura.
 
 ### Densidad de UI configurable (scale)
 
@@ -278,6 +308,11 @@ El owner sube un PDF o foto de la factura de una compra recién hecha y el siste
 ---
 
 ## CONTEXT.md — Discrepancias con la DB en vivo
+
+> **🤖 SCHEDULE-OK — Reconciliar docs contra el schema real.** El agente tiene acceso **read-only** a Supabase (`list_tables`, `list_migrations`, `generate_typescript_types`, etc.). Tarea: verificar cada fila de la tabla de abajo contra el schema en vivo y **corregir la documentación** (`docs/db.md`, `docs/CONTEXT.md` si existe, y referencias en `CLAUDE.md`) para que reflejen la realidad. Incluye el mismatch de **`docs/db.md` documenta `invoices`** que no está en `supabase/schema.sql` ("P10 docs mismatch" en Otras P-Phases) — confirmar si la tabla existe en la DB y alinear el doc.
+> - **Criterios de aceptación:** (1) cada discrepancia confirmada se corrige en el doc correspondiente; (2) las filas ya alineadas se eliminan de esta tabla; (3) NO se toca código ni el schema — solo markdown; (4) un PR de docs, sin migraciones.
+> - **Solo-lectura:** verificar contra el schema, **nunca** ejecutar SQL de escritura ni aplicar migraciones.
+> - **Si una discrepancia revela que el problema está en el CÓDIGO, no en el doc** (ej. el doc está bien y la DB/código divergió de forma riesgosa): NO lo arregles — anotalo en "⚠️ Preguntas del agente automático" y seguí. Acá solo se reconcilian docs.
 
 | Área | CONTEXT.md dice | Realidad |
 |------|-----------------|----------|
