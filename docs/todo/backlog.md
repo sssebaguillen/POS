@@ -4,6 +4,43 @@
 
 ---
 
+## 🤖 Gestión automática — reglas de juego
+
+> Este backlog lo trabaja también un **agente programado** (schedule remoto). Para que sea seguro sin supervisión, cada item abierto lleva un tag de elegibilidad y el agente respeta un protocolo estricto.
+
+**Tags de elegibilidad** (solo en items abiertos; los ✅ resueltos no se tagean):
+
+- **🤖 SCHEDULE-OK** — decisión ya tomada, scope claro, bajo riesgo, cubierto por la suite de tests. El agente puede tomarlo solo.
+- **🔒 NEEDS-OWNER** — requiere dirección/decisión del dueño en vivo. **Fuera del schedule.**
+
+**Default-deny:** un item **sin tag `🤖 SCHEDULE-OK` explícito NO es elegible** para el agente automático — aunque no lleve `🔒 NEEDS-OWNER`. El `🔒` se usa solo para resaltar los casos donde la tentación de automatizar es alta pero NO se debe. En la duda sobre si algo es elegible: no lo es.
+
+**Protocolo del agente automático (innegociable):**
+
+1. **Solo trabaja items `🤖 SCHEDULE-OK`.** Nunca toca un `🔒 NEEDS-OWNER`.
+2. **Ante cualquier ambigüedad o decisión de producto/arquitectura: NO asume.** La anota en la sección "⚠️ Preguntas del agente automático" de abajo (fecha · item · la duda · opciones) y **deja ese item sin avanzar** hasta que el dueño decida.
+3. **Nunca mergea a master.** Todo queda en rama + PR para revisión.
+4. **No aplica migraciones a la DB** (eso lo decide el dueño; nunca `supabase db push`). Si un item necesita SQL, el agente crea el archivo de migración y lo deja en el PR + mantiene `supabase/schema.sql` en sync, sin aplicarlo.
+5. **Camino del dinero / auth / onboarding / schema de ventas:** verificar con la suite E2E antes de cerrar el PR.
+6. **Batching de PRs — un PR por cluster cohesivo, no un PR gigante:**
+   - Cada PR cubre **un cluster cohesivo** (un item, o varios que comparten archivos/tema). Nunca juntar todo el backlog en un PR (irrevisable, no se puede bisectar, un item estacionado bloquea al resto).
+   - **Si dos clusters tocan los mismos archivos, se hacen SECUENCIALES** (el segundo se rebasa sobre el primero), **nunca en paralelo** — así no hay conflictos de merge. Ej.: el cluster POS/Cart (`CartPanel`/`POSView`) y `/stats` (segmentación → tarjeta promos) van encadenados.
+   - Clusters de archivos disjuntos pueden ir en PRs independientes (paralelos sin conflicto).
+   - PR título claro + descripción con: qué item(s) del backlog cubre, qué verificó (tsc/lint/tests/E2E), y si dejó algo flagueado en "⚠️ Preguntas".
+   - Mapa de clusters sugerido: ver "Auditoría del camino del dinero" y los items 🤖 — agrupar por file-locality.
+7. **Retomar sin duplicar:** antes de empezar, listar PRs/ramas abiertas (`gh pr list`) y lo ya mergeado para no rehacer trabajo ni pisar un PR en revisión. Continuar donde quedó.
+8. **Orden de prioridad:** primero quick wins (docs/lint/env) + items con plan escrito (004/005); después el resto de deuda técnica; las features (segmentación, tarjeta promos, lista catálogo) al final, porque son las que más probablemente se estacionen esperando decisión.
+
+---
+
+## ⚠️ Preguntas del agente automático (pendientes de decisión del dueño)
+
+> El agente automático anota acá lo que necesita que decida Sebastián. Cada entrada: `[fecha] item — la duda — opciones`. Vaciar a medida que se resuelven en sesión en vivo.
+
+_(vacío)_
+
+---
+
 ## DB Audit — Pendiente
 
 | ID | Issue |
@@ -30,7 +67,7 @@
 ## P7h Audit Log — Pendiente
 
 - **Fase 3:** revertir una mutación desde su entrada en `/activity` (undo desde cualquier evento).
-- **Inmutabilidad de nombres en el detalle del audit log (priority low):** la capa de detalle resuelve IDs→nombres contra los lookups (`productMap`/`categoryMap`/`brandMap`/`customerMap`) **en read-time**, así que un rename/borrado posterior hace derivar el nombre mostrado (debería reflejar el estado al momento del evento). ✅ **Resuelto para acciones masivas** (`bulk_set_product_status`/`bulk_update_product_category`/`bulk_update_product_brand`) — snapshotean `{id, name}` vía `UPDATE … RETURNING` en `old_data.products`; el frontend prefiere el snapshot y cae a `productMap` para entradas viejas (mig. `20260529_13`). **Pendiente (mismo patrón, no urgente):** producto individual creado/borrado/editado (nombre de categoría/marca vía lookups, `product.tsx:47-48,260-268`), ventas (cliente + nombres de ítems, `sale.tsx:25,62,289`), entity labels (`EntityGlyph.tsx:39`, `ActivityRow.tsx:76`). Atacar de a uno — tocar el RPC de ventas + los de producto individual es un refactor más grande. Decidido fasearlo (2026-05-29).
+- **🤖 SCHEDULE-OK (de a uno) — Inmutabilidad de nombres en el detalle del audit log (priority low):** la capa de detalle resuelve IDs→nombres contra los lookups (`productMap`/`categoryMap`/`brandMap`/`customerMap`) **en read-time**, así que un rename/borrado posterior hace derivar el nombre mostrado (debería reflejar el estado al momento del evento). ✅ **Resuelto para acciones masivas** (`bulk_set_product_status`/`bulk_update_product_category`/`bulk_update_product_brand`) — snapshotean `{id, name}` vía `UPDATE … RETURNING` en `old_data.products`; el frontend prefiere el snapshot y cae a `productMap` para entradas viejas (mig. `20260529_13`). **Pendiente (mismo patrón, no urgente):** producto individual creado/borrado/editado (nombre de categoría/marca vía lookups, `product.tsx:47-48,260-268`), ventas (cliente + nombres de ítems, `sale.tsx:25,62,289`), entity labels (`EntityGlyph.tsx:39`, `ActivityRow.tsx:76`). Atacar de a uno — tocar el RPC de ventas + los de producto individual es un refactor más grande. Decidido fasearlo (2026-05-29). **Alcance para el agente automático:** el patrón snapshot ya está probado en bulk; aplicarlo a **producto individual** (categoría/marca vía lookups) es SCHEDULE-OK, un PR por path. El **RPC de ventas** toca el camino del dinero → **NO automatizar; marcar en "⚠️ Preguntas" si se quiere encarar** (refactor mayor, mejor en vivo).
 - **Scope cut Fase 1:** ~~`ImportProductsModal` escribía `categories.icon_color` directo~~ ✅ — marcas y categorías ya pasan por `create_brand_guarded` / `create_category_guarded` (con `stock_write` + audit). **Lo que queda** es el path de **productos** del import masivo: `.upsert` (sku/barcode), `.insert` (plain) y `.delete` (undo) van directo a `products`, sin pasar por `create_product` ni audit log. Cerrarlo requiere un RPC de import masivo (upsert por sku/barcode + `stock_write` + audit) y el RPC de undo → es efectivamente **P8b** (`undo_import`). No es quick win.
 
 ---
@@ -145,7 +182,13 @@ Comprobar si vale la pena (y qué tan sencillo es) soportar productos vendidos p
 
 **Pendientes derivados (post-módulo):**
 - **Quick win acordado:** segmentación POS vs catálogo en stats (`sales.source` ya existe — ver ítem en P-Phases).
-- **Tarjeta de impacto de promos en `/stats`:** lee `sale_items.promotion_id`/`promo_discount` (la data ya se captura desde el día 1).
+- **🤖 SCHEDULE-OK — Tarjeta de impacto de promos en `/stats`:** lee `sale_items.promotion_id`/`promo_discount` (la data ya se captura desde el día 1; `daily_snapshots.promo_discounts_total`/`promo_sales_count` también).
+  - **Criterios de aceptación:**
+    1. Tarjeta/KPI en `/stats` (en el rango de fechas activo del `DateRangeFilter` de la página) con: total descontado en promos (`Σ promo_discount`), cantidad de ventas con promo (`promo_sales_count`), y % de ventas que usaron promo.
+    2. Preferir leer de `daily_snapshots` (ya agregado por día) sobre escanear `sale_items` en vivo, para mantener el patrón de las otras tarjetas de `/stats`.
+    3. Si los snapshots NO traen el detalle por promo y se necesita una RPC nueva de agregación: **es decisión de scope → marcar en "⚠️ Preguntas", no asumir** (rango de RPC nueva guardada con regla 34 vs. leer snapshots existentes).
+    4. Money: la tarjeta es **informativa**; no tocar `sales.discount` ni la semántica de líneas netas (regla 36).
+  - Empezar por verificar exactamente qué columnas de `daily_snapshots` están pobladas antes de diseñar la lectura.
 - **Engagement del catálogo (vistas/clics para el dueño):** diferido hasta tener tráfico real; requiere storage propio agregado (PostHog es analytics nuestro, el dueño no lo ve).
 - **Detector P12:** "la promo X no mueve ventas / duplicó rotación" — sale de las columnas de snapshot ya creadas.
 - **Smoke UI en browser pendiente** (el smoke fue server-side: RPCs al centavo + build/tsc/lint): crear una promo de cada tipo desde `/promotions` y verla en POS y catálogo.
@@ -157,11 +200,22 @@ Comprobar si vale la pena (y qué tan sencillo es) soportar productos vendidos p
 
 - ✅ **(2026-06-11) Shell del catálogo + tokenización del verde.** `CatalogShell` (contenedor de scroll — el body global tiene `overflow:hidden` — + contexto de carrito compartido entre las 3 páginas, cart sheet global bottom/right, barra mobile "Ver pedido" en todas las páginas), `CatalogNavbar` sticky (logo+nombre, nav Inicio/Ofertas, theme toggle, carrito con badge), `CatalogSearch` (typeahead con dropdown anclado al input — imagen, nombre, categoría · marca, variantes, precio con promo — navega al detalle, NO filtra la grilla; en detalle/promos trae los datos lazy vía RPCs anon), `CatalogFooter` (negocio + nav + WhatsApp; sin "creado con Pulsar" hasta cerrar el rebrand). El detalle de producto quedó con navbar/carrito/footer (cerrado el hallazgo P2 del critique). `CatalogHeader` eliminado. Tokens `--promo`/`--promo-foreground` en globals.css; cero `emerald-*` hardcodeado en el catálogo.
 - **Sección Ofertas/destacados de la main page:** el contenedor del carrusel usa fondo `--promo` traslúcido (mismo lenguaje que los badges de éxito) — no es el diseño correcto para esta sección. Rediseñar el tratamiento visual del hero de ofertas (`OffersCarousel.tsx`).
-- Menores del critique aún abiertos: touch targets chicos (swatches 24px en `VariantQuickSelector`, dots del carrusel 6px), filtros ocultos por default en desktop.
+- **🤖 SCHEDULE-OK** — Menores del critique aún abiertos: touch targets chicos (swatches 24px en `VariantQuickSelector` → ≥44px recomendado, dots del carrusel 6px). Fix mecánico de tamaños/clases, sin decisión de diseño. (El "filtros ocultos por default en desktop" SÍ es decisión de UX → dejar fuera, NEEDS-OWNER.)
 
-### Lista de precios del catálogo configurable (DESPUÉS de ofertas)
+### 🤖 SCHEDULE-OK — Lista de precios del catálogo configurable (DESPUÉS de ofertas)
 
 Hoy el catálogo público **no aplica ninguna lista** — `get_catalog_products`/`get_catalog_product_with_variants` llaman `compute_effective_price(..., p_list_id := NULL, ...)` → muestran el precio base/variante. La función **ya acepta** `p_list_id`/`p_list_multiplier` (+ redondeo por lista, ver nota P7i). Feature: elegir desde `/settings` qué lista usa el catálogo (ej. `businesses.settings.catalog_price_list_id`) y pasársela a las RPCs en vez de NULL. Cambio acotado. Mismo dominio que ofertas (pricing del catálogo) → encararlos en secuencia.
+
+- **Criterios de aceptación:**
+  1. Setting `businesses.settings.catalog_price_list_id` (UUID de una `price_list` del negocio, o ausente/NULL = precio base como hoy). Editable desde `/settings` (selector con las listas del negocio + opción "Precio base"). Spread-merge del JSONB (regla 22) — no reemplazar `settings`.
+  2. `get_catalog_products` y `get_catalog_product_with_variants` leen ese setting y pasan `p_list_id`/`p_list_multiplier` reales a `compute_effective_price` en vez de NULL. **Re-precian server-side** (regla 29/36): el precio mostrado en el catálogo debe salir de la RPC, no calcularse en el cliente.
+  3. **Paridad checkout:** `create_catalog_order` re-precia con la **misma** lista (no puede quedar barato el grid y caro el checkout, ni viceversa). Verificar al centavo contra el grid.
+  4. El redondeo por lista (P7i, ya implementado en `compute_effective_price`) se aplica solo: si la lista elegida tiene `rounding_step`, el catálogo redondea igual que el POS. Verificar que se respeta.
+  5. Promos: la promo se sigue aplicando **encima** del precio de lista (pipeline regla 36, sin cambios). Verificar que lista + promo conviven.
+- **Decisiones que el agente NO debe asumir (→ marcar en "⚠️ Preguntas" si surgen):**
+  - Qué pasa si la lista elegida se **archiva/borra** después (¿fallback a precio base? ¿bloquear el borrado?). Es decisión de producto.
+  - Si el selector debe mostrar también el override por marca/producto de esa lista o solo el multiplicador base.
+- Migración: solo si hace falta tocar las firmas de las RPCs de catálogo (probablemente no — ya aceptan los params). Si se toca SQL → crear migración + schema.sql en sync, **no aplicar a DB**.
 
 ### Densidad de UI configurable (scale)
 
@@ -206,7 +260,14 @@ El owner sube un PDF o foto de la factura de una compra recién hecha y el siste
   - **Idea pendiente — Vista propia del Asistente:** pantalla central (`/insights` o "Asistente" en sidebar, owner/`analysis`-gated) con resumen + historial de sugerencias (activas/descartadas/accionadas), complementando los glyphs anclados (no reemplazándolos). Crece en valor al sumar dominios diferidos (cliente, proveedor, y **stats de operarios con detección de patrones de IA**). NO en `/operator/me` (ahí van las stats propias del dueño). A diseñar como iniciativa aparte.
   - **Monetización (dirección acordada 2026-06-03, metering NO implementado):** la IA es feature de plan pago. **La tab del Asistente + dominios avanzados = Pro**; los glyphs ambientes (lo ya hecho) quedan en el free como "gancho" que demuestra valor mientras el dueño trabaja. Paywall por **cobertura + profundidad**, NO por raciones magras ("1 sugerencia/mes" es demasiado fino para enganchar) y **NO degradando la calidad del copy** (un free tonto rompe la confianza en toda la feature). Free = detección + pocos deep-dives + dominios core (precio/stock/pago/canal), genuinamente útil pero acotado. Pro = **modelo más fuerte** (la abstracción provider + `INSIGHTS_MODEL_N1/N2` por env hace el tiering por modelo un cambio de config, incluso por plan del negocio) + más deep-dives/noche + dominios avanzados (operarios/clientes/proveedores) + historial + la tab. **Hoy el modelo es Groq free ($0), así que no urge:** el metering (contar por negocio/plan, gatear en assembler o UI) se calibra con señal de uso real, no a ciegas (sin usuarios reales todavía).
   - **Diferidos a backlog** (incorporar cuando el loop ruede bien): detector N1 + historia N2 de **cliente** (RFM — regulares que se apagaron vs su cadencia + deuda/`credit_balance`) y de **proveedor** (cost creep: último `unit_cost` vs anterior por producto desde `expense_items`). Mismo patrón comparativo + guard dual-use.
-- **Segmentación POS vs Pedido online en stats/dashboard** (2026-05-29) — la columna `sales.source` (`'pos' | 'catalog'`) ya existe y se setea en la conversión de pedidos del catálogo, pero **no está expuesta** en la UI. Pendiente: filtros/segmentación por canal en `/stats`, `/dashboard` e historial de ventas, y en los export. El dato ya se captura desde ahora; solo falta mostrarlo. (Ventas históricas pre-columna quedan como `'pos'`; las que vinieron de pedidos siguen identificables vía `catalog_orders.sale_id`.)
+- **🤖 SCHEDULE-OK — Segmentación POS vs Pedido online en stats/dashboard** (2026-05-29) — la columna `sales.source` (`'pos' | 'catalog'`) ya existe y se setea en la conversión de pedidos del catálogo, pero **no está expuesta** en la UI. El dato ya se captura desde ahora; solo falta mostrarlo. (Ventas históricas pre-columna quedan como `'pos'`; las que vinieron de pedidos siguen identificables vía `catalog_orders.sale_id`.)
+  - **Criterios de aceptación:**
+    1. Filtro de canal (chip, patrón regla 17: `Todos / Mostrador / Pedido online`) en el historial de ventas de `/dashboard` (`SalesHistoryTable.tsx`, que ya filtra 100% en memoria → sumar `source` al filtro existente, sin RPC nueva).
+    2. Misma segmentación en `/stats` donde haya desglose de ventas (al menos un KPI o split visible POS vs catálogo).
+    3. El export CSV de esas tablas incluye una columna "Canal" (`Mostrador`/`Pedido online`).
+    4. Labels en español neutro (sin voseo, regla [[feedback_evitar_voseo]]): "Mostrador" para `pos`, "Pedido online" para `catalog`.
+  - **Sin migración** (el dato ya existe). Si para `/stats` hiciera falta agrupar por `source` en una RPC server-side y no alcanza con filtrar en memoria → eso ES una decisión de scope: **marcarlo en "⚠️ Preguntas" y no asumir** (preferencia por solución in-memory si los volúmenes lo permiten).
+  - **Verificar:** que el historial y los export sigan cuadrando (no romper totales); correr E2E si se toca el render del historial.
 
 ---
 
@@ -251,14 +312,14 @@ El owner sube un PDF o foto de la factura de una compra recién hecha y el siste
 | ~~`InventoryPanel.tsx` dropdown del header + footer stats~~ ✅ (2026-06-09, commit `ea562d6`) | Dropdown responsive del header extraído a `src/components/inventory/HeaderActionDropdown.tsx` (mide posición al abrir → estado, sin leer ref en render); footer stats memoizadas sobre `products`. InventoryPanel bajó de 1456 a 1327 líneas. Smoke-test desktop+mobile OK. |
 | ~~`CartPanel.tsx` (~920L)~~ ✅ | `EditSalePanel` ya extraído a `src/components/pos/EditSalePanel.tsx`; `CartPanel` bajó a ~761L. |
 | ~~Radix `DialogTitle` warnings~~ ✅ (2026-05-28) | Todos los `DialogContent` tienen `DialogTitle`. Faltaban 5 (`NewOperatorModal`, `EditOperatorModal`, `ExportPriceListModal`, `EditSupplierModal`, `ExpensesTable`); resueltos con `<VisuallyHidden><DialogTitle>` siguiendo la convención de `price-lists`. |
-| `useEffect` para sales history en `CartPanel` | Patrón pre-React Query, no migrado |
+| 🤖 SCHEDULE-OK `useEffect` para sales history en `CartPanel` | Patrón pre-React Query, no migrado. Migrar a React Query como el resto. Camino del dinero (CartPanel) → E2E verde antes de cerrar. |
 | ~~`theme.tsx` FOUC~~ ✅ (2026-05-28) | Resuelto con script inline bloqueante en `<head>` (`ThemeScript.tsx`) que aplica la clase `dark` antes del primer paint, leyendo `localStorage` + `prefers-color-scheme`. Constante única `THEME_STORAGE_KEY` en `lib/theme.ts`. El efecto de círculo del toggle (View Transition) se extrajo a `runThemeToggleTransition` en `lib/theme.ts` y ahora lo usan tanto el sidebar como el toggle del catálogo público. |
-| `!` assertions en env vars | En `client.ts` y `server.ts` |
-| `protobufjs <=7.5.7` (npm audit, HIGH) | Transitiva vía `@sentry/nextjs` → `@opentelemetry/otlp-transformer`. **Riesgo real bajo**: es el transporte OTel de Sentry (serializa telemetría propia, no input de atacante), así que los CVE de DoS/inyección por protobuf malicioso no aplican. `npm audit fix` NO es quirúrgico (cambia 12 paquetes + warning de downgrade breaking de next). Si se ataca: `overrides` forzando solo protobufjs a 7.5.8+ y verificar con build. Decidido 2026-05-29: dejar, no urgente. |
+| 🤖 SCHEDULE-OK `!` assertions en env vars | En `client.ts` y `server.ts`. Reemplazar `!` por validación explícita al boot (throw claro si falta la env). Cambio acotado, sin riesgo de runtime nuevo. |
+| 🔒 NEEDS-OWNER `protobufjs <=7.5.7` (npm audit, HIGH) | Transitiva vía `@sentry/nextjs` → `@opentelemetry/otlp-transformer`. **Riesgo real bajo**: es el transporte OTel de Sentry (serializa telemetría propia, no input de atacante), así que los CVE de DoS/inyección por protobuf malicioso no aplican. `npm audit fix` NO es quirúrgico (cambia 12 paquetes + warning de downgrade breaking de next). Si se ataca: `overrides` forzando solo protobufjs a 7.5.8+ y verificar con build. Decidido 2026-05-29: dejar, no urgente. |
 | ~~`react-hooks/refs` en InventoryPanel/POSView (19 errores)~~ ✅ (2026-06-09, commit `ea562d6`) | Resueltos los 19: los 16 de InventoryPanel desaparecieron al extraer `HeaderActionDropdown` (mide al abrir → estado); los 3 de POSView (`itemCountRef`/`itemsRef`/`confirmingNewSaleRef` sincronizados en render) movidos a un `useEffect` de sync. Quedan `set-state-in-effect` (otra regla, deuda aparte: deep-link/scroll de InventoryPanel, patrón mounted del sidebar). |
 | ~~`CartItem` en `lib/types/index.ts`~~ ✅ (2026-06-09, commit `0716e08`) | Movido a `src/lib/types/cart.ts` (CartItem + getCartItemId). Separado del modelo de entidades del server; consumidores (cart.store, price-lists, POSView, CartPanel) importan de `@/lib/types/cart`. |
 | ~~Consolidación de toasts~~ ✅ (2026-06-09, commit `fab5ddd`) | `ToastProvider` global único (un solo `<Toast>` en `(app)/layout`); `useToast()` degrada a no-op fuera del provider (Sidebar también se monta en operator-select); ~14 call sites migrados; `FlashToast`/`NewOrderNotifier` unificados; variant `warning` tokenizado a `--warning`. |
-| `categories.public_read_categories` policy | Permite SELECT anon — OK para catálogo pero amplio |
+| 🔒 NEEDS-OWNER `categories.public_read_categories` policy | Permite SELECT anon — OK para catálogo pero amplio. Endurecerla toca RLS de seguridad multi-tenant → revisar juntos. |
 | `DateRangeFilter.tsx` | `QUARTER_RANGES` recalcula en cada render. No-issue en práctica. |
 | ~~`daily_snapshots` agrupa en UTC~~ ✅ (2026-05-28) | Resuelto en `20260528_05_daily_snapshots_tz_fix.sql`: las agregaciones de ventas ahora castean `(s.created_at AT TIME ZONE b.timezone)::date` (mirror de `get_sales_heatmap`). `refresh_daily_snapshot` / `refresh_all_daily_snapshots` resuelven "ayer" en la TZ local de cada negocio (default param → NULL). Re-backfill completo (DELETE + rebuild, tabla derivada) para evitar filas huérfanas del bucket UTC viejo. Verificado: 2 ventas nocturnas ART reasignadas al día local correcto; snapshots == agregado local-day exacto. |
 
@@ -340,11 +401,11 @@ El owner sube un PDF o foto de la factura de una compra recién hecha y el siste
 > Auditoría con la skill `improve` (4 subagentes, scope: POS → precios/promos → catálogo → pedidos → caja). Planes autocontenidos en `plans/` (commiteados). Ejecutados y en producción el mismo día: 002 (xlsx→@e965/xlsx), 003 (hono fuera), 006 (lint verde), 001 v2 (suite cloud integrada: **387 tests + CI "Tests / Unit tests" en cada PR**, PR #7). Hallazgos descartados documentados en `plans/README.md` ("considered and rejected") — no re-auditar.
 
 **Pendientes con plan escrito (ejecutar con el flujo executor+review o a mano):**
-- **Plan 004 — Re-asentar REVOKE/GRANT** (`plans/004-reassert-rpc-grants.md`): migración nueva que re-asienta grants de ~12 RPCs reemplazadas post-auditoría de seguridad sin REVOKE/GRANT explícito (CREATE OR REPLACE preserva grants → no es vuln activa, pero un futuro DROP+CREATE abriría PUBLIC EXECUTE en silencio). El executor crea la migración; **aplicarla a la DB la decide el dueño** + sincronizar `supabase/schema.sql`.
-- **Plan 005 — Centralizar `round2`** (`plans/005-centralize-money-rounding.md`): `Math.round(v*100)/100` duplicado en cart.store, ambos CartPanel y promotions.ts → `round2` en `lib/format.ts`; incluye redondear `adjustedSubtotal` del POS. **Desbloqueado** (dependía de la red de tests, ya aterrizada).
+- **🤖 SCHEDULE-OK — Plan 004 — Re-asentar REVOKE/GRANT** (`plans/004-reassert-rpc-grants.md`): migración nueva que re-asienta grants de ~12 RPCs reemplazadas post-auditoría de seguridad sin REVOKE/GRANT explícito (CREATE OR REPLACE preserva grants → no es vuln activa, pero un futuro DROP+CREATE abriría PUBLIC EXECUTE en silencio). El agente crea la migración + sincroniza `supabase/schema.sql` y lo deja en el PR; **aplicarla a la DB la decide el dueño** (regla 4 del protocolo). Verificar contra el plan que la lista de RPCs esté completa.
+- **🤖 SCHEDULE-OK — Plan 005 — Centralizar `round2`** (`plans/005-centralize-money-rounding.md`): `Math.round(v*100)/100` duplicado en cart.store, ambos CartPanel y promotions.ts → `round2` en `lib/format.ts`; incluye redondear `adjustedSubtotal` del POS. **Desbloqueado** (dependía de la red de tests, ya aterrizada). Camino del dinero → correr la suite (387 tests) + E2E antes de cerrar el PR.
 
 **Deuda derivada de la sesión (sin plan, anotar nomás):**
-- **Refactor selectivo de los 19 `react-hooks/set-state-in-effect`** (hoy en `warn`, decisión 2026-06-12, comentado en `eslint.config.mjs`): mounted pattern (regla 25) + reset-de-estado-al-abrir-modal. Con la suite de tests como red ya se puede encarar de a poco; prioridad: POSView/CartPanel (camino del dinero). Son además los componentes que React Compiler no optimiza.
-- **Lint warnings de `.agents/`** (~120, scripts de skills de diseño): opcional agregar `.agents/**` a `globalIgnores` de eslint.
-- **Deploy Vercel ~3m20** (analizado 2026-06-12, sano para el tamaño de la app): si se quiere afeitar → (a) subir sourcemaps de Sentry solo en producción (hoy corre en previews), (b) probar `next build --turbopack` (el compile de 59s es el chunk más grande; experimento seguro con la suite de tests como red).
-- **Doc drift en CLAUDE.md**: (a) referencia `docs/backlog.md` pero el archivo vive en `docs/todo/backlog.md`; (b) dice que el polling de pedidos es cada 30s pero `UnreadBadge`/`OrdersView` usan 10s.
+- **🤖 SCHEDULE-OK (de a uno) — Refactor selectivo de los 19 `react-hooks/set-state-in-effect`** (hoy en `warn`, decisión 2026-06-12, comentado en `eslint.config.mjs`): mounted pattern (regla 25) + reset-de-estado-al-abrir-modal. Con la suite de tests como red ya se puede encarar de a poco; prioridad: POSView/CartPanel (camino del dinero). Son además los componentes que React Compiler no optimiza. **Un componente por PR** (no batch — facilita revisión y aísla regresiones); los que tocan el camino del dinero (POSView/CartPanel) exigen E2E verde antes de cerrar.
+- **🤖 SCHEDULE-OK — Lint warnings de `.agents/`** (~120, scripts de skills de diseño): agregar `.agents/**` a `globalIgnores` de eslint. Quick win, cero riesgo.
+- **🔒 NEEDS-OWNER — Deploy Vercel ~3m20** (analizado 2026-06-12, sano para el tamaño de la app): si se quiere afeitar → (a) subir sourcemaps de Sentry solo en producción (hoy corre en previews), (b) probar `next build --turbopack`. Toca config de build/CI → decisión del dueño.
+- **🤖 SCHEDULE-OK — Doc drift en CLAUDE.md**: (a) referencia `docs/backlog.md` pero el archivo vive en `docs/todo/backlog.md`; (b) dice que el polling de pedidos es cada 30s pero `UnreadBadge`/`OrdersView` usan 10s. Fix factual de docs, cero riesgo.
