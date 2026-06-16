@@ -12,6 +12,19 @@ SET xmloption = content;
 SET client_min_messages = warning;
 SET row_security = off;
 
+-- =============================================================================
+-- ALCANCE DE ESTE DUMP: solo el schema `public` (+ extensiones).
+-- NO incluye objetos de los schemas gestionados `storage` ni `cron`. En la DB
+-- real existen además (verificado 2026-06-16, NO son drift — quedan fuera a
+-- propósito porque este archivo se replaya en el bootstrap E2E con
+-- ON_ERROR_STOP=1, y tocar schemas gestionados ahí lo rompería):
+--   * 13 RLS policies sobre `storage.objects` (buckets product-images / logos /
+--     expense-receipts / feedback) — modelo de carpeta-por-negocio descrito en
+--     CLAUDE.md regla 35; definidas en las migraciones 20260529_10..11.
+--   * 2 policies sobre `cron.job` / `cron.job_run_details` (infra de pg_cron).
+-- Para el estado de esas policies, ver esas migraciones + CLAUDE.md regla 35.
+-- =============================================================================
+
 
 CREATE EXTENSION IF NOT EXISTS "pg_cron" WITH SCHEMA "pg_catalog";
 
