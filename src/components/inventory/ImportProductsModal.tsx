@@ -589,7 +589,7 @@ export default function ImportProductsModal({
                 <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-semibold
                   ${step === s ? 'bg-primary text-primary-foreground' :
                     (['upload', 'mapping', 'preview'].indexOf(step) > i)
-                      ? 'bg-emerald-500 text-white'
+                      ? 'bg-success text-success-foreground'
                       : 'bg-surface-alt text-hint'}`}
                 >
                   {i + 1}
@@ -746,19 +746,19 @@ export default function ImportProductsModal({
             <div className="p-6">
               {/* Notices */}
               {newBrandNames.length > 0 && (
-                <div className="mb-3 rounded-lg border border-amber-200 dark:border-amber-800/50 bg-amber-50 dark:bg-amber-950/30 px-3 py-2 text-sm text-amber-700 dark:text-amber-400">
+                <div className="mb-3 rounded-lg border border-warning/20 bg-warning/10 px-3 py-2 text-sm text-warning">
                   <span className="font-semibold">{newBrandNames.length} marca{newBrandNames.length > 1 ? 's' : ''} nueva{newBrandNames.length > 1 ? 's' : ''} serán creadas:</span>{' '}
                   {newBrandNames.join(', ')}
                 </div>
               )}
               {newCategoryNames.length > 0 && (
-                <div className="mb-3 rounded-lg border border-amber-200 dark:border-amber-800/50 bg-amber-50 dark:bg-amber-950/30 px-3 py-2 text-sm text-amber-700 dark:text-amber-400">
+                <div className="mb-3 rounded-lg border border-warning/20 bg-warning/10 px-3 py-2 text-sm text-warning">
                   <span className="font-semibold">{newCategoryNames.length} categoría{newCategoryNames.length > 1 ? 's' : ''} nueva{newCategoryNames.length > 1 ? 's' : ''} serán creadas:</span>{' '}
                   {newCategoryNames.join(', ')}
                 </div>
               )}
               {resolvedRows.some(r => r.sku || r.barcode) && (
-                <div className="mb-3 rounded-lg border border-amber-200 dark:border-amber-800/50 bg-amber-50 dark:bg-amber-950/30 px-3 py-2 text-sm text-amber-700 dark:text-amber-400">
+                <div className="mb-3 rounded-lg border border-warning/20 bg-warning/10 px-3 py-2 text-sm text-warning">
                   Los productos con SKU o código de barras existente serán actualizados en lugar de duplicarse.
                 </div>
               )}

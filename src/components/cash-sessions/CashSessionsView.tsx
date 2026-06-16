@@ -37,8 +37,8 @@ function formatDuration(seconds: number) {
 
 function DiffBadge({ diff, formatMoney }: { diff: number | null; formatMoney: (n: number) => string }) {
   if (diff === null) return <span className="text-muted-foreground text-xs">—</span>
-  if (diff === 0) return <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400">Cuadra</span>
-  if (diff > 0) return <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400">+{formatMoney(diff)}</span>
+  if (diff === 0) return <span className="text-xs font-medium text-success">Cuadra</span>
+  if (diff > 0) return <span className="text-xs font-medium text-success">+{formatMoney(diff)}</span>
   return <span className="text-xs font-medium text-destructive">{formatMoney(diff)}</span>
 }
 

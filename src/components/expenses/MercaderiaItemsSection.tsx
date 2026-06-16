@@ -195,8 +195,8 @@ export default function MercaderiaItemsSection({
                       {' → '}
                       <span className={cn(
                         'tabular-nums font-medium',
-                        delta > 0 ? 'text-emerald-600 dark:text-emerald-400'
-                          : delta < 0 ? 'text-amber-600 dark:text-amber-400'
+                        delta > 0 ? 'text-success'
+                          : delta < 0 ? 'text-warning'
                           : 'text-body'
                       )}>{stockAfter}</span>
                     </span>

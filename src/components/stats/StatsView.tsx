@@ -85,8 +85,8 @@ const DeltaBadge = memo(function DeltaBadge({ current, previous }: { current: nu
     <div
       className={`flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full ${
         positive
-          ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400'
-          : 'bg-red-50 text-red-600 dark:bg-red-950/40 dark:text-red-400'
+          ? 'bg-success/10 text-success'
+          : 'bg-destructive/10 text-destructive'
       }`}
     >
       {positive ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
@@ -352,7 +352,7 @@ export default function StatsView({
                 className={cn(
                   'h-10 w-10 rounded-xl flex items-center justify-center shrink-0',
                   deadStockSummary.products_flagged > 0
-                    ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400'
+                    ? 'bg-warning/10 text-warning'
                     : 'bg-muted text-body'
                 )}
               >

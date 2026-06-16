@@ -19,6 +19,8 @@ colors:
   destructive-foreground: "#ffffff"
   warning: "#9a5e0e"
   warning-foreground: "#ffffff"
+  success: "#566d2c"
+  success-foreground: "#ffffff"
   # Dark mode overrides (document as alternates)
   primary-dark: "#c8843a"
   background-dark: "#0e0e0d"
@@ -28,6 +30,7 @@ colors:
   border-dark: "#2a2926"
   destructive-dark: "#e05a40"
   warning-dark: "#e6a93a"
+  success-dark: "#9bc06a"
 typography:
   display:
     fontFamily: "Sora, ui-sans-serif, system-ui, sans-serif"
@@ -173,6 +176,10 @@ A monochromatic warm-brown family from near-black to ivory, with one accent per 
 - **Coral Warning** (`#e05a40` / oklch(58% 0.16 28)): Destructive in dark mode — lighter for contrast.
 - **Golden Ochre** (`#9a5e0e` / oklch(54% 0.115 70)): Warning state in light mode — the "caution / non-urgent" tier (e.g. low-but-present stock). Used as `text-warning` + `bg-warning/10` + `border-warning/20`, mirroring the destructive opacity pattern. Pushed warmer and more gold than the espresso `--primary` so caution never reads as the brand accent.
 - **Amber Gold** (`#e6a93a` / oklch(77% 0.13 76)): Warning state in dark mode. Pushed yellow-gold to stay distinct from the orange `--primary` (`#e08535`) that carries brand warmth on near-black surfaces.
+- **Harvest Olive** (`#566d2c` / oklch(50% 0.095 126)): **The single green of the app** in light mode. One warm, yellow-leaning green (satisfies the Warmth Floor Rule, distinct from the gold `--warning`) shared by every "positive / additive / good" meaning: positive financial result (net profit, margin, upward KPI trend, `text-success`), the CREATE tone in the audit log, and catalog offers. `--promo` is an alias of `--success`, so offer UI inherits the same green. There is no second green token: change `--success` and the whole semantic green moves.
+- **Olive Chartreuse** (`#9bc06a` / oklch(76% 0.12 128)): The single green in dark mode. Lifted in lightness for contrast on near-black, same warm olive hue, same shared roles via `--success` / `--promo` alias.
+
+> Note: the categorical accent palette (`lib/accent-colors.ts`) keeps its own `emerald` and `teal` members — those are *categorical* hues used to tell payment methods / expense categories apart (e.g. Efectivo = emerald, Seguros = teal), a separate system from the semantic green token. Don't conflate the two.
 
 ### Named Rules
 **The One Accent Rule.** Burnt Espresso (or Amber Ember in dark) is used on ≤10% of any given screen. It appears on: the single primary CTA, active navigation items, focus rings, toggle-on state. Nowhere else. If a second element needs emphasis, use weight, size, or the body/hint color step — never a second accent color.
@@ -226,7 +233,7 @@ Seven variants, two functional sizes. The shape vocabulary is consistent across 
 - **Ghost** (`hover:bg-muted hover:text-foreground`): No stroke, transparent fill. Hover fills with Pale Linen. Used for icon actions and low-emphasis controls inside surfaces.
 - **Secondary** (`bg-secondary text-secondary-foreground`): Sand Dune fill. Used for neutral grouped actions (pill selectors, filter chips in button form).
 - **Destructive** (`bg-destructive/10 text-destructive hover:bg-destructive/20`): Ember Red at 10% opacity fill, full-opacity text. Never solid red fill — the 10% approach keeps destructive actions visible without alarming.
-- **Cancel** (`border-border bg-background hover:border-red-300 hover:bg-red-50/60 hover:text-red-700`): Outline at rest, progressively reddens on hover. Used exclusively as the secondary action in destructive confirmation dialogs.
+- **Cancel** (`border-border bg-background hover:border-destructive/40 hover:bg-destructive/10 hover:text-destructive`): Outline at rest, progressively reddens (via the `--destructive` token, not raw red) on hover. Used exclusively as the secondary action in destructive confirmation dialogs.
 - **Link** (`text-primary underline-offset-4 hover:underline`): Burnt Espresso text, underline on hover only.
 
 **Focus ring:** `ring-3 ring-ring/50` (Burnt Espresso at 50% opacity, 3px). Consistent across buttons, inputs, badges. The ring color is always `--ring`, which tracks `--primary`.

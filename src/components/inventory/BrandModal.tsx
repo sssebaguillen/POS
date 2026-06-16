@@ -262,7 +262,7 @@ export default function BrandModal({
                           type="button"
                           onClick={() => void handleUpdate(brand.id)}
                           disabled={saving}
-                          className="p-1.5 rounded-lg hover:bg-hover-bg transition-colors text-emerald-600 disabled:opacity-50"
+                          className="p-1.5 rounded-lg hover:bg-hover-bg transition-colors text-success disabled:opacity-50"
                           aria-label="Confirmar edición"
                         >
                           <Check className="w-4 h-4" />
@@ -309,7 +309,7 @@ export default function BrandModal({
           <div className="rounded-xl border border-edge/70 p-3.5">
             <p className="text-label text-subtle mb-2.5">Nueva marca</p>
             {!stockWriteAllowed && (
-              <p className="mb-2.5 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-700 dark:text-amber-400">
+              <p className="mb-2.5 rounded-lg border border-warning/20 bg-warning/10 px-3 py-2 text-sm text-warning">
                 Sin permiso de inventario
               </p>
             )}

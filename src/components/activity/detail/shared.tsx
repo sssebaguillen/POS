@@ -31,7 +31,7 @@ interface DeletedBadgeProps {
 
 export function DeletedBadge({ label }: DeletedBadgeProps) {
   return (
-    <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-xs font-medium bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-300">
+    <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-xs font-medium bg-destructive/15 text-destructive">
       <Trash2 size={12} />
       {label}
     </div>

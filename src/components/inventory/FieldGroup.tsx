@@ -21,7 +21,7 @@ export default function FieldGroup({ label, required, error, nonce, hint, badge,
           {label}
           {required && <span className="text-destructive ml-0.5">*</span>}
         </label>
-        {hint && <span className="text-caption text-emerald-600 dark:text-emerald-400 font-medium">{hint}</span>}
+        {hint && <span className="text-caption text-success font-medium">{hint}</span>}
         {badge}
       </div>
       <ShakeOnError error={error} nonce={nonce}>{children}</ShakeOnError>

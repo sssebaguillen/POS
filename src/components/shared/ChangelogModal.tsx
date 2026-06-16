@@ -20,7 +20,7 @@ const TYPE_LABEL: Record<ChangelogChangeType, string> = {
 }
 
 const TYPE_CLASS: Record<ChangelogChangeType, string> = {
-  new: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20',
+  new: 'bg-success/10 text-success border border-success/20',
   fix: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20',
   improvement: 'bg-sky-500/10 text-sky-600 dark:text-sky-400 border border-sky-500/20',
 }

@@ -69,7 +69,7 @@ const ProductCard = memo(function ProductCard({
   const stockColor = status === 'out'
     ? 'text-destructive'
     : status === 'low'
-      ? 'text-amber-600 dark:text-amber-400'
+      ? 'text-warning'
       : 'text-heading'
 
   return (
@@ -177,7 +177,7 @@ const ProductCard = memo(function ProductCard({
         {/* Secondary metrics */}
         <p className="text-caption text-hint truncate">
           costo {formatMoney(Number(product.cost))}
-          {margin > 0 && <span className="text-emerald-600 dark:text-emerald-400 font-medium"> · +{margin}%</span>}
+          {margin > 0 && <span className="text-success font-medium"> · +{margin}%</span>}
           {!product.has_variants && ` · min ${product.min_stock}`}
         </p>
 

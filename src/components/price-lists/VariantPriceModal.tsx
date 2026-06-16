@@ -100,10 +100,10 @@ export default function VariantPriceModal({
                 <p className="text-xs text-subtle uppercase tracking-wide">Margen activo</p>
                 <p className={`text-sm font-semibold tabular-nums ${
                   marginPct > 0
-                    ? 'text-emerald-700 dark:text-emerald-400'
+                    ? 'text-success'
                     : marginPct === 0
-                      ? 'text-amber-600 dark:text-amber-400'
-                      : 'text-red-600 dark:text-red-400'
+                      ? 'text-warning'
+                      : 'text-destructive'
                 }`}>
                   +{marginPct}%
                 </p>
@@ -192,10 +192,10 @@ export default function VariantPriceModal({
                             ) : (
                               <span className={
                                 margin > 0
-                                  ? 'text-emerald-700 dark:text-emerald-400 font-semibold'
+                                  ? 'text-success font-semibold'
                                   : margin === 0
-                                    ? 'text-amber-600 dark:text-amber-400 font-semibold'
-                                    : 'text-red-600 dark:text-red-400 font-semibold'
+                                    ? 'text-warning font-semibold'
+                                    : 'text-destructive font-semibold'
                               }>
                                 {margin}%
                               </span>

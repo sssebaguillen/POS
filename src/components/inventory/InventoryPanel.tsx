@@ -932,7 +932,7 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
       )}
 
       {readOnly && (
-        <div className="mx-5 mt-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-700 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-400">
+        <div className="mx-5 mt-4 rounded-lg border border-warning/20 bg-warning/10 px-3 py-2 text-sm text-warning">
           Solo puedes ver el inventario, sin permiso para editarlo.
         </div>
       )}
@@ -1172,7 +1172,7 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
 
       <div className="bg-surface border-t border-edge/60 px-4 py-2 flex items-center gap-4 text-caption text-subtle shrink-0 overflow-x-auto whitespace-nowrap">
         <span className="flex items-center gap-1.5 shrink-0">
-          <span className="w-2 h-2 rounded-full bg-emerald-500" />
+          <span className="w-2 h-2 rounded-full bg-success" />
           <span className="hidden inv:inline">{activeProducts.length} productos activos</span>
           <span className="inv:hidden">{activeProducts.length} activos</span>
         </span>
@@ -1193,7 +1193,7 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
           {outOfStock} sin stock
         </span>
         <span className="flex items-center gap-1.5 shrink-0">
-          <span className="w-2 h-2 rounded-full bg-amber-500" />
+          <span className="w-2 h-2 rounded-full bg-warning" />
           <span className="hidden inv:inline">{lowStock} stock bajo</span>
           <span className="inv:hidden">{lowStock} bajo</span>
         </span>

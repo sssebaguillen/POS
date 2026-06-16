@@ -29,6 +29,8 @@
   --color-warning-foreground: var(--warning-foreground);
   --color-promo: var(--promo);
   --color-promo-foreground: var(--promo-foreground);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
@@ -96,10 +98,16 @@
      the espresso --primary so caution reads distinct from the brand accent. */
   --warning: #9a5e0e;
   --warning-foreground: #ffffff;
-  /* Promo — verde unificado del catálogo (badges de oferta, precio rebajado).
-     Distinto de --primary (marca) y --warning (precaución). */
-  --promo: #059669;
-  --promo-foreground: #ffffff;
+  /* Success — verde oliva cálido, oklch(50% 0.095 126). EL verde único de la app:
+     resultado positivo (ganancia, margen, tendencia al alza), acción de alta
+     (CREATE en auditoría) y oferta de catálogo (vía --promo, que es un alias).
+     Tirado a amarillo para cumplir el piso de calidez; distinto del --warning
+     dorado. Una sola fuente: cambiá esto y se mueve todo el verde semántico. */
+  --success: #566d2c;
+  --success-foreground: #ffffff;
+  /* Promo — alias semántico de --success para la UI de ofertas del catálogo. */
+  --promo: var(--success);
+  --promo-foreground: var(--success-foreground);
 
   /* Borders & inputs */
   --border: #e0d4c0;
@@ -181,10 +189,14 @@
      distinct from the orange --primary that carries brand warmth in dark mode. */
   --warning: #e6a93a;
   --warning-foreground: #1a0800;
-  /* Promo — emerald-500: legible como texto sobre fondo oscuro y funciona
-     como bg de badge. */
-  --promo: #10b981;
-  --promo-foreground: #ffffff;
+  /* Success — oliva-chartreuse, oklch(76% 0.12 128). Más luminoso para contrastar
+     sobre el near-black, manteniendo el verde cálido distinto del --warning gold.
+     EL verde único en dark (ver bloque light). */
+  --success: #9bc06a;
+  --success-foreground: #1a0800;
+  /* Promo — alias semántico de --success para la UI de ofertas del catálogo. */
+  --promo: var(--success);
+  --promo-foreground: var(--success-foreground);
 
   /* Borders & inputs — very subtle, just enough to separate layers */
   --border: #2a2926;

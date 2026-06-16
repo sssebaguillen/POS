@@ -40,8 +40,8 @@ export default function BalanceWidget({
 }: BalanceWidgetProps) {
   const fmt = useFormatMoney()
   const isPositive = profit >= 0
-  const positiveClass = 'text-emerald-600/80 dark:text-emerald-400/80'
-  const negativeClass = 'text-red-500/80 dark:text-red-400/80'
+  const positiveClass = 'text-success'
+  const negativeClass = 'text-destructive'
 
   const entries = Object.entries(byCategory)
     .filter(([, value]) => value > 0)

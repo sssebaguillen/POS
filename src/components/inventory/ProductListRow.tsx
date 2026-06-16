@@ -39,7 +39,7 @@ const ProductListRow = memo(function ProductListRow({
     : product.stock <= 0
       ? 'text-destructive'
       : product.stock <= product.min_stock
-        ? 'text-amber-600 dark:text-amber-400'
+        ? 'text-warning'
         : 'text-heading'
 
   return (
@@ -133,7 +133,7 @@ const ProductListRow = memo(function ProductListRow({
       </TableCell>
 
       <TableCell className="text-right hidden lg:table-cell">
-        <span className={`text-sm font-semibold ${margin > 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-hint'}`}>
+        <span className={`text-sm font-semibold ${margin > 0 ? 'text-success' : 'text-hint'}`}>
           {margin > 0 ? `+${margin}%` : '—'}
         </span>
       </TableCell>

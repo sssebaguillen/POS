@@ -618,7 +618,7 @@ export default function EditProductModal({
                       />
                     </div>
                     {margin !== null && (
-                      <p className="text-caption text-emerald-600 dark:text-emerald-400 font-medium">
+                      <p className="text-caption text-success font-medium">
                         Margen: {margin}% · Ganancia por unidad: {currencySymbol}{(Number(form.price) - Number(form.cost)).toFixed(2)}
                       </p>
                     )}

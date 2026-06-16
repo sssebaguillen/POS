@@ -71,7 +71,7 @@ export default function UnreadBadge({ count, collapsed = false }: BadgeProps) {
     >
       <span
         className={cn(
-          't-badge-dot inline-flex! items-center justify-center rounded-full bg-red-500 text-white font-bold',
+          't-badge-dot inline-flex! items-center justify-center rounded-full bg-destructive text-destructive-foreground font-bold',
           collapsed ? 'min-w-[16px] h-4 px-1 text-[10px]' : 'min-w-[20px] h-5 px-1.5 text-[11px]',
         )}
       >

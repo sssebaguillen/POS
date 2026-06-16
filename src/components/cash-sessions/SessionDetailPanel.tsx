@@ -72,8 +72,8 @@ function formatDuration(seconds: number) {
 
 function DiffLabel({ diff }: { diff: number | null }) {
   if (diff === null) return null
-  if (diff === 0) return <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400">Cuadra exacto</span>
-  if (diff > 0) return <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400">+sobrante</span>
+  if (diff === 0) return <span className="text-xs font-medium text-success">Cuadra exacto</span>
+  if (diff > 0) return <span className="text-xs font-medium text-success">+sobrante</span>
   return <span className="text-xs font-medium text-destructive">faltante</span>
 }
 
@@ -194,8 +194,8 @@ export default function SessionDetailPanel({ session, operatorId, onClose, onClo
 
   function diffDisplay(diff: number | null) {
     if (diff === null) return null
-    if (diff === 0) return { label: 'Cuadra exacto', color: 'text-emerald-600 dark:text-emerald-400' }
-    if (diff > 0) return { label: `+${formatMoney(diff)} sobrante`, color: 'text-emerald-600 dark:text-emerald-400' }
+    if (diff === 0) return { label: 'Cuadra exacto', color: 'text-success' }
+    if (diff > 0) return { label: `+${formatMoney(diff)} sobrante`, color: 'text-success' }
     return { label: `${formatMoney(diff)} faltante`, color: 'text-destructive' }
   }
 
@@ -372,7 +372,7 @@ export default function SessionDetailPanel({ session, operatorId, onClose, onClo
                 ) : (
                   <div className="space-y-3">
                     {hasPendingReconciliation && (
-                      <p className="text-xs text-amber-600 dark:text-amber-400 bg-amber-500/10 rounded-lg px-3 py-2">
+                      <p className="text-xs text-warning bg-warning/10 rounded-lg px-3 py-2">
                         Esta sesión tiene ventas digitales sin reconciliar
                       </p>
                     )}
@@ -419,7 +419,7 @@ export default function SessionDetailPanel({ session, operatorId, onClose, onClo
                             />
                           </div>
                           {diff !== null && (
-                            <div className={`flex justify-between px-3 py-2.5 font-semibold ${diff === 0 ? 'text-emerald-600 dark:text-emerald-400' : diff > 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-destructive'}`}>
+                            <div className={`flex justify-between px-3 py-2.5 font-semibold ${diff === 0 ? 'text-success' : diff > 0 ? 'text-success' : 'text-destructive'}`}>
                               <span>Diferencia</span>
                               <span>
                                 {diff === 0 ? 'Cuadra exacto' : diff > 0 ? `+${formatMoney(diff)} sobrante` : `${formatMoney(diff)} faltante`}

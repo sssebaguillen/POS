@@ -58,8 +58,8 @@ export default function ProductStockModal({ productId, businessId, onClose }: Pr
 
   function stockColor(v: ProductVariant) {
     if (v.stock <= 0) return 'text-destructive'
-    if (v.stock <= v.min_stock) return 'text-amber-600 dark:text-amber-400'
-    return 'text-emerald-600 dark:text-emerald-400'
+    if (v.stock <= v.min_stock) return 'text-warning'
+    return 'text-success'
   }
 
   return (
@@ -127,7 +127,7 @@ export default function ProductStockModal({ productId, businessId, onClose }: Pr
                           <span className="text-sm text-subtle">{formatMoney(cost)}</span>
                         </TableCell>
                         <TableCell className="text-right tabular-nums">
-                          <span className={`text-sm font-semibold ${margin > 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-hint'}`}>
+                          <span className={`text-sm font-semibold ${margin > 0 ? 'text-success' : 'text-hint'}`}>
                             {margin > 0 ? `${margin}%` : '—'}
                           </span>
                         </TableCell>

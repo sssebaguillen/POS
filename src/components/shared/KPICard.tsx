@@ -7,7 +7,7 @@ interface Trend {
   percent: number
   direction: 'up' | 'down' | 'neutral'
   label: string
-  amount?: string   // delta absoluto ya formateado (con signo), se muestra entre paréntesis
+  amount?: string   // delta absoluto ya formateado (con signo), se muestra en una segunda línea tenue
 }
 
 interface SparkPoint {
@@ -95,9 +95,9 @@ function KPICard({ label, value, trend, subtitle, sparkline, children }: Props) 
   const hasSpark = !!sparkline && sparkline.length > 1
   const sparkColor =
     trend?.direction === 'up'
-      ? 'text-emerald-500/80'
+      ? 'text-success'
       : trend?.direction === 'down'
-      ? 'text-red-500/80'
+      ? 'text-destructive'
       : 'text-primary/50'
 
   return (
@@ -106,25 +106,30 @@ function KPICard({ label, value, trend, subtitle, sparkline, children }: Props) 
       <PopNumber className="text-3xl font-bold text-heading leading-none tracking-tight" value={value} />
 
       {trend ? (
-        <p className="flex items-center gap-1.5 text-xs mt-2">
-          <span
-            className={cn(
-              'inline-flex items-center gap-0.5 font-semibold',
-              trend.direction === 'up'
-                ? 'text-emerald-600 dark:text-emerald-400'
-                : trend.direction === 'down'
-                ? 'text-red-600 dark:text-red-400'
-                : 'text-hint'
-            )}
-          >
-            {trend.direction === 'up' && <TrendingUp size={13} />}
-            {trend.direction === 'down' && <TrendingDown size={13} />}
-            {trend.percent !== 0
-              ? `${trend.direction === 'up' ? '+' : ''}${trend.percent.toFixed(1)}%${trend.amount ? ` (${trend.amount})` : ''}`
-              : '—'}
-          </span>
-          <span className="text-hint">{trend.label}</span>
-        </p>
+        <div className="mt-2 space-y-0.5">
+          <p className="flex items-center gap-1.5 text-xs">
+            <span
+              className={cn(
+                'inline-flex items-center gap-0.5 font-semibold',
+                trend.direction === 'up'
+                  ? 'text-success'
+                  : trend.direction === 'down'
+                  ? 'text-destructive'
+                  : 'text-hint'
+              )}
+            >
+              {trend.direction === 'up' && <TrendingUp size={13} />}
+              {trend.direction === 'down' && <TrendingDown size={13} />}
+              {trend.percent !== 0
+                ? `${trend.direction === 'up' ? '+' : ''}${trend.percent.toFixed(1)}%`
+                : '—'}
+            </span>
+            <span className="text-hint">{trend.label}</span>
+          </p>
+          {trend.amount && trend.percent !== 0 && (
+            <p className="text-[11px] text-hint tabular-nums">{trend.amount}</p>
+          )}
+        </div>
       ) : subtitle ? (
         <p className="text-xs text-hint mt-2">{subtitle}</p>
       ) : null}

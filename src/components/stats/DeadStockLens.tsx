@@ -21,7 +21,7 @@ interface Props {
 const BUCKET_META: Record<DeadStockBucket, { label: string; badge: string; hint: string }> = {
   dead: {
     label: 'Sin movimiento',
-    badge: 'bg-red-500/10 text-red-600 border border-red-500/20 dark:bg-red-500/15 dark:text-red-400 dark:border-red-500/30',
+    badge: 'bg-destructive/10 text-destructive border border-destructive/20',
     hint: 'Se vendió alguna vez, pero lleva meses sin moverse. Liquidá, rematá o dejá de reponer.',
   },
   never_sold: {
@@ -114,7 +114,7 @@ export default function DeadStockLens({ rows, summary, bucket: initialBucket, pa
 
       {/* Nudge: costo sin cargar */}
       {missingCost > 0 && (
-        <div className="flex items-start gap-2.5 rounded-xl border border-amber-500/30 bg-amber-500/5 px-4 py-3 text-sm text-amber-700 dark:text-amber-300">
+        <div className="flex items-start gap-2.5 rounded-xl border border-warning/20 bg-warning/10 px-4 py-3 text-sm text-warning">
           <AlertTriangle size={16} className="shrink-0 mt-0.5" />
           <p>
             {missingCost} {missingCost === 1 ? 'producto sin costo cargado' : 'productos sin costo cargado'} —

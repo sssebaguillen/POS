@@ -661,10 +661,10 @@ function GroupedPriceRowsTable({
                         ) : (
                           <span className={
                             row.margin > 0
-                              ? 'text-emerald-700 dark:text-emerald-400 font-semibold'
+                              ? 'text-success font-semibold'
                               : row.margin === 0
-                                ? 'text-amber-600 dark:text-amber-400 font-semibold'
-                                : 'text-red-600 dark:text-red-400 font-semibold'
+                                ? 'text-warning font-semibold'
+                                : 'text-destructive font-semibold'
                           }>
                             {row.margin}%
                           </span>

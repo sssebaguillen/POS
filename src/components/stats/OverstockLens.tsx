@@ -19,8 +19,8 @@ interface Props {
 
 // Color del badge de cobertura según severidad (la severidad la comunica el número).
 function coverageBadge(months: number): string {
-  if (months >= 12) return 'bg-red-500/10 text-red-600 border border-red-500/20 dark:bg-red-500/15 dark:text-red-400 dark:border-red-500/30'
-  return 'bg-amber-500/10 text-amber-600 border border-amber-500/20 dark:bg-amber-500/15 dark:text-amber-400 dark:border-amber-500/30'
+  if (months >= 12) return 'bg-destructive/10 text-destructive border border-destructive/20'
+  return 'bg-warning/10 text-warning border border-warning/20'
 }
 
 export default function OverstockLens({ rows, summary, page: initialPage, pageSize }: Props) {

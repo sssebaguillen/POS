@@ -104,7 +104,7 @@ export default function UpdatePasswordView() {
           )}
 
           {successMessage && (
-            <p className="rounded-lg border border-emerald-500/30 bg-emerald-500/5 px-3 py-2 text-sm text-emerald-700 dark:text-emerald-300">
+            <p className="rounded-lg border border-success/30 bg-success/5 px-3 py-2 text-sm text-success">
               {successMessage}
             </p>
           )}

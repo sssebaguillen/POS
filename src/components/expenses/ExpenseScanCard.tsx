@@ -147,7 +147,7 @@ export default function ExpenseScanCard({ attachment, supabaseClient, onApply }:
         onClick={() => { setStatus('idle'); setSuggestion(null) }}
         className="flex items-center gap-1.5 text-xs text-hint hover:text-body transition-colors"
       >
-        <Check size={13} className="text-emerald-500" />
+        <Check size={13} className="text-success" />
         Sugerencia aplicada — escanear de nuevo
       </button>
     )

@@ -559,9 +559,9 @@ export default function VariantEditor({
       {hasVariants && (
         <div className="space-y-3">
           {hasSalesHistory && (
-            <div className="flex items-start gap-2 rounded-xl border border-amber-300 bg-amber-50 dark:bg-amber-950/20 px-3 py-2.5">
-              <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
-              <p className="text-xs text-amber-700 dark:text-amber-400">
+            <div className="flex items-start gap-2 rounded-xl border border-warning/20 bg-warning/10 px-3 py-2.5">
+              <AlertTriangle className="w-4 h-4 text-warning shrink-0 mt-0.5" />
+              <p className="text-xs text-warning">
                 Este producto tiene ventas registradas. Las ventas anteriores quedarán vinculadas al producto base sin variante específica.
               </p>
             </div>

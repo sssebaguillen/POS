@@ -318,10 +318,10 @@ function ItemList({ items, tone }: ItemListProps) {
       className={cn(
         'rounded-lg border overflow-hidden divide-y',
         tone === 'added'
-          ? 'border-emerald-200 divide-emerald-100 dark:border-emerald-500/30 dark:divide-emerald-500/20'
+          ? 'border-success/40 divide-success/20'
           : '',
         tone === 'removed'
-          ? 'border-red-200 divide-red-100 dark:border-red-500/30 dark:divide-red-500/20'
+          ? 'border-destructive/40 divide-destructive/20'
           : '',
       )}
     >

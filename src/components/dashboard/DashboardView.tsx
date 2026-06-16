@@ -443,7 +443,7 @@ export default function DashboardView({
                         <XAxis
                           dataKey="label"
                           height={20}
-                          tick={{ fontSize: 10, fill: 'var(--color-hint, #9ca3af)' }}
+                          tick={{ fontSize: 10, fill: 'var(--color-hint)' }}
                           axisLine={false}
                           tickLine={false}
                           interval={chartData.length > 10 ? Math.floor(chartData.length / 6) : 0}

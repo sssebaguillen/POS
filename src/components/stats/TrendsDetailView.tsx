@@ -336,7 +336,7 @@ function SummaryCard({
   if (delta !== null) {
     const positive = delta >= 0
     const good = invertDeltaColor ? !positive : positive
-    deltaClass = good ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'
+    deltaClass = good ? 'text-success' : 'text-destructive'
     deltaText = `${positive ? '+' : ''}${delta.toFixed(1)}%`
   }
   return (

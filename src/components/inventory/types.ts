@@ -72,17 +72,17 @@ export function getStatus(product: InventoryProduct): 'ok' | 'low' | 'out' | 'di
 export const statusConfig = {
   ok: {
     label: 'EN STOCK',
-    border: 'border-emerald-300 dark:border-emerald-800/50',
-    hoverBorder: 'hover:border-emerald-300 dark:hover:border-emerald-800/50',
-    badge: 'bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/50',
-    bar: 'bg-emerald-500',
+    border: 'border-success/40',
+    hoverBorder: 'hover:border-success/40',
+    badge: 'bg-success/10 text-success border border-success/20',
+    bar: 'bg-success',
   },
   low: {
     label: 'STOCK BAJO',
-    border: 'border-amber-300 dark:border-amber-800/50',
-    hoverBorder: 'hover:border-amber-300 dark:hover:border-amber-800/50',
-    badge: 'bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800/50',
-    bar: 'bg-amber-500',
+    border: 'border-warning/40',
+    hoverBorder: 'hover:border-warning/40',
+    badge: 'bg-warning/10 text-warning border border-warning/20',
+    bar: 'bg-warning',
   },
   out: {
     label: 'SIN STOCK',

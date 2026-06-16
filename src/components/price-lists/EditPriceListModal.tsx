@@ -168,7 +168,7 @@ export default function EditPriceListModal({
 
             <div className="flex flex-col gap-1">
               <label className="text-label text-subtle">
-                Nombre<span className="text-red-400 ml-0.5">*</span>
+                Nombre<span className="text-destructive ml-0.5">*</span>
               </label>
               <Input
                 value={name}
@@ -196,7 +196,7 @@ export default function EditPriceListModal({
 
             <div className="flex flex-col gap-1">
               <label className="text-label text-subtle">
-                Margen de ganancia<span className="text-red-400 ml-0.5">*</span>
+                Margen de ganancia<span className="text-destructive ml-0.5">*</span>
               </label>
               <div className="relative">
                 <Input
