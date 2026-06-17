@@ -13,6 +13,7 @@ export interface SettingsBusiness {
     currency?: string
     free_line_enabled?: boolean
     ai_insights_enabled?: boolean
+    catalog_price_list_id?: string
   } | null
 }
 

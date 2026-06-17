@@ -37,7 +37,8 @@
 
 > El agente automático anota acá lo que necesita que decida Sebastián. Cada entrada: `[fecha] item — la duda — opciones`. Vaciar a medida que se resuelven en sesión en vivo.
 
-_(vacío — ver "Resueltas" abajo)_
+- **[2026-06-17] Lista de precios del catálogo — comportamiento al borrar/archivar la lista configurada.** La implementación actual hace fallback silencioso a precio base (la query `SELECT INTO` de `price_lists` no matchea → `v_list_id = NULL` → precio base). **Opciones:** (a) dejar el fallback silencioso (simple, sin riesgo, el dueño re-elige cuando quiera); (b) bloquear el borrado de una lista que esté configurada como lista de catálogo (más defensivo, requiere check en `delete_price_list`); (c) mostrar un aviso en `/settings` si la lista configurada ya no existe (UX intermedia). **No es bloqueante para el PR** — el fallback es seguro.
+- **[2026-06-17] Lista de precios del catálogo — qué mostrar en el selector.** Hoy el selector muestra solo `name` de cada `price_list`. **Opciones:** (a) quedarse así (simple, suficiente); (b) mostrar también el multiplicador base (`×1.30`); (c) mostrar overrides count (requiere fetch adicional). **No es bloqueante.**
 
 **Resueltas (en sesión en vivo con Sebastián):**
 - **[2026-06-17 ✅ RESUELTA] `useEffect` sales history en `CartPanel`** — premisa obsoleta: no existe tal fetch (el único `useEffect` es el typeahead de clientes; el historial vive en `SalesHistoryTable`, ya en React Query). Decisión: **objetivo cumplido → item cerrado como obsoleto** (ver tabla de deuda técnica). El typeahead de clientes NO se migra ahora (opcional, camino del dinero sin E2E ejecutable en el runner).
@@ -209,20 +210,13 @@ Comprobar si vale la pena (y qué tan sencillo es) soportar productos vendidos p
 - **~~🤖 Higiene de tokens del catálogo~~ ✅ (verificado 2026-06-17)** — barrido confirmó **cero** colores Tailwind hex/rgb hardcodeados en `src/components/catalog/` fuera del mapa semántico de `VariantQuickSelector` (la excepción explícita, intacta). Ningún `emerald-/amber-` suelto. La tokenización quedó cerrada en el commit del 2026-06-11 (`--promo`/`--promo-foreground`). Nada que cambiar.
   - **EXCEPCIÓN explícita (sigue vigente):** el mapa de colores de `VariantQuickSelector` (rojo→#ef4444, azul→#3b82f6, …) NO se toca — son colores semánticos de variantes que deben verse igual en cualquier tema.
 
-### 🤖 SCHEDULE-OK — Lista de precios del catálogo configurable (DESPUÉS de ofertas)
+### ~~🤖 Lista de precios del catálogo configurable~~ ✅ (implementado 2026-06-17)
 
-Hoy el catálogo público **no aplica ninguna lista** — `get_catalog_products`/`get_catalog_product_with_variants` llaman `compute_effective_price(..., p_list_id := NULL, ...)` → muestran el precio base/variante. La función **ya acepta** `p_list_id`/`p_list_multiplier` (+ redondeo por lista, ver nota P7i). Feature: elegir desde `/settings` qué lista usa el catálogo (ej. `businesses.settings.catalog_price_list_id`) y pasársela a las RPCs en vez de NULL. Cambio acotado. Mismo dominio que ofertas (pricing del catálogo) → encararlos en secuencia.
+Migración `20260617_02_catalog_price_list_setting.sql`: las 3 RPCs de catálogo (`get_catalog_products`, `get_catalog_product_with_variants`, `create_catalog_order`) ahora leen `businesses.settings->>'catalog_price_list_id'` y pasan `v_list_id`/`v_list_mult` a `compute_effective_price` en vez de NULL. Si la lista no existe o se borró, la query `SELECT INTO` no matchea → `v_list_id` queda NULL → fallback automático a precio base (sin error). Selector en `/settings` tab Catálogo vía `SelectDropdown` con opción "Precio base (sin lista)". Saved via `update_business_settings` con spread-merge (regla 22). Schema.sql en sync. tsc + lint limpios. **Migración NO aplicada a DB** (regla 4).
 
-- **Criterios de aceptación:**
-  1. Setting `businesses.settings.catalog_price_list_id` (UUID de una `price_list` del negocio, o ausente/NULL = precio base como hoy). Editable desde `/settings` (selector con las listas del negocio + opción "Precio base"). Spread-merge del JSONB (regla 22) — no reemplazar `settings`.
-  2. `get_catalog_products` y `get_catalog_product_with_variants` leen ese setting y pasan `p_list_id`/`p_list_multiplier` reales a `compute_effective_price` en vez de NULL. **Re-precian server-side** (regla 29/36): el precio mostrado en el catálogo debe salir de la RPC, no calcularse en el cliente.
-  3. **Paridad checkout:** `create_catalog_order` re-precia con la **misma** lista (no puede quedar barato el grid y caro el checkout, ni viceversa). Verificar al centavo contra el grid.
-  4. El redondeo por lista (P7i, ya implementado en `compute_effective_price`) se aplica solo: si la lista elegida tiene `rounding_step`, el catálogo redondea igual que el POS. Verificar que se respeta.
-  5. Promos: la promo se sigue aplicando **encima** del precio de lista (pipeline regla 36, sin cambios). Verificar que lista + promo conviven.
-- **Decisiones que el agente NO debe asumir (→ marcar en "⚠️ Preguntas" si surgen):**
-  - Qué pasa si la lista elegida se **archiva/borra** después (¿fallback a precio base? ¿bloquear el borrado?). Es decisión de producto.
-  - Si el selector debe mostrar también el override por marca/producto de esa lista o solo el multiplicador base.
-- Migración: solo si hace falta tocar las firmas de las RPCs de catálogo (probablemente no — ya aceptan los params). Si se toca SQL → crear migración + schema.sql en sync, **no aplicar a DB**.
+- **Decisiones pendientes (flagueadas en ⚠️ Preguntas):**
+  - Qué pasa si la lista elegida se **archiva/borra** después. Hoy: fallback silencioso a precio base (query no encuentra la lista → NULL).
+  - Si el selector debe mostrar el override por marca/producto de la lista o solo el nombre.
 
 ### 🔒 NEEDS-OWNER — Temas del catálogo (presets de diseño por negocio) — post-rebrand
 
@@ -414,11 +408,11 @@ El owner sube un PDF o foto de la factura de una compra recién hecha y el siste
 > Auditoría con la skill `improve` (4 subagentes, scope: POS → precios/promos → catálogo → pedidos → caja). Planes autocontenidos en `plans/` (commiteados). Ejecutados y en producción el mismo día: 002 (xlsx→@e965/xlsx), 003 (hono fuera), 006 (lint verde), 001 v2 (suite cloud integrada: **387 tests + CI "Tests / Unit tests" en cada PR**, PR #7). Hallazgos descartados documentados en `plans/README.md` ("considered and rejected") — no re-auditar.
 
 **Pendientes con plan escrito (ejecutar con el flujo executor+review o a mano):**
-- **🤖 SCHEDULE-OK — Plan 004 — Re-asentar REVOKE/GRANT** (`plans/004-reassert-rpc-grants.md`): migración nueva que re-asienta grants de ~12 RPCs reemplazadas post-auditoría de seguridad sin REVOKE/GRANT explícito (CREATE OR REPLACE preserva grants → no es vuln activa, pero un futuro DROP+CREATE abriría PUBLIC EXECUTE en silencio). El agente crea la migración + sincroniza `supabase/schema.sql` y lo deja en el PR; **aplicarla a la DB la decide el dueño** (regla 4 del protocolo). Verificar contra el plan que la lista de RPCs esté completa.
-- **🤖 SCHEDULE-OK — Plan 005 — Centralizar `round2`** (`plans/005-centralize-money-rounding.md`): `Math.round(v*100)/100` duplicado en cart.store, ambos CartPanel y promotions.ts → `round2` en `lib/format.ts`; incluye redondear `adjustedSubtotal` del POS. **Desbloqueado** (dependía de la red de tests, ya aterrizada). Camino del dinero → correr la suite (387 tests) + E2E antes de cerrar el PR.
+- **~~🤖 Plan 004 — Re-asentar REVOKE/GRANT~~ ✅ (ejecutado 2026-06-13, migración aplicada)** — ver `plans/README.md`.
+- **~~🤖 Plan 005 — Centralizar `round2`~~ ✅ (ejecutado 2026-06-13)** — ver `plans/README.md`.
 
 **Deuda derivada de la sesión (sin plan, anotar nomás):**
 - **🤖 SCHEDULE-OK (de a uno) — Refactor selectivo de los 19 `react-hooks/set-state-in-effect`** (hoy en `warn`, decisión 2026-06-12, comentado en `eslint.config.mjs`): mounted pattern (regla 25) + reset-de-estado-al-abrir-modal. Con la suite de tests como red ya se puede encarar de a poco; prioridad: POSView/CartPanel (camino del dinero). Son además los componentes que React Compiler no optimiza. **Un componente por PR** (no batch — facilita revisión y aísla regresiones); los que tocan el camino del dinero (POSView/CartPanel) exigen E2E verde antes de cerrar.
-- **🤖 SCHEDULE-OK — Lint warnings de `.agents/`** (~120, scripts de skills de diseño): agregar `.agents/**` a `globalIgnores` de eslint. Quick win, cero riesgo.
+- **~~🤖 Lint warnings de `.agents/`~~ ✅ (resuelto 2026-06-17, commit `c8a8def`)**: `.agents/**` agregado a `globalIgnores` de eslint.
 - **🔒 NEEDS-OWNER — Deploy Vercel ~3m20** (analizado 2026-06-12, sano para el tamaño de la app): si se quiere afeitar → (a) subir sourcemaps de Sentry solo en producción (hoy corre en previews), (b) probar `next build --turbopack`. Toca config de build/CI → decisión del dueño.
 - **~~🤖 Doc drift en CLAUDE.md~~ ✅ (verificado 2026-06-17)**: ambos sub-items ya estaban corregidos en `master` — CLAUDE.md referencia `docs/todo/backlog.md` (no `docs/backlog.md`) y dice "polled every 10s" / "polls every 10s" (no 30s). Nada que hacer.

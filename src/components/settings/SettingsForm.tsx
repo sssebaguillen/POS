@@ -10,6 +10,7 @@ import Image from 'next/image'
 import { type SettingsBusiness, type SettingsOperator } from '@/components/settings/types'
 import OperatorList from '@/components/settings/OperatorList'
 import { CURRENCIES, type SupportedCurrencyCode } from '@/lib/constants/currencies'
+import SelectDropdown from '@/components/ui/SelectDropdown'
 import { Upload } from 'lucide-react'
 import { usePillIndicator } from '@/hooks/usePillIndicator'
 import { BUSINESS_SLUG_REGEX } from '@/lib/validation'
@@ -22,6 +23,7 @@ interface SettingsFormProps {
   operatorId: string | null
   isOwner: boolean
   canManageOperators: boolean
+  priceLists: { id: string; name: string }[]
 }
 
 const LOGO_ALLOWED_TYPES = new Set([
@@ -43,6 +45,7 @@ interface FormState {
   currencyCode: SupportedCurrencyCode
   freeLineEnabled: boolean
   aiInsightsEnabled: boolean
+  catalogPriceListId: string
 }
 
 function isValidHttpUrl(value: string): boolean {
@@ -71,7 +74,15 @@ export default function SettingsForm({
   operatorId,
   isOwner,
   canManageOperators,
+  priceLists,
 }: SettingsFormProps) {
+  const priceListOptions = useMemo(
+    () => [
+      { value: '', label: 'Precio base (sin lista)' },
+      ...priceLists.map(pl => ({ value: pl.id, label: pl.name })),
+    ],
+    [priceLists],
+  )
   const initialCurrency = (() => {
     const raw = business.settings?.currency
     if (typeof raw === 'string' && CURRENCIES.some(c => c.code === raw)) {
@@ -94,6 +105,7 @@ export default function SettingsForm({
     currencyCode: initialCurrency,
     freeLineEnabled: business.settings?.free_line_enabled === true,
     aiInsightsEnabled: business.settings?.ai_insights_enabled === true,
+    catalogPriceListId: business.settings?.catalog_price_list_id ?? '',
   })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -243,6 +255,7 @@ export default function SettingsForm({
           currency: form.currencyCode,
           free_line_enabled: form.freeLineEnabled,
           ai_insights_enabled: form.aiInsightsEnabled,
+          catalog_price_list_id: form.catalogPriceListId || null,
         },
       })
 
@@ -254,6 +267,44 @@ export default function SettingsForm({
       }
 
       setSuccess('Configuración guardada.')
+      await invalidateBusinessQueries()
+    } catch {
+      setError(ERR.SET1)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  async function handleSubmitCatalogPriceList() {
+    setLoading(true)
+    setError('')
+    setSuccess('')
+
+    try {
+      const { data: rpcResult, error: updateError } = await supabase.rpc('update_business_settings', {
+        p_operator_id: operatorId,
+        p_business_id: business.id,
+        p_name: form.name.trim() || business.name,
+        p_description: form.description.trim() || null,
+        p_whatsapp: form.whatsapp.trim() || null,
+        p_logo_url: normalizedLogoUrl || null,
+        p_settings_patch: {
+          primary_color: form.primaryColor,
+          currency: form.currencyCode,
+          free_line_enabled: form.freeLineEnabled,
+          ai_insights_enabled: form.aiInsightsEnabled,
+          catalog_price_list_id: form.catalogPriceListId || null,
+        },
+      })
+
+      const result = rpcResult as { success: boolean; error?: string } | null
+
+      if (updateError || !result?.success) {
+        setError(result?.error ?? ERR.SET1)
+        return
+      }
+
+      setSuccess('Lista de precios del catálogo actualizada.')
       await invalidateBusinessQueries()
     } catch {
       setError(ERR.SET1)
@@ -624,6 +675,31 @@ export default function SettingsForm({
                 </div>
                 {copySuccess && <p className={SUCCESS_CLASS}>¡Enlace copiado!</p>}
                 {copyError && <p className="text-xs text-destructive">{copyError}</p>}
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs uppercase tracking-wide text-muted-foreground">
+                  Lista de precios del catálogo
+                </label>
+                <SelectDropdown
+                  value={form.catalogPriceListId}
+                  onChange={value => setForm(prev => ({ ...prev, catalogPriceListId: value }))}
+                  options={priceListOptions}
+                  placeholder="Precio base (sin lista)"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Los precios del catálogo público se calcularán con el margen de la lista seleccionada. Si la lista se elimina, vuelve al precio base automáticamente.
+                </p>
+                <div className="flex justify-end">
+                  <Button
+                    type="button"
+                    className="h-9 px-4"
+                    onClick={handleSubmitCatalogPriceList}
+                    disabled={loading || form.catalogPriceListId === (business.settings?.catalog_price_list_id ?? '')}
+                  >
+                    {loading ? 'Guardando...' : 'Guardar'}
+                  </Button>
+                </div>
               </div>
             </div>
           </div>

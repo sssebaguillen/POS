@@ -16,6 +16,7 @@ export default async function SettingsPage() {
   const [
     { data: business, error: businessError },
     { data: operators, error: operatorsError },
+    { data: priceLists },
   ] = await Promise.all([
     supabase
       .from('businesses')
@@ -25,6 +26,11 @@ export default async function SettingsPage() {
     supabase
       .from('operators')
       .select('id, name, role, permissions')
+      .eq('business_id', businessId)
+      .order('name'),
+    supabase
+      .from('price_lists')
+      .select('id, name')
       .eq('business_id', businessId)
       .order('name'),
   ])
@@ -50,6 +56,7 @@ export default async function SettingsPage() {
         operatorId={activeOperator?.profile_id ?? null}
         isOwner={isOwner}
         canManageOperators={canManageOperators}
+        priceLists={(priceLists ?? []) as { id: string; name: string }[]}
       />
     </div>
   )
