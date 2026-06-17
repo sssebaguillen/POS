@@ -1,13 +1,14 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { X } from 'lucide-react'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { createClient } from '@/lib/supabase/client'
 import { useFormatMoney } from '@/lib/context/CurrencyContext'
 import { translateDbError } from '@/lib/errors'
-import type { ProductWithVariants, ProductVariant } from '@/lib/types'
+import type { ProductVariant } from '@/lib/types'
 import { unwrapProductWithVariants } from '@/lib/mappers'
 
 interface ProductStockModalProps {
@@ -19,38 +20,18 @@ interface ProductStockModalProps {
 export default function ProductStockModal({ productId, businessId, onClose }: ProductStockModalProps) {
   const supabase = useMemo(() => createClient(), [])
   const formatMoney = useFormatMoney()
-  const [loading, setLoading] = useState(true)
-  const [data, setData] = useState<ProductWithVariants | null>(null)
-  const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
-    let cancelled = false
-    setLoading(true)
-    supabase
-      .rpc('get_product_with_variants', { p_product_id: productId })
-      .then(({ data: rpc, error: rpcError }) => {
-        if (cancelled) return
-        if (rpcError) {
-          setError(translateDbError(rpcError.message, 'No se pudo cargar el stock de variantes.'))
-          setLoading(false)
-          return
-        }
-        const result = unwrapProductWithVariants(rpc)
-        if (!result) {
-          setError('Producto no encontrado')
-          setLoading(false)
-          return
-        }
-        if (result.product.business_id !== businessId) {
-          setError('Producto no encontrado')
-          setLoading(false)
-          return
-        }
-        setData(result)
-        setLoading(false)
-      })
-    return () => { cancelled = true }
-  }, [supabase, productId, businessId])
+  const { data, isLoading: loading, error } = useQuery({
+    queryKey: ['product-variants-stock', productId],
+    queryFn: async () => {
+      const { data: rpc, error: rpcError } = await supabase
+        .rpc('get_product_with_variants', { p_product_id: productId })
+      if (rpcError) throw new Error(translateDbError(rpcError.message, 'No se pudo cargar el stock de variantes.'))
+      const result = unwrapProductWithVariants(rpc)
+      if (!result || result.product.business_id !== businessId) throw new Error('Producto no encontrado')
+      return result
+    },
+  })
 
   const variants = data?.variants ?? []
   const totalStock = variants.reduce((sum, v) => sum + (v.stock ?? 0), 0)
@@ -87,7 +68,7 @@ export default function ProductStockModal({ productId, businessId, onClose }: Pr
             <div className="py-10 text-center text-sm text-hint">Cargando variantes...</div>
           ) : error ? (
             <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
-              {error}
+              {error?.message}
             </div>
           ) : variants.length === 0 ? (
             <div className="py-10 text-center text-sm text-hint">Este producto no tiene variantes.</div>
