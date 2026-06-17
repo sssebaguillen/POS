@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -34,9 +34,11 @@ export default function QuickEditCategoryModal({ open, product, categories, busi
   const [error, setError] = useState<string | null>(null)
   const supabase = useMemo(() => createClient(), [])
 
-  useEffect(() => {
+  const [prevOpen, setPrevOpen] = useState(open)
+  if (prevOpen !== open) {
+    setPrevOpen(open)
     if (!open) setView('main')
-  }, [open])
+  }
 
   async function handleSave() {
     if (!product) return
