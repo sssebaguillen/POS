@@ -1528,7 +1528,14 @@ BEGIN
     FROM jsonb_array_elements(v_overrides) AS item
     WHERE item->>'price_list_id' IS NOT NULL AND item->>'multiplier' IS NOT NULL;
   END IF;
-  v_audit_data := p_data;
+  v_audit_data := p_data || jsonb_build_object(
+    'category_name', (SELECT c.name FROM categories c
+                      WHERE c.id = NULLIF(p_data->>'category_id', '')::uuid
+                        AND c.business_id = v_caller_business_id),
+    'brand_name',    (SELECT b.name FROM brands b
+                      WHERE b.id = NULLIF(p_data->>'brand_id', '')::uuid
+                        AND b.business_id = v_caller_business_id)
+  );
   PERFORM log_audit_event(p_business_id, v_stored_op_id, v_actor_role,
     'product_created', 'product', v_new_id, v_name, NULL, v_audit_data);
   RETURN jsonb_build_object('success', true, 'id', v_new_id);
@@ -2592,7 +2599,11 @@ BEGIN
     v_actor_role := 'owner';
   END IF;
   v_stored_op_id := CASE WHEN v_actor_role = 'owner' THEN NULL ELSE p_operator_id END;
-  SELECT to_jsonb(p), p.name INTO v_old_data, v_old_name
+  SELECT to_jsonb(p) || jsonb_build_object(
+           'category_name', (SELECT c.name FROM categories c WHERE c.id = p.category_id),
+           'brand_name',    (SELECT b.name FROM brands b WHERE b.id = p.brand_id)
+         ), p.name
+  INTO v_old_data, v_old_name
   FROM products p WHERE p.id = p_product_id AND p.business_id = v_caller_business_id;
   IF NOT FOUND THEN RETURN jsonb_build_object('success', false, 'error', 'Producto no encontrado'); END IF;
   SELECT EXISTS (SELECT 1 FROM sale_items si JOIN sales s ON s.id = si.sale_id

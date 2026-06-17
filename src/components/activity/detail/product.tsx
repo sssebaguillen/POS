@@ -12,7 +12,11 @@ import type {
 import type { ActivityLookups } from '@/components/activity/types'
 import { DeletedBadge, DiffRow, Stat, toNumber } from '@/components/activity/detail/shared'
 
-const PRODUCT_FIELD_LABELS: Record<keyof ProductData, string> = {
+// Campos que participan del diff (excluye los snapshots de nombre, que son
+// informativos para <ProductSummary>, no filas de diff).
+type ProductDiffKey = Exclude<keyof ProductData, 'category_name' | 'brand_name'>
+
+const PRODUCT_FIELD_LABELS: Record<ProductDiffKey, string> = {
   name: 'Nombre',
   price: 'Precio',
   cost: 'Costo',
@@ -23,7 +27,7 @@ const PRODUCT_FIELD_LABELS: Record<keyof ProductData, string> = {
   brand_id: 'Marca',
 }
 
-const PRODUCT_FIELD_ORDER: (keyof ProductData)[] = [
+const PRODUCT_FIELD_ORDER: ProductDiffKey[] = [
   'name',
   'price',
   'cost',
@@ -44,8 +48,12 @@ export function ProductSummary({ data, lookups, deleted = false }: ProductSummar
   const formatMoney = useFormatMoney()
   if (!data) return <p className="text-sm text-hint">Sin datos.</p>
 
-  const categoryName = data.category_id ? lookups.categoryMap[data.category_id]?.name ?? null : null
-  const brandName = data.brand_id ? lookups.brandMap[data.brand_id] ?? null : null
+  // Prefiere el nombre snapshotado al momento del evento; cae al lookup para
+  // entradas viejas (sin snapshot) — un rename/borrado posterior ya no deriva.
+  const categoryName =
+    data.category_name ?? (data.category_id ? lookups.categoryMap[data.category_id]?.name ?? null : null)
+  const brandName =
+    data.brand_name ?? (data.brand_id ? lookups.brandMap[data.brand_id] ?? null : null)
 
   return (
     <div className={cn('space-y-3', deleted && 'opacity-90')}>
