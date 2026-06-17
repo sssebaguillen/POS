@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import PageHeader from '@/components/shared/PageHeader'
 import DateRangeFilter from '@/components/shared/DateRangeFilter'
 import { type DateRangePeriod, getDateRange, resolveDateRange, periodNeedsCustomDates } from '@/lib/date-utils'
@@ -152,11 +152,15 @@ export default function DashboardView({
   const [suppressWizardLocal, setSuppressWizardLocal] = useState(false)
   const [mountedAt] = useState(() => Date.now())
 
-  useEffect(() => {
+  // Render-time state adjustment: reset suppressWizardLocal when the wizard
+  // prop transitions to false (replaces useEffect to avoid extra render cycle).
+  const [prevShowOnboardingWizard, setPrevShowOnboardingWizard] = useState(showOnboardingWizard)
+  if (prevShowOnboardingWizard !== showOnboardingWizard) {
+    setPrevShowOnboardingWizard(showOnboardingWizard)
     if (!showOnboardingWizard) {
       setSuppressWizardLocal(false)
     }
-  }, [showOnboardingWizard])
+  }
 
   const wizardOpen = showOnboardingWizard && !suppressWizardLocal
 

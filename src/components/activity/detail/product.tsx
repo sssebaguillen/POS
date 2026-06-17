@@ -92,7 +92,7 @@ export function ProductDiff({ oldData, newData, lookups }: ProductDiffProps) {
     if (before === after) continue
     if (before === undefined && after === undefined) continue
 
-    const formatted = formatProductField(key, before, after, lookups, formatMoney)
+    const formatted = formatProductField(key, before, after, lookups, formatMoney, oldData, newData)
     if (formatted) {
       changes.push({
         label: PRODUCT_FIELD_LABELS[key],
@@ -264,6 +264,8 @@ function formatProductField(
   after: ProductData[keyof ProductData],
   lookups: ActivityLookups,
   formatMoney: (value: number) => string,
+  oldData: ProductData | null,
+  newData: ProductData | null,
 ) {
   if (key === 'is_active') {
     return {
@@ -288,15 +290,15 @@ function formatProductField(
 
   if (key === 'category_id') {
     return {
-      before: typeof before === 'string' ? lookups.categoryMap[before]?.name ?? 'Sin categoría' : 'Sin categoría',
-      after: typeof after === 'string' ? lookups.categoryMap[after]?.name ?? 'Sin categoría' : 'Sin categoría',
+      before: oldData?.category_name ?? (typeof before === 'string' ? lookups.categoryMap[before]?.name ?? 'Sin categoría' : 'Sin categoría'),
+      after: newData?.category_name ?? (typeof after === 'string' ? lookups.categoryMap[after]?.name ?? 'Sin categoría' : 'Sin categoría'),
     }
   }
 
   if (key === 'brand_id') {
     return {
-      before: typeof before === 'string' ? lookups.brandMap[before] ?? 'Sin marca' : 'Sin marca',
-      after: typeof after === 'string' ? lookups.brandMap[after] ?? 'Sin marca' : 'Sin marca',
+      before: oldData?.brand_name ?? (typeof before === 'string' ? lookups.brandMap[before] ?? 'Sin marca' : 'Sin marca'),
+      after: newData?.brand_name ?? (typeof after === 'string' ? lookups.brandMap[after] ?? 'Sin marca' : 'Sin marca'),
     }
   }
 

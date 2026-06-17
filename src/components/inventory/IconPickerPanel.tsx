@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { DynamicIcon } from '@/components/inventory/CategoryIconPreview'
@@ -63,11 +63,17 @@ export default function IconPickerPanel({
   const [localColor, setLocalColor] = useState(selectedColor)
   const [search, setSearch] = useState('')
 
-  useEffect(() => {
+  // Re-sincroniza el estado local cuando el panel se reabre con otra selección.
+  // Se ajusta durante el render (patrón oficial de React para "estado derivado de
+  // props que cambian") en vez de en un useEffect, que corría post-commit y disparaba
+  // react-hooks/set-state-in-effect. Mismo comportamiento, sin flash de estado viejo.
+  const [prevSelected, setPrevSelected] = useState({ icon: selectedIcon, color: selectedColor })
+  if (prevSelected.icon !== selectedIcon || prevSelected.color !== selectedColor) {
+    setPrevSelected({ icon: selectedIcon, color: selectedColor })
     setLocalIcon(selectedIcon)
     setLocalColor(selectedColor)
     setSearch('')
-  }, [selectedIcon, selectedColor])
+  }
 
   const filtered = CATEGORY_ICONS.filter(i =>
     !search.trim() || i.label.toLowerCase().includes(search.toLowerCase())
