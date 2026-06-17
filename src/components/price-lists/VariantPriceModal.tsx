@@ -171,7 +171,7 @@ export default function VariantPriceModal({
                           <TableCell className={`text-right tabular-nums${cost === 0 ? ' text-hint' : ''}`}>
                             {formatMoney(cost)}
                           </TableCell>
-                          <TableCell className="text-right tabular-nums">
+                          <TableCell className="relative z-20 text-right tabular-nums">
                             <span className="inline-flex items-center gap-1.5 justify-end">
                               {formatMoney(listPrice)}
                               {hasFixedPrice && (
