@@ -14,6 +14,8 @@ const eslintConfig = defineConfig([
     "next-env.d.ts",
     // Agent worktrees — do not lint .claude/
     ".claude/**",
+    // Scripts de skills de diseño (no son código de la app).
+    ".agents/**",
     // Artefactos generados por Playwright (reporte/trace minificado, screenshots).
     "e2e/report/**",
     "e2e/screenshots/**",
