@@ -83,9 +83,9 @@ export interface ProductData {
   is_active?: boolean
   category_id?: string | null
   brand_id?: string | null
-  // Snapshot inmutable del nombre al momento del evento (create/delete). El
-  // detalle los prefiere sobre categoryMap/brandMap; entradas viejas no los
-  // traen y caen al lookup. No son campos de diff (no van en labels/orden).
+  // Snapshot inmutable del nombre al momento del evento. El detalle los
+  // prefiere sobre categoryMap/brandMap; entradas viejas no los traen y
+  // caen al lookup. No son campos de diff (no van en labels/orden).
   category_name?: string | null
   brand_name?: string | null
 }

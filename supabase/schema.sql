@@ -7437,6 +7437,7 @@ DECLARE
   v_stored_op_id       uuid;
   v_old_data           jsonb;
   v_old_name           text;
+  v_new_data           jsonb;
   v_has_changes        boolean := false;
   v_key                text;
 BEGIN
@@ -7475,7 +7476,11 @@ BEGIN
 
   v_stored_op_id := CASE WHEN v_actor_role = 'owner' THEN NULL ELSE p_operator_id END;
 
-  SELECT to_jsonb(p), p.name INTO v_old_data, v_old_name
+  SELECT to_jsonb(p) || jsonb_build_object(
+           'category_name', (SELECT c.name FROM categories c WHERE c.id = p.category_id),
+           'brand_name',    (SELECT b.name FROM brands b WHERE b.id = p.brand_id)
+         ), p.name
+  INTO v_old_data, v_old_name
   FROM products p WHERE p.id = p_product_id AND p.business_id = v_caller_business_id;
 
   IF NOT FOUND THEN
@@ -7508,8 +7513,23 @@ BEGIN
   WHERE id = p_product_id AND business_id = v_caller_business_id;
 
   IF v_has_changes THEN
+    v_new_data := p_changes;
+    IF p_changes ? 'category_id' THEN
+      v_new_data := v_new_data || jsonb_build_object(
+        'category_name', (SELECT c.name FROM categories c
+                          WHERE c.id = NULLIF(p_changes->>'category_id', '')::uuid
+                            AND c.business_id = v_caller_business_id)
+      );
+    END IF;
+    IF p_changes ? 'brand_id' THEN
+      v_new_data := v_new_data || jsonb_build_object(
+        'brand_name', (SELECT b.name FROM brands b
+                       WHERE b.id = NULLIF(p_changes->>'brand_id', '')::uuid
+                         AND b.business_id = v_caller_business_id)
+      );
+    END IF;
     PERFORM log_audit_event(p_business_id, v_stored_op_id, v_actor_role,
-      'product_updated', 'product', p_product_id, v_old_name, v_old_data, p_changes);
+      'product_updated', 'product', p_product_id, v_old_name, v_old_data, v_new_data);
   END IF;
 
   RETURN jsonb_build_object('success', true);
