@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { AlertTriangle, Search, X } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
@@ -125,14 +125,23 @@ export default function PromotionModal({
   const [attempted, setAttempted] = useState(false)
   const [attemptNonce, setAttemptNonce] = useState(0)
 
-  useEffect(() => {
-    if (open) {
-      setForm(initial ? formFromPromotion(initial) : emptyForm())
-      setProductQuery('')
-      setError(null)
-      setAttempted(false)
-    }
-  }, [open, initial])
+  // Reset form when dialog opens or when `initial` changes while open (render-time adjustment)
+  const [prevOpen, setPrevOpen] = useState(open)
+  const [prevInitial, setPrevInitial] = useState(initial)
+  if ((open && !prevOpen) || (open && initial !== prevInitial)) {
+    setPrevOpen(open)
+    setPrevInitial(initial)
+    setForm(initial ? formFromPromotion(initial) : emptyForm())
+    setProductQuery('')
+    setError(null)
+    setAttempted(false)
+  }
+  if (!open && prevOpen) {
+    setPrevOpen(false)
+  }
+  if (initial !== prevInitial && !open) {
+    setPrevInitial(initial)
+  }
 
   const requiresProductScope = form.uiKind === 'offer_price' || form.uiKind === 'nxm' || form.uiKind === 'second_unit'
   const effectiveScopeType: ScopeType = requiresProductScope ? 'product' : form.scopeType
