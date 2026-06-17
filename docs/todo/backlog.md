@@ -309,34 +309,13 @@ El owner sube un PDF o foto de la factura de una compra recién hecha y el siste
 
 ## CONTEXT.md — Discrepancias con la DB en vivo
 
-> **🤖 SCHEDULE-OK — Reconciliar docs contra el schema real.** **Fuente de verdad: `supabase/schema.sql`** (dump mantenido en sync) + las migraciones en `supabase/migrations/`. El agente NO tiene acceso a la DB en vivo — todo se verifica contra el repo. Tarea: verificar cada fila de la tabla de abajo contra `schema.sql` y **corregir la documentación** (`docs/db.md`, `docs/CONTEXT.md` si existe, y referencias en `CLAUDE.md`) para que reflejen la realidad. Incluye el mismatch de **`docs/db.md` documenta `invoices`** que no aparece en `supabase/schema.sql` ("P10 docs mismatch" en Otras P-Phases) — confirmar contra `schema.sql` y alinear el doc.
-> - **Criterios de aceptación:** (1) cada discrepancia confirmada se corrige en el doc correspondiente; (2) las filas ya alineadas se eliminan de esta tabla; (3) NO se toca código ni el schema — solo markdown; (4) un PR de docs, sin migraciones.
-> - **Si una fila no se puede confirmar contra `schema.sql`** (ej. depende de estado de datos en vivo, no del schema): NO adivines — anotala en "⚠️ Preguntas del agente automático" y seguí.
-> - **Si una discrepancia revela que el problema está en el CÓDIGO, no en el doc** (ej. el doc está bien y el código divergió de forma riesgosa): NO lo arregles — anotalo en "⚠️ Preguntas del agente automático" y seguí. Acá solo se reconcilian docs.
-
-| Área | CONTEXT.md dice | Realidad |
-|------|-----------------|----------|
-| Project ID | `zrnthycznbrplzpmxmkwk` | `zrnthcznbrplzpmxmkwk` |
-| `businesses.accounting_enabled` | Listado como existente | No existe |
-| `businesses.settings` keys | Sólo `primary_color` | También `currency` y `logo_upload_path` |
-| `profiles.onboarding_state` | No documentado | Existe, lo usa el wizard de onboarding |
-| `sales.status` CHECK | `('pending','completed','cancelled')` | `('completed','cancelled','refunded')` — sin `pending`, con `refunded` |
-| `cash_sessions` columnas | Listadas `status`, `difference` | Ninguna existe; sí existe `notes` |
-| `payments.method` CHECK | Lista `credit`, `otro` | No están — sólo `cash,card,transfer,mercadopago` |
-| `payments.status` CHECK | `('pending','completed','failed')` | `('completed','pending','refunded','cancelled')` — sin `failed` |
-| `expense_items` table | No documentada | Existe — sistema completo de line-items para mercadería |
-| `inventory_movements` | Sin `reason`, `reference_id` | Ambos existen |
-| `undo_import` RPC | Documentada como existente | No existe |
-| `update_expense` RPC | No documentada | Existe — edita gastos no-mercadería |
-| `create_mercaderia_expense` RPC | No documentada | Existe |
-| `update_mercaderia_expense` RPC | No documentada | Existe |
-| `update_product_variants` RPC | No documentada | Existe — firma: `(p_operator_id, p_business_id, p_product_id, p_options, p_variants)` |
-| `create_product_with_variants` RPC | No documentada | Existe — firma: `(p_operator_id, p_business_id, p_product, p_options, p_variants)` |
-| `compute_effective_price` SQL function | No documentada | Existe — espejo SQL de `calculateProductPrice` para las RPCs del catálogo |
-| Permissions count | "9 campos" | **8 capacidades en 4 áreas** (rediseño 2026-06-09: `online_orders`, `pos_pricing`, `inventory_read`, `inventory_write`, `reports`, `expenses`, `settings`, `manage_operators`). Normalizador canónico `normalize_permissions` SQL ↔ TS, bi-shape. Ver `docs/todo/permisos-operario-redesign.md` |
-| `stats` permission | Listada como `stats` | Renombrada a `analysis` el 2026-05-16 (cubre dashboard, stats, /activity) |
-| `audit_log` table | No documentada | Existe — append-only, P7h Fase 1+2 |
-| Inventory mutation RPCs | Documentadas con escritura directa a tabla | Todas pasan por RPCs `SECURITY DEFINER` con audit log |
+> **✅ (2026-06-17) Reconciliado contra `supabase/schema.sql`.** Las 20 filas se verificaron una a una contra el dump del schema y se corrigieron en los docs (`CONTEXT.md`, `docs/db.md`, referencias en `CLAUDE.md`). Solo markdown — no se tocó código ni schema. Detalle de cada corrección abajo; la tabla de discrepancias quedó vacía (todas alineadas).
+>
+> **Dos filas de la tabla original tenían la columna "Realidad" equivocada** (la verdad la fijó `schema.sql`, no el claim previo):
+> - `payments.method`: el claim decía "sólo `cash,card,transfer,mercadopago`" pero el CHECK del schema **incluye `credit`** (excluye `otro`). Docs corregidos a 5 valores. Consistente con CLAUDE.md regla 33 (`credit` excluido solo para pedidos online anónimos, no del CHECK).
+> - `stats` permission: el claim decía "renombrada a `analysis`". La realidad en el modelo de 8 capacidades (2026-06-09) es **`reports`** — `proxy.ts` gatea con `'reports'` y un test documenta "reports replaces old 'analysis'". `analysis` fue un nombre intermedio ya muerto. Se corrigieron las 3 referencias `analysis` en CLAUDE.md → `reports`.
+>
+> Correcciones aplicadas: Project ID (typo `zrnthycz…`→`zrnthcz…` en CONTEXT.md), `businesses.accounting_enabled` (no existe — removido), `businesses.settings` keys (`currency`/`logo_upload_path`/`ai_insights_enabled`), `profiles.onboarding_state` (agregado), `sales.status` CHECK (`completed/cancelled/refunded` + columna `source`), `cash_sessions` (`difference` no existe; `notes`+`status` sí), `payments.status` (`refunded/cancelled`, no `failed`), `expense_items` y `audit_log` (secciones agregadas), `inventory_movements` (`reason`/`reference_id`/`variant_id` agregados; `created_by` eliminado M-3), `undo_import` (no existe — removido, P8b), `update_expense`/`create_mercaderia_expense`/`update_mercaderia_expense`/`update_product_variants`/`create_product_with_variants`/`compute_effective_price` (agregados a la tabla de funciones), permisos (modelo de 8 capacidades reescrito), `invoices` (marcada NOT-IN-SCHEMA en ambos docs — P10.b diferida), RPCs de inventario (ya documentadas correctas con SECURITY DEFINER + audit).
 
 ---
 
@@ -349,7 +328,7 @@ El owner sube un PDF o foto de la factura de una compra recién hecha y el siste
 | ~~Radix `DialogTitle` warnings~~ ✅ (2026-05-28) | Todos los `DialogContent` tienen `DialogTitle`. Faltaban 5 (`NewOperatorModal`, `EditOperatorModal`, `ExportPriceListModal`, `EditSupplierModal`, `ExpensesTable`); resueltos con `<VisuallyHidden><DialogTitle>` siguiendo la convención de `price-lists`. |
 | 🤖 SCHEDULE-OK `useEffect` para sales history en `CartPanel` | Patrón pre-React Query, no migrado. Migrar a React Query como el resto. Camino del dinero (CartPanel) → E2E verde antes de cerrar. |
 | ~~`theme.tsx` FOUC~~ ✅ (2026-05-28) | Resuelto con script inline bloqueante en `<head>` (`ThemeScript.tsx`) que aplica la clase `dark` antes del primer paint, leyendo `localStorage` + `prefers-color-scheme`. Constante única `THEME_STORAGE_KEY` en `lib/theme.ts`. El efecto de círculo del toggle (View Transition) se extrajo a `runThemeToggleTransition` en `lib/theme.ts` y ahora lo usan tanto el sidebar como el toggle del catálogo público. |
-| 🤖 SCHEDULE-OK `!` assertions en env vars | En `client.ts` y `server.ts`. Reemplazar `!` por validación explícita al boot (throw claro si falta la env). Cambio acotado, sin riesgo de runtime nuevo. |
+| ~~🤖 `!` assertions en env vars~~ ✅ (verificado 2026-06-17) | `client.ts` y `server.ts` ya validan explícito: `if (!url || !key) throw new Error('Missing Supabase env vars')`. Sin `!` non-null assertions. Nada que hacer. |
 | 🔒 NEEDS-OWNER `protobufjs <=7.5.7` (npm audit, HIGH) | Transitiva vía `@sentry/nextjs` → `@opentelemetry/otlp-transformer`. **Riesgo real bajo**: es el transporte OTel de Sentry (serializa telemetría propia, no input de atacante), así que los CVE de DoS/inyección por protobuf malicioso no aplican. `npm audit fix` NO es quirúrgico (cambia 12 paquetes + warning de downgrade breaking de next). Si se ataca: `overrides` forzando solo protobufjs a 7.5.8+ y verificar con build. Decidido 2026-05-29: dejar, no urgente. |
 | ~~`react-hooks/refs` en InventoryPanel/POSView (19 errores)~~ ✅ (2026-06-09, commit `ea562d6`) | Resueltos los 19: los 16 de InventoryPanel desaparecieron al extraer `HeaderActionDropdown` (mide al abrir → estado); los 3 de POSView (`itemCountRef`/`itemsRef`/`confirmingNewSaleRef` sincronizados en render) movidos a un `useEffect` de sync. Quedan `set-state-in-effect` (otra regla, deuda aparte: deep-link/scroll de InventoryPanel, patrón mounted del sidebar). |
 | ~~`CartItem` en `lib/types/index.ts`~~ ✅ (2026-06-09, commit `0716e08`) | Movido a `src/lib/types/cart.ts` (CartItem + getCartItemId). Separado del modelo de entidades del server; consumidores (cart.store, price-lists, POSView, CartPanel) importan de `@/lib/types/cart`. |
@@ -443,4 +422,4 @@ El owner sube un PDF o foto de la factura de una compra recién hecha y el siste
 - **🤖 SCHEDULE-OK (de a uno) — Refactor selectivo de los 19 `react-hooks/set-state-in-effect`** (hoy en `warn`, decisión 2026-06-12, comentado en `eslint.config.mjs`): mounted pattern (regla 25) + reset-de-estado-al-abrir-modal. Con la suite de tests como red ya se puede encarar de a poco; prioridad: POSView/CartPanel (camino del dinero). Son además los componentes que React Compiler no optimiza. **Un componente por PR** (no batch — facilita revisión y aísla regresiones); los que tocan el camino del dinero (POSView/CartPanel) exigen E2E verde antes de cerrar.
 - **🤖 SCHEDULE-OK — Lint warnings de `.agents/`** (~120, scripts de skills de diseño): agregar `.agents/**` a `globalIgnores` de eslint. Quick win, cero riesgo.
 - **🔒 NEEDS-OWNER — Deploy Vercel ~3m20** (analizado 2026-06-12, sano para el tamaño de la app): si se quiere afeitar → (a) subir sourcemaps de Sentry solo en producción (hoy corre en previews), (b) probar `next build --turbopack`. Toca config de build/CI → decisión del dueño.
-- **🤖 SCHEDULE-OK — Doc drift en CLAUDE.md**: (a) referencia `docs/backlog.md` pero el archivo vive en `docs/todo/backlog.md`; (b) dice que el polling de pedidos es cada 30s pero `UnreadBadge`/`OrdersView` usan 10s. Fix factual de docs, cero riesgo.
+- **~~🤖 Doc drift en CLAUDE.md~~ ✅ (verificado 2026-06-17)**: ambos sub-items ya estaban corregidos en `master` — CLAUDE.md referencia `docs/todo/backlog.md` (no `docs/backlog.md`) y dice "polled every 10s" / "polls every 10s" (no 30s). Nada que hacer.

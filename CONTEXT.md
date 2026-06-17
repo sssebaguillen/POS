@@ -10,7 +10,7 @@
 
 - **Frontend:** Next.js 16+ (App Router, Turbopack), TypeScript (strict), Tailwind CSS, shadcn/ui
 - **Data fetching client-side:** React Query (`@tanstack/react-query`, staleTime 30s, gcTime 5min, retry 1) — provider en `providers/query-provider.tsx`
-- **Backend:** Supabase (PostgreSQL + Auth + Storage + RLS), project ID: `zrnthycznbrplzpmxmkwk` (sa-east-1)
+- **Backend:** Supabase (PostgreSQL + Auth + Storage + RLS), project ID: `zrnthcznbrplzpmxmkwk` (sa-east-1)
 - **Deploy:** Vercel, proyecto: `pulsarpos`, repo: `github.com/sssebaguillen/POS` (master), región: `gru1 (São Paulo)`
 - **IMPORTANTE:** Next.js 16+ usa `proxy.ts` en la raíz, NO `middleware.ts`
 - **Plan Supabase:** FREE — no sugerir features de plan pago (ej. Leaked Password Protection)
@@ -116,9 +116,14 @@ Pulsar POS es un sistema SaaS multi-tenant de punto de venta para PyMEs en LATAM
 | whatsapp | text nullable | solo números con código de país |
 | logo_url | text nullable | |
 | description | text nullable | visible en catálogo público |
-| settings | jsonb nullable | incluye `primary_color` (hex). Mergeado con spread — nunca reemplazar el objeto completo |
-| accounting_enabled | bool | default false — toggle para activar módulo contable (P10) |
+| settings | jsonb | default `{"currency":"ARS"}`. Keys soportadas: `currency` (ISO 4217), `primary_color` (hex), `logo_upload_path` (path de storage del logo subido), `ai_insights_enabled` (bool, opt-in P12). Mergeado con spread — nunca reemplazar el objeto completo |
+| country_code | text CHECK | AR/MX/CO/UY (P10.a) |
+| tax_id | text nullable | CUIT/RFC/etc. (P10.a) |
+| timezone | text | IANA, default `America/Argentina/Buenos_Aires` |
+| catalog_orders_read_at | timestamptz nullable | marca de "pedidos leídos" per-business (badge de /orders) |
 | created_at | timestamptz | |
+
+> **Corrección vs versión previa de este doc:** la columna `accounting_enabled` **no existe** en la DB (confirmado contra `supabase/schema.sql`).
 
 **Slug:** editado desde Settings vía RPC `update_business_slug`. La URL del catálogo público es `puls.ar/{slug}`. Los slugs con timestamp legacy no se migran automáticamente — el dueño los edita cuando quiera.
 
@@ -131,6 +136,7 @@ Pulsar POS es un sistema SaaS multi-tenant de punto de venta para PyMEs en LATAM
 | role | text | siempre `'owner'` |
 | pin | text nullable | no usado para owner |
 | avatar_url | text nullable | foto de perfil |
+| onboarding_state | jsonb NOT NULL | default `{"completed":false,"tour_done":false,"steps_done":[],"wizard_step":0}` — lo usa el wizard de onboarding |
 | created_at | timestamptz | |
 
 **Nota:** `profiles.permissions` fue eliminado (columna obsoleta, eliminada en auditoría abril 2026). Los permisos del owner se obtienen siempre de `OWNER_PERMISSIONS` en `lib/operator.ts`.
@@ -143,27 +149,26 @@ Pulsar POS es un sistema SaaS multi-tenant de punto de venta para PyMEs en LATAM
 | name | text | |
 | role | text CHECK | `'manager'`, `'cashier'`, `'custom'` |
 | pin | text | bcrypt hasheado via extensions.crypt() |
-| permissions | jsonb | 9 campos — ver modelo de permisos |
+| permissions | jsonb | 8 capacidades en 4 áreas — ver modelo de permisos. Default de columna: `{"online_orders":true,"pos_pricing":false,"inventory_read":false,"inventory_write":false,"reports":false,"expenses":false,"settings":false,"manage_operators":false}` |
 | is_active | bool | default true |
 | created_at | timestamptz | |
 
-**Modelo de permisos (9 campos):**
-| permiso | descripción | owner | manager | cashier |
-|---------|-------------|-------|---------|---------|
-| `sales` | Terminal de ventas | true | true | true |
-| `stock` | Ver inventario | true | true | true |
-| `stock_write` | Modificar inventario | true | true | false |
-| `stats` | Dashboard y estadísticas | true | true | false |
-| `price_lists` | Ver listas de precios | true | true | false |
-| `price_lists_write` | Modificar listas de precios | true | true | false |
-| `settings` | Configuración | true | false | false |
-| `operators_write` | Crear/editar operadores (sub-toggle de settings) | true | false | false |
-| `expenses` | Ver y cargar gastos | true | true | false |
-| `price_override` | Editar precio por ítem en POS | true | true | false |
+**Modelo de permisos (8 capacidades en 4 áreas — rediseño 2026-06-09):**
 
-**Nota:** `operators_write` requiere `settings: true` como prerequisito — es un sub-toggle en la UI de NewOperatorModal.
+| área | capacidad | descripción |
+|------|-----------|-------------|
+| Mostrador | `pos_pricing` | Editar precio por ítem en POS |
+| Mostrador | `online_orders` | Gestionar pedidos online (/orders) |
+| Inventario | `inventory_read` | Ver inventario / listas de precios |
+| Inventario | `inventory_write` | Modificar inventario / listas de precios |
+| Reportes | `reports` | Ver reportes y estadísticas (dashboard, /stats, /activity) |
+| Reportes | `expenses` | Ver y cargar gastos |
+| Administración | `settings` | Configuración |
+| Administración | `manage_operators` | Crear/editar operadores |
 
-`isPermissions()` valida que el objeto tenga todos los campos esperados. Al agregar un campo nuevo a `Permissions`: buscar en TODO el codebase y actualizar todos los archivos que construyen el objeto manualmente: `lib/operator.ts` (OWNER_PERMISSIONS), `sidebar.tsx`, `api/operator/switch/route.ts`, `NewOperatorModal.tsx`.
+> **Corrección vs versión previa de este doc:** el modelo viejo de "9 campos" (`sales`, `stock`, `stock_write`, `stats`, `price_lists`, `price_lists_write`, `operators_write`, `price_override`) quedó **obsoleto**. La capacidad `stats` pasó por `analysis` y hoy es `reports`; `operators_write` → `manage_operators`; `price_override` → `pos_pricing`.
+
+**Normalizador canónico:** `normalize_permissions(jsonb)` en Postgres ↔ `normalizePermissions()`/`parsePermissions()` en `lib/operator.ts` (**bi-shape**: aceptan el shape viejo y el nuevo). Las guardas `SECURITY DEFINER` leen el permiso vía `normalize_permissions(permissions)->>'<key>'`. Historia y plan: `docs/todo/permisos-operario-redesign.md`. Lugares a tocar para una capacidad nueva: ver CLAUDE.md regla 16.
 
 Rol `'custom'`: cualquier combinación definida por el owner via toggles en Settings.
 
@@ -243,9 +248,9 @@ precio_final = unit_price_override ?? cost × (override_producto ?? override_mar
 Si `cost = 0` y `price > 0`, se usa `price` directamente. `calculateProductPrice` en `lib/price-lists.ts` es la única fuente de verdad — nunca calcular precio inline en componentes.
 
 ### `sales`
-Estructura estándar + `price_list_id uuid nullable` FK → price_lists(id) ON DELETE SET NULL + `operator_id uuid nullable` FK → operators(id) + `status text CHECK ('pending','completed','cancelled')`.
+Estructura estándar + `price_list_id uuid nullable` FK → price_lists(id) ON DELETE SET NULL + `operator_id uuid nullable` FK → operators(id) + `status text CHECK ('completed','cancelled','refunded')` + `source text` (default `'pos'`, `'catalog'` para ventas convertidas de pedidos online).
 
-**CHECK constraints:** `status IN ('pending','completed','cancelled')` aplicado en auditoría abril 2026.
+**CHECK constraints:** `status IN ('completed','cancelled','refunded')` — NO existe `'pending'`; sí existe `'refunded'`.
 
 ### `sale_items`
 | columna | tipo | notas |
@@ -261,7 +266,9 @@ Estructura estándar + `price_list_id uuid nullable` FK → price_lists(id) ON D
 | created_at | timestamptz | |
 
 ### `payments`
-Estructura estándar. `method text CHECK ('cash','card','transfer','mercadopago','credit','otro')` + `status text CHECK ('pending','completed','failed')`. CHECK constraints aplicados en auditoría abril 2026.
+Estructura estándar. `method text CHECK ('cash','card','transfer','mercadopago','credit')` + `status text CHECK ('completed','pending','refunded','cancelled')`.
+
+> **Corrección vs versión previa de este doc:** `method` **no** incluye `'otro'` (sí incluye `'credit'`); `status` usa `'refunded'`/`'cancelled'`, **no** `'failed'`. `payments.sale_id` es `NOT NULL` (los cobros de cuenta corriente viven en `customer_account_movements`).
 
 ### `inventory_movements`
 | columna | tipo | notas |
@@ -269,11 +276,15 @@ Estructura estándar. `method text CHECK ('cash','card','transfer','mercadopago'
 | id | uuid PK | |
 | business_id | uuid | |
 | product_id | uuid | |
-| type | text CHECK | `'sale'`, `'adjustment'`, `'purchase'`, `'return'` |
+| type | text CHECK | `'sale'`, `'adjustment'`, `'purchase'`, `'return'` (sólo `'sale'` y `'purchase'` se insertan hoy) |
 | quantity | int | |
-| created_by_operator | uuid nullable | FK → operators(id) — campo activo |
-| created_by | uuid nullable | legacy — sin FK activa (M-3, deferred) |
+| reason | text nullable | motivo legible del movimiento |
+| reference_id | uuid nullable | FK lógica al origen (ej. `expense_id` en compras) |
+| variant_id | uuid nullable | FK → product_variants(id) |
+| created_by_operator | uuid nullable | FK → operators(id) — campo activo (NULL = dueño) |
 | created_at | timestamptz | |
+
+> **Corrección vs versión previa de este doc:** existen `reason`, `reference_id` y `variant_id`. La columna `created_by` fue **eliminada** (M-3, mig. `20260528_06`) — era muerta.
 
 ### `cash_sessions`
 | columna | tipo | notas |
@@ -285,10 +296,12 @@ Estructura estándar. `method text CHECK ('cash','card','transfer','mercadopago'
 | opening_amount | numeric | |
 | closing_amount | numeric nullable | |
 | expected_amount | numeric nullable | |
-| difference | numeric nullable | |
+| notes | text nullable | |
 | opened_at | timestamptz | |
 | closed_at | timestamptz nullable | |
 | status | text | `'open'`, `'closed'` |
+
+> **Corrección vs versión previa de este doc:** **no** existe la columna `difference` (la diferencia se calcula como `closing_amount − expected_amount`); sí existe `notes`.
 
 **Nota:** G-3 pendiente — `opened_by` debería apuntar a `operators` no a `profiles`. Se resuelve junto con la implementación de la UI de caja (P8a).
 
@@ -329,17 +342,14 @@ Campos: `name`, `phone`, `email`, `dni`, `credit_balance`, `tax_type nullable`, 
 
 **Storage bucket:** `expense-receipts` — privado, 10MB máx, acepta jpg/png/webp/gif/pdf/xls/xlsx/csv. Path: `{business_id}/{uuid}.{ext}`. RLS: `(storage.foldername(name))[1] = (get_business_id())::text`.
 
-### `invoices`
-| columna | tipo | notas |
-|---------|------|-------|
-| id | uuid PK | |
-| business_id | uuid | |
-| sale_id | uuid | FK → sales(id) |
-| provider | text | proveedor de facturación (ej: 'facturama', 'alegra') |
-| external_id | text | ID en el proveedor externo |
-| status | text | estado de la factura |
-| pdf_url | text nullable | URL del PDF de la factura |
-| created_at | timestamptz | |
+### `expense_items`
+Line-items por producto de los gastos de **mercadería** (sistema completo, escrito por `create_mercaderia_expense`/`update_mercaderia_expense`). Columnas: `id`, `business_id`, `expense_id` (FK → expenses), `product_id` (FK → products), `product_name`, `quantity`, `unit_cost`, `subtotal` (generated), `update_cost` (bool), `variant_id` nullable, `created_at`. Detalle completo en `docs/db.md`.
+
+### `audit_log`
+Append-only — registra cada mutación de negocio (P7h Fase 1+2). Columnas: `id`, `business_id`, `operator_id` (NULL = dueño), `actor_role`, `action`, `entity_type`, `entity_id`, `entity_label`, `old_data`, `new_data`, `created_at`. RLS por `business_id = get_business_id()`. Retención indefinida (sin TTL). Detalle en `docs/db.md` + CLAUDE.md §Audit Log.
+
+### `invoices` — ⚠️ NO EXISTE en `supabase/schema.sql`
+Facturación electrónica planeada (P10.b, planes pagos), **diferida hasta señal de demanda**. No está deployada — no construir sobre esta tabla hasta crearla. Forma tentativa: `id`, `business_id`, `sale_id`, `provider`, `external_id`, `status`, `pdf_url`, `created_at`.
 
 ---
 
@@ -381,9 +391,17 @@ Todas tienen `SECURITY DEFINER` y `set search_path = public, extensions`.
 | `bulk_set_product_status(p_business_id, p_ids uuid[], p_status text)` | Activa/discontinúa productos en bloque |
 | `bulk_update_product_category(p_business_id, p_ids uuid[], p_category_id uuid)` | Cambia categoría en bloque |
 | `bulk_update_product_brand(p_business_id, p_ids uuid[], p_brand_id uuid)` | Cambia marca en bloque |
-| `undo_import(p_business_id, p_ids uuid[])` | Wrapper de bulk_delete con guard: IDs deben pertenecer al business_id y tener `created_at < 10min` |
+| `create_product_with_variants(p_operator_id, p_business_id, p_product, p_options, p_variants)` | Crea producto con variantes (guard `inventory_write` + audit) |
+| `update_product_variants(p_operator_id, p_business_id, p_product_id, p_options, p_variants)` | Actualiza opciones/variantes de un producto |
+| `compute_effective_price(p_cost, p_price, p_variant_price, p_list_id, p_list_multiplier, p_product_id, p_brand_id)` | Espejo SQL de `calculateProductPrice` (lib/price-lists.ts) — precio efectivo para las RPCs del catálogo y el checkout. Soporta precio base/variante, listas con multiplicador, overrides por producto/marca y redondeo por lista |
+| `create_mercaderia_expense(p_business_id, p_description, p_date, ...)` | Gasto de mercadería con line-items → incrementa stock, opcional update de costo, inserta `inventory_movements type='purchase'` |
+| `update_mercaderia_expense(...)` | Edita gasto de mercadería con reconciliación delta de stock |
+| `update_expense(p_business_id, p_expense_id, ...)` | Edita gasto **no**-mercadería |
 | `get_catalog_products(p_slug)` | Productos del catálogo público (SECURITY DEFINER, anon) |
 | `get_catalog_categories(p_slug)` | Categorías del catálogo público (SECURITY DEFINER, anon) |
+| `get_catalog_product_with_variants(p_slug, p_product_id)` | Detalle de producto del catálogo público con variantes (SECURITY DEFINER, anon) |
+
+> **Corrección vs versión previa de este doc:** `undo_import` **no existe** en la DB (planeada para P8b, nunca creada). El audit log (`audit_log`) y todas las mutaciones de inventario vía RPCs `SECURITY DEFINER` con `log_audit_event` son la realidad — ver §`audit_log` y §`expense_items`.
 
 **IMPORTANTE:**
 - `create_operator` y `update_operator` retornan JSON — siempre chequear `data.success`, no solo `error`
@@ -412,7 +430,7 @@ Todas tienen `SECURITY DEFINER` y `set search_path = public, extensions`.
 
 ### Pendientes (no críticos para beta) ⏳
 - **G-3** `cash_sessions.opened_by` → apunta a `profiles` pero debería apuntar a `operators`. Se resuelve junto con P8a (UI de caja)
-- **M-3** `inventory_movements.created_by` sin FK activa + trigger no la popula. Deferred
+- ~~**M-3**~~ ✅ `inventory_movements.created_by` era columna muerta → **eliminada** (mig. `20260528_06`). La atribución la maneja `created_by_operator`.
 
 ---
 
@@ -427,23 +445,26 @@ Todas tienen `SECURITY DEFINER` y `set search_path = public, extensions`.
 | `/catalogo/[slug]` | Catálogo público | pública (anon, usa RPCs) |
 | `/operator-select` | Selección de operador | requiere Supabase session |
 | `/pos` | Terminal de ventas | cualquier operador activo |
-| `/inventory` | Inventario (lectura) | `permissions.stock === true` |
-| `/products` | Inventario (escritura) | `permissions.stock_write === true` |
-| `/price-lists` | Listas de precios | `permissions.price_lists === true` |
-| `/dashboard` | KPIs dashboard | `permissions.stats === true` |
-| `/stats` | Estadísticas | `permissions.stats === true` |
-| `/stats/top-products` | Detalle top productos | `permissions.stats === true` |
-| `/stats/breakdown` | Detalle por categoría/marca | `permissions.stats === true` |
-| `/stats/payment-methods` | Detalle métodos de pago | `permissions.stats === true` |
-| `/stats/operators` | Detalle por operador | `permissions.stats === true` |
+| `/inventory` | Inventario (lectura) | `permissions.inventory_read === true` |
+| `/products` | Inventario (escritura) | `inventory_write` a nivel RPC (la ruta cae bajo el gate de inventario) |
+| `/price-lists` | Listas de precios | `permissions.inventory_read === true` |
+| `/promotions` | Promos y ofertas | `permissions.inventory_read === true` |
+| `/dashboard` | KPIs dashboard | `permissions.reports === true` |
+| `/stats` | Estadísticas | `permissions.reports === true` |
+| `/stats/top-products` | Detalle top productos | `permissions.reports === true` |
+| `/stats/breakdown` | Detalle por categoría/marca | `permissions.reports === true` |
+| `/stats/payment-methods` | Detalle métodos de pago | `permissions.reports === true` |
+| `/stats/operators` | Detalle por operador | `permissions.reports === true` |
+| `/activity` | Audit log | `permissions.reports === true` |
+| `/orders` | Pedidos online | `permissions.online_orders === true` |
 | `/expenses` | Módulo de gastos y proveedores | `permissions.expenses === true` |
 | `/profile` | Perfil del owner (email, contraseña) | solo owner |
 | `/operator/me` | Perfil personal del operador activo | cualquier operador (owner incluido) |
 | `/settings` | Configuración del negocio + operadores | `permissions.settings === true` |
 
-**Edge Runtime** (`export const runtime = 'edge'`): `/pos`, `/dashboard`, `/stats`, `/operator-select`
+> **Corrección vs versión previa de este doc:** los gates usan las capacidades del modelo de 8 (ver §Base de datos → operators), confirmado contra `src/proxy.ts`. Las keys viejas (`stock`/`stock_write`/`price_lists`/`stats`) ya no existen.
 
-**Nota:** Guard `/stock` en `proxy.ts` es dead code — la ruta real es `/inventory`. Eliminar en próximo cleanup.
+**Edge Runtime** (`export const runtime = 'edge'`): `/pos`, `/dashboard`, `/stats`, `/stats/trends`, `/stats/heatmap`, `/stats/report`, `/stats/inventory-health`, `/operator-select`, `/activity`
 
 ---
 
@@ -454,15 +475,15 @@ VENTAS
   Vender → /pos
 
 ANÁLISIS
-  Dashboard → /dashboard (requires stats)
-  Estadísticas → /stats (requires stats)
+  Dashboard → /dashboard (requires reports)
+  Estadísticas → /stats (requires reports)
 
 FINANZAS
   Gastos → /expenses (requires expenses)
 
 GESTIÓN
-  Stock → /inventory (requires stock)
-  Listas de precios → /price-lists (requires price_lists)
+  Stock → /inventory (requires inventory_read)
+  Listas de precios → /price-lists (requires inventory_read)
 
 SISTEMA
   Configuración → /settings (requires settings)
@@ -627,18 +648,16 @@ src/
 UserRole = 'owner' | 'manager' | 'cashier' | 'custom'
 Plan = 'free' | 'basic' | 'standard' | 'pro'
 
-// Permisos
+// Permisos — 8 capacidades en 4 áreas (rediseño 2026-06-09)
 Permissions {
-  sales: boolean
-  stock: boolean
-  stock_write: boolean
-  stats: boolean
-  price_lists: boolean
-  price_lists_write: boolean
-  settings: boolean
-  operators_write: boolean
-  expenses: boolean
-  price_override: boolean
+  online_orders: boolean      // Mostrador
+  pos_pricing: boolean        // Mostrador
+  inventory_read: boolean     // Inventario
+  inventory_write: boolean    // Inventario
+  reports: boolean            // Reportes
+  expenses: boolean           // Reportes
+  settings: boolean           // Administración
+  manage_operators: boolean   // Administración
 }
 
 // Entidades principales
