@@ -245,11 +245,11 @@ src/
 │   │   ├── stats/operators/page.tsx
 │   │   ├── stats/trends/page.tsx           # edge — period comparison via get_period_comparison RPC
 │   │   ├── stats/heatmap/page.tsx          # edge — sales heatmap by weekday/hour (business-local tz)
-│   │   ├── stats/report/page.tsx           # edge — printable PDF report by date range; gates `analysis` perm
-│   │   ├── stats/inventory-health/page.tsx  # edge — Salud de inventario: 2 lentes (Stock inmovilizado / Sobrestock); gates `analysis`; Promise.all([get_dead_stock, get_overstock]) sin filtro (tope 500), filtra/pagina en memoria
+│   │   ├── stats/report/page.tsx           # edge — printable PDF report by date range; gates `reports` perm
+│   │   ├── stats/inventory-health/page.tsx  # edge — Salud de inventario: 2 lentes (Stock inmovilizado / Sobrestock); gates `reports`; Promise.all([get_dead_stock, get_overstock]) sin filtro (tope 500), filtra/pagina en memoria
 │   │   ├── profile/page.tsx              # Owner only
 │   │   ├── operator/me/page.tsx          # Active operator personal profile
-│   │   ├── activity/page.tsx             # edge — audit log with chip+DateRangeFilter+operator filters; defense-in-depth `analysis` perm check
+│   │   ├── activity/page.tsx             # edge — audit log with chip+DateRangeFilter+operator filters; defense-in-depth `reports` perm check
 │   │   ├── orders/page.tsx               # Pedidos Online — list of catalog orders
 │   │   ├── customers/page.tsx            # Customers list
 │   │   ├── cash-sessions/page.tsx        # Cash sessions history + active session

@@ -7,7 +7,7 @@
 
 ## Connection
 
-- Project ID: `zrnthcznbrplzpmxmkwk` (⚠️ CONTEXT.md has a typo: `zrnthycznbrplzpmxmkwk`)
+- Project ID: `zrnthcznbrplzpmxmkwk`
 - URL: `https://zrnthcznbrplzpmxmkwk.supabase.co`
 - Region: sa-east-1
 - Plan: FREE — do not suggest paid-plan features (e.g. Leaked Password Protection)
@@ -64,7 +64,7 @@ RLS policies: `own_profile` (ALL where id = auth.uid()), `tenant_select_profiles
 | name | text | |
 | role | text | CHECK: `('cashier','manager','custom')` — no `'owner'` |
 | pin | text | bcrypt via `extensions.crypt()` |
-| permissions | jsonb | default has 9 keys (no `price_override`, `free_line` — soft-default to false in code) |
+| permissions | jsonb | 8 capacidades (rediseño 2026-06-09): `online_orders`, `pos_pricing`, `inventory_read`, `inventory_write`, `reports`, `expenses`, `settings`, `manage_operators`. Normalizador canónico `normalize_permissions` SQL ↔ TS, bi-shape. Ver `docs/todo/permisos-operario-redesign.md` |
 | is_active | bool | default true |
 | created_at | timestamptz | now() |
 
@@ -188,13 +188,13 @@ Constraints: override by product OR by brand, never both or neither. UNIQUE (pri
 |--------|------|-------|
 | id | uuid PK | gen_random_uuid() |
 | sale_id | uuid nullable | FK → sales(id) |
-| method | text | CHECK: `('cash','card','transfer','mercadopago')` |
+| method | text | CHECK: `('cash','card','transfer','mercadopago','credit')` |
 | amount | numeric | |
 | reference | text nullable | |
 | status | text nullable | CHECK: `('completed','pending','refunded','cancelled')` — default `'completed'` |
 | created_at | timestamptz | now() |
 
-> **Correction vs CONTEXT.md:** method CHECK has only 4 values — `credit` and `otro` are NOT in the live schema. Status CHECK has `'refunded','cancelled'`, NOT `'failed'`.
+> **Correction vs CONTEXT.md:** method CHECK has 5 values, including `credit`; `otro` is NOT in the live schema. Status CHECK has `'refunded','cancelled'`, NOT `'failed'`. `payments.sale_id` is `NOT NULL` (credit settlements live in `customer_account_movements`).
 
 ---
 
@@ -208,11 +208,11 @@ Constraints: override by product OR by brand, never both or neither. UNIQUE (pri
 | quantity | int | |
 | reason | text nullable | human-readable reason |
 | reference_id | uuid nullable | FK to source record (e.g. expense_id for purchases) |
-| created_by | uuid nullable | legacy — no active FK (M-3, deferred) |
-| created_by_operator | uuid nullable | FK → operators(id) — active field |
+| variant_id | uuid nullable | FK → product_variants(id) |
+| created_by_operator | uuid nullable | FK → operators(id) — active field (NULL = owner) |
 | created_at | timestamptz | now() |
 
-> **Correction vs CONTEXT.md:** `reason` and `reference_id` columns exist in live DB but were not documented.
+> **Correction vs CONTEXT.md:** `reason`, `reference_id` and `variant_id` columns exist in live DB but were not documented. The legacy `created_by` column was **dropped** (M-3, mig. `20260528_06`).
 
 ---
 
@@ -229,8 +229,9 @@ Constraints: override by product OR by brand, never both or neither. UNIQUE (pri
 | opened_at | timestamptz | now() |
 | closed_at | timestamptz nullable | |
 | notes | text nullable | |
+| status | text | `('open','closed')` |
 
-> **Correction vs CONTEXT.md:** `status` and `difference` columns do NOT exist in live DB. `notes` exists instead.
+> **Correction vs CONTEXT.md:** the `difference` column does NOT exist (compute it as `closing_amount − expected_amount`); `notes` and `status` both exist.
 
 ---
 
@@ -407,19 +408,8 @@ Promos y ofertas — plan completo en `docs/todo/promotions.md`. Una promo = exa
 
 `catalog_order_items` y `daily_snapshots` también suman columnas promo: `promotion_id`+`promo_discount` (informativas, líneas netas) y `promo_discounts_total`+`promo_sales_count` (agregados para P12) respectivamente. Espejo SQL↔TS de resolución/cálculo: `find_applicable_promotion`/`apply_unit_promo`/`compute_quantity_promo_discount` ↔ `src/lib/promotions.ts`.
 
-### `invoices`
-| column | type | notes |
-|--------|------|-------|
-| id | uuid PK | |
-| business_id | uuid | |
-| sale_id | uuid | FK → sales(id) |
-| provider | text | e.g. `'facturama'`, `'alegra'` |
-| external_id | text | ID at the external provider |
-| status | text | |
-| pdf_url | text nullable | |
-| created_at | timestamptz | |
-
-Currently unused (P10, paid plans).
+### `invoices` — ⚠️ NOT YET IN `supabase/schema.sql`
+Facturación electrónica (P10.b, paid plans) — **planned, deferred until demand signal; NOT deployed.** Do not build on this table until it is created. Tentative shape: `id`, `business_id`, `sale_id` (FK → sales), `provider` (e.g. `'facturama'`, `'alegra'`), `external_id`, `status`, `pdf_url`, `created_at`.
 
 ---
 
@@ -486,6 +476,9 @@ All SECURITY DEFINER, all with `set search_path = public, extensions`.
 | `create_product(p_operator_id, p_business_id, ...)` | Verifies `stock_write`; inserts product; logs `product_created` (migration `20260515_10`) |
 | `update_product(p_operator_id, p_business_id, p_product_id, ...)` | Verifies `stock_write`; logs `product_updated` with full old/new snapshots |
 | `delete_product(p_operator_id, p_business_id, p_product_id)` | Verifies `stock_write`; logs `product_deleted` |
+| `create_product_with_variants(p_operator_id, p_business_id, p_product, p_options, p_variants)` | Verifies `inventory_write`; creates product + options + variants; logs audit |
+| `update_product_variants(p_operator_id, p_business_id, p_product_id, p_options, p_variants)` | Verifies `inventory_write`; updates options/variants of a product; logs audit |
+| `compute_effective_price(p_cost, p_price, p_variant_price, p_list_id, p_list_multiplier, p_product_id, p_brand_id)` | SQL mirror of `calculateProductPrice` (lib/price-lists.ts). Base/variant price, list multiplier, product/brand overrides, per-list rounding. Used by catalog RPCs + checkout (no tenant guard — pure pricing helper) |
 | `update_category(p_operator_id, p_business_id, p_category_id, p_name, p_icon, p_icon_color)` | Verifies `stock_write`; accepts `icon_color` (migration `20260515_04`); logs `category_updated` |
 | `delete_category(p_operator_id, p_business_id, p_category_id)` | Verifies `stock_write`; logs `category_deleted` |
 | `delete_brand(p_operator_id, p_business_id, p_brand_id)` | Verifies `stock_write`; logs `brand_deleted` |
