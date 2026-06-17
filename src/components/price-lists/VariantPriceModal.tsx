@@ -2,7 +2,7 @@
 
 import { useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { X } from 'lucide-react'
+import { Info, X } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { VisuallyHidden } from '@radix-ui/react-visually-hidden'
@@ -150,16 +150,15 @@ export default function VariantPriceModal({
                         overrides,
                         price,
                       )
-                      // Margen real por variante: si tiene precio explícito (price > 0), el
-                      // margen se infiere de price/cost; si depende de la lista, usa el multiplicador
-                      // efectivo (productOverride > brandOverride > activeList.multiplier).
-                      const margin =
-                        cost > 0
-                          ? price > 0
-                            ? getMarginPercent(price / cost)
-                            : getMarginPercent(activeMultiplier)
-                          : null
-                      const isManual = price > 0 && cost > 0 && Math.abs(price / cost - activeMultiplier) > 0.0001
+                      // Margen de la PROPIA lista: el multiplicador efectivo del producto
+                      // (productOverride > brandOverride > activeList.multiplier), ya resuelto
+                      // en activeMultiplier. En /price-lists se muestra el margen de la lista
+                      // (o del override) — el precio fijo de la variante NO influye acá; su
+                      // prioridad sobre la lista vive en POS/catálogo (regla 11).
+                      const margin = cost > 0 ? getMarginPercent(activeMultiplier) : null
+                      // Aviso informativo (ⓘ): la variante tiene un precio fijo propio cuyo
+                      // margen difiere del de la lista. Info general de la app, no de la lista.
+                      const hasFixedPrice = price > 0 && cost > 0 && Math.abs(price / cost - activeMultiplier) > 0.0001
 
                       return (
                         <TableRow key={variant.id}>
@@ -172,15 +171,23 @@ export default function VariantPriceModal({
                           <TableCell className={`text-right tabular-nums${cost === 0 ? ' text-hint' : ''}`}>
                             {formatMoney(cost)}
                           </TableCell>
-                          <TableCell className="text-right tabular-nums">
+                          <TableCell className="relative z-20 text-right tabular-nums">
                             <span className="inline-flex items-center gap-1.5 justify-end">
                               {formatMoney(listPrice)}
-                              {isManual && (
-                                <span
-                                  className="inline-flex rounded-full px-1.5 py-0.5 text-[9px] font-medium bg-primary/10 dark:bg-primary/20 text-primary border border-primary/20 dark:border-primary/40"
-                                  title="Precio manual de la variante — la lista no lo modifica"
-                                >
-                                  Manual
+                              {hasFixedPrice && (
+                                <span className="group/fixed relative inline-flex items-center">
+                                  <Info
+                                    className="h-3.5 w-3.5 cursor-help text-subtle/60 transition-colors hover:text-subtle"
+                                    strokeWidth={1.8}
+                                    aria-label="Esta variante tiene un precio fijo propio"
+                                  />
+                                  <span
+                                    role="tooltip"
+                                    className="pointer-events-none absolute bottom-full right-0 z-20 mb-1.5 w-56 rounded-lg border border-border bg-popover px-3 py-2 text-left text-xs font-normal leading-snug opacity-0 shadow-lg transition-opacity duration-150 group-hover/fixed:opacity-100"
+                                  >
+                                    <span className="block font-medium text-heading">Precio fijo propio: {formatMoney(price)}</span>
+                                    <span className="mt-0.5 block text-subtle">En mostrador y catálogo se cobra ese precio, no el de esta lista.</span>
+                                  </span>
                                 </span>
                               )}
                             </span>
