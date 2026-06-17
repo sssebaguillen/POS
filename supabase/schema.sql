@@ -770,8 +770,13 @@ BEGIN
      AND status = 'recibido' AND created_at > now() - interval '1 hour';
   IF v_pending_count >= 3 THEN RETURN jsonb_build_object('success', false, 'error', 'too_many_pending'); END IF;
 
-  v_list_id := NULL;
-  v_list_mult := NULL;
+  -- Resolve catalog price list from settings
+  SELECT pl.id, pl.multiplier INTO v_list_id, v_list_mult
+  FROM price_lists pl
+  WHERE pl.id = (
+    SELECT (b.settings->>'catalog_price_list_id')::uuid
+    FROM businesses b WHERE b.id = v_business_id
+  ) AND pl.business_id = v_business_id;
 
   INSERT INTO catalog_order_counters (business_id, last_number) VALUES (v_business_id, 1)
    ON CONFLICT (business_id) DO UPDATE SET last_number = catalog_order_counters.last_number + 1
@@ -3031,6 +3036,8 @@ CREATE OR REPLACE FUNCTION "public"."get_catalog_product_with_variants"("p_slug"
     AS $$
 DECLARE
   v_business_id     uuid;
+  v_list_id         uuid;
+  v_list_mult       numeric;
   v_product         record;
   v_promo           public.promotions;
   v_promo_real      boolean;
@@ -3049,6 +3056,14 @@ BEGIN
   IF v_business_id IS NULL THEN
     RETURN json_build_object('success', false, 'error', 'Negocio no encontrado');
   END IF;
+
+  -- Resolve catalog price list from settings
+  SELECT pl.id, pl.multiplier INTO v_list_id, v_list_mult
+  FROM price_lists pl
+  WHERE pl.id = (
+    SELECT (b.settings->>'catalog_price_list_id')::uuid
+    FROM businesses b WHERE b.id = v_business_id
+  ) AND pl.business_id = v_business_id;
 
   SELECT * INTO v_product
   FROM public.products
@@ -3078,8 +3093,8 @@ BEGIN
     v_product.cost::numeric,
     v_product.price::numeric,
     NULL,
-    NULL,
-    NULL,
+    v_list_id,
+    v_list_mult,
     v_product.id,
     v_product.brand_id
   );
@@ -3095,7 +3110,7 @@ BEGIN
           AND pv.is_active = true
           AND public.compute_effective_price(
                 pv.cost::numeric, pv.price::numeric, pv.price::numeric,
-                NULL, NULL, v_product.id, v_product.brand_id) > v_promo.offer_price
+                v_list_id, v_list_mult, v_product.id, v_product.brand_id) > v_promo.offer_price
       ) INTO v_promo_real;
     ELSE
       v_promo_real := v_promo.offer_price < v_base_price;
@@ -3165,8 +3180,8 @@ BEGIN
       pv.cost::numeric,
       pv.price::numeric,
       pv.price::numeric,
-      NULL,
-      NULL,
+      v_list_id,
+      v_list_mult,
       v_product.id,
       v_product.brand_id
     ) AS price
@@ -3216,6 +3231,8 @@ CREATE OR REPLACE FUNCTION "public"."get_catalog_products"("p_slug" "text") RETU
 -- Los campos promo_* son crudos — el label lo arma el cliente (promoBadgeLabel).
 DECLARE
   v_business_id uuid;
+  v_list_id     uuid;
+  v_list_mult   numeric;
 BEGIN
   SELECT b.id INTO v_business_id
   FROM businesses b
@@ -3224,6 +3241,14 @@ BEGIN
   IF v_business_id IS NULL THEN
     RETURN;
   END IF;
+
+  -- Resolve catalog price list from settings
+  SELECT pl.id, pl.multiplier INTO v_list_id, v_list_mult
+  FROM price_lists pl
+  WHERE pl.id = (
+    SELECT (b.settings->>'catalog_price_list_id')::uuid
+    FROM businesses b WHERE b.id = v_business_id
+  ) AND pl.business_id = v_business_id;
 
   RETURN QUERY
   SELECT
@@ -3261,7 +3286,7 @@ BEGIN
              FROM (
                SELECT public.compute_effective_price(
                  pv.cost::numeric, pv.price::numeric, pv.price::numeric,
-                 NULL, NULL, p.id, p.brand_id) AS price
+                 v_list_id, v_list_mult, p.id, p.brand_id) AS price
                FROM product_variants pv
                WHERE pv.product_id = p.id AND pv.is_active = true
              ) ep
@@ -3270,17 +3295,17 @@ BEGIN
               WHEN pv_def.id IS NOT NULL THEN
                 public.compute_effective_price(
                   pv_def.cost::numeric, pv_def.price::numeric, pv_def.price::numeric,
-                  NULL, NULL, p.id, p.brand_id)
+                  v_list_id, v_list_mult, p.id, p.brand_id)
               ELSE
                 public.compute_effective_price(
                   p.cost::numeric, p.price::numeric, NULL,
-                  NULL, NULL, p.id, p.brand_id)
+                  v_list_id, v_list_mult, p.id, p.brand_id)
             END
           )
         ELSE
           public.compute_effective_price(
             p.cost::numeric, p.price::numeric, NULL,
-            NULL, NULL, p.id, p.brand_id)
+            v_list_id, v_list_mult, p.id, p.brand_id)
       END AS base_price,
       CASE
         WHEN p.has_variants AND pv_def.id IS NOT NULL THEN pv_def.stock
@@ -3322,7 +3347,7 @@ BEGIN
                  AND pv.is_active = true
                  AND public.compute_effective_price(
                        pv.cost::numeric, pv.price::numeric, pv.price::numeric,
-                       NULL, NULL, base.id, base.brand_id) > fp0.offer_price
+                       v_list_id, v_list_mult, base.id, base.brand_id) > fp0.offer_price
              )
              ELSE fp0.offer_price < base.base_price
            END
