@@ -1,6 +1,7 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { X } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
@@ -42,18 +43,16 @@ export default function VariantPriceModal({
 }: VariantPriceModalProps) {
   const supabase = useMemo(() => createClient(), [])
   const formatMoney = useFormatMoney()
-  const [data, setData] = useState<ProductWithVariants | null>(null)
-  const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    if (!open) return
-    setLoading(true)
-    setData(null)
-    supabase.rpc('get_product_with_variants', { p_product_id: product.id }).then(({ data: rpc }) => {
-      setLoading(false)
-      setData(unwrapProductWithVariants(rpc))
-    })
-  }, [open, product.id, supabase])
+  const { data, isLoading: loading } = useQuery({
+    queryKey: ['variant-prices', product.id],
+    queryFn: async () => {
+      const { data: rpc } = await supabase
+        .rpc('get_product_with_variants', { p_product_id: product.id })
+      return unwrapProductWithVariants(rpc)
+    },
+    enabled: open,
+  })
 
   const activeVariants = useMemo(
     () => data?.variants.filter(v => v.is_active) ?? [],
