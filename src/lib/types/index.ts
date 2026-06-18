@@ -1,4 +1,4 @@
-import type { OperatorRole, PaymentMethod } from '@/lib/constants/domain'
+import type { OperatorRole, PaymentMethod, SaleSource } from '@/lib/constants/domain'
 
 export type UserRole = 'owner' | OperatorRole
 
@@ -302,6 +302,18 @@ export interface PromoImpact {
   data: PromoImpactRow[]
 }
 
+// Segmentación POS vs Pedido online (get_sales_by_source)
+export interface SalesSourceBucket {
+  count: number
+  revenue: number
+}
+
+export interface SalesBySource {
+  pos: SalesSourceBucket
+  catalog: SalesSourceBucket
+  total: SalesSourceBucket
+}
+
 export interface OperatorSalesStatsRow {
   operator_id: string | null
   operator_name: string
@@ -383,6 +395,7 @@ export interface SalesHistoryRow {
   discount: number
   total: number
   status: string | null
+  source: SaleSource                 // canal: 'pos' (Mostrador) | 'catalog' (Pedido online)
   method: PaymentMethod | null      // método del pago más temprano; null si no hay pago
   operator_name: string | null      // null = dueño
   item_count?: number               // suma de cantidades de la venta (preview en fila colapsada)

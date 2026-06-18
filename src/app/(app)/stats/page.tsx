@@ -6,7 +6,7 @@ import type { TopProductRow } from '@/components/stats/StatsView'
 import { requireAuthenticatedBusinessId, getBusinessTimezone } from '@/lib/business'
 import { resolveDateRange } from '@/lib/date-utils'
 import { normalizeOperatorSalesStatsRows } from '@/lib/mappers'
-import type { DailySnapshotRow, OperatorSalesStatsRow, StatsKpis, StatsEvolution, StatsBreakdown, SalesHeatmapCell, DeadStockSummary, PromoImpact } from '@/lib/types'
+import type { DailySnapshotRow, OperatorSalesStatsRow, StatsKpis, StatsEvolution, StatsBreakdown, SalesHeatmapCell, DeadStockSummary, PromoImpact, SalesBySource } from '@/lib/types'
 
 interface SearchParams {
   period?: string
@@ -37,6 +37,7 @@ export default async function StatsPage({
     { data: heatmapRaw },
     { data: deadStockRaw },
     { data: promoImpactRaw },
+    { data: salesBySourceRaw },
   ] =
     await Promise.all([
       supabase.rpc('get_stats_kpis', {
@@ -89,6 +90,11 @@ export default async function StatsPage({
         p_from: from,
         p_to: to,
       }),
+      supabase.rpc('get_sales_by_source', {
+        p_business_id: businessId,
+        p_from: from,
+        p_to: to,
+      }),
     ])
 
   const kpis = kpisRaw as unknown as StatsKpis | null
@@ -101,6 +107,7 @@ export default async function StatsPage({
   const heatmapCells = (heatmapRaw as unknown as { data: SalesHeatmapCell[] } | null)?.data ?? []
   const deadStockSummary = (deadStockRaw as unknown as { summary: DeadStockSummary } | null)?.summary ?? null
   const promoImpact = promoImpactRaw as unknown as PromoImpact | null
+  const salesBySource = salesBySourceRaw as unknown as SalesBySource | null
 
   return (
     <StatsView
@@ -114,6 +121,7 @@ export default async function StatsPage({
       heatmapCells={heatmapCells}
       deadStockSummary={deadStockSummary}
       promoImpact={promoImpact}
+      salesBySource={salesBySource}
       period={period}
       from={params.from}
       to={params.to}
