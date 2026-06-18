@@ -5269,7 +5269,7 @@ $$;
 ALTER FUNCTION "public"."get_sales_heatmap"("p_business_id" "uuid", "p_from" "date", "p_to" "date", "p_operator_id" "uuid") OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."get_sales_history"("p_business_id" "uuid", "p_from" timestamp with time zone, "p_to" timestamp with time zone, "p_method" "text" DEFAULT NULL::"text", "p_operator_id" "uuid" DEFAULT NULL::"uuid", "p_search" "text" DEFAULT NULL::"text", "p_before_created_at" timestamp with time zone DEFAULT NULL::timestamp with time zone, "p_before_id" "uuid" DEFAULT NULL::"uuid", "p_limit" integer DEFAULT 50) RETURNS "jsonb"
+CREATE OR REPLACE FUNCTION "public"."get_sales_history"("p_business_id" "uuid", "p_from" timestamp with time zone, "p_to" timestamp with time zone, "p_method" "text" DEFAULT NULL::"text", "p_operator_id" "uuid" DEFAULT NULL::"uuid", "p_search" "text" DEFAULT NULL::"text", "p_before_created_at" timestamp with time zone DEFAULT NULL::timestamp with time zone, "p_before_id" "uuid" DEFAULT NULL::"uuid", "p_limit" integer DEFAULT 50, "p_source" "text" DEFAULT NULL::"text") RETURNS "jsonb"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public', 'extensions'
     AS $$
@@ -5277,6 +5277,7 @@ DECLARE
   v_limit   integer := LEAST(GREATEST(COALESCE(p_limit, 50), 1), 100);
   v_owner   uuid    := '00000000-0000-0000-0000-000000000000';
   v_search  text    := NULLIF(btrim(COALESCE(p_search, '')), '');
+  v_source  text    := NULLIF(btrim(COALESCE(p_source, '')), '');
   v_first   boolean := (p_before_id IS NULL);
   v_data    jsonb;
   v_total   integer;
@@ -5288,7 +5289,7 @@ BEGIN
   INTO v_data
   FROM (
     SELECT
-      s.id, s.created_at, s.subtotal, s.discount, s.total, s.status,
+      s.id, s.created_at, s.subtotal, s.discount, s.total, s.status, s.source,
       (SELECT p.method FROM payments p WHERE p.sale_id = s.id ORDER BY p.created_at ASC LIMIT 1) AS method,
       o.name AS operator_name,
       (SELECT COALESCE(SUM(si.quantity), 0)::int
@@ -5328,6 +5329,7 @@ BEGIN
         p_method IS NULL
         OR (SELECT p.method FROM payments p WHERE p.sale_id = s.id ORDER BY p.created_at ASC LIMIT 1) = p_method
       )
+      AND (v_source IS NULL OR s.source = v_source)
       AND (
         p_before_id IS NULL
         OR (s.created_at, s.id) < (p_before_created_at, p_before_id)
@@ -5366,6 +5368,7 @@ BEGIN
           p_method IS NULL
           OR (SELECT p.method FROM payments p WHERE p.sale_id = s.id ORDER BY p.created_at ASC LIMIT 1) = p_method
         )
+        AND (v_source IS NULL OR s.source = v_source)
     )
     SELECT
       COUNT(*)::integer,
@@ -5391,7 +5394,50 @@ END;
 $$;
 
 
-ALTER FUNCTION "public"."get_sales_history"("p_business_id" "uuid", "p_from" timestamp with time zone, "p_to" timestamp with time zone, "p_method" "text", "p_operator_id" "uuid", "p_search" "text", "p_before_created_at" timestamp with time zone, "p_before_id" "uuid", "p_limit" integer) OWNER TO "postgres";
+ALTER FUNCTION "public"."get_sales_history"("p_business_id" "uuid", "p_from" timestamp with time zone, "p_to" timestamp with time zone, "p_method" "text", "p_operator_id" "uuid", "p_search" "text", "p_before_created_at" timestamp with time zone, "p_before_id" "uuid", "p_limit" integer, "p_source" "text") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."get_sales_by_source"("p_business_id" "uuid", "p_from" "date" DEFAULT NULL::"date", "p_to" "date" DEFAULT NULL::"date") RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'extensions'
+    AS $$
+DECLARE
+  v_timezone text;
+  v_result   jsonb;
+BEGIN
+  PERFORM public.assert_tenant(p_business_id);
+
+  SELECT timezone INTO v_timezone FROM public.businesses WHERE id = p_business_id;
+  IF v_timezone IS NULL OR v_timezone = '' THEN
+    v_timezone := 'America/Argentina/Buenos_Aires';
+  END IF;
+
+  SELECT jsonb_build_object(
+    'pos', jsonb_build_object(
+      'count',   COALESCE(count(*)      FILTER (WHERE s.source = 'pos'), 0),
+      'revenue', COALESCE(sum(s.total)  FILTER (WHERE s.source = 'pos'), 0)
+    ),
+    'catalog', jsonb_build_object(
+      'count',   COALESCE(count(*)      FILTER (WHERE s.source = 'catalog'), 0),
+      'revenue', COALESCE(sum(s.total)  FILTER (WHERE s.source = 'catalog'), 0)
+    ),
+    'total', jsonb_build_object(
+      'count',   COALESCE(count(*), 0),
+      'revenue', COALESCE(sum(s.total), 0)
+    )
+  ) INTO v_result
+  FROM sales s
+  WHERE s.business_id = p_business_id
+    AND s.status = 'completed'
+    AND (p_from IS NULL OR (s.created_at AT TIME ZONE v_timezone)::date >= p_from)
+    AND (p_to   IS NULL OR (s.created_at AT TIME ZONE v_timezone)::date <= p_to);
+
+  RETURN v_result;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."get_sales_by_source"("p_business_id" "uuid", "p_from" "date", "p_to" "date") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."get_session_summary"("p_session_id" "uuid") RETURNS "jsonb"
@@ -13874,9 +13920,15 @@ GRANT ALL ON FUNCTION "public"."get_sales_heatmap"("p_business_id" "uuid", "p_fr
 
 
 
-REVOKE ALL ON FUNCTION "public"."get_sales_history"("p_business_id" "uuid", "p_from" timestamp with time zone, "p_to" timestamp with time zone, "p_method" "text", "p_operator_id" "uuid", "p_search" "text", "p_before_created_at" timestamp with time zone, "p_before_id" "uuid", "p_limit" integer) FROM PUBLIC;
-GRANT ALL ON FUNCTION "public"."get_sales_history"("p_business_id" "uuid", "p_from" timestamp with time zone, "p_to" timestamp with time zone, "p_method" "text", "p_operator_id" "uuid", "p_search" "text", "p_before_created_at" timestamp with time zone, "p_before_id" "uuid", "p_limit" integer) TO "authenticated";
-GRANT ALL ON FUNCTION "public"."get_sales_history"("p_business_id" "uuid", "p_from" timestamp with time zone, "p_to" timestamp with time zone, "p_method" "text", "p_operator_id" "uuid", "p_search" "text", "p_before_created_at" timestamp with time zone, "p_before_id" "uuid", "p_limit" integer) TO "service_role";
+REVOKE ALL ON FUNCTION "public"."get_sales_by_source"("p_business_id" "uuid", "p_from" "date", "p_to" "date") FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."get_sales_by_source"("p_business_id" "uuid", "p_from" "date", "p_to" "date") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."get_sales_by_source"("p_business_id" "uuid", "p_from" "date", "p_to" "date") TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "public"."get_sales_history"("p_business_id" "uuid", "p_from" timestamp with time zone, "p_to" timestamp with time zone, "p_method" "text", "p_operator_id" "uuid", "p_search" "text", "p_before_created_at" timestamp with time zone, "p_before_id" "uuid", "p_limit" integer, "p_source" "text") FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."get_sales_history"("p_business_id" "uuid", "p_from" timestamp with time zone, "p_to" timestamp with time zone, "p_method" "text", "p_operator_id" "uuid", "p_search" "text", "p_before_created_at" timestamp with time zone, "p_before_id" "uuid", "p_limit" integer, "p_source" "text") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."get_sales_history"("p_business_id" "uuid", "p_from" timestamp with time zone, "p_to" timestamp with time zone, "p_method" "text", "p_operator_id" "uuid", "p_search" "text", "p_before_created_at" timestamp with time zone, "p_before_id" "uuid", "p_limit" integer, "p_source" "text") TO "service_role";
 
 
 

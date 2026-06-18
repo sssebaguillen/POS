@@ -16,8 +16,9 @@ import { cn } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
 import { normalizeOperatorSalesStatsRows } from '@/lib/mappers'
 import type {
-  DailySnapshotRow, OperatorSalesStatsRow, StatsKpis, StatsEvolution, StatsBreakdown, SalesHeatmapCell, DeadStockSummary, PromoImpact,
+  DailySnapshotRow, OperatorSalesStatsRow, StatsKpis, StatsEvolution, StatsBreakdown, SalesHeatmapCell, DeadStockSummary, PromoImpact, SalesBySource,
 } from '@/lib/types'
+import { SALE_SOURCE_LABELS } from '@/lib/constants/domain'
 import { promoBadgeLabel } from '@/lib/promotions'
 import SalesHeatmap from '@/components/stats/SalesHeatmap'
 import {
@@ -52,6 +53,7 @@ interface StatsQueryData {
   dailySnapshots: DailySnapshotRow[]
   heatmapCells: SalesHeatmapCell[]
   promoImpact: PromoImpact | null
+  salesBySource: SalesBySource | null
 }
 
 interface Props {
@@ -65,6 +67,7 @@ interface Props {
   heatmapCells: SalesHeatmapCell[]
   deadStockSummary: DeadStockSummary | null
   promoImpact: PromoImpact | null
+  salesBySource: SalesBySource | null
   period: string
   from?: string
   to?: string
@@ -106,6 +109,7 @@ export default function StatsView({
   heatmapCells: initialHeatmapCells,
   deadStockSummary,
   promoImpact: initialPromoImpact,
+  salesBySource: initialSalesBySource,
   period: initialPeriod,
   from: initialFrom,
   to: initialTo,
@@ -131,7 +135,7 @@ export default function StatsView({
     queryKey: ['stats', businessId, period, from, to],
     queryFn: async () => {
       const resolvedRange = resolveDateRange(period, from, to, timezone)
-      const [kpisResult, evolutionResult, breakdownResult, topProductsResult, operatorsResult, dailySnapshotsResult, heatmapResult, promoImpactResult] = await Promise.all([
+      const [kpisResult, evolutionResult, breakdownResult, topProductsResult, operatorsResult, dailySnapshotsResult, heatmapResult, promoImpactResult, salesBySourceResult] = await Promise.all([
         supabase.rpc('get_stats_kpis', {
           p_business_id: businessId,
           p_from: resolvedRange.from,
@@ -174,6 +178,11 @@ export default function StatsView({
           p_from: resolvedRange.from,
           p_to: resolvedRange.to,
         }),
+        supabase.rpc('get_sales_by_source', {
+          p_business_id: businessId,
+          p_from: resolvedRange.from,
+          p_to: resolvedRange.to,
+        }),
       ])
 
       return {
@@ -187,6 +196,7 @@ export default function StatsView({
         dailySnapshots: (dailySnapshotsResult.data as unknown as { data: DailySnapshotRow[] } | null)?.data ?? [],
         heatmapCells: (heatmapResult.data as unknown as { data: SalesHeatmapCell[] } | null)?.data ?? [],
         promoImpact: promoImpactResult.data as unknown as PromoImpact | null,
+        salesBySource: salesBySourceResult.data as unknown as SalesBySource | null,
       }
     },
     initialData: isInitialPeriod
@@ -199,6 +209,7 @@ export default function StatsView({
           dailySnapshots: initialDailySnapshots,
           heatmapCells: initialHeatmapCells,
           promoImpact: initialPromoImpact,
+          salesBySource: initialSalesBySource,
         }
       : undefined,
     initialDataUpdatedAt: isInitialPeriod ? mountedAt : undefined,
@@ -214,6 +225,7 @@ export default function StatsView({
   const dailySnapshots = data?.dailySnapshots ?? []
   const heatmapCells = data?.heatmapCells ?? []
   const promoImpact = data?.promoImpact ?? null
+  const salesBySource = data?.salesBySource ?? null
 
   function syncDateUrl(nextPeriod: DateRangePeriod, nextFrom?: string, nextTo?: string) {
     if (typeof window === 'undefined') return
@@ -289,6 +301,15 @@ export default function StatsView({
   const promoRows = promoImpact?.data ?? []
   const promoShare = promoTotals && promoTotals.total_sales_count > 0
     ? (promoTotals.promo_sales_count / promoTotals.total_sales_count) * 100
+    : 0
+
+  // Segmentación de canal: Mostrador (pos) vs Pedido online (catalog)
+  const sourceTotalCount = salesBySource?.total.count ?? 0
+  const catalogShare = salesBySource && sourceTotalCount > 0
+    ? (salesBySource.catalog.count / sourceTotalCount) * 100
+    : 0
+  const posShare = salesBySource && sourceTotalCount > 0
+    ? (salesBySource.pos.count / sourceTotalCount) * 100
     : 0
 
   const snapshotTrendData = dailySnapshots.map(snapshot => ({
@@ -849,6 +870,46 @@ export default function StatsView({
                 )}
               </div>
             </div>
+
+            {/* Canal de venta: Mostrador vs Pedido online */}
+            {salesBySource && salesBySource.catalog.count > 0 && (
+              <div className="surface-card p-6 space-y-4">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-3">
+                    <p className="font-semibold text-heading font-display">Canal de venta</p>
+                    <Link href="/orders" className="text-xs text-primary font-medium hover:underline whitespace-nowrap">
+                      Ver pedidos →
+                    </Link>
+                  </div>
+                  <p className="text-sm text-hint">
+                    Cuánto vendiste en el mostrador y cuánto entró por pedidos online en el período.
+                  </p>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="rounded-xl border border-edge px-4 py-3">
+                    <p className="text-[11px] uppercase tracking-wide text-hint">{SALE_SOURCE_LABELS.pos}</p>
+                    <p className="text-lg font-semibold text-heading tabular-nums">{formatMoney(salesBySource.pos.revenue)}</p>
+                    <p className="text-xs text-hint">
+                      {salesBySource.pos.count} venta{salesBySource.pos.count !== 1 ? 's' : ''}
+                      <span className="font-medium"> · {posShare.toFixed(0)}%</span>
+                    </p>
+                  </div>
+                  <div className="rounded-xl border border-primary/20 bg-primary/5 px-4 py-3">
+                    <p className="text-[11px] uppercase tracking-wide text-hint">{SALE_SOURCE_LABELS.catalog}</p>
+                    <p className="text-lg font-semibold text-heading tabular-nums">{formatMoney(salesBySource.catalog.revenue)}</p>
+                    <p className="text-xs text-hint">
+                      {salesBySource.catalog.count} venta{salesBySource.catalog.count !== 1 ? 's' : ''}
+                      <span className="font-medium text-primary"> · {catalogShare.toFixed(0)}%</span>
+                    </p>
+                  </div>
+                </div>
+                {/* Barra de proporción */}
+                <div className="h-2 w-full rounded-full bg-muted overflow-hidden flex" aria-hidden>
+                  <div className="h-full bg-subtle/60" style={{ width: `${posShare}%` }} />
+                  <div className="h-full bg-primary" style={{ width: `${catalogShare}%` }} />
+                </div>
+              </div>
+            )}
 
             {/* Impacto de promociones */}
             <div className="surface-card p-6 space-y-4">

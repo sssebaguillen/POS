@@ -25,5 +25,15 @@ export const PROFILE_ROLE_LABELS: Record<string, string> = {
   owner: 'Dueño',
 }
 
+// Canal de origen de la venta — debe coincidir con el CHECK de sales.source
+export const SALE_SOURCES = ['pos', 'catalog'] as const
+export type SaleSource = typeof SALE_SOURCES[number]
+
+// Labels en español neutro (sin voseo) — Mostrador = POS, Pedido online = catálogo
+export const SALE_SOURCE_LABELS: Record<SaleSource, string> = {
+  pos: 'Mostrador',
+  catalog: 'Pedido online',
+}
+
 // Timezone IANA por defecto del negocio (mismo fallback que los RPCs de stats)
 export const DEFAULT_TIMEZONE = 'America/Argentina/Buenos_Aires'

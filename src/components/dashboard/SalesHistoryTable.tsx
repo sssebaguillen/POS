@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect, memo, useRef } from 'react'
 import { useMutation, useInfiniteQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query'
-import { Printer, Trash2, X } from 'lucide-react'
+import { Download, Printer, Trash2, X } from 'lucide-react'
 import ReceiptPreviewModal from '@/components/pos/ReceiptPreviewModal'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
@@ -12,8 +12,10 @@ import { useCurrency, useFormatMoney } from '@/lib/context/CurrencyContext'
 import type { ReceiptData } from '@/lib/printer/types'
 import { createClient } from '@/lib/supabase/client'
 import { getSaleDetail, updateSale, deleteSale } from '@/lib/api/sales'
-import type { PaymentMethod } from '@/lib/constants/domain'
+import type { PaymentMethod, SaleSource } from '@/lib/constants/domain'
+import { SALE_SOURCES, SALE_SOURCE_LABELS } from '@/lib/constants/domain'
 import { isPaymentMethod, normalizePayment, PAYMENT_OPTIONS, PAYMENT_TONE } from '@/lib/payments'
+import { downloadCSV } from '@/lib/csv'
 import { ACCENT_CHIP } from '@/lib/accent-colors'
 import { useToast } from '@/hooks/useToast'
 import SelectDropdown from '@/components/ui/SelectDropdown'
@@ -70,7 +72,9 @@ function SalesHistoryTable({ businessId, businessName, operatorId, from, to, ope
   const [searchQuery, setSearchQuery] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
   const [filterMethod, setFilterMethod] = useState<PaymentMethod | null>(null)
+  const [filterSource, setFilterSource] = useState<SaleSource | null>(null)
   const [filterOperatorId, setFilterOperatorId] = useState('')
+  const [exporting, setExporting] = useState(false)
   const [receiptPreview, setReceiptPreview] = useState<ReceiptData | null>(null)
   const [localError, setLocalError] = useState<string | null>(null)
   const deleteTimersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map())
@@ -82,7 +86,7 @@ function SalesHistoryTable({ businessId, businessName, operatorId, from, to, ope
   }, [searchQuery])
 
   const { data, isFetching, isFetchingNextPage, hasNextPage, fetchNextPage } = useInfiniteQuery({
-    queryKey: ['sales-history', businessId, from, to, filterMethod, filterOperatorId, debouncedSearch],
+    queryKey: ['sales-history', businessId, from, to, filterMethod, filterSource, filterOperatorId, debouncedSearch],
     enabled: !!businessId,
     initialPageParam: null as Cursor | null,
     placeholderData: keepPreviousData,
@@ -95,6 +99,7 @@ function SalesHistoryTable({ businessId, businessName, operatorId, from, to, ope
         p_method: filterMethod,
         p_operator_id: filterOperatorId === '' ? null : filterOperatorId,
         p_search: debouncedSearch || null,
+        p_source: filterSource,
         p_before_created_at: pageParam?.created_at ?? null,
         p_before_id: pageParam?.id ?? null,
         p_limit: PAGE_SIZE,
@@ -128,12 +133,67 @@ function SalesHistoryTable({ businessId, businessName, operatorId, from, to, ope
     ...operators.map(o => ({ value: o.id, label: o.name })),
   ], [operators])
 
-  const hasActiveFilters = !!debouncedSearch || filterMethod !== null || filterOperatorId !== ''
+  const hasActiveFilters = !!debouncedSearch || filterMethod !== null || filterSource !== null || filterOperatorId !== ''
 
   function clearAllFilters() {
     setSearchQuery('')
     setFilterMethod(null)
+    setFilterSource(null)
     setFilterOperatorId('')
+  }
+
+  // Export CSV — recorre todas las páginas del rango/filtros activos (no solo
+  // las cargadas en la tabla) para que el archivo no quede truncado.
+  async function handleExportCSV() {
+    if (!businessId || exporting) return
+    setExporting(true)
+    setLocalError(null)
+    try {
+      const rows: SalesHistoryRow[] = []
+      let cursor: Cursor | null = null
+      // Cota defensiva: 200 páginas × 100 = 20k ventas
+      for (let i = 0; i < 200; i++) {
+        const { data: rpcResult, error } = (await supabase.rpc('get_sales_history', {
+          p_business_id: businessId,
+          p_from: from,
+          p_to: to,
+          p_method: filterMethod,
+          p_operator_id: filterOperatorId === '' ? null : filterOperatorId,
+          p_search: debouncedSearch || null,
+          p_source: filterSource,
+          p_before_created_at: cursor?.created_at ?? null,
+          p_before_id: cursor?.id ?? null,
+          p_limit: 100,
+        })) as { data: unknown; error: { message: string } | null }
+        if (error) throw new Error(error.message)
+        const page = (rpcResult as unknown as SalesHistoryPage) ?? { data: [], total: 0, summary: null }
+        rows.push(...page.data)
+        if (page.data.length < 100) break
+        const last = page.data[page.data.length - 1]
+        cursor = { created_at: last.created_at, id: last.id }
+      }
+      const exportRows = rows
+        .filter(r => !deletedIds.has(r.id))
+        .map(r => ({
+          Fecha: new Date(r.created_at).toLocaleString('es-AR'),
+          Venta: `#${r.id.slice(0, 6)}`,
+          Canal: SALE_SOURCE_LABELS[r.source] ?? r.source,
+          Items: r.item_count ?? 0,
+          Método: r.method ? normalizePayment(r.method) : '',
+          Operador: r.operator_name ?? 'Dueño',
+          Estado: r.status ?? '',
+          Total: r.total,
+        }))
+      if (exportRows.length === 0) {
+        setLocalError('No hay ventas para exportar con los filtros activos.')
+        return
+      }
+      downloadCSV(exportRows, `ventas-${from.slice(0, 10)}_a_${to.slice(0, 10)}`)
+    } catch (e) {
+      setLocalError(e instanceof Error ? e.message : 'No se pudo exportar el historial.')
+    } finally {
+      setExporting(false)
+    }
   }
 
   function invalidateHistory() {
@@ -343,10 +403,40 @@ function SalesHistoryTable({ businessId, businessName, operatorId, from, to, ope
       {/* Filters + summary */}
       <div className="p-4 border-b border-edge-soft space-y-3">
         <div className="flex items-center justify-between gap-2">
-          <p className="font-semibold text-heading font-display">Historial detallado</p>
-          {isFetching && !isFetchingNextPage && (
-            <span className="text-xs text-primary animate-pulse">actualizando…</span>
-          )}
+          <div className="flex items-center gap-2">
+            <p className="font-semibold text-heading font-display">Historial detallado</p>
+            {isFetching && !isFetchingNextPage && (
+              <span className="text-xs text-primary animate-pulse">actualizando…</span>
+            )}
+          </div>
+          <button
+            onClick={handleExportCSV}
+            disabled={exporting || visibleRows.length === 0}
+            className="pill-tab inline-flex items-center gap-1.5 shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <Download size={14} />
+            {exporting ? 'Exportando…' : 'Exportar CSV'}
+          </button>
+        </div>
+
+        {/* Canal: Mostrador (pos) vs Pedido online (catalog) */}
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span className="text-label text-hint mr-1">Canal</span>
+          <button
+            onClick={() => setFilterSource(null)}
+            className={`pill-tab ${filterSource === null ? 'bg-primary/10 text-primary border border-primary/20' : ''}`}
+          >
+            Todos
+          </button>
+          {SALE_SOURCES.map(src => (
+            <button
+              key={src}
+              onClick={() => setFilterSource(prev => prev === src ? null : src)}
+              className={`pill-tab ${filterSource === src ? 'bg-primary/10 text-primary border border-primary/20' : ''}`}
+            >
+              {SALE_SOURCE_LABELS[src]}
+            </button>
+          ))}
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
@@ -493,6 +583,11 @@ function SalesHistoryTable({ businessId, businessName, operatorId, from, to, ope
                       }`}>
                         {methodLabel}
                       </span>
+                      {sale.source === 'catalog' && (
+                        <span className="inline-flex items-center text-[11px] px-2 py-0.5 rounded-full border font-medium bg-primary/10 border-primary/20 text-primary">
+                          {SALE_SOURCE_LABELS.catalog}
+                        </span>
+                      )}
                       {sale.status === 'cancelled' && (
                         <span className="inline-flex items-center text-[11px] px-2 py-0.5 rounded-full border font-medium bg-amber-50 border-amber-200 text-amber-700 dark:bg-amber-500/10 dark:border-amber-500/30 dark:text-amber-400">
                           Cancelada
