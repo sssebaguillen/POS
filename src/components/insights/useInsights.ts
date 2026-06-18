@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useSyncExternalStore } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
 import {
@@ -45,19 +45,26 @@ export function useAiInsightsEnabled() {
  * fail-closed (false hasta poder leer la cookie en el cliente): los insights son contenido de
  * análisis de negocio (capital inmovilizado, márgenes, anomalías de pago) → solo `reports`.
  */
+function readReportsPermission(): boolean {
+  const match = document.cookie.match(/(?:^|; )op_perms=([^;]*)/)
+  if (!match) return false
+  try {
+    const perms = JSON.parse(decodeURIComponent(match[1])) as { reports?: boolean }
+    return perms?.reports === true
+  } catch {
+    // cookie corrupta → fail-closed
+    return false
+  }
+}
+
+// La cookie op_perms no cambia durante la vida del componente → suscripción no-op.
+const subscribeNoop = () => () => {}
+
 function useHasInsightsPermission(): boolean {
-  const [granted, setGranted] = useState(false)
-  useEffect(() => {
-    const match = document.cookie.match(/(?:^|; )op_perms=([^;]*)/)
-    if (!match) return
-    try {
-      const perms = JSON.parse(decodeURIComponent(match[1])) as { reports?: boolean }
-      setGranted(perms?.reports === true)
-    } catch {
-      // cookie corrupta → fail-closed (granted queda false)
-    }
-  }, [])
-  return granted
+  // useSyncExternalStore: SSR (y primer render de hidratación) usa el snapshot del server
+  // (false, fail-closed) y el cliente lee la cookie — sin setState en efecto ni mismatch de
+  // hidratación, reemplazando el patrón mounted previo.
+  return useSyncExternalStore(subscribeNoop, readReportsPermission, () => false)
 }
 
 /**
