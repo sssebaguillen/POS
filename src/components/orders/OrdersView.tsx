@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { RefreshCw } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
@@ -87,13 +87,14 @@ export default function OrdersView({ initialOrders, operatorId }: Props) {
   const [viewedIds, setViewedIds] = useState<Set<string>>(new Set())
   const [viewedMounted, setViewedMounted] = useState(false)
   const [pendientesHighlight, setPendientesHighlight] = useState(false)
+  const initialPendientes = initialOrders.filter(o => PENDIENTES_STATUSES.includes(o.status)).length
+  const [prevPendientesCount, setPrevPendientesCount] = useState(initialPendientes)
 
   // Hydrate viewedIds from localStorage after mount (SSR-safe).
   useEffect(() => {
     setViewedIds(readViewedIds())
     setViewedMounted(true)
   }, [])
-  const prevPendientesRef = useRef(initialOrders.filter(o => PENDIENTES_STATUSES.includes(o.status)).length)
 
   const { data: orders = initialOrders, isFetching, refetch } = useQuery<CatalogOrderRow[]>({
     queryKey: ['catalog_orders'],
@@ -138,13 +139,14 @@ export default function OrdersView({ initialOrders, operatorId }: Props) {
     [orders],
   )
 
-  // Pulse the Pendientes chip when new orders arrive (including on mount if count > 0)
-  useEffect(() => {
-    if (pendientesCount > prevPendientesRef.current) {
-      setPendientesHighlight(true)
-    }
-    prevPendientesRef.current = pendientesCount
-  }, [pendientesCount])
+  // Pulse the Pendientes chip when new orders arrive — comparado contra el render
+  // anterior vía estado (patrón "ajustar estado al cambiar un valor", sin efecto).
+  // En el mount el conteo coincide con la inicialización, así que no pulsa solo.
+  if (pendientesCount !== prevPendientesCount) {
+    const increased = pendientesCount > prevPendientesCount
+    setPrevPendientesCount(pendientesCount)
+    if (increased) setPendientesHighlight(true)
+  }
 
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase()
