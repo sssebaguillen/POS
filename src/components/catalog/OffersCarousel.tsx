@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { BadgePercent, ChevronLeft, ChevronRight, ImageIcon, ShoppingCart } from 'lucide-react'
@@ -10,6 +10,23 @@ import type { CatalogProduct } from '@/components/catalog/types'
 
 const currencyFormatter = new Intl.NumberFormat('es-AR')
 const AUTO_ADVANCE_MS = 6000
+
+const REDUCED_MOTION_QUERY = '(prefers-reduced-motion: reduce)'
+
+function subscribeReducedMotion(callback: () => void) {
+  const media = window.matchMedia(REDUCED_MOTION_QUERY)
+  media.addEventListener('change', callback)
+  return () => media.removeEventListener('change', callback)
+}
+
+function getReducedMotionSnapshot() {
+  return window.matchMedia(REDUCED_MOTION_QUERY).matches
+}
+
+// SSR no conoce la preferencia del usuario: asumir movimiento permitido (no reducido).
+function getReducedMotionServerSnapshot() {
+  return false
+}
 
 interface OffersCarouselProps {
   offers: CatalogProduct[]
@@ -156,15 +173,11 @@ export default function OffersCarousel({ offers, slug, onAddToCart }: OffersCaro
   const trackRef = useRef<HTMLDivElement>(null)
   const [activeIndex, setActiveIndex] = useState(0)
   const [isPaused, setIsPaused] = useState(false)
-  const [reducedMotion, setReducedMotion] = useState(false)
-
-  useEffect(() => {
-    const media = window.matchMedia('(prefers-reduced-motion: reduce)')
-    setReducedMotion(media.matches)
-    const onChange = (e: MediaQueryListEvent) => setReducedMotion(e.matches)
-    media.addEventListener('change', onChange)
-    return () => media.removeEventListener('change', onChange)
-  }, [])
+  const reducedMotion = useSyncExternalStore(
+    subscribeReducedMotion,
+    getReducedMotionSnapshot,
+    getReducedMotionServerSnapshot
+  )
 
   const scrollToIndex = useCallback((index: number) => {
     const track = trackRef.current
