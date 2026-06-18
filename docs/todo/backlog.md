@@ -71,19 +71,22 @@
 
 > Iniciativa de diseño activa, **en vivo con Sebastián + Claude Design**. No es trabajo headless del agente automático.
 
-### 🔒 NEEDS-OWNER — Migración de iconografía Lucide → Phosphor (parte del Design System)
+### 🤖 SCHEDULE-OK — Migración de iconografía Lucide → Phosphor (parte del Design System)
 
-**Objetivo:** reemplazar toda la iconografía de la app (hoy `lucide-react`) por **Phosphor**, diseñada con Claude Design, como primer pilar del Design System de Pulsar.
+**Objetivo:** reemplazar toda la iconografía de la app (hoy `lucide-react`) por **Phosphor**, primer pilar del Design System de Pulsar.
 
-**Alcance real (recon 2026-06-18):** **108 archivos** importan `lucide-react`, **~96 iconos distintos** en uso. Phosphor **NO está instalado** (hoy `lucide-react ^0.577.0`). Es un cambio de **gran superficie y con criterio de diseño** (el mapeo Lucide→Phosphor no es 1:1: nombres distintos, pesos `regular/bold/duotone/fill`, tamaños y óptica propios). Toca POS/carrito (camino del dinero) y todas las superficies.
+**📋 CONTRATO DEL AGENTE: `design_handoff_icon_migration/FULL_MIGRATION_SPEC.md`** — leerlo entero antes de tocar nada. Tiene el mapeo completo, los casos especiales y el batching de PRs. El `README.md` de esa carpeta es el contexto de diseño (reglas de peso/tamaño/`currentColor`).
 
-**Por qué NEEDS-OWNER (no SCHEDULE-OK):** requiere decisiones de diseño (peso, escala de tamaños, óptica, qué icono mapea a qué) + tiene blast radius enorme + toca money-path. El agente automático **no** lo encara.
+**Estado (2026-06-18):** mapeo **completo y verificado** (la Fase 0 la hicimos en vivo). 127 nombres Lucide en 108 archivos → mapeo **100% validado** contra la lista canónica de Phosphor (`@phosphor-icons/core`, 1512 iconos). Datos reales de `categories.icon` chequeados contra la DB (solo `Coffee/Cookie/Shirt/Tag/Zap` + emojis). Decisión de arquitectura: **swap in-place** (no se introduce módulo central nuevo; se mantiene el patrón actual). Queda **solo la Fase 1, el swap mecánico** → eso toma el agente.
 
-**Plan por fases:**
-- **Fase 0 — Fundaciones (en vivo, con Claude Design).** Instalar `@phosphor-icons/react`; decidir **peso por defecto** (regular/bold/duotone) y **escala de tamaños**; crear un **módulo central de iconos** (`src/components/ui/icon.tsx` o `src/lib/icons.ts`) que re-exporte el set de la app por **nombre semántico** (no por nombre de librería). Definir la **tabla de mapeo** Lucide→Phosphor para los ~96 iconos usados. Esto es el trabajo de diseño + arquitectura. *(El módulo central evita volver a tocar 108 archivos en el futuro: un swap posterior toca un solo archivo.)*
-- **Fase 1 — Swap mecánico (puede ser 🤖 SCHEDULE-OK MÁS ADELANTE, una vez existan el módulo central + el mapeo).** Reemplazar imports área por área, **un PR por área**; las áreas POS/carrito (money-path) quedan para sesión en vivo (E2E). Verificación: `tsc` + `lint` + `build` + revisión visual.
-
-**Decisiones pendientes para arrancar Fase 0 (en sesión en vivo):** peso por defecto de Phosphor; escala de tamaños; nombre/ubicación del módulo central; ¿se aprovecha para tokenizar también tamaños/colores de icono en el DS?
+**Reglas duras para el agente (el detalle está en el spec):**
+- Seguir la tabla del spec **al pie de la letra**. Nombre Lucide fuera de la tabla (código nuevo) = **flaguear**, no adivinar.
+- **Un PR por área** (§4 del spec). **Money-path (POS/carrito/cash-sessions) en PR APARTE y final, marcado `⚠️ MONEY-PATH`** para E2E + QA visual del dueño: el agente lo prepara, el dueño lo mergea.
+- **Archivo crítico `inventory/CategoryIconPreview.tsx` (`ICON_MAP`):** las claves string están persistidas en la DB → **NO cambiar las claves**, solo el componente al que apuntan (bloque exacto en §3.4 del spec). Romperlo rompe iconos de categorías reales.
+- `LucideProps` (type) → `IconProps`; imports aliasados (`CalendarIcon`/`ImageIcon`/`XIcon`) preservar el nombre local con `as`; `Loader2`→`CircleNotch` conserva `animate-spin`.
+- `weight="fill"` SOLO en el item activo del sidebar; el resto `regular`; dudas de "¿es estado activo?" → flaguear.
+- **QA visual lo hace el dueño** (el agente no ve). Mantener `size`/`className` intactos para no mover el layout.
+- Quitar `lucide-react` de `package.json` **solo** cuando `grep -rn "lucide-react" src/` quede vacío (o sea, tras mergear también el PR money-path) — es el último paso.
 
 ---
 
