@@ -21,7 +21,7 @@
 2. **Ante cualquier ambigüedad o decisión de producto/arquitectura: NO asume.** La anota en la sección "⚠️ Preguntas del agente automático" de abajo (fecha · item · la duda · opciones) y **deja ese item sin avanzar** hasta que el dueño decida.
 3. **Nunca mergea a master.** Todo queda en rama + PR para revisión.
 4. **No aplica migraciones a la DB** (eso lo decide el dueño; nunca `supabase db push`). Si un item necesita SQL, el agente crea el archivo de migración y lo deja en el PR + mantiene `supabase/schema.sql` en sync, sin aplicarlo.
-5. **Camino del dinero / auth / onboarding / schema de ventas:** verificar con la suite E2E antes de cerrar el PR.
+5. **Camino del dinero / auth / onboarding:** las **MUTACIONES** (crear/editar/borrar venta, pagos, caja/cash-sessions, decremento de stock, login/PIN, onboarding) exigen **E2E verde antes de cerrar el PR**. Como el runner **NO tiene DB**, no podés correr E2E → estos items quedan **BLOQUEADOS para el agente**: flagueá y pasá (no abras un PR que no podés verificar). **Excepción — reporting de solo lectura:** filtros/columnas/KPIs sobre datos de venta que NO mutan nada (RPCs de solo lectura tipo `get_sales_history`, stats, export CSV) **NO son money-path y NO requieren E2E** — alcanzan `tsc` + `lint` + `build` verdes. En la duda sobre si algo muta dinero/stock: tratalo como money-path y flagueá.
 6. **Batching de PRs — un PR por cluster cohesivo, no un PR gigante:**
    - Cada PR cubre **un cluster cohesivo** (un item, o varios que comparten archivos/tema). Nunca juntar todo el backlog en un PR (irrevisable, no se puede bisectar, un item estacionado bloquea al resto).
    - **Si dos clusters tocan los mismos archivos, se hacen SECUENCIALES** (el segundo se rebasa sobre el primero), **nunca en paralelo** — así no hay conflictos de merge. Ej.: el cluster POS/Cart (`CartPanel`/`POSView`) y `/stats` (segmentación → tarjeta promos) van encadenados.
@@ -29,7 +29,9 @@
    - PR título claro + descripción con: qué item(s) del backlog cubre, qué verificó (tsc/lint/tests/E2E), y si dejó algo flagueado en "⚠️ Preguntas".
    - Mapa de clusters sugerido: ver "Auditoría del camino del dinero" y los items 🤖 — agrupar por file-locality.
 7. **Retomar sin duplicar:** antes de empezar, listar PRs/ramas abiertas (`gh pr list`) y lo ya mergeado para no rehacer trabajo ni pisar un PR en revisión. Continuar donde quedó.
-8. **Orden de prioridad:** primero quick wins (docs/lint/env) + items con plan escrito (004/005); después el resto de deuda técnica; las features (segmentación, tarjeta promos, lista catálogo) al final, porque son las que más probablemente se estacionen esperando decisión.
+8. **Orden de prioridad:** (1) quick wins (docs/lint/env) + items con plan escrito (004/005); (2) **feature lista: Segmentación POS/Pedido online** — autorizada y completable (es reporting de solo lectura, NO money-path → no necesita E2E); es el chunk grande de mayor valor, encarala de lleno; (3) resto de deuda técnica no-money-path; (4) otras features (tarjeta promos, lista catálogo). Los items money-path (CartPanel/POSView/cash/inventario que muten stock) quedan bloqueados por la regla 5.
+9. **No pares después de 1-2 PRs.** Mientras quede trabajo elegible (`🤖 SCHEDULE-OK`) sin bloquear ni ambiguo, seguí tomando el siguiente item y abriendo PRs en la misma corrida hasta agotar lo que podés hacer sin asumir. Una corrida productiva cierra varios PRs, no uno.
+10. **Cuando se agote el trabajo elegible: estudiá la app y proponé.** Si ya no quedan items elegibles sin bloquear, NO termines temprano. Usá lo que reste de la corrida para entender la app a fondo (código, schema, flujos, UX) y escribir **propuestas fundamentadas** para el dueño en la sección "💡 Propuestas del agente automático" de abajo, en un PR aparte (`docs(backlog): propuestas del agente [fecha]`). Prioridad de las propuestas: **(a) fixes / bugs / problemas de calidad o seguridad** (lo principal), **(b) features nuevas valiosas** (lo principal), (c) simplificación / limpieza / reducción de deuda, (d) opcional: ideas de naming/branding según lo que conozcas de la app. Cada propuesta: qué observaste (con archivo:línea), por qué importa, propuesta concreta. **NO las implementes** — son para que el dueño decida. No dupliques propuestas ya anotadas.
 
 ---
 
@@ -42,7 +44,15 @@
 
 **Resueltas (en sesión en vivo con Sebastián):**
 - **[2026-06-17 ✅ RESUELTA] `useEffect` sales history en `CartPanel`** — premisa obsoleta: no existe tal fetch (el único `useEffect` es el typeahead de clientes; el historial vive en `SalesHistoryTable`, ya en React Query). Decisión: **objetivo cumplido → item cerrado como obsoleto** (ver tabla de deuda técnica). El typeahead de clientes NO se migra ahora (opcional, camino del dinero sin E2E ejecutable en el runner).
-- **[2026-06-17 ✅ RESUELTA] Segmentación POS vs catálogo** — premisa obsoleta: `SalesHistoryTable` ya usa paginación server-side por cursor (`get_sales_history`), así que un filtro `source` in-memory sería incorrecto. Decisión: **es un win real, se autoriza la migración** (sumar `p_source` a `get_sales_history` + la RPC de stats que corresponda). Item re-scopeado abajo. El agente sí puede encararlo con migración; aplicar a prod queda para Sebastián (como toda migración).
+- **[2026-06-17 ✅ RESUELTA] Segmentación POS vs catálogo** — premisa obsoleta: `SalesHistoryTable` ya usa paginación server-side por cursor (`get_sales_history`), así que un filtro `source` in-memory sería incorrecto. Decisión: **es un win real, se autoriza la migración** (sumar `p_source` a `get_sales_history` + la RPC de stats que corresponda). Item re-scopeado abajo. El agente sí puede encararlo con migración; aplicar a prod queda para Sebastián (como toda migración). **(2026-06-18) Clarificado: es reporting de solo lectura → NO money-path → completable sin E2E.**
+
+---
+
+## 💡 Propuestas del agente automático (para que decida el dueño)
+
+> Cuando el agente se queda sin trabajo elegible (regla 10), estudia la app y deja acá ideas fundamentadas. NO las implementa — son para revisar y, si convienen, convertir en items `🤖 SCHEDULE-OK` o `🔒 NEEDS-OWNER`. Formato por entrada: `[fecha] [categoría: fix/calidad/seguridad/feature/limpieza/naming] título — qué observó (archivo:línea) — por qué importa — propuesta concreta`. Prioridad: fixes/calidad/seguridad y features nuevas primero; limpieza y naming después.
+
+_(vacío — el agente lo va llenando cuando agote la cola)_
 
 ---
 
@@ -290,7 +300,7 @@ El owner sube un PDF o foto de la factura de una compra recién hecha y el siste
     3. Misma segmentación en `/stats` donde haya desglose de ventas (al menos un KPI o split POS vs catálogo). Si requiere agrupar por `source` en una RPC de stats, sumarlo en la misma migración (mismo criterio: dejar en PR, no aplicar).
     4. El export CSV incluye una columna "Canal" (`Mostrador`/`Pedido online`).
     5. Labels en español neutro (sin voseo, regla [[feedback_evitar_voseo]]): "Mostrador" para `pos`, "Pedido online" para `catalog`.
-  - **Verificar:** historial y export cuadran (no romper totales); camino del dinero → E2E verde antes de cerrar el PR.
+  - **Verificar:** historial y export cuadran (no romper totales). **Es reporting de solo lectura** (un filtro sobre RPCs que LEEN ventas — no crea ventas, no toca pagos ni stock) → **NO es money-path, NO requiere E2E** (regla 5, excepción reporting). Alcanza `tsc` + `lint` + `build` verdes. La migración va en el PR sin aplicar (la aplica Sebastián).
 
 ---
 
