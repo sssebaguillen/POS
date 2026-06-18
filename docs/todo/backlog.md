@@ -51,6 +51,8 @@
 ## 💡 Propuestas del agente automático (para que decida el dueño)
 
 > Cuando el agente se queda sin trabajo elegible (regla 10), estudia la app y deja acá ideas fundamentadas. NO las implementa — son para revisar y, si convienen, convertir en items `🤖 SCHEDULE-OK` o `🔒 NEEDS-OWNER`. Formato por entrada: `[fecha] [categoría: fix/calidad/seguridad/feature/limpieza/naming] título — qué observó (archivo:línea) — por qué importa — propuesta concreta`. Prioridad: fixes/calidad/seguridad y features nuevas primero; limpieza y naming después.
+>
+> **El agente NUNCA se auto-asigna trabajo.** Una propuesta es texto libre sin tag: el agente jamás la implementa ni la tagea `🤖 SCHEDULE-OK` (ni en esta corrida ni en las siguientes). Tagear una propuesta como elegible es acción EXCLUSIVA del dueño en sesión en vivo. El agente solo AGREGA propuestas acá; nunca las promueve a trabajo.
 
 _(vacío — el agente lo va llenando cuando agote la cola)_
 
