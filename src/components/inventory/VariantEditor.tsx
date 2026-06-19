@@ -1,6 +1,7 @@
 'use client'
 
 import { startTransition, useEffect, useMemo, useRef, useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
 import { Input } from '@/components/ui/input'
 import SelectDropdown from '@/components/ui/SelectDropdown'
@@ -194,7 +195,6 @@ export default function VariantEditor({
   const currency = useCurrency()
   const currencySymbol = getCurrencySymbol(currency)
 
-  const [attributeTypes, setAttributeTypes] = useState<AttributeType[]>([])
   const [options, setOptions] = useState<DraftOption[]>([])
   const [variants, setVariants] = useState<DraftVariantRow[]>([])
   const [valueInputs, setValueInputs] = useState<Record<number, string>>({})
@@ -208,12 +208,16 @@ export default function VariantEditor({
   const [uploadingVariantKey, setUploadingVariantKey] = useState<string | null>(null)
   const initialized = useRef(false)
 
-  // Load attribute types
-  useEffect(() => {
-    supabase.rpc('get_attribute_types').then(({ data }) => {
-      if (data) setAttributeTypes(data as AttributeType[])
-    })
-  }, [supabase])
+  // Load attribute types. useQuery captures errores (antes el .then() los tragaba
+  // en silencio → el editor quedaba sin atributos y sin feedback) y cachea/reintenta.
+  const { data: attributeTypes = [], isError: attributeTypesError } = useQuery({
+    queryKey: ['attribute-types'],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('get_attribute_types')
+      if (error) throw error
+      return (data ?? []) as AttributeType[]
+    },
+  })
 
   // Initialize from existing data in edit mode
   useEffect(() => {
@@ -654,11 +658,19 @@ export default function VariantEditor({
             <button
               type="button"
               onClick={addOption}
-              className="flex items-center gap-1.5 text-xs text-primary/80 hover:text-primary transition-[transform,color] duration-150 ease-[var(--ease-out)] active:scale-[0.97]"
+              disabled={attributeTypesError}
+              className="flex items-center gap-1.5 text-xs text-primary/80 hover:text-primary transition-[transform,color] duration-150 ease-[var(--ease-out)] active:scale-[0.97] disabled:opacity-50 disabled:pointer-events-none"
             >
               <Plus className="w-3.5 h-3.5" />
               Agregar atributo
             </button>
+          )}
+
+          {attributeTypesError && (
+            <p className="flex items-center gap-1.5 text-xs text-destructive">
+              <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+              No se pudieron cargar los atributos. Recargá la página e intentá de nuevo.
+            </p>
           )}
 
           {/* Variants table */}
