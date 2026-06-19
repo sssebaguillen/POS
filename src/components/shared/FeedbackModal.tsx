@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Image as ImageIcon, X } from 'lucide-react'
+import { Image as ImageIcon, X } from '@phosphor-icons/react/dist/ssr'
 import {
   Dialog,
   DialogContent,

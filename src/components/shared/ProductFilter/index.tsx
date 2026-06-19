@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { ArrowDown, ArrowUp, ChevronDown, Search } from 'lucide-react'
+import { ArrowDown, ArrowUp, CaretDown, MagnifyingGlass } from '@phosphor-icons/react/dist/ssr'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import CategoryIconPreview from '@/components/inventory/CategoryIconPreview'
@@ -140,7 +140,7 @@ function Section({ label, badge, open, onToggle, children }: SectionProps) {
             </span>
           )}
         </div>
-        <ChevronDown
+        <CaretDown
           size={14}
           className={`text-hint transition-transform duration-200 ${open ? 'rotate-180' : ''}`}
         />
@@ -332,7 +332,7 @@ function SidebarLayout({
         {modules.includes('search') && (
           <Section label="Buscar" open={openSections.search ?? true} onToggle={() => toggle('search')}>
             <div className="relative">
-              <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-hint pointer-events-none" />
+              <MagnifyingGlass size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-hint pointer-events-none" />
               <input
                 type="text"
                 value={value.search}
@@ -411,7 +411,7 @@ function SidebarLayout({
           >
             {categories.length > 8 && (
               <div className="relative mb-2">
-                <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-hint pointer-events-none" />
+                <MagnifyingGlass size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-hint pointer-events-none" />
                 <input
                   type="text"
                   value={catQuery}
@@ -457,7 +457,7 @@ function SidebarLayout({
           >
             {brands.length > 8 && (
               <div className="relative mb-2">
-                <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-hint pointer-events-none" />
+                <MagnifyingGlass size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-hint pointer-events-none" />
                 <input
                   type="text"
                   value={brandQuery}
