@@ -6246,6 +6246,47 @@ $$;
 ALTER FUNCTION "public"."reconcile_sales_count"("p_business_id" "uuid") OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."record_stock_movement"("p_business_id" "uuid", "p_product_id" "uuid", "p_variant_id" "uuid", "p_type" "text", "p_quantity" integer, "p_reason" "text", "p_reference_id" "uuid", "p_operator_id" "uuid") RETURNS "void"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'extensions'
+    AS $$
+DECLARE
+  v_balance integer;
+BEGIN
+  IF p_product_id IS NULL THEN
+    RETURN;  -- ítem sin producto del catálogo: nada que registrar
+  END IF;
+
+  IF p_variant_id IS NOT NULL THEN
+    UPDATE public.product_variants
+    SET stock = stock + p_quantity
+    WHERE id = p_variant_id AND business_id = p_business_id
+    RETURNING stock INTO v_balance;
+  ELSE
+    UPDATE public.products
+    SET stock = stock + p_quantity
+    WHERE id = p_product_id AND business_id = p_business_id
+    RETURNING stock INTO v_balance;
+  END IF;
+
+  IF v_balance IS NULL THEN
+    RETURN;  -- producto/variante inexistente en este negocio
+  END IF;
+
+  INSERT INTO public.inventory_movements (
+    business_id, product_id, variant_id, type, quantity,
+    reason, reference_id, created_by_operator, balance_after
+  ) VALUES (
+    p_business_id, p_product_id, p_variant_id, p_type, p_quantity,
+    p_reason, p_reference_id, p_operator_id, v_balance
+  );
+END;
+$$;
+
+
+ALTER FUNCTION "public"."record_stock_movement"("p_business_id" "uuid", "p_product_id" "uuid", "p_variant_id" "uuid", "p_type" "text", "p_quantity" integer, "p_reason" "text", "p_reference_id" "uuid", "p_operator_id" "uuid") OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."refresh_all_daily_snapshots"("p_snapshot_date" "date" DEFAULT NULL::"date") RETURNS "jsonb"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public'
@@ -8753,7 +8794,8 @@ CREATE TABLE IF NOT EXISTS "public"."inventory_movements" (
     "created_at" timestamp with time zone DEFAULT "now"(),
     "created_by_operator" "uuid",
     "variant_id" "uuid",
-    CONSTRAINT "inventory_movements_type_check" CHECK (("type" = ANY (ARRAY['sale'::"text", 'purchase'::"text", 'adjustment'::"text", 'return'::"text"])))
+    "balance_after" integer,
+    CONSTRAINT "inventory_movements_type_check" CHECK (("type" = ANY (ARRAY['sale'::"text", 'purchase'::"text", 'adjustment'::"text", 'return'::"text", 'opening'::"text"])))
 );
 
 
@@ -17644,6 +17686,11 @@ GRANT ALL ON FUNCTION "public"."reconcile_sales_count"("p_business_id" "uuid") T
 
 
 
+REVOKE ALL ON FUNCTION "public"."record_stock_movement"("p_business_id" "uuid", "p_product_id" "uuid", "p_variant_id" "uuid", "p_type" "text", "p_quantity" integer, "p_reason" "text", "p_reference_id" "uuid", "p_operator_id" "uuid") FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."record_stock_movement"("p_business_id" "uuid", "p_product_id" "uuid", "p_variant_id" "uuid", "p_type" "text", "p_quantity" integer, "p_reason" "text", "p_reference_id" "uuid", "p_operator_id" "uuid") TO "service_role";
+
+
+
 REVOKE ALL ON FUNCTION "public"."refresh_all_daily_snapshots"("p_snapshot_date" "date") FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."refresh_all_daily_snapshots"("p_snapshot_date" "date") TO "service_role";
 
@@ -19057,7 +19104,7 @@ GRANT ALL ON TABLE "public"."feedback" TO "service_role";
 
 
 
-GRANT ALL ON TABLE "public"."inventory_movements" TO "anon";
+REVOKE ALL ON TABLE "public"."inventory_movements" FROM "anon";
 GRANT ALL ON TABLE "public"."inventory_movements" TO "authenticated";
 GRANT ALL ON TABLE "public"."inventory_movements" TO "service_role";
 

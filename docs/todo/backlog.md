@@ -416,6 +416,8 @@ El owner sube un PDF o foto de la factura de una compra recién hecha y el siste
 
 **Recomendación:** decidir A vs B **en conjunto con P10.c**. Si el módulo contable avanza → **B** (el kardex es insumo natural de la contabilidad). Si no se va a construir contabilidad pronto → **A** (limpiar código muerto). **Dead-stock v1 NO depende de esto** — usa `sale_items` (última venta/velocidad) + `products.created_at` (antigüedad), no `inventory_movements`.
 
+> **✅ DECISIÓN (2026-06-20): opción B — completar el kardex (ajustar, no rehacer).** Diseño detallado en [`kardex.md`](kardex.md): la tabla es sólida, falta disciplina de escritura (único choke point `record_stock_movement`), dejar de borrar asientos (compensar), opening snapshot al migrar, y capa de lectura. Verificado contra schema + datos en vivo (Cecilia, la única cuenta real, **reconcilia 12/12**; la deriva vive solo en cuentas de prueba con stock sembrado a mano → el opening snapshot es corrección estructural/a futuro, no un fix de producción; `created_by_operator` 100% NULL; `anon` con GRANT ALL a revocar). **🔒 NEEDS-OWNER + money-path → sesión en vivo, ejecución por fases con E2E.** Decisiones abiertas (unit_cost/valuación, delete_product, vínculo P10.c) en §8 del doc. P10.c sigue diferida — el kardex se construye sin acoplarse a contabilidad, dejando `unit_cost` como punto de extensión.
+
 ---
 
 ## Borrado completo de un negocio + huérfanos (post-beta, mantenibilidad)
