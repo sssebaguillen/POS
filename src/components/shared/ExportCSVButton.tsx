@@ -1,6 +1,6 @@
 'use client'
 
-import { Download } from 'lucide-react'
+import { DownloadSimple } from '@phosphor-icons/react/dist/ssr'
 import { Button } from '@/components/ui/button'
 import { downloadCSV } from '@/lib/csv'
 
@@ -23,7 +23,7 @@ export default function ExportCSVButton({ data, filename, label = 'Exportar CSV'
       disabled={data.length === 0}
       className="gap-2"
     >
-      <Download size={15} />
+      <DownloadSimple size={15} />
       {label}
     </Button>
   )

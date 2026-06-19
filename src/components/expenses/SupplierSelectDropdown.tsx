@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef, useMemo } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { CaretDown, Check, Plus, X } from '@phosphor-icons/react/dist/ssr'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Supplier } from './types'
@@ -12,13 +13,13 @@ interface Props {
   value: string | null
   onChange: (supplierId: string | null) => void
   businessId: string
+  operatorId: string | null
   supabaseClient: SupabaseClient
   placeholder?: string
 }
 
-export default function SupplierSelectDropdown({ value, onChange, businessId, supabaseClient, placeholder = 'Seleccionar proveedor' }: Props) {
+export default function SupplierSelectDropdown({ value, onChange, businessId, operatorId, supabaseClient, placeholder = 'Seleccionar proveedor' }: Props) {
   const [open, setOpen] = useState(false)
-  const [suppliers, setSuppliers] = useState<Supplier[]>([])
   const [search, setSearch] = useState('')
   const [showInlineCreate, setShowInlineCreate] = useState(false)
   const [newName, setNewName] = useState('')
@@ -26,18 +27,26 @@ export default function SupplierSelectDropdown({ value, onChange, businessId, su
   const [createError, setCreateError] = useState<string | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const supabase = useMemo(() => supabaseClient, [supabaseClient])
+  const queryClient = useQueryClient()
+
+  // Carga de proveedores. useQuery captura errores (antes el .then() sin .catch()
+  // los tragaba → dropdown vacío y sin feedback) y cachea/reintenta.
+  const suppliersQueryKey = useMemo(() => ['suppliers', businessId] as const, [businessId])
+  const { data: suppliers = [] } = useQuery({
+    queryKey: suppliersQueryKey,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('suppliers')
+        .select('id, business_id, name, contact_name, phone, email, address, notes, is_active, created_at')
+        .eq('business_id', businessId)
+        .eq('is_active', true)
+        .order('name')
+      if (error) throw error
+      return (data ?? []) as Supplier[]
+    },
+  })
 
   const selected = useMemo(() => suppliers.find(s => s.id === value) ?? null, [suppliers, value])
-
-  useEffect(() => {
-    supabase
-      .from('suppliers')
-      .select('id, business_id, name, contact_name, phone, email, address, notes, is_active, created_at')
-      .eq('business_id', businessId)
-      .eq('is_active', true)
-      .order('name')
-      .then(({ data }) => { if (data) setSuppliers(data as Supplier[]) })
-  }, [supabase, businessId])
 
   useEffect(() => {
     if (!open) return
@@ -59,18 +68,23 @@ export default function SupplierSelectDropdown({ value, onChange, businessId, su
     if (!newName.trim()) return
     setCreating(true)
     setCreateError(null)
-    const { data, error } = await supabase
-      .from('suppliers')
-      .insert({ business_id: businessId, name: newName.trim(), is_active: true })
-      .select('id, business_id, name, contact_name, phone, email, address, notes, is_active, created_at')
-      .single()
-    if (error || !data) {
-      setCreateError(error?.message ?? 'No se pudo crear el proveedor')
+    // Vía el RPC guardado create_supplier (permiso `expenses` + log_audit_event),
+    // igual que SuppliersPanel — el .insert directo salteaba guard y auditoría.
+    const { data: rpcResult, error } = await supabase.rpc('create_supplier', {
+      p_operator_id: operatorId,
+      p_business_id: businessId,
+      p_name: newName.trim(),
+    })
+    const result = rpcResult as { success: boolean; error?: string; supplier?: Supplier } | null
+    if (error || !result?.success || !result.supplier) {
+      setCreateError(result?.error ?? error?.message ?? 'No se pudo crear el proveedor')
       setCreating(false)
       return
     }
-    const newSupplier = data as Supplier
-    setSuppliers(prev => [...prev, newSupplier].sort((a, b) => a.name.localeCompare(b.name)))
+    const newSupplier = result.supplier
+    queryClient.setQueryData<Supplier[]>(suppliersQueryKey, prev =>
+      [...(prev ?? []), newSupplier].sort((a, b) => a.name.localeCompare(b.name))
+    )
     onChange(newSupplier.id)
     setNewName('')
     setShowInlineCreate(false)

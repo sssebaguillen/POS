@@ -2,7 +2,7 @@
 
 import * as React from 'react'
 import { Popover as PopoverPrimitive } from 'radix-ui'
-import { ChevronLeft, ChevronRight, CalendarIcon } from 'lucide-react'
+import { CaretLeft, CaretRight, Calendar as CalendarIcon } from '@phosphor-icons/react/dist/ssr'
 import { cn } from '@/lib/utils'
 
 interface DatePickerProps {
@@ -117,7 +117,7 @@ export function DatePicker({ value, onChange, className, placeholder = 'dd/mm/aa
               onClick={prevMonth}
               className="flex h-7 w-7 items-center justify-center rounded-md hover:bg-accent transition-[transform,background-color] duration-150 ease-[var(--ease-out)] active:scale-95"
             >
-              <ChevronLeft className="h-4 w-4 text-body" />
+              <CaretLeft className="h-4 w-4 text-body" />
             </button>
             <span className="text-sm font-semibold text-heading">
               {MONTHS[viewMonth]} {viewYear}
@@ -127,7 +127,7 @@ export function DatePicker({ value, onChange, className, placeholder = 'dd/mm/aa
               onClick={nextMonth}
               className="flex h-7 w-7 items-center justify-center rounded-md hover:bg-accent transition-[transform,background-color] duration-150 ease-[var(--ease-out)] active:scale-95"
             >
-              <ChevronRight className="h-4 w-4 text-body" />
+              <CaretRight className="h-4 w-4 text-body" />
             </button>
           </div>
 

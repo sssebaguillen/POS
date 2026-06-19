@@ -16,6 +16,10 @@ const eslintConfig = defineConfig([
     ".claude/**",
     // Scripts de skills de diseño (no son código de la app).
     ".agents/**",
+    // Handoff de diseño (referencia Iconify standalone — no es código de la app,
+    // no lo referencia src/). Su icons.js dispara el único error de lint que
+    // dejaba el CI "Unit tests" en rojo en cada PR.
+    "design_handoff_icon_migration/**",
     // Artefactos generados por Playwright (reporte/trace minificado, screenshots).
     "e2e/report/**",
     "e2e/screenshots/**",

@@ -2,7 +2,7 @@
 
 import { Fragment } from 'react'
 import Link from 'next/link'
-import { Menu, ChevronRight } from 'lucide-react'
+import { List, CaretRight } from '@phosphor-icons/react/dist/ssr'
 import { useSidebar } from '@/components/shared/AppShell'
 
 interface Breadcrumb {
@@ -27,19 +27,19 @@ export default function PageHeader({ title, breadcrumbs, children }: Props) {
         className="p-1.5 -ml-1 rounded-lg hover:bg-hover-bg transition-[transform,background-color] duration-150 ease-[var(--ease-out)] active:scale-95 lg:hidden"
         aria-label="Abrir menú"
       >
-        <Menu size={20} className="text-body" />
+        <List size={20} className="text-body" />
       </button>
       {breadcrumbs && breadcrumbs.length > 0 ? (
         <nav className="flex items-center gap-1 text-sm text-muted-foreground font-display font-bold" aria-label="Breadcrumb">
           {breadcrumbs.map((crumb, i) => (
             <Fragment key={i}>
-              {i > 0 && <ChevronRight size={14} className="shrink-0" />}
+              {i > 0 && <CaretRight size={14} className="shrink-0" />}
               <Link href={crumb.href} className="hover:text-heading transition-colors">
                 {crumb.label}
               </Link>
             </Fragment>
           ))}
-          <ChevronRight size={14} className="shrink-0" />
+          <CaretRight size={14} className="shrink-0" />
           <span className="font-bold text-heading font-display">{title}</span>
         </nav>
       ) : (
