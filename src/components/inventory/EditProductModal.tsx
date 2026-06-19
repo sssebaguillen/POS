@@ -1,12 +1,13 @@
 'use client'
 
-import { startTransition, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useMemo, useRef, useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { ChevronDown, ChevronRight, X } from 'lucide-react'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
-import type { PriceList, PriceListOverride, ProductOption, ProductVariant } from '@/lib/types'
+import type { PriceList, PriceListOverride } from '@/lib/types'
 import { unwrapProductWithVariants } from '@/lib/mappers'
 import type { InventoryBrand, InventoryCategory, InventoryProduct } from '@/components/inventory/types'
 import { translateDbError } from '@/lib/errors'
@@ -120,29 +121,29 @@ export default function EditProductModal({
   // Variant state
   const [hasVariants, setHasVariants] = useState(product.has_variants ?? false)
   const [variantPayload, setVariantPayload] = useState<VariantPayloadEdit | null>(null)
-  const [variantOptions, setVariantOptions] = useState<ProductOption[]>([])
-  const [variantVariants, setVariantVariants] = useState<ProductVariant[]>([])
-  const [variantLoading, setVariantLoading] = useState(false)
-  const variantLoadedRef = useRef(false)
 
   const handleVariantPayloadChange = useCallback((payload: VariantPayloadNew | VariantPayloadEdit | null) => {
     setVariantPayload(payload as VariantPayloadEdit | null)
   }, [])
 
-  // Load variant data when collapsable opens and product has_variants
-  useEffect(() => {
-    if (!product.has_variants || variantLoadedRef.current) return
-    variantLoadedRef.current = true
-    startTransition(() => {
-      setVariantLoading(true)
-    })
-    supabase.rpc('get_product_with_variants', { p_product_id: product.id }).then(({ data }) => {
-      setVariantLoading(false)
-      const result = unwrapProductWithVariants(data)
-      if (result?.options) setVariantOptions(result.options)
-      if (result?.variants) setVariantVariants(result.variants)
-    })
-  }, [product.has_variants, product.id, supabase])
+  // Load variant data for products with variants. useQuery captura el error y
+  // resetea el loading (antes el `.then()` sin `.catch()` dejaba el spinner
+  // colgado para siempre si el RPC rechazaba — cold start / statement_timeout).
+  const {
+    data: variantData,
+    isLoading: variantLoading,
+    isError: variantError,
+  } = useQuery({
+    queryKey: ['product-with-variants', product.id],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('get_product_with_variants', { p_product_id: product.id })
+      if (error) throw error
+      return unwrapProductWithVariants(data)
+    },
+    enabled: !!product.has_variants,
+  })
+  const variantOptions = variantData?.options ?? []
+  const variantVariants = variantData?.variants ?? []
 
   const filteredBrands = useMemo(() => {
     const query = brandInput.trim().toLowerCase()
@@ -701,6 +702,10 @@ export default function EditProductModal({
               {/* Variant body — toggle lifted to row 1, so hide it here */}
               {variantLoading ? (
                 <div className="py-2 text-xs text-hint">Cargando variantes…</div>
+              ) : variantError ? (
+                <div className="py-2 text-xs text-destructive">
+                  No se pudieron cargar las variantes. Cerrá y volvé a abrir el producto para reintentar.
+                </div>
               ) : (
                 <VariantEditor
                   businessId={businessId}
