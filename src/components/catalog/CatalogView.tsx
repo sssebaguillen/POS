@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
-import { SlidersHorizontal, X } from 'lucide-react'
+import { FadersHorizontal, X } from '@phosphor-icons/react/dist/ssr'
 import ProductGrid from '@/components/catalog/ProductGrid'
 import OffersCarousel from '@/components/catalog/OffersCarousel'
 import { useCatalogShell } from '@/components/catalog/CatalogShell'
@@ -327,7 +327,7 @@ export default function CatalogView({
                       : 'border-border bg-background text-foreground hover:border-primary/40',
                   ].join(' ')}
                 >
-                  <SlidersHorizontal className="h-3.5 w-3.5" />
+                  <FadersHorizontal className="h-3.5 w-3.5" />
                   Más filtros
                   {panelFilterCount > 0 && (
                     <span className={[

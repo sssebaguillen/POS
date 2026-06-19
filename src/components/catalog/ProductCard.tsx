@@ -3,7 +3,7 @@
 import { useCallback, useRef, useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
-import { Check, ImageIcon, Layers, Plus } from 'lucide-react'
+import { Check, Image as ImageIcon, Stack, Plus } from '@phosphor-icons/react/dist/ssr'
 import { createClient } from '@supabase/supabase-js'
 import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
@@ -267,7 +267,7 @@ export default function ProductCard({ product, slug, onAddToCart }: ProductCardP
             aria-label={`Elegir opciones de ${product.name}`}
             className="absolute right-2 top-2 inline-flex min-h-11 items-center gap-1 rounded-lg bg-black/55 px-3 text-xs font-medium text-white transition-colors duration-150 hover:bg-black/70 active:bg-black/70 md:min-h-7 md:rounded-md md:px-2 md:py-1 md:text-[11px]"
           >
-            <Layers className="h-3 w-3" />
+            <Stack className="h-3 w-3" />
             {variantBadgeText}
           </button>
           <PromoBadges product={product} />

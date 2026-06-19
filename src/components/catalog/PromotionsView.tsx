@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { ArrowLeft, BadgePercent } from 'lucide-react'
+import { ArrowLeft, SealPercent } from '@phosphor-icons/react/dist/ssr'
 import ProductCard from '@/components/catalog/ProductCard'
 import { useCatalogShell } from '@/components/catalog/CatalogShell'
 import type { CatalogProduct } from '@/components/catalog/types'
@@ -26,7 +26,7 @@ export default function PromotionsView({ slug, products }: PromotionsViewProps) 
         </Link>
 
         <h2 className="mt-4 flex items-center gap-2 text-xl font-bold text-promo">
-          <BadgePercent className="h-5 w-5" />
+          <SealPercent className="h-5 w-5" />
           Todas las ofertas
         </h2>
         <p className="mt-0.5 text-sm text-muted-foreground">

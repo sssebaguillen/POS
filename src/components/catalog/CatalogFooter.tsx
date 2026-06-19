@@ -2,7 +2,7 @@
 
 import Image from 'next/image'
 import Link from 'next/link'
-import { BadgePercent, MessageCircle } from 'lucide-react'
+import { SealPercent, ChatCircle } from '@phosphor-icons/react/dist/ssr'
 import type { CatalogBusiness } from '@/components/catalog/types'
 
 interface CatalogFooterProps {
@@ -60,7 +60,7 @@ export default function CatalogFooter({ business, slug }: CatalogFooterProps) {
                 href={`/catalogo/${slug}/promotions`}
                 className="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors duration-150 hover:text-foreground"
               >
-                <BadgePercent className="h-3.5 w-3.5" />
+                <SealPercent className="h-3.5 w-3.5" />
                 Ofertas
               </Link>
             </li>
@@ -79,7 +79,7 @@ export default function CatalogFooter({ business, slug }: CatalogFooterProps) {
               rel="noopener noreferrer"
               className="mt-3 inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors duration-150 hover:text-foreground"
             >
-              <MessageCircle className="h-3.5 w-3.5" />
+              <ChatCircle className="h-3.5 w-3.5" />
               Escribir por WhatsApp
             </a>
           ) : (

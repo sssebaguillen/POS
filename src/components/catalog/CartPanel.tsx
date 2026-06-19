@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react'
 import Image from 'next/image'
-import { AlertTriangle, CheckCircle2, ImageIcon, Minus, Plus, Trash2 } from 'lucide-react'
+import { Warning, CheckCircle, Image as ImageIcon, Minus, Plus, Trash } from '@phosphor-icons/react/dist/ssr'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import type { CatalogCartItem } from '@/components/catalog/types'
@@ -324,7 +324,7 @@ export default function CartPanel({
     return (
       <aside className={asideClassName}>
         <div className="flex flex-col items-center gap-4 py-6 text-center">
-          <CheckCircle2 className="h-12 w-12 text-primary" />
+          <CheckCircle className="h-12 w-12 text-primary" />
           <div>
             <p className="text-base font-semibold text-foreground">
               Pedido enviado #{lastOrder.orderNumber}
@@ -439,7 +439,7 @@ export default function CartPanel({
                         className="-mr-1 -mt-1 flex h-10 w-10 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-[transform,background-color,color] duration-150 ease-[var(--ease-out)] active:scale-95 hover:bg-destructive/10 hover:text-destructive md:h-8 md:w-8"
                         aria-label={`Quitar ${item.product.name}`}
                       >
-                        <Trash2 className="h-4 w-4" />
+                        <Trash className="h-4 w-4" />
                       </button>
                     </div>
                   </div>
@@ -612,7 +612,7 @@ export default function CartPanel({
 
           {!normalizedWhatsapp && (
             <div className="mt-3 flex items-start gap-2 rounded-lg border border-warning/20 bg-warning/10 px-3 py-2.5">
-              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-warning" />
+              <Warning className="mt-0.5 h-4 w-4 shrink-0 text-warning" />
               <p className="text-xs text-warning">
                 Este negocio aún no tiene WhatsApp. Igualmente recibe tu pedido y te contactará al teléfono que dejes.
               </p>
@@ -621,7 +621,7 @@ export default function CartPanel({
 
           {submitError && (
             <div className="mt-3 flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2.5">
-              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
+              <Warning className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
               <p className="text-xs text-destructive">{submitError}</p>
             </div>
           )}

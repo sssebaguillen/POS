@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { ShoppingCart } from 'lucide-react'
+import { ShoppingCart } from '@phosphor-icons/react/dist/ssr'
 import { Button } from '@/components/ui/button'
 import type { CatalogProduct, CatalogVariantOption, CatalogProductVariant } from '@/components/catalog/types'
 import PopNumber from '@/components/shared/PopNumber'

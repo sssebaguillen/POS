@@ -1,7 +1,7 @@
 'use client'
 
 import { createContext, useContext, useEffect, useMemo, useState } from 'react'
-import { ShoppingCart } from 'lucide-react'
+import { ShoppingCart } from '@phosphor-icons/react/dist/ssr'
 import CatalogNavbar from '@/components/catalog/CatalogNavbar'
 import CatalogFooter from '@/components/catalog/CatalogFooter'
 import CartPanel, { lineTotal, type CatalogLastOrder } from '@/components/catalog/CartPanel'
