@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { Loader2, CheckCircle2 } from 'lucide-react'
+import { CircleNotch, CheckCircle } from '@phosphor-icons/react/dist/ssr'
 import { confirmEmail } from './actions'
 
 type State = 'idle' | 'loading' | 'success'
@@ -31,7 +31,7 @@ export function ConfirmButton({ token_hash, type }: Props) {
   if (state === 'success') {
     return (
       <div className="flex items-center justify-center gap-2 text-sm text-green-600">
-        <CheckCircle2 className="h-5 w-5" />
+        <CheckCircle className="h-5 w-5" />
         <span>¡Cuenta confirmada! Redirigiendo...</span>
       </div>
     )
@@ -46,7 +46,7 @@ export function ConfirmButton({ token_hash, type }: Props) {
       >
         {state === 'loading' ? (
           <>
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            <CircleNotch className="mr-2 h-4 w-4 animate-spin" />
             Confirmando...
           </>
         ) : (

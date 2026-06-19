@@ -1,6 +1,6 @@
 import { Button } from '@/components/ui/button'
 import Link from 'next/link'
-import { MailCheck, AlertCircle } from 'lucide-react'
+import { EnvelopeOpen, WarningCircle } from '@phosphor-icons/react/dist/ssr'
 import { ConfirmButton } from './ConfirmButton'
 
 interface Props {
@@ -14,7 +14,7 @@ export default async function ConfirmPage({ searchParams }: Props) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="bg-card p-8 rounded-xl shadow-sm border border-border w-full max-w-md text-center">
-          <AlertCircle className="mx-auto mb-4 h-12 w-12 text-destructive" />
+          <WarningCircle className="mx-auto mb-4 h-12 w-12 text-destructive" />
           <h1 className="text-2xl font-bold text-foreground mb-2">Link inválido</h1>
           <p className="text-muted-foreground text-sm mb-6">
             Este link de confirmación no es válido o ya expiró.
@@ -30,7 +30,7 @@ export default async function ConfirmPage({ searchParams }: Props) {
   return (
     <div className="min-h-screen flex items-center justify-center bg-background">
       <div className="bg-card p-8 rounded-xl shadow-sm border border-border w-full max-w-md text-center">
-        <MailCheck className="mx-auto mb-4 h-12 w-12 text-primary" />
+        <EnvelopeOpen className="mx-auto mb-4 h-12 w-12 text-primary" />
         <h1 className="text-2xl font-bold text-foreground mb-2">Confirma tu cuenta</h1>
         <p className="text-muted-foreground text-sm mb-6">
           Haz clic en el botón para activar tu cuenta en Pulsar.
