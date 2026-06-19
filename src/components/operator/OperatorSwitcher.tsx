@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { ChevronUp, UserCircle, KeyRound, Settings, Users, LogOut } from 'lucide-react'
+import { CaretUp, UserCircle, Key, Gear, Users, SignOut } from '@phosphor-icons/react/dist/ssr'
 import type { Permissions, UserRole } from '@/lib/operator'
 import { OPERATOR_ROLE_LABELS, PROFILE_ROLE_LABELS } from '@/lib/constants/domain'
 import { useSidebar } from '@/components/shared/AppShell'
@@ -95,7 +95,7 @@ export default function OperatorSwitcher({
 
       {showAccountActions && (
         <Link href="/profile" onClick={closeAll} className={cn(itemBase, itemNormal)}>
-          <KeyRound size={16} />
+          <Key size={16} />
           Cuenta
         </Link>
       )}
@@ -106,7 +106,7 @@ export default function OperatorSwitcher({
           onClick={closeAll}
           className={cn(itemBase, pathname === '/settings' ? itemActive : itemNormal)}
         >
-          <Settings size={16} />
+          <Gear size={16} />
           Configuración
         </Link>
       )}
@@ -125,7 +125,7 @@ export default function OperatorSwitcher({
 
       {showAccountActions && (
         <button type="button" onClick={onLogout} className={cn(itemBase, itemDanger)}>
-          <LogOut size={16} />
+          <SignOut size={16} />
           Cerrar sesión
         </button>
       )}
@@ -174,7 +174,7 @@ export default function OperatorSwitcher({
           <span className="block text-xs uppercase tracking-wide text-muted-foreground">Operador activo</span>
           <span className="mt-0.5 block truncate font-medium text-heading">{operatorName}</span>
         </span>
-        <ChevronUp
+        <CaretUp
           size={16}
           className={cn(
             'shrink-0 text-hint transition-transform duration-200 ease-[var(--ease-out)]',

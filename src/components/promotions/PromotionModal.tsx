@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { AlertTriangle, Search, X } from 'lucide-react'
+import { Warning, MagnifyingGlass, X } from '@phosphor-icons/react/dist/ssr'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -487,7 +487,7 @@ export default function PromotionModal({
                 </div>
               ) : (
                 <ShakeOnError error={attempted ? fieldErrors.scope : undefined} nonce={attemptNonce} className="relative">
-                  <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-hint pointer-events-none z-10" />
+                  <MagnifyingGlass size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-hint pointer-events-none z-10" />
                   <Input
                     type="text"
                     value={productQuery}
@@ -591,7 +591,7 @@ export default function PromotionModal({
           {overlapping.length > 0 && (
             <div className="rounded-xl border border-warning/20 bg-warning/10 px-3 py-2 space-y-1">
               <p className="text-xs font-semibold text-warning flex items-center gap-1.5">
-                <AlertTriangle size={13} />
+                <Warning size={13} />
                 Se superpone con {overlapping.length === 1 ? 'otra promo vigente' : `${overlapping.length} promos vigentes`}
               </p>
               <ul className="text-[11px] text-warning/90 space-y-0.5">

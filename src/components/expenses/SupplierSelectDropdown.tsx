@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useMemo } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { ChevronDown, Check, Plus, X } from 'lucide-react'
+import { CaretDown, Check, Plus, X } from '@phosphor-icons/react/dist/ssr'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Supplier } from './types'
 import { Input } from '@/components/ui/input'
@@ -112,7 +112,7 @@ export default function SupplierSelectDropdown({ value, onChange, businessId, op
               <X size={12} />
             </span>
           )}
-          <ChevronDown size={14} className="text-hint" />
+          <CaretDown size={14} className="text-hint" />
         </div>
       </button>
 

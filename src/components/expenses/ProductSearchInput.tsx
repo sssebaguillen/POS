@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Plus, Search } from 'lucide-react'
+import { Plus, MagnifyingGlass } from '@phosphor-icons/react/dist/ssr'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { Input } from '@/components/ui/input'
 import { useFormatMoney } from '@/lib/context/CurrencyContext'
@@ -104,7 +104,7 @@ export default function ProductSearchInput({
   return (
     <div ref={containerRef} className="relative">
       <div className="relative">
-        <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-hint pointer-events-none" />
+        <MagnifyingGlass size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-hint pointer-events-none" />
         <Input
           value={query}
           onChange={e => handleChange(e.target.value)}

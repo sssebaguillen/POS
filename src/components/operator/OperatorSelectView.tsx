@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { ChevronLeft } from 'lucide-react'
+import { CaretLeft } from '@phosphor-icons/react/dist/ssr'
 import { createClient } from '@/lib/supabase/client'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -286,7 +286,7 @@ export default function OperatorSelectView({
               onClick={handleBack}
               className="-ml-1 flex h-11 items-center gap-1 text-sm text-muted-foreground transition-[transform,color] duration-150 ease-[var(--ease-out)] active:scale-[0.97] hover:text-foreground"
             >
-              <ChevronLeft className="h-4 w-4" />
+              <CaretLeft className="h-4 w-4" />
               Volver
             </button>
 

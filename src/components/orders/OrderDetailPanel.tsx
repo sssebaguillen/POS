@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { X, Phone, MapPin, ClipboardList, Bike, ShoppingBag, ImageIcon } from 'lucide-react'
+import { X, Phone, MapPin, ClipboardText, Bicycle, ShoppingBag, Image as ImageIcon } from '@phosphor-icons/react/dist/ssr'
 import Image from 'next/image'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase/client'
@@ -194,7 +194,7 @@ export default function OrderDetailPanel({ orderId, operatorId, onClose, onStatu
                     <a className="hover:underline" href={`tel:${detail.customer_phone}`}>{detail.customer_phone}</a>
                   </p>
                   <p className="flex items-center gap-2 text-sm text-muted-foreground">
-                    {isDelivery ? <Bike size={14} /> : <ShoppingBag size={14} />}
+                    {isDelivery ? <Bicycle size={14} /> : <ShoppingBag size={14} />}
                     {isDelivery ? 'Delivery' : 'Para llevar'}
                   </p>
                   {isDelivery && detail.address && (
@@ -205,7 +205,7 @@ export default function OrderDetailPanel({ orderId, operatorId, onClose, onStatu
                   )}
                   {detail.notes && (
                     <p className="flex items-start gap-2 text-sm text-muted-foreground">
-                      <ClipboardList size={14} className="mt-0.5 shrink-0" />
+                      <ClipboardText size={14} className="mt-0.5 shrink-0" />
                       <span className="whitespace-pre-wrap">{detail.notes}</span>
                     </p>
                   )}

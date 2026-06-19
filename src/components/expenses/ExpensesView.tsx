@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { Plus, Building2 } from 'lucide-react'
+import { Plus, Buildings } from '@phosphor-icons/react/dist/ssr'
 import { createClient } from '@/lib/supabase/client'
 import posthog from 'posthog-js'
 import { trackFeatureUsed } from '@/lib/analytics'
@@ -246,7 +246,7 @@ export default function ExpensesView({
               onClick={() => router.push('/expenses/providers')}
               className="gap-2 text-sm font-medium"
             >
-              <Building2 size={14} />
+              <Buildings size={14} />
               Proveedores
             </Button>
             <div className="flex items-center gap-3">

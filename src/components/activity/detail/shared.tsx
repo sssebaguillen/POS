@@ -1,7 +1,7 @@
 'use client'
 
 import type { ReactNode } from 'react'
-import { Trash2 } from 'lucide-react'
+import { Trash } from '@phosphor-icons/react/dist/ssr'
 import { useFormatMoney } from '@/lib/context/CurrencyContext'
 import { PAYMENT_LABELS, isPaymentMethod } from '@/lib/payments'
 import { PROFILE_ROLE_LABELS, OPERATOR_ROLE_LABELS, type OperatorRole } from '@/lib/constants/domain'
@@ -32,7 +32,7 @@ interface DeletedBadgeProps {
 export function DeletedBadge({ label }: DeletedBadgeProps) {
   return (
     <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-xs font-medium bg-destructive/15 text-destructive">
-      <Trash2 size={12} />
+      <Trash size={12} />
       {label}
     </div>
   )

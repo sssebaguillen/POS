@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useMemo, useRef, useState } from 'react'
-import { Trash2 } from 'lucide-react'
+import { Trash } from '@phosphor-icons/react/dist/ssr'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { cn } from '@/lib/utils'
 import type { MercaderiaItem } from './types'
@@ -167,7 +167,7 @@ export default function MercaderiaItemsSection({
                   onClick={() => removeItem(index)}
                   className="p-1 rounded text-hint hover:text-destructive hover:bg-destructive/10 transition-[transform,background-color,color] duration-150 ease-[var(--ease-out)] active:scale-95 shrink-0"
                 >
-                  <Trash2 size={13} />
+                  <Trash size={13} />
                 </button>
               </div>
 

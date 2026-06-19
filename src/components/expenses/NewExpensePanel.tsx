@@ -3,7 +3,7 @@
 import { useRef, useState } from 'react'
 import { trackExpenseCreated } from '@/lib/analytics'
 import { ERR } from '@/lib/errors'
-import { X } from 'lucide-react'
+import { X } from '@phosphor-icons/react/dist/ssr'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'

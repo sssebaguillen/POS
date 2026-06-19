@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Sparkles, Loader2, Check, X, AlertCircle } from 'lucide-react'
+import { Sparkle, CircleNotch, Check, X, WarningCircle } from '@phosphor-icons/react/dist/ssr'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { Button } from '@/components/ui/button'
 import { formatMoney } from '@/lib/format'
@@ -113,17 +113,17 @@ export default function ExpenseScanCard({ attachment, supabaseClient, onApply }:
           onClick={handleScan}
           className="w-full h-9 rounded-lg text-sm gap-2"
         >
-          <Sparkles size={15} className="text-primary" />
+          <Sparkle size={15} className="text-primary" />
           Escanear con IA
         </Button>
         {status === 'error' && errorMsg && (
           <p className="flex items-start gap-1.5 text-xs text-destructive">
-            <AlertCircle size={13} className="mt-px shrink-0" /> {errorMsg}
+            <WarningCircle size={13} className="mt-px shrink-0" /> {errorMsg}
           </p>
         )}
         {status === 'empty' && (
           <p className="flex items-start gap-1.5 text-xs text-hint">
-            <AlertCircle size={13} className="mt-px shrink-0" />
+            <WarningCircle size={13} className="mt-px shrink-0" />
             No pudimos extraer texto del documento. Completá los campos manualmente.
           </p>
         )}
@@ -134,7 +134,7 @@ export default function ExpenseScanCard({ attachment, supabaseClient, onApply }:
   if (status === 'loading') {
     return (
       <div className="flex items-center justify-center gap-2 h-9 rounded-lg border border-edge bg-surface-alt text-sm text-hint">
-        <Loader2 size={15} className="animate-spin text-primary" />
+        <CircleNotch size={15} className="animate-spin text-primary" />
         Analizando documento...
       </div>
     )
@@ -165,7 +165,7 @@ export default function ExpenseScanCard({ attachment, supabaseClient, onApply }:
   return (
     <div className="rounded-xl border border-primary/25 bg-primary/[0.04] p-3 space-y-3">
       <div className="flex items-center gap-1.5 text-xs font-medium text-primary">
-        <Sparkles size={13} />
+        <Sparkle size={13} />
         Sugerencia de la IA — revisá antes de aplicar
       </div>
       <dl className="space-y-1">

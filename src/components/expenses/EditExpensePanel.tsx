@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { Info, Lock, X } from 'lucide-react'
+import { Info, Lock, X } from '@phosphor-icons/react/dist/ssr'
 import { ERR } from '@/lib/errors'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { Button } from '@/components/ui/button'

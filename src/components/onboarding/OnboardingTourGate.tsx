@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Compass, X } from 'lucide-react'
+import { Compass, X } from '@phosphor-icons/react/dist/ssr'
 import { Button } from '@/components/ui/button'
 import { createClient } from '@/lib/supabase/client'
 import OnboardingTour from '@/components/onboarding/OnboardingTour'
