@@ -22,13 +22,19 @@ export default function UpdatePasswordView() {
       setSessionReady(true)
       return
     }
-    supabase.auth.exchangeCodeForSession(code).then(({ error }) => {
-      if (error) {
-        setError(ERR.AUT71)
-      } else {
-        setSessionReady(true)
-      }
-    })
+    supabase.auth
+      .exchangeCodeForSession(code)
+      .then(({ error }) => {
+        if (error) {
+          setError(ERR.AUT71)
+        } else {
+          setSessionReady(true)
+        }
+      })
+      // Si la promesa RECHAZA (red caída, timeout, cold start), sin este catch
+      // ni `error` ni `sessionReady` se setean → la pantalla queda colgada sin
+      // mensaje ni forma de reintentar. Mostramos el mismo error de link inválido.
+      .catch(() => setError(ERR.AUT71))
   }, [supabase])
 
   async function handleUpdatePassword() {
