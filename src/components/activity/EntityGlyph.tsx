@@ -1,18 +1,18 @@
 import type { ComponentType } from 'react'
 import {
-  BadgePercent,
+  SealPercent,
   Folder,
-  Inbox,
-  Layers,
+  Tray,
+  Stack,
   Package,
   Receipt,
-  Settings as SettingsIcon,
+  Gear as SettingsIcon,
   ShoppingCart,
   Tag,
   Truck,
-  UserCog,
-  UserRound,
-} from 'lucide-react'
+  UserGear,
+  User,
+} from '@phosphor-icons/react/dist/ssr'
 import CategoryIconPreview from '@/components/inventory/CategoryIconPreview'
 import type { ActivityLogRow, ActivityLookups } from '@/components/activity/types'
 
@@ -23,12 +23,12 @@ const ENTITY_GLYPH: Record<ActivityLogRow['entity_type'], ComponentType<{ size?:
   brand: Tag,
   expense: Receipt,
   supplier: Truck,
-  price_list: Layers,
-  promotion: BadgePercent,
+  price_list: Stack,
+  promotion: SealPercent,
   setting: SettingsIcon,
-  operator: UserCog,
-  customer: UserRound,
-  catalog_order: Inbox,
+  operator: UserGear,
+  customer: User,
+  catalog_order: Tray,
 }
 
 interface EntityGlyphProps {

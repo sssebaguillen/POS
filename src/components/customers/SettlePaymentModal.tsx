@@ -1,7 +1,7 @@
 'use client'
 
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
-import { X } from 'lucide-react'
+import { X } from '@phosphor-icons/react/dist/ssr'
 import { Button } from '@/components/ui/button'
 import SettlePaymentFields from './SettlePaymentFields'
 import { useSettlePayment } from './useSettlePayment'

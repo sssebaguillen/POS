@@ -1,6 +1,6 @@
 'use client'
 
-import { ChevronLeft, ChevronRight, Inbox } from 'lucide-react'
+import { CaretLeft, CaretRight, Tray } from '@phosphor-icons/react/dist/ssr'
 import ActivityRow from '@/components/activity/ActivityRow'
 import type { ActivityActionTone, ActivityLogRow, ActivityLookups } from '@/components/activity/types'
 import { getAuditActionTone } from '@/lib/audit'
@@ -109,7 +109,7 @@ export default function ActivityResults({
             className="inline-flex items-center gap-1 h-8 px-2.5 rounded-lg border border-border bg-card text-sm text-body hover:bg-muted hover:text-heading transition-[transform,background-color,color] duration-150 ease-[var(--ease-out)] active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-card disabled:hover:text-body"
             aria-label="Página anterior"
           >
-            <ChevronLeft size={14} />
+            <CaretLeft size={14} />
             Anterior
           </button>
           <span className="px-3 text-sm text-hint tabular-nums">
@@ -123,7 +123,7 @@ export default function ActivityResults({
             aria-label="Página siguiente"
           >
             Siguiente
-            <ChevronRight size={14} />
+            <CaretRight size={14} />
           </button>
         </div>
       )}
@@ -138,7 +138,7 @@ interface EmptyFilteredStateProps {
 function EmptyFilteredState({ onClearFilters }: EmptyFilteredStateProps) {
   return (
     <div className="flex flex-col items-center justify-center py-16 px-4 text-center gap-3">
-      <Inbox size={36} className="text-hint" />
+      <Tray size={36} className="text-hint" />
       <p className="text-heading font-semibold">Sin resultados</p>
       <p className="text-sm text-body max-w-sm">
         Ningún evento coincide con los filtros activos.
@@ -157,7 +157,7 @@ function EmptyFilteredState({ onClearFilters }: EmptyFilteredStateProps) {
 function EmptyActivityState() {
   return (
     <div className="flex flex-col items-center justify-center py-16 px-4 text-center gap-3">
-      <Inbox size={36} className="text-hint" />
+      <Tray size={36} className="text-hint" />
       <p className="text-heading font-semibold">Sin actividad registrada</p>
       <p className="text-sm text-body max-w-sm">
         Acá vas a ver cambios en ventas, productos, gastos, proveedores, listas de precios, configuración y operarios.

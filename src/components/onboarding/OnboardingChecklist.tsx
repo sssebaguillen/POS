@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { ChevronDown } from 'lucide-react'
+import { CaretDown } from '@phosphor-icons/react/dist/ssr'
 import { createClient } from '@/lib/supabase/client'
 import {
   mergeOnboardingState,
@@ -188,7 +188,7 @@ export default function OnboardingChecklist() {
         className="w-full px-3 py-2.5 flex items-center justify-between hover:bg-hover-bg/60 transition-colors"
       >
         <p className="text-[10px] font-semibold text-subtle uppercase tracking-widest">Primeros pasos</p>
-        <ChevronDown
+        <CaretDown
           size={14}
           className={`text-hint transition-transform ${expanded ? 'rotate-180' : ''}`}
         />

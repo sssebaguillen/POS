@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Plus } from 'lucide-react'
+import { Plus } from '@phosphor-icons/react/dist/ssr'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'

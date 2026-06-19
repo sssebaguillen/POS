@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { AlertTriangle, ArrowUpRight, Check, ChevronDown, Lightbulb, TrendingUp } from 'lucide-react'
+import { Warning, ArrowUpRight, Check, CaretDown, Lightbulb, TrendUp } from '@phosphor-icons/react/dist/ssr'
 import { cn } from '@/lib/utils'
 import { useUpdateInsightStatus } from '@/components/insights/useInsights'
 import type { AiInsight, InsightSeverity } from '@/components/insights/types'
@@ -9,8 +9,8 @@ import type { AiInsight, InsightSeverity } from '@/components/insights/types'
 // Severidad dentro de la paleta cálida del sistema (sin colores genéricos sky/emerald/amber):
 // oportunidad → espresso (primary), atención → ember red (destructive), nota → neutral (secondary).
 const SEVERITY: Record<InsightSeverity, { chip: string; label: string; Icon: typeof Lightbulb }> = {
-  anomaly: { chip: 'bg-destructive/10 text-destructive border-destructive/20', label: 'Atención', Icon: AlertTriangle },
-  opportunity: { chip: 'bg-primary/10 text-primary border-primary/20', label: 'Oportunidad', Icon: TrendingUp },
+  anomaly: { chip: 'bg-destructive/10 text-destructive border-destructive/20', label: 'Atención', Icon: Warning },
+  opportunity: { chip: 'bg-primary/10 text-primary border-primary/20', label: 'Oportunidad', Icon: TrendUp },
   info: { chip: 'bg-secondary text-body border-border', label: 'Nota', Icon: Lightbulb },
 }
 
@@ -52,7 +52,7 @@ export default function InsightCard({ insight, onActed, onOpenEntity, openLabel 
             className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-hint transition-colors hover:text-body"
           >
             Por qué
-            <ChevronDown
+            <CaretDown
               size={13}
               className={cn('transition-transform duration-200 ease-[cubic-bezier(0.16,1,0.3,1)]', showWhy && 'rotate-180')}
             />

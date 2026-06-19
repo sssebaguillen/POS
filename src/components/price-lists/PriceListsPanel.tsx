@@ -1,7 +1,7 @@
 'use client'
 
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
-import { ChevronRight, Download, Plus, Search, X } from 'lucide-react'
+import { CaretRight, DownloadSimple, Plus, MagnifyingGlass, X } from '@phosphor-icons/react/dist/ssr'
 import PageHeader from '@/components/shared/PageHeader'
 import { Button } from '@/components/ui/button'
 import {
@@ -353,7 +353,7 @@ export default function PriceListsPanel({
               </div>
               <div className="flex items-center gap-1.5 flex-shrink-0">
                 <div className="relative">
-                  <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-hint pointer-events-none" />
+                  <MagnifyingGlass size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-hint pointer-events-none" />
                   <input
                     type="text"
                     value={search}
@@ -372,7 +372,7 @@ export default function PriceListsPanel({
                   title="Exportar lista a CSV"
                   aria-label="Exportar lista a CSV"
                 >
-                  <Download size={14} />
+                  <DownloadSimple size={14} />
                 </Button>
                 <Button
                   variant="outline"
@@ -578,7 +578,7 @@ function GroupedPriceRowsTable({
                   >
                     <TableCell>
                       <div className="flex items-center gap-2">
-                        <ChevronRight
+                        <CaretRight
                           size={13}
                           className={`text-hint transition-transform duration-150 ${isExpanded ? 'rotate-90' : ''}`}
                         />

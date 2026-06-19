@@ -10,7 +10,7 @@ import EditOperatorModal from '@/components/settings/EditOperatorModal'
 import ConfirmModal from '@/components/shared/ConfirmModal'
 import { useToast } from '@/hooks/useToast'
 import { ERR } from '@/lib/errors'
-import { Plus } from 'lucide-react'
+import { Plus } from '@phosphor-icons/react/dist/ssr'
 
 type ConfirmState = { title: string; message: string; onConfirm: () => void } | null
 

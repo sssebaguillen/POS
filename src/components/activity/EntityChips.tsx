@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { ChevronDown } from 'lucide-react'
+import { CaretDown } from '@phosphor-icons/react/dist/ssr'
 import { cn } from '@/lib/utils'
 import { ENTITY_OVERFLOW_OPTIONS, ENTITY_PRIMARY_OPTIONS } from '@/components/activity/config'
 import type { ActivityEntityFilter } from '@/components/activity/types'
@@ -74,7 +74,7 @@ export default function EntityChips({ value, onChange }: EntityChipsProps) {
           )}
         >
           {moreLabel}
-          <ChevronDown
+          <CaretDown
             size={14}
             className={cn('transition-transform duration-150', open && 'rotate-180')}
           />

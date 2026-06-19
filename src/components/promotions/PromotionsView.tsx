@@ -2,7 +2,7 @@
 
 import { useCallback, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { BadgePercent, MoreVertical, Plus } from 'lucide-react'
+import { SealPercent, DotsThreeVertical, Plus } from '@phosphor-icons/react/dist/ssr'
 import PageHeader from '@/components/shared/PageHeader'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -236,7 +236,7 @@ export default function PromotionsView({
 
         {filtered.length === 0 ? (
           <div className="surface-card p-12 text-center text-hint select-none">
-            <BadgePercent size={40} className="mx-auto mb-3 opacity-40" />
+            <SealPercent size={40} className="mx-auto mb-3 opacity-40" />
             {promotions.length === 0 ? (
               <>
                 <p className="text-sm font-medium text-body">Aún no hay promociones</p>
@@ -324,7 +324,7 @@ export default function PromotionsView({
                                     aria-label="Más acciones"
                                     className="shrink-0 px-2 py-2 rounded-lg border border-edge text-subtle hover:bg-hover-bg hover:text-body transition-[transform,background-color,color] duration-150 ease-[var(--ease-out)] active:scale-[0.97] disabled:opacity-50 touch-manipulation"
                                   >
-                                    <MoreVertical size={16} />
+                                    <DotsThreeVertical size={16} />
                                   </button>
                                 </PopoverTrigger>
                                 <PopoverContent align="end" className="w-44 p-1 gap-0.5" onClick={() => setMenuId(null)}>

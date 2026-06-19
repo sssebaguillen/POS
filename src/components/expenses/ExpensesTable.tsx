@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo, useRef } from 'react'
-import { Paperclip, Loader2 } from 'lucide-react'
+import { Paperclip, CircleNotch } from '@phosphor-icons/react/dist/ssr'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { EXPENSE_CATEGORY_LABELS, type Expense, type ExpenseAttachmentType } from './types'
 import ExpenseAttachmentModal from './ExpenseAttachmentModal'
@@ -174,7 +174,7 @@ export default function ExpensesTable({ expenses, businessId, operatorId, supaba
                       title={expense.attachment_name ?? 'Ver adjunto'}
                     >
                       {loadingAttachmentId === expense.id
-                        ? <Loader2 size={15} className="animate-spin" />
+                        ? <CircleNotch size={15} className="animate-spin" />
                         : <Paperclip size={15} />
                       }
                     </button>

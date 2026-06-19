@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { RefreshCw } from 'lucide-react'
+import { ArrowsClockwise } from '@phosphor-icons/react/dist/ssr'
 import { createClient } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
 import PageHeader from '@/components/shared/PageHeader'
@@ -180,7 +180,7 @@ export default function OrdersView({ initialOrders, operatorId }: Props) {
           onClick={() => refetch()}
           disabled={isFetching}
         >
-          <RefreshCw size={14} className={isFetching ? 'animate-spin' : ''} />
+          <ArrowsClockwise size={14} className={isFetching ? 'animate-spin' : ''} />
           Actualizar
         </Button>
       </PageHeader>

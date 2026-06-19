@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Sparkles, Volume2, VolumeX } from 'lucide-react'
+import { Sparkle, SpeakerHigh, SpeakerSlash } from '@phosphor-icons/react/dist/ssr'
 import { cn } from '@/lib/utils'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import InsightCard from '@/components/insights/InsightCard'
@@ -88,7 +88,7 @@ export default function InsightAnchor({ insights, onActed, onOpenEntity, openLab
           {/* Glyph + número entran con la transición notification-badge (slide-in + pop) */}
           <span className="t-badge" data-open={shown ? 'true' : 'false'}>
             <span className="t-badge-dot relative inline-flex! items-center justify-center">
-              <Sparkles size={icon} className="relative" />
+              <Sparkle size={icon} className="relative" />
               {count > 1 && (
                 <span className="absolute -right-0.5 -top-0.5 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-primary px-1 text-[9px] font-bold text-primary-foreground">
                   {count}
@@ -100,7 +100,7 @@ export default function InsightAnchor({ insights, onActed, onOpenEntity, openLab
       </PopoverTrigger>
       <PopoverContent align={align} className="w-96 overflow-hidden p-0">
         <div className="flex items-center gap-1.5 border-b border-edge px-3.5 pb-2 pt-3">
-          <Sparkles size={13} className="text-primary" />
+          <Sparkle size={13} className="text-primary" />
           <span className="text-sm font-semibold text-heading">Sugerencias</span>
           <span className="ml-auto text-xs text-hint">{count}</span>
           <button
@@ -110,7 +110,7 @@ export default function InsightAnchor({ insights, onActed, onOpenEntity, openLab
             title={soundOn ? 'Silenciar aviso sonoro' : 'Activar aviso sonoro'}
             className="rounded-md p-1 text-hint transition-colors hover:bg-muted hover:text-heading"
           >
-            {soundOn ? <Volume2 size={14} /> : <VolumeX size={14} />}
+            {soundOn ? <SpeakerHigh size={14} /> : <SpeakerSlash size={14} />}
           </button>
         </div>
         <div className="max-h-[60vh] divide-y divide-edge overflow-y-auto">

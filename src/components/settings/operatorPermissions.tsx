@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { ChevronDown } from 'lucide-react'
+import { CaretDown } from '@phosphor-icons/react/dist/ssr'
 import type { Permissions } from '@/lib/operator'
 
 // Modelo de permisos de operario: 8 capacidades agrupadas en 4 áreas. Compartido por
@@ -123,7 +123,7 @@ export function PermissionsFields({ permissions, onToggle, disabled = false, def
         className="flex items-center gap-1.5 text-sm font-medium text-body transition-colors hover:text-heading"
       >
         Ver permisos individuales
-        <ChevronDown className={`h-4 w-4 transition-transform ${expanded ? 'rotate-180' : ''}`} />
+        <CaretDown className={`h-4 w-4 transition-transform ${expanded ? 'rotate-180' : ''}`} />
       </button>
 
       {expanded && (

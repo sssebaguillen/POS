@@ -11,7 +11,7 @@ import { type SettingsBusiness, type SettingsOperator } from '@/components/setti
 import OperatorList from '@/components/settings/OperatorList'
 import { CURRENCIES, type SupportedCurrencyCode } from '@/lib/constants/currencies'
 import SelectDropdown from '@/components/ui/SelectDropdown'
-import { Upload } from 'lucide-react'
+import { UploadSimple } from '@phosphor-icons/react/dist/ssr'
 import { usePillIndicator } from '@/hooks/usePillIndicator'
 import { BUSINESS_SLUG_REGEX } from '@/lib/validation'
 import { FieldErrorMessage, ShakeOnError } from '@/components/shared/ShakeError'
@@ -582,7 +582,7 @@ export default function SettingsForm({
                       </div>
                       <div className="p-3">
                         <div className="flex flex-col items-center gap-2 rounded-lg border border-dashed border-border bg-muted/20 px-4 py-5">
-                          <Upload className="h-5 w-5 text-muted-foreground" />
+                          <UploadSimple className="h-5 w-5 text-muted-foreground" />
                           <span className="text-xs text-muted-foreground">Arrastra o haz clic para seleccionar</span>
                           <span className="text-[10px] text-muted-foreground">JPEG, PNG, WebP, SVG · máx. 2 MB</span>
                         </div>

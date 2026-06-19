@@ -1,4 +1,4 @@
-import { Bike, ShoppingBag } from 'lucide-react'
+import { Bicycle, ShoppingBag } from '@phosphor-icons/react/dist/ssr'
 import { ACCENT_CHIP, type AccentTone } from '@/lib/accent-colors'
 import { STATUS_LABEL, type CatalogOrderStatus } from './types'
 
@@ -13,7 +13,7 @@ const STATUS_TONE: Record<CatalogOrderStatus, AccentTone> = {
 }
 
 const STATUS_ICON: Partial<Record<CatalogOrderStatus, React.ReactNode>> = {
-  en_camino:    <Bike size={10} className="shrink-0" />,
+  en_camino:    <Bicycle size={10} className="shrink-0" />,
   listo_retiro: <ShoppingBag size={10} className="shrink-0" />,
 }
 

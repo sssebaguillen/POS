@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { Check, Search, X } from 'lucide-react'
+import { Check, MagnifyingGlass, X } from '@phosphor-icons/react/dist/ssr'
 import ExportCSVButton from '@/components/shared/ExportCSVButton'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
@@ -357,7 +357,7 @@ export default function ExportPriceListModal({
             <>
               <div className="flex flex-col gap-2">
                 <div className="relative">
-                  <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-hint pointer-events-none" />
+                  <MagnifyingGlass size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-hint pointer-events-none" />
                   <Input
                     value={search}
                     onChange={event => setSearch(event.target.value)}

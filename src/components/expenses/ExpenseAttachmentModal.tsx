@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { ExternalLink, FileSpreadsheet, FileText, ImageIcon, Loader2, X } from 'lucide-react'
+import { ArrowSquareOut, FileXls, FileText, Image as ImageIcon, CircleNotch, X } from '@phosphor-icons/react/dist/ssr'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import type { ExpenseAttachmentType } from './types'
 
@@ -16,7 +16,7 @@ interface Props {
 function AttachmentIcon({ type }: { type: ExpenseAttachmentType | null }) {
   if (type === 'pdf') return <FileText size={16} className="text-destructive shrink-0" />
   if (type === 'image') return <ImageIcon size={16} className="text-primary shrink-0" />
-  if (type === 'spreadsheet') return <FileSpreadsheet size={16} className="text-body shrink-0" />
+  if (type === 'spreadsheet') return <FileXls size={16} className="text-body shrink-0" />
   return <FileText size={16} className="text-hint shrink-0" />
 }
 
@@ -72,7 +72,7 @@ function PreviewContent({ signedUrl, type, name }: { signedUrl: string; type: Ex
       <div className="relative flex-1 min-h-0">
         {(pdfState.kind !== 'fetched' || !pdfState.iframeReady) && (
           <div className="absolute inset-0 flex items-center justify-center bg-surface">
-            <Loader2 size={24} className="animate-spin text-primary" />
+            <CircleNotch size={24} className="animate-spin text-primary" />
           </div>
         )}
         {pdfState.kind === 'fetched' && (
@@ -103,7 +103,7 @@ function PreviewContent({ signedUrl, type, name }: { signedUrl: string; type: Ex
   // spreadsheet, other, or unknown — no inline preview available
   return (
     <div className="flex-1 min-h-0 flex flex-col items-center justify-center gap-3 p-8 bg-surface">
-      <FileSpreadsheet size={40} className="text-hint opacity-50" />
+      <FileXls size={40} className="text-hint opacity-50" />
       <p className="text-sm text-body text-center">
         Este tipo de archivo no se puede previsualizar.
       </p>
@@ -135,7 +135,7 @@ export default function ExpenseAttachmentModal({ open, signedUrl, type, name, on
             className="flex items-center gap-1.5 text-xs text-hint hover:text-body transition-colors px-2 py-1 rounded-lg hover:bg-hover-bg"
             title="Abrir en nueva pestaña"
           >
-            <ExternalLink size={13} />
+            <ArrowSquareOut size={13} />
             <span className="hidden sm:inline">Abrir</span>
           </a>
           <button

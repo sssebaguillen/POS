@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef, useMemo } from 'react'
-import { Upload, X, FileText, FileSpreadsheet } from 'lucide-react'
+import { UploadSimple, X, FileText, FileXls } from '@phosphor-icons/react/dist/ssr'
 import { createClient } from '@/lib/supabase/client'
 import type { ExpenseAttachmentType } from './types'
 
@@ -113,7 +113,7 @@ export default function ExpenseAttachmentUploader({ businessId, onUpload, onRemo
         ) : current.type === 'pdf' ? (
           <FileText size={28} className="text-red-500 shrink-0" />
         ) : (
-          <FileSpreadsheet size={28} className="text-emerald-600 shrink-0" />
+          <FileXls size={28} className="text-emerald-600 shrink-0" />
         )}
         <div className="flex-1 min-w-0">
           <p className="text-sm font-medium text-heading truncate">{current.name}</p>
@@ -154,7 +154,7 @@ export default function ExpenseAttachmentUploader({ businessId, onUpload, onRemo
           </>
         ) : (
           <>
-            <Upload size={22} className="text-hint" />
+            <UploadSimple size={22} className="text-hint" />
             <p className="text-sm text-body text-center">
               Arrastra un archivo aquí o <span className="text-primary font-medium">haz clic para elegir</span>
             </p>

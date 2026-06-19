@@ -1,6 +1,6 @@
 'use client'
 
-import { ChevronDown, ChevronRight } from 'lucide-react'
+import { CaretDown, CaretRight } from '@phosphor-icons/react/dist/ssr'
 import ActivityDetail from '@/components/activity/ActivityDetail'
 import EntityGlyph from '@/components/activity/EntityGlyph'
 import { SaleSummaryInline } from '@/components/activity/detail/sale'
@@ -46,7 +46,7 @@ export default function ActivityRow({
             className="inline-flex items-center justify-center w-6 h-6 text-hint"
             aria-hidden="true"
           >
-            {isOpen ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+            {isOpen ? <CaretDown size={16} /> : <CaretRight size={16} />}
           </span>
         </td>
         <td className="px-4 py-3 align-middle">
