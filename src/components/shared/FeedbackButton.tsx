@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { MessageSquarePlus } from 'lucide-react'
+import { ChatCircleDots } from '@phosphor-icons/react/dist/ssr'
 import FeedbackModal from './FeedbackModal'
 import { useToast } from '@/hooks/useToast'
 
@@ -24,7 +24,7 @@ export default function FeedbackButton({ businessId, showLabel = true }: Props) 
         className="inline-flex items-center gap-1 rounded-md px-1.5 py-1 text-xs text-hint hover:text-body hover:bg-hover-bg transition-[transform,background-color,color] duration-150 ease-[var(--ease-out)] active:scale-[0.97]"
       >
         {showLabel && <span>Comentarios</span>}
-        <MessageSquarePlus size={12} />
+        <ChatCircleDots size={12} />
 
       </button>
 

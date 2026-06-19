@@ -2,7 +2,7 @@
 
 import { usePathname } from 'next/navigation'
 import Link from 'next/link'
-import { X, ShoppingCart, Package, ClipboardList, BarChart2, LineChart, Settings, Sun, Moon, LogOut, PanelLeftClose, PanelLeftOpen, Receipt, UserCircle, Sparkles, Globe, ExternalLink, History, Users, Vault, Inbox, BadgePercent } from 'lucide-react'
+import { X, ShoppingCart, Package, ClipboardText, ChartBar, ChartLine, Gear, Sun, Moon, SignOut, SidebarSimple, Receipt, UserCircle, Sparkle, Globe, ArrowSquareOut, ClockCounterClockwise, Users, Vault, Tray, SealPercent } from '@phosphor-icons/react/dist/ssr'
 import { useRouter } from 'next/navigation'
 import { useState, useEffect, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
@@ -29,16 +29,16 @@ interface NavLink {
 const NAV_LINKS: NavLink[] = [
   { href: '/pos',           label: 'Vender',            icon: ShoppingCart,  check: () => true },
   { href: '/customers',     label: 'Clientes',          icon: Users,         check: () => true },
-  { href: '/orders',        label: 'Pedidos online',    icon: Inbox,         check: (p) => p.online_orders === true },
-  { href: '/dashboard',     label: 'Resumen',           icon: BarChart2,     check: (p) => p.reports === true },
-  { href: '/stats',         label: 'Estadísticas',      icon: LineChart,     check: (p) => p.reports === true },
-  { href: '/activity',      label: 'Actividad',         icon: History,       check: (p) => p.reports === true },
+  { href: '/orders',        label: 'Pedidos online',    icon: Tray,         check: (p) => p.online_orders === true },
+  { href: '/dashboard',     label: 'Resumen',           icon: ChartBar,     check: (p) => p.reports === true },
+  { href: '/stats',         label: 'Estadísticas',      icon: ChartLine,     check: (p) => p.reports === true },
+  { href: '/activity',      label: 'Actividad',         icon: ClockCounterClockwise,       check: (p) => p.reports === true },
   { href: '/expenses',      label: 'Gastos',            icon: Receipt,       check: (p) => p.expenses === true },
   { href: '/cash-sessions', label: 'Caja',              icon: Vault,         check: (p) => p.reports === true },
   { href: '/inventory',   label: 'Inventario',        icon: Package,       check: (p) => p.inventory_read === true },
-  { href: '/price-lists', label: 'Listas de precios', icon: ClipboardList, check: (p) => p.inventory_read === true },
-  { href: '/promotions',  label: 'Promociones',       icon: BadgePercent,  check: (p) => p.inventory_read === true },
-  { href: '/settings',    label: 'Configuración',     icon: Settings,      check: (p) => p.settings === true },
+  { href: '/price-lists', label: 'Listas de precios', icon: ClipboardText, check: (p) => p.inventory_read === true },
+  { href: '/promotions',  label: 'Promociones',       icon: SealPercent,  check: (p) => p.inventory_read === true },
+  { href: '/settings',    label: 'Configuración',     icon: Gear,      check: (p) => p.settings === true },
 ]
 
 const NAV_SECTIONS = [
@@ -174,7 +174,7 @@ export default function Sidebar({
             )}
             title={collapsed ? 'Expandir sidebar' : 'Colapsar sidebar'}
           >
-            {collapsed ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}
+            {collapsed ? <SidebarSimple size={18} /> : <SidebarSimple size={18} />}
           </button>
         )}
       </div>
@@ -205,7 +205,7 @@ export default function Sidebar({
             title="Retomar configuración inicial"
             className="flex items-center justify-center p-2.5 rounded-xl text-primary hover:bg-primary/10 transition-[transform,background-color,color] duration-150 ease-[var(--ease-out)] active:scale-95 mb-2"
           >
-            <Sparkles size={18} />
+            <Sparkle size={18} />
           </Link>
         )}
         {NAV_SECTIONS.map(section => {
@@ -241,7 +241,7 @@ export default function Sidebar({
                           : 'text-body hover:bg-hover-bg hover:text-heading'
                       )}
                     >
-                      <Icon size={18} />
+                      <Icon size={18} weight={isActive ? 'fill' : 'regular'} />
                       {(!collapsed || isMobileDrawer) && label}
                       {showBadge && (
                         <UnreadBadge
@@ -269,7 +269,7 @@ export default function Sidebar({
                     {(!collapsed || isMobileDrawer) && (
                       <>
                         <span className="flex-1">Catálogo online</span>
-                        <ExternalLink size={13} className="text-hint" />
+                        <ArrowSquareOut size={13} className="text-hint" />
                       </>
                     )}
                   </a>
@@ -345,7 +345,7 @@ export default function Sidebar({
                 )}
                 aria-label="Cerrar sesión"
               >
-                <LogOut size={18} />
+                <SignOut size={18} />
                 {(!collapsed || isMobileDrawer) && 'Cerrar sesión'}
               </button>
             </>
