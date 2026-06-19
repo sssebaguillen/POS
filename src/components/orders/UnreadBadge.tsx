@@ -13,7 +13,8 @@ import { cn } from '@/lib/utils'
  */
 export async function acknowledgeOrdersSeen() {
   const supabase = createClient()
-  await supabase.rpc('mark_catalog_orders_read')
+  const { error } = await supabase.rpc('mark_catalog_orders_read')
+  if (error) console.error('mark_catalog_orders_read failed', error)
 }
 
 export function useUnreadOrdersCount(enabled: boolean) {
