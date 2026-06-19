@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
-import { AlertCircle, CreditCard, Plus, Printer, X } from 'lucide-react'
+import { WarningCircle, CreditCard, Plus, Printer, X } from '@phosphor-icons/react/dist/ssr'
 import ReceiptPreviewModal from '@/components/pos/ReceiptPreviewModal'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -517,7 +517,7 @@ export default function PaymentModal({
                     role="alert"
                     className="rounded-xl border border-destructive/20 bg-destructive/10 px-3 py-2.5 flex items-start gap-2.5"
                   >
-                    <AlertCircle size={16} className="text-destructive shrink-0 mt-0.5" />
+                    <WarningCircle size={16} className="text-destructive shrink-0 mt-0.5" />
                     <div className="min-w-0 space-y-0.5">
                       <p className="text-sm font-semibold text-destructive">{error}</p>
                       <p className="text-xs text-body">El carrito sigue cargado. Puedes intentar de nuevo.</p>

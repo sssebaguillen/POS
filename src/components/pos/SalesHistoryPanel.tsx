@@ -2,7 +2,7 @@
 
 import { useMemo, useRef, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { Printer } from 'lucide-react'
+import { Printer } from '@phosphor-icons/react/dist/ssr'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import ReceiptPreviewModal from '@/components/pos/ReceiptPreviewModal'

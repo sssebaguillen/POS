@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Trash2 } from 'lucide-react'
+import { Trash } from '@phosphor-icons/react/dist/ssr'
 import { Button } from '@/components/ui/button'
 import type { PaymentMethod } from '@/lib/constants/domain'
 import { isPaymentMethod, PAYMENT_OPTIONS } from '@/lib/payments'
@@ -67,7 +67,7 @@ export default function EditSalePanel({
               onClick={() => removeItem(item.id)}
               className="text-faint hover:text-destructive transition-[transform,color] duration-150 ease-[var(--ease-out)] active:scale-95 shrink-0"
             >
-              <Trash2 size={14} />
+              <Trash size={14} />
             </button>
           </div>
         ))}

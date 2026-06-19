@@ -3,7 +3,7 @@
 import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useQueryClient } from '@tanstack/react-query'
-import { Minus, Pencil, Percent, Plus, ShoppingCart, Trash2, PenLine, User, X } from 'lucide-react'
+import { Minus, PencilSimple, Percent, Plus, ShoppingCart, Trash, User, X } from '@phosphor-icons/react/dist/ssr'
 import { Button } from '@/components/ui/button'
 import { useCartStore, resolveDiscountAmount, type DiscountMode } from '@/lib/store/cart.store'
 import { getCartItemId } from '@/lib/types/cart'
@@ -432,7 +432,7 @@ const CartPanel = forwardRef<CartPanelHandle, Props>(function CartPanel({ busine
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-1.5">
                             {isFreeLine && (
-                              <PenLine size={12} className="text-primary shrink-0" />
+                              <PencilSimple size={12} className="text-primary shrink-0" />
                             )}
                             <p className="text-sm font-medium text-heading leading-tight truncate">
                               {isFreeLine ? item.free_line_description : item.product!.name}
@@ -481,7 +481,7 @@ const CartPanel = forwardRef<CartPanelHandle, Props>(function CartPanel({ busine
                                         >
                                           {formatMoney(effectivePrice)} c/u
                                         </span>
-                                        <Pencil size={10} className="text-faint shrink-0" />
+                                        <PencilSimple size={10} className="text-faint shrink-0" />
                                       </button>
                                     ) : (
                                       <p
@@ -565,7 +565,7 @@ const CartPanel = forwardRef<CartPanelHandle, Props>(function CartPanel({ busine
                               <span className={`text-sm font-semibold tabular-nums ${item.priceIsManual ? 'text-primary' : 'text-heading'}`}>
                                 <PopNumber value={formatMoney(effectiveTotal)} />
                               </span>
-                              <Pencil size={10} className="text-faint shrink-0" />
+                              <PencilSimple size={10} className="text-faint shrink-0" />
                             </button>
                           ) : (
                             <p className={`text-sm font-semibold tabular-nums ${item.priceIsManual || isFreeLine ? 'text-primary' : 'text-heading'}`}>
@@ -578,7 +578,7 @@ const CartPanel = forwardRef<CartPanelHandle, Props>(function CartPanel({ busine
                               aria-label="Quitar del carrito"
                               className="w-8 h-8 -mr-1.5 -mb-1.5 rounded-md flex items-center justify-center text-faint hover:text-destructive hover:bg-hover-bg transition-[transform,background-color,color] duration-150 ease-[var(--ease-out)] active:scale-95"
                             >
-                              <Trash2 size={14} />
+                              <Trash size={14} />
                             </button>
                           </div>
                         </div>
@@ -666,7 +666,7 @@ const CartPanel = forwardRef<CartPanelHandle, Props>(function CartPanel({ busine
                         onClick={() => { setShowCustomerSearch(false); setShowDiscountForm(false); setShowFreeLineForm(v => !v) }}
                         className={cls(showFreeLineForm)}
                       >
-                        <PenLine size={18} />
+                        <PencilSimple size={18} />
                         Libre
                       </button>
                     )}

@@ -1,6 +1,6 @@
 'use client'
 
-import { ShoppingCart } from 'lucide-react'
+import { ShoppingCart } from '@phosphor-icons/react/dist/ssr'
 import { useCartStore } from '@/lib/store/cart.store'
 import { formatMoney } from '@/lib/format'
 

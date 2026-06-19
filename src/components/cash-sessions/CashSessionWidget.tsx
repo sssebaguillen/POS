@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
-import { Vault, ChevronRight } from 'lucide-react'
+import { Vault, CaretRight } from '@phosphor-icons/react/dist/ssr'
 import { useQuery } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
 import { getCurrencySymbol, formatNumber } from '@/lib/format'
@@ -152,7 +152,7 @@ export default function CashSessionWidget({
       </span>
       {isLink && (
         <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-edge bg-card text-hint transition-colors duration-150 group-hover:bg-hover-bg group-hover:text-body">
-          <ChevronRight size={15} />
+          <CaretRight size={15} />
         </span>
       )}
     </>

@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo } from 'react'
-import { Vault, AlertTriangle } from 'lucide-react'
+import { Vault, Warning } from '@phosphor-icons/react/dist/ssr'
 import { Button } from '@/components/ui/button'
 import { useFormatMoney } from '@/lib/context/CurrencyContext'
 import PopNumber from '@/components/shared/PopNumber'
@@ -31,7 +31,7 @@ export default function CashSessionWidget({ session, onOpenClick, onCloseClick }
   if (!session) {
     return (
       <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-warning/10 border border-warning/20 text-warning">
-        <AlertTriangle size={14} className="shrink-0" />
+        <Warning size={14} className="shrink-0" />
         <span className="text-xs font-medium flex-1">No hay caja abierta</span>
         <Button
           size="sm"

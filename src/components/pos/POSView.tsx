@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useMemo, useCallback } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import { Search, Menu, ChevronDown, Check, ScanBarcode, X } from 'lucide-react'
+import { MagnifyingGlass, List, CaretDown, Check, Barcode, X } from '@phosphor-icons/react/dist/ssr'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { useSidebar } from '@/components/shared/AppShell'
@@ -386,16 +386,16 @@ export default function POSView({ products, businessId, businessName, freeLineEn
           className="p-1.5 -ml-1 rounded-lg hover:bg-hover-bg transition-[transform,background-color] duration-150 ease-[var(--ease-out)] active:scale-95 lg:hidden"
           aria-label="Abrir menú"
         >
-          <Menu size={20} className="text-body" />
+          <List size={20} className="text-body" />
         </button>
         <span className="text-lg font-bold text-heading shrink-0 font-display">Ventas</span>
 
         <div className="hidden lg:flex flex-1 max-w-lg mx-auto">
           <div className="relative w-full">
-            {/* Ícono: muestra ScanBarcode animado cuando detecta escaneo, Search en reposo */}
+            {/* Ícono: muestra Barcode animado cuando detecta escaneo, MagnifyingGlass en reposo */}
             <div className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none">
               {scanFeedback ? (
-                <ScanBarcode
+                <Barcode
                   size={16}
                   className={
                     scanFeedback === 'found'
@@ -404,7 +404,7 @@ export default function POSView({ products, businessId, businessName, freeLineEn
                   }
                 />
               ) : (
-                <Search size={16} className="text-hint" />
+                <MagnifyingGlass size={16} className="text-hint" />
               )}
             </div>
             <Input
@@ -442,7 +442,7 @@ export default function POSView({ products, businessId, businessName, freeLineEn
           className="lg:hidden ml-auto p-1.5 rounded-lg hover:bg-hover-bg transition-[transform,background-color] duration-150 ease-[var(--ease-out)] active:scale-95"
           aria-label="Buscar"
         >
-          <Search size={20} className="text-body" />
+          <MagnifyingGlass size={20} className="text-body" />
         </button>
 
         <div ref={listDropdownRef} className="relative shrink-0" data-tour="pos-price-list-selector">
@@ -459,7 +459,7 @@ export default function POSView({ products, businessId, businessName, freeLineEn
           >
             <span className="text-hint text-xs hidden lg:inline">Lista:</span>
             <span>{priceLists.length === 0 ? '—' : (activePriceList?.name ?? 'Precio base')}</span>
-            {canSelectList && priceLists.length > 0 && <ChevronDown size={14} className="text-hint" />}
+            {canSelectList && priceLists.length > 0 && <CaretDown size={14} className="text-hint" />}
           </button>
           {listDropdownOpen && priceLists.length > 0 && (
             <div className="absolute top-full right-0 mt-1 surface-elevated z-30 py-1 min-w-[180px] rounded-lg overflow-hidden animate-in fade-in-0 zoom-in-95 origin-top-right duration-150">
@@ -513,12 +513,12 @@ export default function POSView({ products, businessId, businessName, freeLineEn
           <div className="relative flex-1">
             <div className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none">
               {scanFeedback ? (
-                <ScanBarcode
+                <Barcode
                   size={16}
                   className={scanFeedback === 'found' ? 'text-promo' : 'text-destructive'}
                 />
               ) : (
-                <Search size={16} className="text-hint" />
+                <MagnifyingGlass size={16} className="text-hint" />
               )}
             </div>
             <Input

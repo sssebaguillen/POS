@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import { X, ChevronRight } from 'lucide-react'
+import { X, CaretRight } from '@phosphor-icons/react/dist/ssr'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
@@ -196,7 +196,7 @@ export default function CloseSessionModal({ open, sessionId, operatorId, onClose
                 disabled={countedCash === ''}
                 className="flex-1"
               >
-                Continuar <ChevronRight size={15} className="ml-1" />
+                Continuar <CaretRight size={15} className="ml-1" />
               </Button>
             </div>
           </div>

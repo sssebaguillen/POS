@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Mail, Printer, Send, Share2, X } from 'lucide-react'
+import { Envelope, Printer, PaperPlaneTilt, ShareNetwork, X } from '@phosphor-icons/react/dist/ssr'
 import ReceiptTemplate from '@/components/pos/ReceiptTemplate'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
@@ -198,7 +198,7 @@ export default function ReceiptPreviewModal({ receipt, onClose, autoPrintOnOpen 
                   disabled={printingBrowser || printingDirect || sharing}
                   onClick={handleNativeShare}
                 >
-                  <Share2 />
+                  <ShareNetwork />
                   {sharing ? 'Abriendo compartir...' : 'Compartir'}
                 </Button>
               )}
@@ -209,7 +209,7 @@ export default function ReceiptPreviewModal({ receipt, onClose, autoPrintOnOpen 
                 disabled={printingBrowser || printingDirect || sharing}
                 onClick={openWhatsAppShare}
               >
-                <Send />
+                <PaperPlaneTilt />
                 WhatsApp
               </Button>
 
@@ -219,7 +219,7 @@ export default function ReceiptPreviewModal({ receipt, onClose, autoPrintOnOpen 
                 disabled={printingBrowser || printingDirect || sharing}
                 onClick={openEmailShare}
               >
-                <Mail />
+                <Envelope />
                 Email
               </Button>
 
