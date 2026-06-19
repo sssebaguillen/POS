@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { AlertTriangle, PackageX } from 'lucide-react'
+import { Warning, Package } from '@phosphor-icons/react/dist/ssr'
 import ExportCSVButton from '@/components/shared/ExportCSVButton'
 import PopNumber from '@/components/shared/PopNumber'
 import { useFormatMoney } from '@/lib/context/CurrencyContext'
@@ -115,7 +115,7 @@ export default function DeadStockLens({ rows, summary, bucket: initialBucket, pa
       {/* Nudge: costo sin cargar */}
       {missingCost > 0 && (
         <div className="flex items-start gap-2.5 rounded-xl border border-warning/20 bg-warning/10 px-4 py-3 text-sm text-warning">
-          <AlertTriangle size={16} className="shrink-0 mt-0.5" />
+          <Warning size={16} className="shrink-0 mt-0.5" />
           <p>
             {missingCost} {missingCost === 1 ? 'producto sin costo cargado' : 'productos sin costo cargado'} —
             cargá el costo en Inventario para ver su capital inmovilizado real.
@@ -158,7 +158,7 @@ export default function DeadStockLens({ rows, summary, bucket: initialBucket, pa
             {pageRows.length === 0 ? (
               <tr>
                 <td colSpan={6} className="text-center text-hint py-16">
-                  <PackageX size={28} className="mx-auto mb-3 opacity-40" />
+                  <Package size={28} className="mx-auto mb-3 opacity-40" />
                   <p className="text-sm font-medium text-body">Sin stock inmovilizado</p>
                   <p className="text-xs text-hint mt-1">Tu inventario rota bien — no hay productos parados con capital trabado.</p>
                 </td>

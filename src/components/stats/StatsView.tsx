@@ -3,7 +3,7 @@
 import { useMemo, useState, memo } from 'react'
 import { usePathname } from 'next/navigation'
 import { useQuery, keepPreviousData } from '@tanstack/react-query'
-import { TrendingDown, TrendingUp, DollarSign, ShoppingBag, Receipt, Hash, FileText, PackageX, ChevronRight } from 'lucide-react'
+import { TrendDown, TrendUp, CurrencyDollar, ShoppingBag, Receipt, Hash, FileText, Package, CaretRight } from '@phosphor-icons/react/dist/ssr'
 import Link from 'next/link'
 import PageHeader from '@/components/shared/PageHeader'
 import InsightSurfaceAnchor from '@/components/insights/InsightSurfaceAnchor'
@@ -92,7 +92,7 @@ const DeltaBadge = memo(function DeltaBadge({ current, previous }: { current: nu
           : 'bg-destructive/10 text-destructive'
       }`}
     >
-      {positive ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
+      {positive ? <TrendUp size={12} /> : <TrendDown size={12} />}
       {positive ? '+' : ''}{delta.toFixed(1)}%
     </div>
   )
@@ -377,7 +377,7 @@ export default function StatsView({
                     : 'bg-muted text-body'
                 )}
               >
-                <PackageX size={18} />
+                <Package size={18} />
               </span>
               <div className="min-w-0 flex-1">
                 {deadStockSummary.products_flagged > 0 ? (
@@ -396,7 +396,7 @@ export default function StatsView({
                   </>
                 )}
               </div>
-              <ChevronRight size={18} className="text-hint group-hover:text-primary transition-colors shrink-0" />
+              <CaretRight size={18} className="text-hint group-hover:text-primary transition-colors shrink-0" />
             </Link>
           )}
 
@@ -406,7 +406,7 @@ export default function StatsView({
               <div className="surface-card p-5 flex flex-col gap-3">
                 <div className="flex items-start justify-between">
                   <span className="h-9 w-9 rounded-xl flex items-center justify-center shrink-0 bg-muted text-body">
-                    <DollarSign size={16} />
+                    <CurrencyDollar size={16} />
                   </span>
                   <DeltaBadge current={totalRevenue} previous={prevRevenue} />
                 </div>

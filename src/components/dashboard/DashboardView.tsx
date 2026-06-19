@@ -20,7 +20,7 @@ import type { SupportedCurrencyCode } from '@/lib/constants/currencies'
 import OnboardingWizard, { type OnboardingWizardProfile } from '@/components/onboarding/OnboardingWizard'
 import { useFormatMoney } from '@/lib/context/CurrencyContext'
 import { ResponsiveContainer, BarChart, Bar, XAxis, Tooltip } from 'recharts'
-import { Check } from 'lucide-react'
+import { Check } from '@phosphor-icons/react/dist/ssr'
 import { cn } from '@/lib/utils'
 
 interface ChartPoint {

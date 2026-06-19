@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo } from 'react'
-import { ArrowUp, ArrowDown, ArrowUpDown } from 'lucide-react'
+import { ArrowUp, ArrowDown, ArrowsDownUp } from '@phosphor-icons/react/dist/ssr'
 import { useRouter, usePathname } from 'next/navigation'
 import DateRangeFilter from '@/components/shared/DateRangeFilter'
 import PopNumber from '@/components/shared/PopNumber'
@@ -28,7 +28,7 @@ export interface TopProductRow {
 type SortKey = 'units_sold' | 'revenue' | 'transaction_count' | 'gross_profit'
 
 function SortIcon({ col, sortKey, sortAsc }: { col: SortKey; sortKey: SortKey; sortAsc: boolean }) {
-  if (col !== sortKey) return <ArrowUpDown size={12} className="text-hint/60" />
+  if (col !== sortKey) return <ArrowsDownUp size={12} className="text-hint/60" />
   return sortAsc
     ? <ArrowUp size={12} className="text-primary" />
     : <ArrowDown size={12} className="text-primary" />
