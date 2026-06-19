@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { PackageCheck } from 'lucide-react'
+import { Package } from '@phosphor-icons/react/dist/ssr'
 import ExportCSVButton from '@/components/shared/ExportCSVButton'
 import PopNumber from '@/components/shared/PopNumber'
 import { useFormatMoney } from '@/lib/context/CurrencyContext'
@@ -104,7 +104,7 @@ export default function OverstockLens({ rows, summary, page: initialPage, pageSi
             {pageRows.length === 0 ? (
               <tr>
                 <td colSpan={6} className="text-center text-hint py-16">
-                  <PackageCheck size={28} className="mx-auto mb-3 opacity-40" />
+                  <Package size={28} className="mx-auto mb-3 opacity-40" />
                   <p className="text-sm font-medium text-body">Sin sobrestock</p>
                   <p className="text-xs text-hint mt-1">Comprás ajustado al ritmo de venta — no hay productos con stock de sobra.</p>
                 </td>

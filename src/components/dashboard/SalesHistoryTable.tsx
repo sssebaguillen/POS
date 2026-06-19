@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect, memo, useRef } from 'react'
 import { useMutation, useInfiniteQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query'
-import { Download, Printer, Trash2, X } from 'lucide-react'
+import { DownloadSimple, Printer, Trash, X } from '@phosphor-icons/react/dist/ssr'
 import ReceiptPreviewModal from '@/components/pos/ReceiptPreviewModal'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
@@ -414,7 +414,7 @@ function SalesHistoryTable({ businessId, businessName, operatorId, from, to, ope
             disabled={exporting || visibleRows.length === 0}
             className="pill-tab inline-flex items-center gap-1.5 shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <Download size={14} />
+            <DownloadSimple size={14} />
             {exporting ? 'Exportando…' : 'Exportar CSV'}
           </button>
         </div>
@@ -818,7 +818,7 @@ function EditSalePanel({
               onClick={() => removeItem(item.product_id)}
               className="w-8 h-8 flex items-center justify-center rounded-lg text-faint hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors shrink-0"
             >
-              <Trash2 size={14} />
+              <Trash size={14} />
             </button>
           </div>
         ))}
