@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
-import { BadgePercent, ChevronLeft, ChevronRight, ImageIcon, ShoppingCart } from 'lucide-react'
+import { SealPercent, CaretLeft, CaretRight, Image as ImageIcon, ShoppingCart } from '@phosphor-icons/react/dist/ssr'
 import { Button } from '@/components/ui/button'
 import { promoCountdownLabel } from '@/lib/promotions'
 import type { CatalogProduct } from '@/components/catalog/types'
@@ -222,9 +222,9 @@ export default function OffersCarousel({ offers, slug, onAddToCart }: OffersCaro
         href={`/catalogo/${slug}/promotions`}
         className="group mb-3 inline-flex items-center gap-1.5 text-sm font-bold text-promo transition-colors hover:text-promo/80"
       >
-        <BadgePercent className="h-4 w-4" />
+        <SealPercent className="h-4 w-4" />
         Ofertas
-        <ChevronRight className="h-4 w-4 transition-transform duration-150 ease-[var(--ease-out)] group-hover:translate-x-0.5" />
+        <CaretRight className="h-4 w-4 transition-transform duration-150 ease-[var(--ease-out)] group-hover:translate-x-0.5" />
       </Link>
 
       <div
@@ -253,7 +253,7 @@ export default function OffersCarousel({ offers, slug, onAddToCart }: OffersCaro
             onClick={() => scrollToIndex((activeIndex - 1 + offers.length) % offers.length)}
             className="absolute left-2 top-1/2 hidden h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-border/70 bg-card/90 text-foreground shadow-sm transition-[transform,background-color] duration-150 ease-[var(--ease-out)] hover:bg-card active:scale-95 sm:flex"
           >
-            <ChevronLeft className="h-5 w-5" />
+            <CaretLeft className="h-5 w-5" />
           </button>
           <button
             type="button"
@@ -261,7 +261,7 @@ export default function OffersCarousel({ offers, slug, onAddToCart }: OffersCaro
             onClick={() => scrollToIndex((activeIndex + 1) % offers.length)}
             className="absolute right-2 top-1/2 hidden h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-border/70 bg-card/90 text-foreground shadow-sm transition-[transform,background-color] duration-150 ease-[var(--ease-out)] hover:bg-card active:scale-95 sm:flex"
           >
-            <ChevronRight className="h-5 w-5" />
+            <CaretRight className="h-5 w-5" />
           </button>
 
           {/* Dots */}

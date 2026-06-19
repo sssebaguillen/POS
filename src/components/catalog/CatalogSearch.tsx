@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
-import { ImageIcon, Layers, Search } from 'lucide-react'
+import { Image as ImageIcon, Stack, MagnifyingGlass } from '@phosphor-icons/react/dist/ssr'
 import { createClient } from '@supabase/supabase-js'
 import { mapCatalogProductRow, type CatalogProductRow } from '@/components/catalog/mapProducts'
 import type { CatalogCategory, CatalogProduct } from '@/components/catalog/types'
@@ -138,7 +138,7 @@ export default function CatalogSearch({
 
   return (
     <div ref={containerRef} className={`relative ${className}`}>
-      <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+      <MagnifyingGlass className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
       <input
         type="search"
         role="combobox"
@@ -234,7 +234,7 @@ export default function CatalogSearch({
                           {meta && <span className="truncate">{meta}</span>}
                           {product.hasVariants && (
                             <span className="inline-flex shrink-0 items-center gap-0.5">
-                              <Layers className="h-3 w-3" />
+                              <Stack className="h-3 w-3" />
                               {product.variantCount > 1
                                 ? `${product.variantCount} opciones`
                                 : 'Opciones'}

@@ -4,7 +4,7 @@ import { useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { BadgePercent, Home, Menu, ShoppingCart } from 'lucide-react'
+import { SealPercent, House, List, ShoppingCart } from '@phosphor-icons/react/dist/ssr'
 import { CatalogThemeToggle } from '@/components/catalog/CatalogThemeProvider'
 import CatalogSearch from '@/components/catalog/CatalogSearch'
 import {
@@ -84,7 +84,7 @@ export default function CatalogNavbar({
           aria-label="Abrir menú"
           className="flex h-9 w-9 items-center justify-center rounded-xl border border-border bg-muted text-muted-foreground transition-[transform,background-color,color] duration-150 ease-[var(--ease-out)] hover:bg-secondary hover:text-foreground active:scale-95 md:hidden"
         >
-          <Menu className="h-4 w-4" />
+          <List className="h-4 w-4" />
         </button>
 
         {/* Identidad — link a la home del catálogo */}
@@ -109,7 +109,7 @@ export default function CatalogNavbar({
           </Link>
           <Link href={offersUrl} className={navLinkClass(isOffers)}>
             <span className="flex items-center gap-1">
-              <BadgePercent className="h-4 w-4" />
+              <SealPercent className="h-4 w-4" />
               Ofertas
             </span>
           </Link>
@@ -149,7 +149,7 @@ export default function CatalogNavbar({
               onClick={() => setIsMenuOpen(false)}
               className={menuLinkClass(!isOffers)}
             >
-              <Home className="h-4 w-4" />
+              <House className="h-4 w-4" />
               Inicio
             </Link>
             <Link
@@ -157,7 +157,7 @@ export default function CatalogNavbar({
               onClick={() => setIsMenuOpen(false)}
               className={menuLinkClass(isOffers)}
             >
-              <BadgePercent className="h-4 w-4" />
+              <SealPercent className="h-4 w-4" />
               Ofertas
             </Link>
           </nav>

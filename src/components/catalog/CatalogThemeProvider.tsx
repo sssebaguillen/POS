@@ -1,7 +1,7 @@
 'use client'
 
 import { createContext, useContext, useEffect, useState } from 'react'
-import { Sun, Moon } from 'lucide-react'
+import { Sun, Moon } from '@phosphor-icons/react/dist/ssr'
 import { runThemeToggleTransition, type Theme } from '@/lib/theme'
 
 interface CatalogThemeContextType {

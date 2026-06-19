@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
-import { ArrowLeft, Check, ImageIcon, ShoppingCart } from 'lucide-react'
+import { ArrowLeft, Check, Image as ImageIcon, ShoppingCart } from '@phosphor-icons/react/dist/ssr'
 import { Button } from '@/components/ui/button'
 import { promoBadgeLabel, promoCountdownLabel } from '@/lib/promotions'
 import type {
