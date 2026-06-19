@@ -8,6 +8,35 @@
 
 ---
 
+## 0. ESTADO Y CÓMO CONTINUAR (handoff — leer primero)
+
+**Última sesión: 2026-06-20.** Avance por fases (detalle en §6):
+
+- ✅ **Fase 0** — fundación. Mig `20260620_01` **aplicada a prod** (commit `44579db`): columna `balance_after`, tipo `opening` en el CHECK, helper `record_stock_movement` (inerte, nadie lo llama aún), `REVOKE anon`. Verificada en DB.
+- ✅ **Fase 1** — opening snapshot. Mig `20260620_02` (commit `ad944fc`) **aplicada SOLO a negocios de prueba** (`tienda de seba` + `Q tal lokis`): 63 asientos `opening`, invariante 0 violaciones. **Cecilia y demás reales NO tocados.**
+- ⏭️ **Próximo: Fase 2** — rutear los escritores de stock existentes por `record_stock_movement`.
+
+### Reglas de esta iniciativa (innegociables)
+1. **🚫 NUNCA tocar datos de `Cecilia`** (`32ad0306-2803-4c64-a6b9-a0cdde7fb17a`) ni de `gmail`/`nuevo seba`. **Solo** mutar `tienda de seba` (`abd2d7b9-7691-4400-8ddf-8928b60ccd68`) y `Q tal lokis` (`debd5e3c-01d9-4134-b070-00de4008556a`). Ver [[feedback_dev_businesses_only]].
+2. **🔴 Fases 2–4 = camino del dinero** → **E2E verde obligatorio** antes de cerrar (ver [[feedback_run_e2e_on_critical_changes]] + [[project_e2e_suite]]: correr contra build de PROD, no `next dev`). Esta es la razón por la que NO son trabajo del agente headless.
+3. **Migraciones:** escribir el archivo + mantener `schema.sql` en sync; aplicar vía **MCP `apply_migration`** (DDL) o `execute_sql` (DML scopeado a prueba), NUNCA `supabase db push` (ver [[project_migration_apply_mechanism]]).
+
+### Pendiente de decisión del dueño (no asumir)
+- **Rollout global de la Fase 1 a los negocios reales (incl. Cecilia).** La mig `20260620_02` es idempotente y global; hoy se aplicó scopeada a prueba. Para incluir a Cecilia/otros: re-correr el archivo **sin** el filtro de negocio (saltea lo ya sembrado). **Requiere OK explícito** (toca la cuenta real). Conviene hacerlo en una ventana con conciencia de Cecilia, idealmente **después** de que las fases 2–4 estén estables, para que su libro arranque ya con disciplina completa.
+- Decisiones abiertas §8 aún sin resolver: 1 (`unit_cost`/valuación), 2 (`delete_product`), 4 (test invariante en CI), 5 (vínculo P10.c). La §8.3 (opening solo `<>0`) ya se resolvió en Fase 1.
+
+### Arrancar la Fase 2 (checklist para la próxima sesión)
+1. Tener la **suite E2E lista para correr contra build de PROD** (es el gate de cierre).
+2. Releer §5.1 (contrato del helper) + §5.3 (mapa de retrofit) + §7 (riesgos: doble-conteo de `update_sale`, concurrencia/`RETURNING`).
+3. Tocar **solo los 3 escritores existentes** (no abrir los huecos todavía — eso es Fase 3):
+   - `update_stock_on_sale` (trigger, `schema.sql` ~`:8038`) → reemplazar el `UPDATE stock` + `INSERT movement` por `record_stock_movement('sale', -qty, ref=sale_id, op=...)`; **dejar `sales_count` donde está**; **sumar atribución de operador** (hoy NULL).
+   - `create_mercaderia_expense` (~`:1120`) → por ítem, `record_stock_movement('purchase', +qty, op=v_stored_op_id)`.
+   - `update_mercaderia_expense` (~`:6977`) → reemplazar UPDATE/DELETE de asientos por `record_stock_movement` (delta `adjustment` / nuevo `purchase`); ojo el ítem removido (compensar, no borrar) — parte de esto se solapa con Fase 4, decidir alcance al empezar.
+4. Verificar en prueba: el **stock final NO cambia** vs. el comportamiento actual (el helper hace el mismo delta) y el invariante sigue 0 violaciones; sumar movimientos `sale`/`purchase` ahora traen `balance_after` poblado.
+5. **E2E verde** (registro→venta→caja) + commit + (si aplica) actualizar este handoff.
+
+---
+
 ## 1. Qué es y por qué
 
 Un **kardex** es el libro mayor de inventario: el registro inmutable de **cada** movimiento de stock de un producto (entró 20 por compra, salieron 3 por venta, ajuste manual de −1, devolución +2…) de modo que siempre se cumpla el invariante:
