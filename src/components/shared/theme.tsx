@@ -1,7 +1,7 @@
 'use client'
 
 import { createContext, useContext, useEffect, useState } from 'react'
-import { Sun, Moon } from 'lucide-react'
+import { Sun, Moon } from '@phosphor-icons/react/dist/ssr'
 import { THEME_STORAGE_KEY, type Theme } from '@/lib/theme'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
