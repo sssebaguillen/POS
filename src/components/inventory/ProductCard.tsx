@@ -2,7 +2,7 @@
 
 import Image from 'next/image'
 import { memo, useState } from 'react'
-import { Package, Pencil, MoreVertical, Globe } from 'lucide-react'
+import { Package, PencilSimple, DotsThreeVertical, Globe } from '@phosphor-icons/react/dist/ssr'
 import type { ProductCardProps } from '@/components/inventory/types'
 import { getStatus, statusConfig } from '@/components/inventory/types'
 import { useFormatMoney } from '@/lib/context/CurrencyContext'
@@ -142,13 +142,13 @@ const ProductCard = memo(function ProductCard({
             onClick={!readOnly ? () => onQuickBrand(product) : undefined}
           >
             <span className="truncate">{product.brand?.name ?? 'Sin marca'}</span>
-            {!readOnly && <Pencil size={9} className="shrink-0 text-primary opacity-0 group-hover/card:opacity-50 transition-opacity" />}
+            {!readOnly && <PencilSimple size={9} className="shrink-0 text-primary opacity-0 group-hover/card:opacity-50 transition-opacity" />}
           </span>
           <span
             className={`inline-flex items-center gap-0.5 min-w-0 rounded px-0.5 -mx-0.5 touch-manipulation ${!readOnly ? 'cursor-pointer hover:text-body' : ''}`}
             onClick={!readOnly ? () => onQuickCategory(product) : undefined}
           >
-            {!readOnly && <Pencil size={9} className="shrink-0 text-primary opacity-0 group-hover/card:opacity-50 transition-opacity" />}
+            {!readOnly && <PencilSimple size={9} className="shrink-0 text-primary opacity-0 group-hover/card:opacity-50 transition-opacity" />}
             <span className="truncate">{product.categories?.name ?? 'Sin categoría'}</span>
           </span>
         </div>
@@ -200,7 +200,7 @@ const ProductCard = memo(function ProductCard({
                   aria-label="Más acciones"
                   className="shrink-0 px-2 rounded-lg border border-edge text-subtle hover:bg-hover-bg hover:text-body transition-[transform,background-color,color] duration-150 ease-[var(--ease-out)] active:scale-[0.97] disabled:opacity-50 touch-manipulation"
                 >
-                  <MoreVertical size={16} />
+                  <DotsThreeVertical size={16} />
                 </button>
               </PopoverTrigger>
               <PopoverContent align="end" className="w-44 p-1 gap-0.5" onClick={() => setMenuOpen(false)}>

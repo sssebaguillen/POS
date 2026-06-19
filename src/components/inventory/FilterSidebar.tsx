@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { createPortal } from 'react-dom'
-import { ArrowDown, ArrowUp, ChevronDown, Search, SlidersHorizontal, X } from 'lucide-react'
+import { ArrowDown, ArrowUp, CaretDown, MagnifyingGlass, FadersHorizontal, X } from '@phosphor-icons/react/dist/ssr'
 import { Button } from '@/components/ui/button'
 import type { InventoryBrand, InventoryCategory, SortOption } from '@/components/inventory/types'
 import CategoryIconPreview from '@/components/inventory/CategoryIconPreview'
@@ -68,7 +68,7 @@ function Section({ label, badge, open, onToggle, children }: SectionProps) {
             </span>
           )}
         </div>
-        <ChevronDown
+        <CaretDown
           size={14}
           className={`text-hint transition-transform duration-200 ${open ? 'rotate-180' : ''}`}
         />
@@ -167,7 +167,7 @@ export default function FilterSidebar({
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-edge shrink-0">
           <div className="flex items-center gap-2">
-            <SlidersHorizontal size={16} className="text-subtle" />
+            <FadersHorizontal size={16} className="text-subtle" />
             <span className="font-semibold text-sm text-heading">Filtros</span>
             {activeCount > 0 && (
               <span className="text-xs font-bold bg-primary text-primary-foreground rounded-full w-5 h-5 flex items-center justify-center">
@@ -245,7 +245,7 @@ export default function FilterSidebar({
               onToggle={() => toggleSection('categories')}
             >
               <div className="relative mb-2">
-                <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-hint pointer-events-none" />
+                <MagnifyingGlass size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-hint pointer-events-none" />
                 <input
                   type="text"
                   value={catQuery}
@@ -289,7 +289,7 @@ export default function FilterSidebar({
               onToggle={() => toggleSection('brands')}
             >
               <div className="relative mb-2">
-                <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-hint pointer-events-none" />
+                <MagnifyingGlass size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-hint pointer-events-none" />
                 <input
                   type="text"
                   value={brandQuery}

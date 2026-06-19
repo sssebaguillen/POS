@@ -1,6 +1,6 @@
 'use client'
 
-import { Upload } from 'lucide-react'
+import { UploadSimple } from '@phosphor-icons/react/dist/ssr'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { validateImageUrl } from '@/lib/validation'
@@ -83,7 +83,7 @@ export default function ImageUploadField({ controller }: Props) {
         {tab === 'upload' && (
           <>
             <label className="flex flex-col items-center gap-2 cursor-pointer rounded-lg border border-dashed border-edge bg-surface px-4 py-5 hover:border-primary/40 transition-colors">
-              <Upload className="h-5 w-5 text-hint" />
+              <UploadSimple className="h-5 w-5 text-hint" />
               <span className="text-xs text-hint">
                 {uploading ? 'Subiendo...' : 'Arrastra o haz clic para seleccionar'}
               </span>

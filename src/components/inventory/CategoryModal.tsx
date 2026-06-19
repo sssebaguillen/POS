@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { X, Pencil, Check } from 'lucide-react'
+import { X, PencilSimple, Check } from '@phosphor-icons/react/dist/ssr'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import ConfirmModal from '@/components/shared/ConfirmModal'
 import type { InventoryCategory } from '@/components/inventory/types'
@@ -357,7 +357,7 @@ export default function CategoryModal({
                               className="p-1.5 rounded-lg hover:bg-hover-bg transition-[transform,background-color,color] duration-150 ease-[var(--ease-out)] active:scale-95 text-hint disabled:opacity-30"
                               aria-label={`Editar ${category.name}`}
                             >
-                              <Pencil className="w-3.5 h-3.5" />
+                              <PencilSimple className="w-3.5 h-3.5" />
                             </button>
                             <Button
                               type="button"

@@ -1,23 +1,25 @@
 'use client'
 
 import {
-  ShoppingCart, Tag, Package, Apple, Coffee, Beef, Milk, Carrot,
-  Cookie, Sandwich, Wine, Beer, Pill, Shirt, Scissors, Wrench, Zap, Sparkles,
-  PawPrint, Baby, Book, Music, Gamepad2, Dumbbell, Flower2, Home, Car, Bike,
+  ShoppingCart, Tag, Package, Orange, Coffee, Cow, Drop, Carrot,
+  Cookie, Hamburger, Wine, BeerBottle, Pill, TShirt, Scissors, Wrench, Lightning, Sparkle,
+  PawPrint, Baby, Book, MusicNotes, GameController, Barbell, Flower, House, Car, Bicycle,
   Stethoscope, GraduationCap, Gift, Star,
-} from 'lucide-react'
-import type { LucideProps } from 'lucide-react'
+} from '@phosphor-icons/react/dist/ssr'
+// IconProps no se re-exporta desde /dist/ssr; el import type-only se borra en
+// compilación (no ejecuta createContext), así que tomarlo del entry principal es seguro.
+import type { IconProps } from '@phosphor-icons/react'
 
 const ICON_MAP = {
-  ShoppingCart, Tag, Package, Apple, Coffee, Beef, Milk, Carrot,
-  Cookie, Sandwich, Wine, Beer, Pill, Shirt, Scissors, Wrench, Zap, Sparkles,
-  PawPrint, Baby, Book, Music, Gamepad2, Dumbbell, Flower2, Home, Car, Bike,
+  ShoppingCart, Tag, Package, Apple: Orange, Coffee, Beef: Cow, Milk: Drop, Carrot,
+  Cookie, Sandwich: Hamburger, Wine, Beer: BeerBottle, Pill, Shirt: TShirt, Scissors, Wrench, Zap: Lightning, Sparkles: Sparkle,
+  PawPrint, Baby, Book, Music: MusicNotes, Gamepad2: GameController, Dumbbell: Barbell, Flower2: Flower, Home: House, Car, Bike: Bicycle,
   Stethoscope, GraduationCap, Gift, Star,
 } as const
 
 export type IconName = keyof typeof ICON_MAP
 
-export function DynamicIcon({ name, ...props }: { name: string } & LucideProps) {
+export function DynamicIcon({ name, ...props }: { name: string } & IconProps) {
   const LucideIcon = ICON_MAP[name as IconName]
   if (!LucideIcon) return <Tag {...props} />
   return <LucideIcon {...props} />
