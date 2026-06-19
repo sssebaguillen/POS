@@ -216,8 +216,8 @@ El helper lo garantiza por construcción; el opening lo siembra. Esto va como te
 
 > Las migraciones se **escriben** y quedan en el PR; **aplicar a prod lo hace Sebastián** (regla 4, [[project_migration_apply_mechanism]]). Mantener `supabase/schema.sql` en sync en cada fase.
 
-- **Fase 0 — Prep no-breaking.** `ADD COLUMN balance_after`, extender CHECK con `opening`, crear `record_stock_movement` (todavía sin usar), `REVOKE anon`. Sin cambio de comportamiento. Verif: build + el helper testeado aislado.
-- **Fase 1 — Opening snapshot.** Migración que siembra `opening` por producto/variante + setea `balance_after`. Test de invariante (5.4) pasa tras esto. (Solo escribe asientos, no cambia stock.)
+- **✅ Fase 0 — Prep no-breaking** (aplicada a prod 2026-06-20, mig `20260620_01`). `ADD COLUMN balance_after`, CHECK con `opening`, helper `record_stock_movement` (inerte), `REVOKE anon`. Verificada en DB.
+- **✅ Fase 1 — Opening snapshot** (mig `20260620_02`, aplicada SOLO a negocios de prueba 2026-06-20 — 63 asientos; **Cecilia y otros reales NO tocados**, rollout global pendiente de aprobación del dueño). Invariante verificado: 0 violaciones en las cuentas de prueba. Decisión §8.3 resuelta (solo stock<>0).
 - **Fase 2 — Rutear escritores existentes por el helper.** Trigger de venta + mercadería create/update. Verificar que el stock no cambia y el kardex queda correcto. **🔴 money-path → E2E.**
 - **Fase 3 — Cerrar los huecos.** `create_product`/`create_product_with_variants` (`opening`), `update_product`/`update_product_variants` (`adjustment`). **🔴 toca inventario.**
 - **Fase 4 — Anti-ledger + bugfixes.** Reemplazar los `DELETE`/`UPDATE` de asientos por compensaciones en `delete_sale`/`delete_expense`/`update_sale`/`update_mercaderia_expense`; arreglar el bug de variantes de `delete_sale` y el doble-conteo de `update_sale`; decidir `delete_product`/`bulk_delete_products`. **🔴 money-path → E2E.**
