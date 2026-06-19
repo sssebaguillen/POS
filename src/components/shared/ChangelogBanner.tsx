@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Sparkles, X } from 'lucide-react'
+import { Sparkle, X } from '@phosphor-icons/react/dist/ssr'
 import { cn } from '@/lib/utils'
 import { useChangelog } from '@/hooks/use-changelog'
 import ChangelogModal from './ChangelogModal'
@@ -42,7 +42,7 @@ export default function ChangelogBanner({ initialLastSeenVersion, collapsed, isM
             : 'flex items-center gap-2 px-2.5 py-2 w-full text-left'
         )}
       >
-        <Sparkles size={16} className="shrink-0" />
+        <Sparkle size={16} className="shrink-0" />
         {!compact && (
           <>
             <span className="flex-1 min-w-0 text-xs font-medium truncate">

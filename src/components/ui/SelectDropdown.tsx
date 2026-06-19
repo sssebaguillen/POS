@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import type React from 'react'
 import type { CSSProperties } from 'react'
 import { createPortal } from 'react-dom'
-import { Check, ChevronDown } from 'lucide-react'
+import { Check, CaretDown } from '@phosphor-icons/react/dist/ssr'
 
 interface SelectDropdownProps {
   value: string
@@ -148,7 +148,7 @@ export default function SelectDropdown({ value, onChange, options, placeholder, 
           ? <span className="truncate flex items-center gap-2">{renderSelected(selectedOption)}</span>
           : <span className="truncate">{selectedLabel}</span>
         }
-        <ChevronDown size={14} className={`shrink-0 text-subtle transition-transform ${open ? 'rotate-180' : ''}`} />
+        <CaretDown size={14} className={`shrink-0 text-subtle transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>
 
       {phase !== 'closed' && (usePortal ? createPortal(dropdownList, document.body) : dropdownList)}

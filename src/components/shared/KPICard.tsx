@@ -1,5 +1,5 @@
 import { memo, useId, type ReactNode } from 'react'
-import { TrendingDown, TrendingUp } from 'lucide-react'
+import { TrendDown, TrendUp } from '@phosphor-icons/react/dist/ssr'
 import { cn } from '@/lib/utils'
 import PopNumber from '@/components/shared/PopNumber'
 
@@ -118,8 +118,8 @@ function KPICard({ label, value, trend, subtitle, sparkline, children }: Props) 
                   : 'text-hint'
               )}
             >
-              {trend.direction === 'up' && <TrendingUp size={13} />}
-              {trend.direction === 'down' && <TrendingDown size={13} />}
+              {trend.direction === 'up' && <TrendUp size={13} />}
+              {trend.direction === 'down' && <TrendDown size={13} />}
               {trend.percent !== 0
                 ? `${trend.direction === 'up' ? '+' : ''}${trend.percent.toFixed(1)}%`
                 : '—'}

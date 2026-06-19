@@ -303,6 +303,7 @@ export default function EditExpensePanel({
             value={supplierId}
             onChange={setSupplierId}
             businessId={businessId}
+            operatorId={operatorId}
             supabaseClient={supabase}
           />
         </div>
