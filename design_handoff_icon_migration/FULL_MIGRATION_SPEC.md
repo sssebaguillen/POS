@@ -6,9 +6,24 @@
 
 ---
 
+## ⚠️ IMPORTANTE — origen de los imports (decisión 2026-06-19, VALIDADA)
+
+**TODOS los imports de iconos van desde `@phosphor-icons/react/dist/ssr`, NO desde `@phosphor-icons/react`.**
+
+Razón: el entry principal `@phosphor-icons/react` evalúa `createContext(...)` al cargar el módulo → **rompe `npm run build` en cualquier Server Component** que importe iconos (`TypeError: createContext is not a function` al recolectar page data). La variante `/dist/ssr` no usa context, funciona en Server **y** Client Components, y solo se pierde el `IconContext` global (que esta migración no usa). Validado el 2026-06-19 con un build real (página Server Component importando de `/dist/ssr` → prerenderizó OK). El **paquete a instalar sigue siendo `@phosphor-icons/react`**; solo cambia el subpath del import.
+
+```tsx
+// ✅ correcto (server + client)
+import { ShoppingCart, Gear } from '@phosphor-icons/react/dist/ssr'
+// ❌ rompe el build en Server Components
+import { ShoppingCart, Gear } from '@phosphor-icons/react'
+```
+
+---
+
 ## 0. Reglas de ejecución (protocolo del agente)
 
-- Swap **en el lugar** (in-place), como ya hace el código: reemplazar `from 'lucide-react'` por `from '@phosphor-icons/react'` y cambiar los nombres según la tabla. **NO** se introduce un módulo central nuevo (decisión de diseño: mantener el patrón actual).
+- Swap **en el lugar** (in-place), como ya hace el código: reemplazar `from 'lucide-react'` por `from '@phosphor-icons/react/dist/ssr'` (ver callout de arriba) y cambiar los nombres según la tabla. **NO** se introduce un módulo central nuevo (decisión de diseño: mantener el patrón actual).
 - **Un PR por área** (ver §4). NO un PR gigante.
 - **`tsc` + `lint` + `build` verdes** en cada PR. `tsc` es además la red de seguridad: si algún nombre Phosphor no existiera (drift de versión), el build falla → ahí flaguear ese icono puntual en "⚠️ Preguntas" y seguir con el resto.
 - **Camino del dinero (POS, carrito, pagos, cash-sessions):** va en un PR APARTE y final, marcado **`⚠️ MONEY-PATH: requiere E2E + QA visual del dueño antes de mergear`**. El swap es inerte (solo iconos, cero lógica), pero la regla 5 se respeta: el dueño valida E2E y lo mergea. NO mezclar money-path con áreas normales.
@@ -172,13 +187,13 @@ Phosphor no tiene equivalente literal de estos; sustituto ya elegido — **no re
 
 ### 3.1 `LucideProps` (es un *type*, no un glifo)
 `src/components/inventory/CategoryIconPreview.tsx:9` hace `import type { LucideProps } from 'lucide-react'`.
-→ Reemplazar por `import type { IconProps } from '@phosphor-icons/react'` y cambiar el uso `LucideProps` → `IconProps`. (Si `grep -rn "LucideProps\|LucideIcon" src/` encuentra más usos, mismo criterio.)
+→ Reemplazar por `import type { IconProps } from '@phosphor-icons/react/dist/ssr'` y cambiar el uso `LucideProps` → `IconProps`. (Si `grep -rn "LucideProps\|LucideIcon" src/` encuentra más usos, mismo criterio.)
 
 ### 3.2 Imports aliasados → preservar el nombre local con `as`
 Para no tocar el JSX, conservar el identificador local:
-- `CalendarIcon` → `import { Calendar as CalendarIcon } from '@phosphor-icons/react'`
-- `ImageIcon` → `import { Image as ImageIcon } from '@phosphor-icons/react'`
-- `XIcon` → `import { X as XIcon } from '@phosphor-icons/react'`
+- `CalendarIcon` → `import { Calendar as CalendarIcon } from '@phosphor-icons/react/dist/ssr'`
+- `ImageIcon` → `import { Image as ImageIcon } from '@phosphor-icons/react/dist/ssr'`
+- `XIcon` → `import { X as XIcon } from '@phosphor-icons/react/dist/ssr'`
 (Si un archivo ya importa `Image` **y** `ImageIcon`, dejar `Image` directo + `Image as ImageIcon` no se puede duplicar → en ese caso unificar a `Image` y ajustar los usos. Verificar por archivo.)
 
 ### 3.3 `Loader2` → `CircleNotch` (spinner)
@@ -195,8 +210,8 @@ import {
   Cookie, Hamburger, Wine, BeerBottle, Pill, TShirt, Scissors, Wrench, Lightning, Sparkle,
   PawPrint, Baby, Book, MusicNotes, GameController, Barbell, Flower, House, Car, Bicycle,
   Stethoscope, GraduationCap, Gift, Star,
-} from '@phosphor-icons/react'
-import type { IconProps } from '@phosphor-icons/react'
+} from '@phosphor-icons/react/dist/ssr'
+import type { IconProps } from '@phosphor-icons/react/dist/ssr'
 
 const ICON_MAP = {
   ShoppingCart, Tag, Package, Apple: Orange, Coffee, Beef: Cow, Milk: Drop, Carrot,

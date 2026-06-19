@@ -1,0 +1,91 @@
+<!-- @dsCard group="Brand" viewport="700x370" name="Iconography" subtitle="Phosphor (regular) es el sistema oficial — 6 pesos, trazo cálido" -->
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<link rel="stylesheet" href="../styles.css" />
+<script src="https://code.iconify.design/iconify-icon/2.1.0/iconify-icon.min.js"></script>
+<style>
+  html, body { margin: 0; background: var(--card); font-family: var(--font-sans); }
+  .wrap { padding: 22px 24px; }
+  .row { display: flex; align-items: center; gap: 18px; padding: 14px 0; border-bottom: 1px solid var(--edge-soft); }
+  .row:last-of-type { border-bottom: none; }
+  .lab { width: 172px; flex: none; }
+  .lab .nm { font-size: 13px; font-weight: 600; color: var(--heading); display: flex; align-items: center; gap: 8px; }
+  .lab .ds { font-size: 11px; color: var(--hint); margin-top: 2px; line-height: 1.35; }
+  .pill { font-size: 9px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; padding: 2px 6px; border-radius: 999px; background: color-mix(in oklab, var(--primary) 12%, transparent); color: var(--primary-active-text); }
+  .strip { display: flex; gap: 20px; align-items: center; }
+  iconify-icon { font-size: 24px; color: var(--body-color); }
+  .note { margin-top: 18px; font-size: 12px; line-height: 1.5; color: var(--body-color); }
+  .note b { color: var(--heading); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="row">
+    <div class="lab">
+      <div class="nm">Lucide <span class="pill" style="background:var(--muted);color:var(--hint)">previo</span></div>
+      <div class="ds">2px, geométrico-amable. El set heredado del código.</div>
+    </div>
+    <div class="strip">
+      <iconify-icon icon="lucide:shopping-cart"></iconify-icon>
+      <iconify-icon icon="lucide:package"></iconify-icon>
+      <iconify-icon icon="lucide:bar-chart-2"></iconify-icon>
+      <iconify-icon icon="lucide:users"></iconify-icon>
+      <iconify-icon icon="lucide:receipt"></iconify-icon>
+      <iconify-icon icon="lucide:settings"></iconify-icon>
+      <iconify-icon icon="lucide:search"></iconify-icon>
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="lab">
+      <div class="nm">Phosphor <span class="pill">oficial</span></div>
+      <div class="ds">Trazo cálido, esquinas redondeadas — conversa con Sora. 6 pesos. Regular en nav, fill para estados activos.</div>
+    </div>
+    <div class="strip">
+      <iconify-icon icon="ph:shopping-cart"></iconify-icon>
+      <iconify-icon icon="ph:package"></iconify-icon>
+      <iconify-icon icon="ph:chart-bar"></iconify-icon>
+      <iconify-icon icon="ph:users"></iconify-icon>
+      <iconify-icon icon="ph:receipt"></iconify-icon>
+      <iconify-icon icon="ph:gear"></iconify-icon>
+      <iconify-icon icon="ph:magnifying-glass"></iconify-icon>
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="lab">
+      <div class="nm">Tabler</div>
+      <div class="ds">2px en grilla 24px, muy consistente. Opción más precisa / técnica.</div>
+    </div>
+    <div class="strip">
+      <iconify-icon icon="tabler:shopping-cart"></iconify-icon>
+      <iconify-icon icon="tabler:package"></iconify-icon>
+      <iconify-icon icon="tabler:chart-bar"></iconify-icon>
+      <iconify-icon icon="tabler:users"></iconify-icon>
+      <iconify-icon icon="tabler:receipt"></iconify-icon>
+      <iconify-icon icon="tabler:settings"></iconify-icon>
+      <iconify-icon icon="tabler:search"></iconify-icon>
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="lab">
+      <div class="nm">Phosphor — pesos</div>
+      <div class="ds">Mismo glifo, distinto peso: thin · light · regular · bold · fill.</div>
+    </div>
+    <div class="strip">
+      <iconify-icon icon="ph:storefront-thin"></iconify-icon>
+      <iconify-icon icon="ph:storefront-light"></iconify-icon>
+      <iconify-icon icon="ph:storefront"></iconify-icon>
+      <iconify-icon icon="ph:storefront-bold"></iconify-icon>
+      <iconify-icon icon="ph:storefront-fill" style="color:var(--primary)"></iconify-icon>
+    </div>
+  </div>
+
+  <p class="note"><b>Sistema oficial: Phosphor (regular).</b> Su redondez hecha a mano acompaña la geometría de Sora y la paleta terra; los 6 pesos (thin → fill) dan jerarquía sin segundo set. Usar <b>regular</b> en navegación y controles, <b>fill</b> (en <span style="color:var(--primary)">--primary</span>) para estados activos. 18px en nav, 16px inline. Sin emoji, sin íconos rellenos de otra familia, sin SVG ilustrativo hecho a mano. Lucide y Tabler quedan como referencia; Heroicons / Material se descartan (leen "SaaS genérico").</p>
+</div>
+</body>
+</html>
