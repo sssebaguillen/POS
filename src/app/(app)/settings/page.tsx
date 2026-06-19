@@ -30,7 +30,7 @@ export default async function SettingsPage() {
       .order('name'),
     supabase
       .from('price_lists')
-      .select('id, name')
+      .select('id, name, multiplier')
       .eq('business_id', businessId)
       .order('name'),
   ])
@@ -56,7 +56,7 @@ export default async function SettingsPage() {
         operatorId={activeOperator?.profile_id ?? null}
         isOwner={isOwner}
         canManageOperators={canManageOperators}
-        priceLists={(priceLists ?? []) as { id: string; name: string }[]}
+        priceLists={(priceLists ?? []) as { id: string; name: string; multiplier: number }[]}
       />
     </div>
   )

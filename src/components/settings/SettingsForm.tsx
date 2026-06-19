@@ -23,7 +23,12 @@ interface SettingsFormProps {
   operatorId: string | null
   isOwner: boolean
   canManageOperators: boolean
-  priceLists: { id: string; name: string }[]
+  priceLists: { id: string; name: string; multiplier: number }[]
+}
+
+// Multiplicador base de la lista en formato compacto (ej. 1.3 → "×1.3", 1.305 → "×1.305").
+function formatMultiplier(multiplier: number): string {
+  return `×${parseFloat(multiplier.toFixed(4)).toString()}`
 }
 
 const LOGO_ALLOWED_TYPES = new Set([
@@ -79,7 +84,7 @@ export default function SettingsForm({
   const priceListOptions = useMemo(
     () => [
       { value: '', label: 'Precio base (sin lista)' },
-      ...priceLists.map(pl => ({ value: pl.id, label: pl.name })),
+      ...priceLists.map(pl => ({ value: pl.id, label: `${pl.name} (${formatMultiplier(pl.multiplier)})` })),
     ],
     [priceLists],
   )
