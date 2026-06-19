@@ -98,7 +98,7 @@ export default function BulkActionBar({
               disabled={loading}
               onClick={firstSelectedActive ? onDeactivate : onActivate}
             >
-              {firstSelectedActive ? <Power size={13} /> : <Power size={13} />}
+              {firstSelectedActive ? <Power weight="fill" size={13} /> : <Power size={13} />}
               <span className="hidden sm:inline">{firstSelectedActive ? 'Discontinuar' : 'Activar'}</span>
             </Button>
 
