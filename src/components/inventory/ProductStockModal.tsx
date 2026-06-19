@@ -2,7 +2,7 @@
 
 import { useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { X } from 'lucide-react'
+import { X } from '@phosphor-icons/react/dist/ssr'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { createClient } from '@/lib/supabase/client'

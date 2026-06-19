@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { LayoutGrid, LayoutList, X, Plus, SlidersHorizontal as FilterIcon, Search, Tag, ArrowDownToLine } from 'lucide-react'
+import { GridFour, ListBullets, X, Plus, FadersHorizontal as FilterIcon, MagnifyingGlass, Tag, ArrowLineDown } from '@phosphor-icons/react/dist/ssr'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -688,13 +688,13 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
           className="inv:hidden p-1.5 rounded-lg hover:bg-hover-bg transition-[transform,background-color] duration-150 ease-[var(--ease-out)] active:scale-95"
           aria-label="Buscar"
         >
-          <Search size={18} className="text-body" />
+          <MagnifyingGlass size={18} className="text-body" />
         </button>
 
         {/* Import/Export — desktop: botones; mobile: icono + menú en portal */}
         <HeaderActionDropdown
           ariaLabel="Importar / Exportar"
-          icon={<ArrowDownToLine size={17} className="text-body" />}
+          icon={<ArrowLineDown size={17} className="text-body" />}
           items={[
             {
               label: 'Importar',
@@ -753,7 +753,7 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
       >
         <div className="relative flex-1">
           <div className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none">
-            <Search size={16} className="text-hint" />
+            <MagnifyingGlass size={16} className="text-hint" />
           </div>
           <Input
             value={query}
@@ -861,7 +861,7 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
               title="Vista lista"
               aria-label="Vista lista"
             >
-              <LayoutList size={15} />
+              <ListBullets size={15} />
             </button>
             <button
               ref={setViewRef('grid')}
@@ -871,7 +871,7 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
               title="Vista cuadrícula"
               aria-label="Vista cuadrícula"
             >
-              <LayoutGrid size={15} />
+              <GridFour size={15} />
             </button>
           </div>
           </div>

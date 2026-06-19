@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Trash2, Power, PowerOff, Tag, Stamp, Globe, GlobeLock } from 'lucide-react'
+import { Trash, Power, Tag, Stamp, Globe, GlobeSimple } from '@phosphor-icons/react/dist/ssr'
 import { Button } from '@/components/ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import SelectDropdown from '@/components/ui/SelectDropdown'
@@ -98,7 +98,7 @@ export default function BulkActionBar({
               disabled={loading}
               onClick={firstSelectedActive ? onDeactivate : onActivate}
             >
-              {firstSelectedActive ? <PowerOff size={13} /> : <Power size={13} />}
+              {firstSelectedActive ? <Power weight="fill" size={13} /> : <Power size={13} />}
               <span className="hidden sm:inline">{firstSelectedActive ? 'Discontinuar' : 'Activar'}</span>
             </Button>
 
@@ -109,7 +109,7 @@ export default function BulkActionBar({
               disabled={loading}
               onClick={() => onSetCatalog(!firstSelectedInCatalog)}
             >
-              {firstSelectedInCatalog ? <GlobeLock size={13} /> : <Globe size={13} />}
+              {firstSelectedInCatalog ? <GlobeSimple size={13} /> : <Globe size={13} />}
               <span className="hidden sm:inline">{firstSelectedInCatalog ? 'Quitar del catálogo' : 'Agregar al catálogo'}</span>
             </Button>
 
@@ -213,7 +213,7 @@ export default function BulkActionBar({
               disabled={loading}
               onClick={() => setShowDeleteConfirm(true)}
             >
-              <Trash2 size={13} />
+              <Trash size={13} />
               <span className="hidden sm:inline">Eliminar</span>
             </Button>
           </div>

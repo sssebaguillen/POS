@@ -4,7 +4,7 @@ import { startTransition, useCallback, useEffect, useMemo, useRef, useState } fr
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { ChevronDown, ChevronRight, X } from 'lucide-react'
+import { CaretDown, CaretRight, X } from '@phosphor-icons/react/dist/ssr'
 import {
   Dialog,
   DialogContent,
@@ -505,7 +505,7 @@ export default function NewProductModal({
                         }}
                         className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 text-hint hover:text-body transition-colors"
                       >
-                        <ChevronDown className={`w-3.5 h-3.5 transition-transform ${showCategoryOptions ? 'rotate-180' : ''}`} />
+                        <CaretDown className={`w-3.5 h-3.5 transition-transform ${showCategoryOptions ? 'rotate-180' : ''}`} />
                       </button>
                       <FloatingDropdown
                         anchorRef={categoryAnchorRef}
@@ -596,7 +596,7 @@ export default function NewProductModal({
                         }}
                         className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 text-hint hover:text-body transition-colors"
                       >
-                        <ChevronDown className={`w-3.5 h-3.5 transition-transform ${showBrandOptions ? 'rotate-180' : ''}`} />
+                        <CaretDown className={`w-3.5 h-3.5 transition-transform ${showBrandOptions ? 'rotate-180' : ''}`} />
                       </button>
                       <FloatingDropdown
                         anchorRef={brandAnchorRef}
@@ -755,7 +755,7 @@ export default function NewProductModal({
                   className="flex items-center gap-2 w-full px-3 py-2.5 hover:bg-hover-bg transition-[transform,background-color] duration-150 ease-[var(--ease-out)] active:scale-[0.98] text-left"
                   aria-expanded={showAdvanced}
                 >
-                  <ChevronRight className={`w-3.5 h-3.5 text-hint transition-transform shrink-0 ${showAdvanced ? 'rotate-90' : ''}`} />
+                  <CaretRight className={`w-3.5 h-3.5 text-hint transition-transform shrink-0 ${showAdvanced ? 'rotate-90' : ''}`} />
                   <span className="text-xs font-medium text-subtle">Imagen y detalles adicionales</span>
                   <span className="text-xs text-hint ml-1">
                     {hasVariants ? '· Foto del producto base' : '· SKU, foto'}

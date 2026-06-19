@@ -5,7 +5,7 @@ import { useQuery } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
 import { Input } from '@/components/ui/input'
 import SelectDropdown from '@/components/ui/SelectDropdown'
-import { Plus, X, AlertTriangle, ImageIcon, Upload } from 'lucide-react'
+import { Plus, X, Warning, Image as ImageIcon, UploadSimple } from '@phosphor-icons/react/dist/ssr'
 import {
   Popover,
   PopoverContent,
@@ -564,7 +564,7 @@ export default function VariantEditor({
         <div className="space-y-3">
           {hasSalesHistory && (
             <div className="flex items-start gap-2 rounded-xl border border-warning/20 bg-warning/10 px-3 py-2.5">
-              <AlertTriangle className="w-4 h-4 text-warning shrink-0 mt-0.5" />
+              <Warning className="w-4 h-4 text-warning shrink-0 mt-0.5" />
               <p className="text-xs text-warning">
                 Este producto tiene ventas registradas. Las ventas anteriores quedarán vinculadas al producto base sin variante específica.
               </p>
@@ -668,7 +668,7 @@ export default function VariantEditor({
 
           {attributeTypesError && (
             <p className="flex items-center gap-1.5 text-xs text-destructive">
-              <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+              <Warning className="w-3.5 h-3.5 shrink-0" />
               No se pudieron cargar los atributos. Recargá la página e intentá de nuevo.
             </p>
           )}
@@ -863,7 +863,7 @@ export default function VariantEditor({
                                         <div className="p-3">
                                           {imageTab === 'upload' && (
                                             <label className="flex flex-col items-center gap-2 cursor-pointer rounded-xl border border-dashed border-edge bg-surface px-4 py-4 hover:border-primary/40 transition-colors">
-                                              <Upload className="h-5 w-5 text-hint" />
+                                              <UploadSimple className="h-5 w-5 text-hint" />
                                               <span className="text-xs text-hint text-center">
                                                 {uploadingVariantKey === key ? 'Subiendo...' : 'Arrastra o haz clic para seleccionar'}
                                               </span>

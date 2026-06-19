@@ -2,7 +2,7 @@
 
 import Image from 'next/image'
 import { memo, useState } from 'react'
-import { Package, Pencil, MoreVertical } from 'lucide-react'
+import { Package, PencilSimple, DotsThreeVertical } from '@phosphor-icons/react/dist/ssr'
 import { TableCell, TableRow } from '@/components/ui/table'
 import type { ProductCardProps } from '@/components/inventory/types'
 import { SelectionCheckbox } from '@/components/inventory/ProductCard'
@@ -107,7 +107,7 @@ const ProductListRow = memo(function ProductListRow({
         >
           <span className="text-sm text-subtle truncate transition-colors group-hover/cat:text-heading">{product.categories?.name ?? '—'}</span>
           {!readOnly && (
-            <Pencil size={11} className="shrink-0 text-primary opacity-0 [@media(hover:none)]:opacity-50 group-hover/cat:opacity-100 transition-opacity" />
+            <PencilSimple size={11} className="shrink-0 text-primary opacity-0 [@media(hover:none)]:opacity-50 group-hover/cat:opacity-100 transition-opacity" />
           )}
         </span>
       </TableCell>
@@ -119,7 +119,7 @@ const ProductListRow = memo(function ProductListRow({
         >
           <span className="text-sm text-subtle truncate transition-colors group-hover/brand:text-heading">{product.brand?.name ?? '—'}</span>
           {!readOnly && (
-            <Pencil size={11} className="shrink-0 text-primary opacity-0 [@media(hover:none)]:opacity-50 group-hover/brand:opacity-100 transition-opacity" />
+            <PencilSimple size={11} className="shrink-0 text-primary opacity-0 [@media(hover:none)]:opacity-50 group-hover/brand:opacity-100 transition-opacity" />
           )}
         </span>
       </TableCell>
@@ -175,7 +175,7 @@ const ProductListRow = memo(function ProductListRow({
                   aria-label="Más acciones"
                   className="shrink-0 px-2 py-2 rounded-lg border border-edge text-subtle hover:bg-hover-bg hover:text-body transition-[transform,background-color,color] duration-150 ease-[var(--ease-out)] active:scale-[0.97] disabled:opacity-50 touch-manipulation"
                 >
-                  <MoreVertical size={16} />
+                  <DotsThreeVertical size={16} />
                 </button>
               </PopoverTrigger>
               <PopoverContent align="end" className="w-44 p-1 gap-0.5" onClick={() => setMenuOpen(false)}>
