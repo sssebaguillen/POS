@@ -131,6 +131,16 @@ components:
 
 # Design System: Pulsar POS
 
+> **Fuente canónica espejo (Claude Design).** Existe un design system en claude.ai/design —
+> proyecto **"Pulsar POS Design System"** (`PROJECT_TYPE_DESIGN_SYSTEM`, id
+> `e905f75e-8045-41c7-a389-9d63702f355e`, dueño Sebastian Guillen) — hecho por **ingeniería
+> inversa de este mismo codebase** (tokens, componentes, guidelines, ui_kits de POS/dashboard).
+> Está **en sync con este DESIGN.md** (misma paleta "Warm Ledger", mismos tokens, mismas reglas).
+> Se lee/actualiza con la skill `/design-sync` (MCP `DesignSync`, scopes `user:design:read/write`).
+> **Naming:** ese proyecto muestra nombres en exploración (Praddo / Pulcra / Tocco) — **ignorarlos**;
+> la app sigue siendo **Pulsar** hasta que el reemplazo esté definido. **Iconos:** su README dice
+> "producción usa Lucide", pero eso quedó viejo — el codebase ya migró a **Phosphor**.
+
 ## 1. Overview
 
 **Creative North Star: "The Calibrated Counter"**
