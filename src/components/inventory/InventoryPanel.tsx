@@ -108,6 +108,7 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
     if (!targetId) return
     if (!readOnly) {
       const target = products.find(p => p.id === targetId)
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- deep-link one-shot (lee URL al montar), intencional
       if (target) setEditingProduct(target)
     }
     window.history.replaceState(null, '', '/inventory')
@@ -192,13 +193,17 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
 
   const visibleProducts = useMemo(() => sorted.slice(0, visibleCount), [sorted, visibleCount])
 
-  // Reset pagination when the filtered/sorted set changes.
-  // Depend on sortField/sortDir (primitivos) y NO en el objeto `sort` (L72), que se
-  // recrea en cada render → haría correr este efecto en cada render y resetearía
-  // visibleCount a PAGE_SIZE, rompiendo el scroll infinito con >PAGE_SIZE productos.
-  useEffect(() => {
+  // Reset de paginación cuando cambia el conjunto filtrado/ordenado, vía el patrón recomendado
+  // de React "ajustar estado durante el render" (no en un efecto): comparamos una clave de los
+  // criterios y al cambiar volvemos visibleCount a PAGE_SIZE. Usa sortField/sortDir (primitivos)
+  // y NO el objeto `sort` (que se recrea cada render). El scroll infinito incrementa visibleCount
+  // por separado, así que solo reseteamos cuando el filtro/orden efectivamente cambia.
+  const paginationResetKey = `${query} ${selectedCategories.join(',')} ${selectedBrands.join(',')} ${showInCatalogOnly} ${sortField} ${sortDir} ${filterValue.stockStatus}`
+  const [prevPaginationResetKey, setPrevPaginationResetKey] = useState(paginationResetKey)
+  if (paginationResetKey !== prevPaginationResetKey) {
+    setPrevPaginationResetKey(paginationResetKey)
     setVisibleCount(PAGE_SIZE)
-  }, [query, selectedCategories, selectedBrands, showInCatalogOnly, sortField, sortDir, filterValue.stockStatus])
+  }
 
   // Infinite scroll: load more products when near the bottom of the scroll area
   useEffect(() => {

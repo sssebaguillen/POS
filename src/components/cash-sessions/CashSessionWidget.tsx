@@ -1,15 +1,13 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { Vault, CaretRight } from '@phosphor-icons/react/dist/ssr'
-import { useQuery } from '@tanstack/react-query'
-import { createClient } from '@/lib/supabase/client'
 import { getCurrencySymbol, formatNumber } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import { ACCENT_DOT } from '@/lib/accent-colors'
 import PopNumber from '@/components/shared/PopNumber'
-import type { ActiveSessionRow } from '@/app/(app)/cash-sessions/page'
+import { useActiveCashSession } from '@/lib/hooks/useActiveCashSession'
 
 // Neutral surface (matches the operator button below); colour lives only in the
 // pulsing dot. Cash = emerald in the app's accent system (PAYMENT_TONE.cash).
@@ -20,22 +18,6 @@ function formatElapsed(seconds: number): string {
   const m = Math.floor((seconds % 3600) / 60)
   if (h > 0) return `${h}h ${m}m`
   return `${m}m`
-}
-
-function useActiveCashSession(enabled: boolean) {
-  const supabase = useMemo(() => createClient(), [])
-  return useQuery({
-    queryKey: ['active_cash_session'],
-    queryFn: async () => {
-      const { data, error } = await supabase.rpc('get_active_session')
-      if (error) throw error
-      return (data ?? null) as ActiveSessionRow | null
-    },
-    enabled,
-    refetchInterval: 30_000,
-    refetchOnWindowFocus: true,
-    staleTime: 0,
-  })
 }
 
 interface Props {

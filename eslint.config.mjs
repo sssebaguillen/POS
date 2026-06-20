@@ -28,10 +28,13 @@ const eslintConfig = defineConfig([
   ]),
   {
     rules: {
-      // Mounted pattern (CLAUDE.md regla 25) y reset-de-estado-al-abrir-modal son
-      // patrones deliberados del repo; la regla queda en warn hasta el refactor
-      // selectivo post-beta (decisión 2026-06-12).
-      "react-hooks/set-state-in-effect": "warn",
+      // Cerrada la clase de bug (2026-06-20): los fetch-on-mount migraron a React Query, el
+      // gate de hidratación al hook useMounted (useSyncExternalStore), y el reset de paginación
+      // a estado derivado. Los casos legítimos restantes (mounted pattern de localStorage,
+      // reset-de-estado-al-abrir-modal, búsqueda con debounce, deep-link one-shot) llevan un
+      // eslint-disable puntual y documentado. Ahora en `error`: un nuevo setState-en-efecto
+      // accidental rompe el build/CI.
+      "react-hooks/set-state-in-effect": "error",
     },
   },
 ]);

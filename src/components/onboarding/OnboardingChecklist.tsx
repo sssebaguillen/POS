@@ -1,6 +1,7 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useRouter } from 'next/navigation'
 import { CaretDown } from '@phosphor-icons/react/dist/ssr'
 import { createClient } from '@/lib/supabase/client'
@@ -10,11 +11,12 @@ import {
   type OnboardingState,
 } from '@/components/onboarding/onboarding-types'
 
-interface ChecklistState {
-  loading: boolean
+interface ChecklistProfile {
   role: string | null
   onboarding: OnboardingState
 }
+
+const ONBOARDING_CHECKLIST_KEY = ['onboarding_checklist'] as const
 
 type ChecklistKey = 'business_info' | 'category' | 'brand' | 'product' | 'operator' | 'tour'
 
@@ -39,58 +41,46 @@ export default function OnboardingChecklist() {
 
   const [expanded, setExpanded] = useState(true)
   const [launchingKey, setLaunchingKey] = useState<ChecklistKey | null>(null)
-  const [state, setState] = useState<ChecklistState>({
-    loading: true,
-    role: null,
-    onboarding: parseOnboardingState(null),
-  })
+  const queryClient = useQueryClient()
 
   const completionInFlightRef = useRef(false)
 
-  const load = useCallback(async () => {
-    const { data: auth, error: authError } = await supabase.auth.getUser()
-    if (authError) {
-      console.error('Failed to resolve authenticated user for onboarding checklist', authError.message)
-      setState({ loading: false, role: null, onboarding: parseOnboardingState(null) })
-      return
-    }
+  // Lectura del perfil (rol + estado de onboarding) vía React Query — fuente de verdad única.
+  // Las mutaciones de abajo actualizan el cache optimistamente (setQueryData) y el evento
+  // 'onboarding-state-changed' (que también disparan el wizard/tour) invalida para refrescar.
+  const { data: profileData, isPending } = useQuery({
+    queryKey: ONBOARDING_CHECKLIST_KEY,
+    queryFn: async (): Promise<ChecklistProfile> => {
+      const { data: auth, error: authError } = await supabase.auth.getUser()
+      if (authError) throw authError
+      if (!auth.user) return { role: null, onboarding: parseOnboardingState(null) }
 
-    if (!auth.user) {
-      setState({ loading: false, role: null, onboarding: parseOnboardingState(null) })
-      return
-    }
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('role, onboarding_state')
+        .eq('id', auth.user.id)
+        .single()
+      if (profileError) throw profileError
 
-    const { data: profile, error: profileError } = await supabase
-      .from('profiles')
-      .select('role, onboarding_state')
-      .eq('id', auth.user.id)
-      .single()
-
-    if (profileError) {
-      console.error('Failed to load onboarding checklist profile', profileError.message)
-    }
-
-    setState({
-      loading: false,
-      role: typeof profile?.role === 'string' ? profile.role : null,
-      onboarding: parseOnboardingState(profile?.onboarding_state),
-    })
-  }, [supabase])
-
-  useEffect(() => {
-    void load()
-  }, [load])
+      return {
+        role: typeof profile?.role === 'string' ? profile.role : null,
+        onboarding: parseOnboardingState(profile?.onboarding_state),
+      }
+    },
+  })
 
   useEffect(() => {
     function handleChange() {
-      void load()
+      void queryClient.invalidateQueries({ queryKey: ONBOARDING_CHECKLIST_KEY })
     }
 
     window.addEventListener('onboarding-state-changed', handleChange)
     return () => window.removeEventListener('onboarding-state-changed', handleChange)
-  }, [load])
+  }, [queryClient])
 
-  const onboarding = state.onboarding
+  const loading = isPending
+  const role = profileData?.role ?? null
+  const onboarding = profileData?.onboarding ?? parseOnboardingState(null)
   const done = useMemo(() => new Set(onboarding.steps_done), [onboarding.steps_done])
   const completedWizardSteps = CHECKLIST_ITEMS.filter(
     item => item.key !== 'tour' && done.has(item.key)
@@ -98,7 +88,7 @@ export default function OnboardingChecklist() {
   const completedCount = completedWizardSteps + (onboarding.tour_done ? 1 : 0)
   const progressPercent = Math.min((completedCount / CHECKLIST_ITEMS.length) * 100, 100)
 
-  const show = !state.loading && state.role === 'owner' && !onboarding.completed
+  const show = !loading && role === 'owner' && !onboarding.completed
 
   const allDone =
     done.has('business_info') &&
@@ -135,7 +125,9 @@ export default function OnboardingChecklist() {
         return
       }
 
-      setState(prev => ({ ...prev, onboarding: next }))
+      queryClient.setQueryData<ChecklistProfile>(ONBOARDING_CHECKLIST_KEY, prev =>
+        prev ? { ...prev, onboarding: next } : prev
+      )
       window.dispatchEvent(new Event('onboarding-state-changed'))
       router.refresh()
     })()
@@ -170,7 +162,9 @@ export default function OnboardingChecklist() {
       return
     }
 
-    setState(prev => ({ ...prev, onboarding: next }))
+    queryClient.setQueryData<ChecklistProfile>(ONBOARDING_CHECKLIST_KEY, prev =>
+      prev ? { ...prev, onboarding: next } : prev
+    )
     window.dispatchEvent(new Event('onboarding-state-changed'))
     router.push('/dashboard')
     router.refresh()

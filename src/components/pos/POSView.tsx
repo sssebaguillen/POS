@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect, useMemo, useCallback } from 'react'
-import { useQueryClient } from '@tanstack/react-query'
+import { useActiveCashSession } from '@/lib/hooks/useActiveCashSession'
 import { MagnifyingGlass, List, CaretDown, Check, Barcode, X } from '@phosphor-icons/react/dist/ssr'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
@@ -25,15 +25,6 @@ import type { ActiveOperator } from '@/lib/operator'
 import { OWNER_PERMISSIONS } from '@/lib/operator'
 import { trackFeatureUsed } from '@/lib/analytics'
 import { Skeleton } from '@/components/ui/skeleton'
-
-interface ActiveSession {
-  id: string
-  opening_amount: number
-  opened_at: string
-  opened_by_name: string
-  sales_count: number
-  sales_total: number
-}
 
 interface Props {
   products: ProductWithCategory[]
@@ -76,14 +67,14 @@ export default function POSView({ products, businessId, businessName, freeLineEn
   const addItem = useCartStore(s => s.addItem)
   const addVariantItem = useCartStore(s => s.addVariantItem)
   const supabase = useMemo(() => createClient(), [])
-  const queryClient = useQueryClient()
   const [confirmingNewSale, setConfirmingNewSale] = useState(false)
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false)
   const confirmNewSaleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  // Cash session state
-  const [activeSession, setActiveSession] = useState<ActiveSession | null | undefined>(undefined)
+  // Cash session: fuente de verdad compartida con el widget del sidebar (misma query key).
+  // `activeSession` es undefined mientras carga (gate del skeleton), null si no hay caja.
+  const { data: activeSession, refetch: refetchActiveSession } = useActiveCashSession()
   const [showOpenModal, setShowOpenModal] = useState(false)
   const [showCloseModal, setShowCloseModal] = useState(false)
 
@@ -104,15 +95,12 @@ export default function POSView({ products, businessId, businessName, freeLineEn
     }
   }, [])
 
-  const fetchActiveSession = useCallback(async () => {
-    const { data } = await supabase.rpc('get_active_session')
-    setActiveSession((data as ActiveSession | null) ?? null)
-    void queryClient.invalidateQueries({ queryKey: ['active_cash_session'] })
-  }, [supabase, queryClient])
-
-  useEffect(() => {
-    void fetchActiveSession()
-  }, [fetchActiveSession])
+  // Compat: los handlers existentes (onSaleCompleted, abrir/cerrar caja) llaman
+  // fetchActiveSession; ahora dispara el refetch de la query compartida (no hace falta
+  // invalidar aparte: misma key que el widget). El fetch inicial lo hace el propio useQuery.
+  const fetchActiveSession = useCallback(() => {
+    void refetchActiveSession()
+  }, [refetchActiveSession])
 
   const TOP_FILTER_LIMIT = 8
 

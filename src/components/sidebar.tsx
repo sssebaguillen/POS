@@ -4,7 +4,8 @@ import { usePathname } from 'next/navigation'
 import Link from 'next/link'
 import { X, ShoppingCart, Package, ClipboardText, ChartBar, ChartLine, Gear, Sun, Moon, SignOut, SidebarSimple, Receipt, UserCircle, Sparkle, Globe, ArrowSquareOut, ClockCounterClockwise, Users, Vault, Tray, SealPercent } from '@phosphor-icons/react/dist/ssr'
 import { useRouter } from 'next/navigation'
-import { useState, useEffect, useMemo } from 'react'
+import { useMemo } from 'react'
+import { useMounted } from '@/lib/hooks/useMounted'
 import { createClient } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
 import { useTheme } from '@/components/shared/theme'
@@ -113,15 +114,9 @@ export default function Sidebar({
   const { theme, toggle } = useTheme()
   const router = useRouter()
   const supabase = useMemo(() => createClient(), [])
-  const [mounted, setMounted] = useState(false)
-  const [themeToggleMounted, setThemeToggleMounted] = useState(false)
+  const mounted = useMounted()
 
-  useEffect(() => {
-    setMounted(true)
-    setThemeToggleMounted(true)
-  }, [])
-
-  const themeForUi = themeToggleMounted ? theme : 'light'
+  const themeForUi = mounted ? theme : 'light'
 
   function handleThemeToggle(e: React.MouseEvent<HTMLButtonElement>) {
     runThemeToggleTransition(e, toggle)

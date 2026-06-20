@@ -3,6 +3,7 @@
 import { createContext, useContext, useEffect, useState } from 'react'
 import { Sun, Moon } from '@phosphor-icons/react/dist/ssr'
 import { THEME_STORAGE_KEY, type Theme } from '@/lib/theme'
+import { useMounted } from '@/lib/hooks/useMounted'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -62,11 +63,7 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
 
 export function ThemeToggle() {
   const { theme, toggle } = useTheme()
-  const [mounted, setMounted] = useState(false)
-
-  useEffect(() => {
-    setMounted(true)
-  }, [])
+  const mounted = useMounted()
 
   const themeForUi = mounted ? theme : 'light'
 

@@ -216,10 +216,14 @@ const CartPanel = forwardRef<CartPanelHandle, Props>(function CartPanel({ busine
     return item.quantity >= availableStock
   })
 
+  // Búsqueda de cliente con debounce (300 ms) + cleanup — efecto legítimo (la versión
+  // "limpia" con useQuery igual necesitaría un efecto de debounce para el término). El guard
+  // síncrono limpia resultados mientras el query es corto; el fetch real corre en el setTimeout.
   useEffect(() => {
     if (!businessId) return
     const q = customerQuery.trim()
     if (q.length < 2) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- guard de búsqueda con debounce, intencional
       setCustomerResults([])
       setCustomerSearching(false)
       return
