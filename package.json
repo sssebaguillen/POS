@@ -34,6 +34,7 @@
     "next": "^16.2.6",
     "posthog-js": "^1.372.3",
     "posthog-node": "^5.30.6",
+    "qrcode.react": "^4.2.0",
     "radix-ui": "^1.4.3",
     "react": "^19.2.6",
     "react-dom": "^19.2.6",
