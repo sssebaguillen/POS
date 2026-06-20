@@ -13,12 +13,14 @@ export default async function ProvidersPage() {
   const activeOperator = await getActiveOperator(cookieStore)
   const businessId = await requireAuthenticatedBusinessId(supabase)
 
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from('suppliers')
     .select('id, business_id, name, contact_name, phone, email, address, notes, is_active, created_at')
     .eq('business_id', businessId)
     .eq('is_active', true)
     .order('name')
+
+  if (error) throw new Error(`providers: ${error.message}`)
 
   const suppliers = (data ?? []) as Supplier[]
 
