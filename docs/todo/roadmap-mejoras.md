@@ -19,10 +19,10 @@ dueño confíe en 5 minutos y en lo que destraba el lanzamiento — no en sumar 
 Secuencia principal:
 
 1. [x] **1.3 — Loop de compartir catálogo** (✅ PR #47) · [x] **2.4 — Etiquetas/códigos de barras** (✅)
-2. [ ] **2.1 — Ficha de cliente con estado de cuenta + historial** (scope reads-only → **agente nocturno**)
-3. [ ] **1.1 — Datos demo / sandbox** (rellenar después de 2.1 para que el demo ejercite la ficha nueva; flexible — los datos viven en DB, se puede antes)
-4. [ ] **2.2 — Devoluciones** (empezar la **exploración de UX ya**; construir en 1–2 días + su E2E)
-5. [ ] **2.3 — Módulo de compras `/purchases`** (detrás de 2.2)
+2. [ ] **2.1 — Ficha de cliente: estado de cuenta + saldo** → 🤖 **AGENTE** (sembrado en `backlog.md`, reads-only, **sin migración** — `customer_account_movements` ya existe y se lee directo)
+3. [ ] **1.1 — Datos demo / sandbox** → **EN VIVO** (no agente: el seeding escribe ventas/stock = money-path, + decisión de UX). Rellenar después de 2.1.
+4. [ ] **2.2 — Devoluciones** → **EN VIVO** (no agente: money-path + bloqueante de UX del dueño). Empezar la exploración de UX ya; construir + su E2E.
+5. [ ] **2.3 — Módulo de compras `/purchases`** → **EN VIVO** (no agente: money-path, muta stock). Detrás de 2.2.
 6. [ ] **UI/UX** con `/impeccable`, `/emil-design-eng`, `/transitions-dev` (POS + primer-uso)
 7. [ ] **1.4 — Importación/migración de datos** (feature self-serve; ver detalle — wedge de adopción)
 
@@ -126,6 +126,7 @@ cuando existan.
   Compartir/WhatsApp) en Configuración → Catálogo, con pasada de `/impeccable` y fix del tamaño
   del QR. También se conectó el design system espejo de Claude Design (ver `DESIGN.md` + memoria).
   Sigue **2.4** (etiquetas/códigos de barras).
+- **2026-06-20** — Triaje agente vs vivo: **2.1 → agente** (sembrado en `backlog.md`; reads-only sobre `customer_account_movements`, sin migración). **2.2 / 2.3 / 1.1 → en vivo** (money-path y/o decisión de producto, no delegables al headless). La cola del agente queda: customers/providers error, higiene de tokens catálogo, y 2.1.
 - **2026-06-20** — ✅ **2.4 completado** (sesión en vivo, push directo a master): impresión de
   etiquetas A4 con código de barras desde Inventario (`PrintLabelsModal` + jsbarcode), presets de
   tamaño + toggles. Sigue **2.1** (ficha de cliente → candidato a agente nocturno).
