@@ -29,7 +29,7 @@ export default async function TopProductsDetailPage({
 
   const { from, to } = resolveDateRange(period, params.from, params.to, timezone)
 
-  const [{ data: result }, { data: kpisRaw }] = await Promise.all([
+  const [{ data: result, error: topError }, { data: kpisRaw, error: kpisError }] = await Promise.all([
     supabase.rpc('get_top_products_detail', {
       p_business_id: businessId,
       p_from: from,
@@ -43,6 +43,8 @@ export default async function TopProductsDetailPage({
       p_to: to,
     }),
   ])
+  if (topError) throw new Error(`get_top_products_detail: ${topError.message}`)
+  if (kpisError) throw new Error(`get_stats_kpis: ${kpisError.message}`)
 
   const rows = (result as unknown as { data: TopProductRow[]; total: number } | null)
   const kpis = kpisRaw as unknown as StatsKpis | null

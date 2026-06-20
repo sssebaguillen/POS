@@ -59,7 +59,7 @@ export default async function InventoryHealthPage({
   const bucket = parseBucket(params.bucket)
   const page = parsePage(params.page)
 
-  const [{ data: deadRaw }, { data: overstockRaw }] = await Promise.all([
+  const [{ data: deadRaw, error: deadError }, { data: overstockRaw, error: overstockError }] = await Promise.all([
     supabase.rpc('get_dead_stock', {
       p_business_id: businessId,
       p_days_threshold: DEAD_DAYS_THRESHOLD,
@@ -73,6 +73,8 @@ export default async function InventoryHealthPage({
       p_offset: 0,
     }),
   ])
+  if (deadError) throw new Error(`get_dead_stock: ${deadError.message}`)
+  if (overstockError) throw new Error(`get_overstock: ${overstockError.message}`)
 
   const deadPayload = deadRaw as unknown as {
     data: DeadStockRow[]

@@ -28,16 +28,16 @@ export default async function StatsPage({
   const { from, to } = resolveDateRange(period, params.from, params.to, timezone)
 
   const [
-    { data: kpisRaw },
-    { data: evolutionRaw },
-    { data: breakdownRaw },
-    { data: topProductsRaw },
-    { data: operatorsRaw },
-    { data: dailySnapshotsRaw },
-    { data: heatmapRaw },
-    { data: deadStockRaw },
-    { data: promoImpactRaw },
-    { data: salesBySourceRaw },
+    { data: kpisRaw, error: kpisError },
+    { data: evolutionRaw, error: evolutionError },
+    { data: breakdownRaw, error: breakdownError },
+    { data: topProductsRaw, error: topProductsError },
+    { data: operatorsRaw, error: operatorsError },
+    { data: dailySnapshotsRaw, error: dailySnapshotsError },
+    { data: heatmapRaw, error: heatmapError },
+    { data: deadStockRaw, error: deadStockError },
+    { data: promoImpactRaw, error: promoImpactError },
+    { data: salesBySourceRaw, error: salesBySourceError },
   ] =
     await Promise.all([
       supabase.rpc('get_stats_kpis', {
@@ -96,6 +96,19 @@ export default async function StatsPage({
         p_to: to,
       }),
     ])
+
+  const statsError =
+    kpisError ||
+    evolutionError ||
+    breakdownError ||
+    topProductsError ||
+    operatorsError ||
+    dailySnapshotsError ||
+    heatmapError ||
+    deadStockError ||
+    promoImpactError ||
+    salesBySourceError
+  if (statsError) throw new Error(`stats: ${statsError.message}`)
 
   const kpis = kpisRaw as unknown as StatsKpis | null
   const evolution = evolutionRaw as unknown as StatsEvolution | null

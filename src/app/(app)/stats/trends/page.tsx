@@ -26,11 +26,12 @@ export default async function TrendsDetailPage({
   const period = params.period ?? 'mes'
   const { from, to } = resolveDateRange(period, params.from, params.to, timezone)
 
-  const { data: rpcResult } = await supabase.rpc('get_period_comparison', {
+  const { data: rpcResult, error } = await supabase.rpc('get_period_comparison', {
     p_business_id: businessId,
     p_from: from,
     p_to: to,
   })
+  if (error) throw new Error(`get_period_comparison: ${error.message}`)
 
   const emptyTotals = {
     from: from ?? '',

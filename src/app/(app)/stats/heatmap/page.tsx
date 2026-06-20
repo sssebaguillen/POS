@@ -26,11 +26,12 @@ export default async function SalesHeatmapPage({
   const period = params.period ?? 'mes'
   const { from, to } = resolveDateRange(period, params.from, params.to, timezone)
 
-  const { data: rpcResult } = await supabase.rpc('get_sales_heatmap', {
+  const { data: rpcResult, error } = await supabase.rpc('get_sales_heatmap', {
     p_business_id: businessId,
     p_from: from,
     p_to: to,
   })
+  if (error) throw new Error(`get_sales_heatmap: ${error.message}`)
 
   const cells = (rpcResult as unknown as { data: SalesHeatmapCell[] } | null)?.data ?? []
 
