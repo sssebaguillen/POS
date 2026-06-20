@@ -90,8 +90,14 @@ export default function OrdersView({ initialOrders, operatorId }: Props) {
   const initialPendientes = initialOrders.filter(o => PENDIENTES_STATUSES.includes(o.status)).length
   const [prevPendientesCount, setPrevPendientesCount] = useState(initialPendientes)
 
-  // Hydrate viewedIds from localStorage after mount (SSR-safe).
+  // Hidratar viewedIds desde localStorage tras montar (SSR-safe): el highlight ámbar de
+  // "no visto" no puede renderizarse en el server (localStorage no existe allí), así que se
+  // difiere al cliente. Es el patrón `mounted` para estado LOCAL hidratado de localStorage y
+  // luego mutado en el cliente — ni useQuery (no hay fetch) ni useSyncExternalStore (el Set se
+  // muta localmente y rompería la identidad del snapshot) encajan. Hidratación one-shot
+  // intencional, no un setState-en-efecto accidental (regla 25).
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- hidratación one-shot de localStorage
     setViewedIds(readViewedIds())
     setViewedMounted(true)
   }, [])

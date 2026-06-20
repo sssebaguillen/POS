@@ -3,6 +3,7 @@
 import { createContext, useContext, useEffect, useState } from 'react'
 import { Sun, Moon } from '@phosphor-icons/react/dist/ssr'
 import { runThemeToggleTransition, type Theme } from '@/lib/theme'
+import { useMounted } from '@/lib/hooks/useMounted'
 
 interface CatalogThemeContextType {
   theme: Theme
@@ -58,11 +59,7 @@ export function CatalogThemeProvider({ children }: { children: React.ReactNode }
 
 export function CatalogThemeToggle() {
   const { theme, toggle } = useCatalogTheme()
-  const [mounted, setMounted] = useState(false)
-
-  useEffect(() => {
-    setMounted(true)
-  }, [])
+  const mounted = useMounted()
 
   const themeForUi = mounted ? theme : 'light'
 

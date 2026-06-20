@@ -41,8 +41,12 @@ export default function CloseSessionModal({ open, sessionId, operatorId, onClose
   const [closing, setClosing] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  // Reset del formulario al abrir el modal (vuelve a 'summary', limpia inputs) + carga del
+  // resumen de caja. El reset-on-open es un efecto legítimo e irreducible (no es un fetch que
+  // useQuery pueda absorber); el fetch del resumen va inline porque depende del mismo gate `open`.
   useEffect(() => {
     if (!open) return
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- reset de formulario al abrir, intencional
     setStep('summary')
     setCountedCash('')
     setNotes('')
