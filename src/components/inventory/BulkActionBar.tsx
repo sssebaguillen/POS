@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Trash, Power, Tag, Stamp, Globe, GlobeSimple } from '@phosphor-icons/react/dist/ssr'
+import { Trash, Power, Tag, Stamp, Globe, GlobeSimple, Barcode } from '@phosphor-icons/react/dist/ssr'
 import { Button } from '@/components/ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import SelectDropdown from '@/components/ui/SelectDropdown'
@@ -25,6 +25,7 @@ interface BulkActionBarProps {
   onSetCatalog: (show: boolean) => void
   onChangeCategory: (categoryId: string | null) => void
   onChangeBrand: (brandId: string | null) => void
+  onPrintLabels: () => void
 }
 
 export default function BulkActionBar({
@@ -40,6 +41,7 @@ export default function BulkActionBar({
   onSetCatalog,
   onChangeCategory,
   onChangeBrand,
+  onPrintLabels,
 }: BulkActionBarProps) {
   const [visible, setVisible] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
@@ -111,6 +113,17 @@ export default function BulkActionBar({
             >
               {firstSelectedInCatalog ? <GlobeSimple size={13} /> : <Globe size={13} />}
               <span className="hidden sm:inline">{firstSelectedInCatalog ? 'Quitar del catálogo' : 'Agregar al catálogo'}</span>
+            </Button>
+
+            <Button
+              variant="outline"
+              size="sm"
+              className="rounded-lg text-xs gap-1.5 hover:bg-surface-alt"
+              disabled={loading}
+              onClick={onPrintLabels}
+            >
+              <Barcode size={13} />
+              <span className="hidden sm:inline">Etiquetas</span>
             </Button>
 
             <Popover open={categoryOpen} onOpenChange={setCategoryOpen}>
