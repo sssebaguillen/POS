@@ -728,19 +728,27 @@ export default function SettingsForm({
                   <label className="text-xs uppercase tracking-wide text-muted-foreground">
                     Compartir tu catálogo
                   </label>
-                  <div className="flex flex-col gap-4 rounded-lg border border-border bg-surface p-4 sm:flex-row sm:items-center">
-                    <div className="mx-auto shrink-0 rounded-lg border border-border bg-white p-3 sm:mx-0">
+                  <div className="flex flex-col gap-5 rounded-xl border border-border bg-muted/30 p-5 sm:flex-row sm:items-start">
+                    <div className="mx-auto shrink-0 rounded-xl border border-border bg-white p-3 sm:mx-0">
+                      <QRCodeCanvas
+                        value={savedCatalogUrl}
+                        size={132}
+                        marginSize={1}
+                        aria-label="Código QR del catálogo"
+                      />
+                      {/* Copia oculta en alta resolución, solo para que "Descargar QR" salga nítido al imprimir */}
                       <QRCodeCanvas
                         ref={qrCanvasRef}
                         value={savedCatalogUrl}
-                        size={512}
-                        marginSize={2}
-                        className="h-32 w-32"
+                        size={1024}
+                        marginSize={4}
+                        className="hidden"
+                        aria-hidden="true"
                       />
                     </div>
-                    <div className="flex flex-1 flex-col gap-3">
-                      <p className="text-xs text-muted-foreground">
-                        Mostralo o imprímelo en tu local para que tus clientes escaneen el código y
+                    <div className="flex flex-1 flex-col gap-4">
+                      <p className="max-w-prose text-sm text-muted-foreground">
+                        Muéstralo o imprímelo en tu local para que tus clientes escaneen el código y
                         vean tu catálogo. También puedes compartir el enlace directo.
                       </p>
                       <div className="flex flex-wrap gap-2">
