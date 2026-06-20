@@ -27,9 +27,10 @@ interface SettingsFormProps {
   priceLists: { id: string; name: string; multiplier: number }[]
 }
 
-// Multiplicador base de la lista en formato compacto (ej. 1.3 → "×1.3", 1.305 → "×1.305").
-function formatMultiplier(multiplier: number): string {
-  return `×${parseFloat(multiplier.toFixed(4)).toString()}`
+// Multiplicador de la lista como markup legible (ej. 1.35 → "35%", 1.305 → "30.5%").
+function formatMarkupPercent(multiplier: number): string {
+  const pct = parseFloat(((multiplier - 1) * 100).toFixed(1))
+  return `${pct}%`
 }
 
 const LOGO_ALLOWED_TYPES = new Set([
@@ -85,10 +86,22 @@ export default function SettingsForm({
   const priceListOptions = useMemo(
     () => [
       { value: '', label: 'Precio base (sin lista)' },
-      ...priceLists.map(pl => ({ value: pl.id, label: `${pl.name} (${formatMultiplier(pl.multiplier)})` })),
+      ...priceLists.map(pl => ({ value: pl.id, label: `${pl.name} ${formatMarkupPercent(pl.multiplier)}` })),
     ],
     [priceLists],
   )
+  // Render del selector de lista del catálogo: nombre + markup en verde olivo (--success),
+  // mucho más legible que el "(×1.35)" anterior. La opción base (sin lista) cae al label plano.
+  const renderPriceListOption = (option: { value: string; label: string }) => {
+    const pl = priceLists.find(p => p.id === option.value)
+    if (!pl) return <span className="truncate">{option.label}</span>
+    return (
+      <span className="flex items-center gap-1.5 truncate">
+        <span className="truncate">{pl.name}</span>
+        <span className="font-medium text-success">{formatMarkupPercent(pl.multiplier)}</span>
+      </span>
+    )
+  }
   const initialCurrency = (() => {
     const raw = business.settings?.currency
     if (typeof raw === 'string' && CURRENCIES.some(c => c.code === raw)) {
@@ -781,6 +794,8 @@ export default function SettingsForm({
                   onChange={value => setForm(prev => ({ ...prev, catalogPriceListId: value }))}
                   options={priceListOptions}
                   placeholder="Precio base (sin lista)"
+                  renderOption={renderPriceListOption}
+                  renderSelected={renderPriceListOption}
                 />
                 <p className="text-xs text-muted-foreground">
                   Los precios del catálogo público se calcularán con el margen de la lista seleccionada. Si la lista se elimina, vuelve al precio base automáticamente.
