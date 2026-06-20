@@ -18,7 +18,7 @@ dueño confíe en 5 minutos y en lo que destraba el lanzamiento — no en sumar 
 
 Secuencia principal:
 
-1. [x] **1.3 — Loop de compartir catálogo** (✅ PR #47) · [ ] **2.4 — Etiquetas/códigos de barras** (siguiente)
+1. [x] **1.3 — Loop de compartir catálogo** (✅ PR #47) · [x] **2.4 — Etiquetas/códigos de barras** (✅)
 2. [ ] **2.1 — Ficha de cliente con estado de cuenta + historial** (scope reads-only → **agente nocturno**)
 3. [ ] **1.1 — Datos demo / sandbox** (rellenar después de 2.1 para que el demo ejercite la ficha nueva; flexible — los datos viven en DB, se puede antes)
 4. [ ] **2.2 — Devoluciones** (empezar la **exploración de UX ya**; construir en 1–2 días + su E2E)
@@ -86,10 +86,13 @@ Reposición vía compra (no edit manual de stock). Hoy lo cubre a medias el gast
 beta no es imprescindible. Cierra el loop de **Salud de inventario** (detecta stock muerto/
 sobrestock pero no hay acción de reponer). Diferido ~1 día. Ya esbozado en backlog/memoria.
 
-**2.4 — Impresión de etiquetas / códigos de barras** · `[ ]`
-El POS ya **lee** scanner; falta **generar etiquetas imprimibles** (precio + barcode). Necesidad
-real de kiosco/almacén. *(Ojo: tiene matices de formato — térmica vs hoja A4, simbología de
-barcode — que lo hacen menos trivial de lo que parece.)*
+**2.4 — Impresión de etiquetas / códigos de barras** · `[x]` ✅ (2026-06-20, sesión en vivo)
+El POS ya **lee** scanner; ahora también **genera etiquetas imprimibles**. `PrintLabelsModal`
+(abierto desde la selección de Inventario → "Etiquetas"): hoja A4 imprimible (`window.print` +
+`@media print` que aísla solo la hoja), barcode **Code128** de `barcode ?? sku` (jsbarcode), nombre
++ precio + marca. Presets de tamaño A4 (Chica/Mediana/Grande/Góndola), toggles mostrar marca /
+mostrar código, copias por producto, preview fiel al ancho A4 (lo que ves = lo que imprime).
+Térmica de rollo NO incluida (queda para después si se necesita).
 
 ### 3. Diseño / UX (con las skills)
 
@@ -123,6 +126,9 @@ cuando existan.
   Compartir/WhatsApp) en Configuración → Catálogo, con pasada de `/impeccable` y fix del tamaño
   del QR. También se conectó el design system espejo de Claude Design (ver `DESIGN.md` + memoria).
   Sigue **2.4** (etiquetas/códigos de barras).
+- **2026-06-20** — ✅ **2.4 completado** (sesión en vivo, push directo a master): impresión de
+  etiquetas A4 con código de barras desde Inventario (`PrintLabelsModal` + jsbarcode), presets de
+  tamaño + toggles. Sigue **2.1** (ficha de cliente → candidato a agente nocturno).
 - **2026-06-20** — Creado el roadmap. **Orden refinado confirmado por el dueño:** (1.3+2.4) →
   2.1 → 1.1 → 2.2 → 2.3 → UI/UX → 1.4; transversales: thermonuclear por-feature, E2E con cada
   feature money-path, 4.2 al agente nocturno; 1.2 (naming) en paralelo. Distinción clave aclarada:
