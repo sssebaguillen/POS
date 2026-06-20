@@ -18,7 +18,7 @@ dueño confíe en 5 minutos y en lo que destraba el lanzamiento — no en sumar 
 
 Secuencia principal:
 
-1. [ ] **1.3 — Loop de compartir catálogo** + **2.4 — Etiquetas/códigos de barras** (quick wins juntos, en vivo)
+1. [x] **1.3 — Loop de compartir catálogo** (✅ PR #47) · [ ] **2.4 — Etiquetas/códigos de barras** (siguiente)
 2. [ ] **2.1 — Ficha de cliente con estado de cuenta + historial** (scope reads-only → **agente nocturno**)
 3. [ ] **1.1 — Datos demo / sandbox** (rellenar después de 2.1 para que el demo ejercite la ficha nueva; flexible — los datos viven en DB, se puede antes)
 4. [ ] **2.2 — Devoluciones** (empezar la **exploración de UX ya**; construir en 1–2 días + su E2E)
@@ -51,9 +51,11 @@ borrable/aislado; sí decisión de producto.
 **1.2 — Naming/rebrand** · `[ ]`
 Bloqueante de go-to-market (ver [`branding.md`](branding.md) y memoria). Decisión, no dev.
 
-**1.3 — Loop de compartir catálogo** · `[ ]`
+**1.3 — Loop de compartir catálogo** · `[x]` ✅ (PR #47, 2026-06-20)
 El catálogo público (`puls.ar/slug`) es la superficie viral. Afordances de **compartir (QR +
 link)** desde la app → cada cliente difunde. Bajo costo, alto retorno de adopción.
+Hecho en Configuración → Catálogo: QR (escaneable + descargable en alta resolución), botón
+Compartir (Web Share API + fallback copiar), WhatsApp directo. Pasada de `/impeccable` aplicada.
 
 **1.4 — Importación / migración de datos reales** · `[ ]`
 Traer la historia real de un negocio establecido (productos + ventas de varios años + clientes)
@@ -117,6 +119,10 @@ cuando existan.
 
 ## Bitácora de decisiones
 
+- **2026-06-20** — ✅ **1.3 completado** (PR #47): loop de compartir catálogo (QR + descargar +
+  Compartir/WhatsApp) en Configuración → Catálogo, con pasada de `/impeccable` y fix del tamaño
+  del QR. También se conectó el design system espejo de Claude Design (ver `DESIGN.md` + memoria).
+  Sigue **2.4** (etiquetas/códigos de barras).
 - **2026-06-20** — Creado el roadmap. **Orden refinado confirmado por el dueño:** (1.3+2.4) →
   2.1 → 1.1 → 2.2 → 2.3 → UI/UX → 1.4; transversales: thermonuclear por-feature, E2E con cada
   feature money-path, 4.2 al agente nocturno; 1.2 (naming) en paralelo. Distinción clave aclarada:
