@@ -27,22 +27,24 @@ export default async function BreakdownDetailPage({
 
   let rows: CategorySalesRow[] | BrandRow[]
   if (tab === 'brand') {
-    const { data: result } = await supabase.rpc('get_sales_by_brand_detail', {
+    const { data: result, error } = await supabase.rpc('get_sales_by_brand_detail', {
       p_business_id: businessId,
       p_from: from,
       p_to: to,
       p_limit: 100,
       p_offset: 0,
     })
+    if (error) throw new Error(`get_sales_by_brand_detail: ${error.message}`)
     rows = (result as unknown as { data: BrandRow[] } | null)?.data ?? []
   } else {
-    const { data: result } = await supabase.rpc('get_sales_by_category_detail', {
+    const { data: result, error } = await supabase.rpc('get_sales_by_category_detail', {
       p_business_id: businessId,
       p_from: from,
       p_to: to,
       p_limit: 100,
       p_offset: 0,
     })
+    if (error) throw new Error(`get_sales_by_category_detail: ${error.message}`)
     rows = (result as unknown as { data: CategorySalesRow[] } | null)?.data ?? []
   }
 

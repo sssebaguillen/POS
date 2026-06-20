@@ -23,11 +23,12 @@ export default async function PaymentMethodsDetailPage({
   const period = params.period ?? 'mes'
   const { from, to } = resolveDateRange(period, params.from, params.to, timezone)
 
-  const { data: rpcResult } = await supabase.rpc('get_sales_by_payment_detail', {
+  const { data: rpcResult, error } = await supabase.rpc('get_sales_by_payment_detail', {
     p_business_id: businessId,
     p_from: from,
     p_to: to,
   })
+  if (error) throw new Error(`get_sales_by_payment_detail: ${error.message}`)
 
   const result = rpcResult as unknown as { data: PaymentMethodRow[]; collections: PaymentMethodRow[] } | null
   const rows = result?.data ?? []

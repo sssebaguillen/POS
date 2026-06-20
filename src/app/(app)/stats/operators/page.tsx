@@ -24,11 +24,12 @@ export default async function OperatorsDetailPage({
   const period = params.period ?? 'mes'
   const { from, to } = resolveDateRange(period, params.from, params.to, timezone)
 
-  const { data: rpcResult } = await supabase.rpc('get_sales_by_operator_detail', {
+  const { data: rpcResult, error } = await supabase.rpc('get_sales_by_operator_detail', {
     p_business_id: businessId,
     p_from: from,
     p_to: to,
   })
+  if (error) throw new Error(`get_sales_by_operator_detail: ${error.message}`)
 
   const rawRows = (rpcResult as unknown as { data: OperatorSalesStatsRow[] } | null)?.data ?? []
   const rows = normalizeOperatorSalesStatsRows(rawRows)

@@ -59,12 +59,12 @@ export default async function StatsReportPage({
 
   const [
     { data: business },
-    { data: kpisRaw },
-    { data: comparisonRaw },
-    { data: breakdownRaw },
-    { data: topProductsRaw },
-    { data: operatorsRaw },
-    { data: dailySnapshotsRaw },
+    { data: kpisRaw, error: kpisError },
+    { data: comparisonRaw, error: comparisonError },
+    { data: breakdownRaw, error: breakdownError },
+    { data: topProductsRaw, error: topProductsError },
+    { data: operatorsRaw, error: operatorsError },
+    { data: dailySnapshotsRaw, error: dailySnapshotsError },
   ] = await Promise.all([
     supabase.from('businesses').select('name').eq('id', businessId).maybeSingle(),
     supabase.rpc('get_stats_kpis', { p_business_id: businessId, p_from: from, p_to: to }),
@@ -80,6 +80,9 @@ export default async function StatsReportPage({
     supabase.rpc('get_sales_by_operator_detail', { p_business_id: businessId, p_from: from, p_to: to }),
     supabase.rpc('get_daily_snapshots', { p_business_id: businessId, p_from: from, p_to: to }),
   ])
+  const reportError =
+    kpisError || comparisonError || breakdownError || topProductsError || operatorsError || dailySnapshotsError
+  if (reportError) throw new Error(`stats/report: ${reportError.message}`)
 
   const businessName =
     typeof business?.name === 'string' && business.name.trim().length > 0 ? business.name : 'Negocio'
