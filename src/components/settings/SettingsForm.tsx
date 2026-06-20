@@ -11,7 +11,8 @@ import { type SettingsBusiness, type SettingsOperator } from '@/components/setti
 import OperatorList from '@/components/settings/OperatorList'
 import { CURRENCIES, type SupportedCurrencyCode } from '@/lib/constants/currencies'
 import SelectDropdown from '@/components/ui/SelectDropdown'
-import { UploadSimple } from '@phosphor-icons/react/dist/ssr'
+import { UploadSimple, ShareNetwork, DownloadSimple, WhatsappLogo } from '@phosphor-icons/react/dist/ssr'
+import { QRCodeCanvas } from 'qrcode.react'
 import { usePillIndicator } from '@/hooks/usePillIndicator'
 import { BUSINESS_SLUG_REGEX } from '@/lib/validation'
 import { FieldErrorMessage, ShakeOnError } from '@/components/shared/ShakeError'
@@ -145,6 +146,17 @@ export default function SettingsForm({
     () => `puls.ar/${normalizedBusinessSlug}`,
     [normalizedBusinessSlug]
   )
+  // Para compartir/QR usamos el slug GUARDADO (no el del input editándose), así el enlace
+  // siempre apunta a un catálogo que existe.
+  const savedCatalogUrl = useMemo(
+    () => `${typeof window !== 'undefined' ? window.location.origin : ''}/catalogo/${business.slug}`,
+    [business.slug]
+  )
+  const whatsappShareUrl = useMemo(
+    () => `https://wa.me/?text=${encodeURIComponent(`Mirá nuestro catálogo: ${savedCatalogUrl}`)}`,
+    [savedCatalogUrl]
+  )
+  const qrCanvasRef = useRef<HTMLCanvasElement | null>(null)
 
   const canPreviewLogo = useMemo(() => {
     if (!hasLogoUrl) return false
@@ -373,6 +385,35 @@ export default function SettingsForm({
       setCopyError(message)
       setCopySuccess(false)
     }
+  }
+
+  // Compartir nativo (Web Share API → WhatsApp/etc. en mobile); fallback a copiar el enlace.
+  async function handleShareCatalog() {
+    setCopyError('')
+    if (typeof navigator !== 'undefined' && navigator.share) {
+      try {
+        await navigator.share({
+          title: business.name || 'Catálogo',
+          text: 'Mirá nuestro catálogo',
+          url: savedCatalogUrl,
+        })
+      } catch {
+        // el usuario canceló el share — no es un error
+      }
+      return
+    }
+    await handleCopyPublicUrl()
+  }
+
+  // Descarga el QR como PNG (para imprimir/pegar en el local). El canvas se renderiza a 512px
+  // aunque se muestre chico, así el PNG sale en alta resolución.
+  function handleDownloadQr() {
+    const canvas = qrCanvasRef.current
+    if (!canvas) return
+    const link = document.createElement('a')
+    link.download = `catalogo-${business.slug || 'pulsar'}-qr.png`
+    link.href = canvas.toDataURL('image/png')
+    link.click()
   }
 
   return (
@@ -681,6 +722,47 @@ export default function SettingsForm({
                 {copySuccess && <p className={SUCCESS_CLASS}>¡Enlace copiado!</p>}
                 {copyError && <p className="text-xs text-destructive">{copyError}</p>}
               </div>
+
+              {business.slug && (
+                <div className="space-y-2">
+                  <label className="text-xs uppercase tracking-wide text-muted-foreground">
+                    Compartir tu catálogo
+                  </label>
+                  <div className="flex flex-col gap-4 rounded-lg border border-border bg-surface p-4 sm:flex-row sm:items-center">
+                    <div className="mx-auto shrink-0 rounded-lg border border-border bg-white p-3 sm:mx-0">
+                      <QRCodeCanvas
+                        ref={qrCanvasRef}
+                        value={savedCatalogUrl}
+                        size={512}
+                        marginSize={2}
+                        className="h-32 w-32"
+                      />
+                    </div>
+                    <div className="flex flex-1 flex-col gap-3">
+                      <p className="text-xs text-muted-foreground">
+                        Mostralo o imprímelo en tu local para que tus clientes escaneen el código y
+                        vean tu catálogo. También puedes compartir el enlace directo.
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        <Button type="button" className="h-9 px-4" onClick={handleShareCatalog}>
+                          <ShareNetwork size={16} />
+                          Compartir
+                        </Button>
+                        <Button type="button" variant="outline" className="h-9 px-4" asChild>
+                          <a href={whatsappShareUrl} target="_blank" rel="noopener noreferrer">
+                            <WhatsappLogo size={16} weight="fill" />
+                            WhatsApp
+                          </a>
+                        </Button>
+                        <Button type="button" variant="outline" className="h-9 px-4" onClick={handleDownloadQr}>
+                          <DownloadSimple size={16} />
+                          Descargar QR
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               <div className="space-y-1.5">
                 <label className="text-xs uppercase tracking-wide text-muted-foreground">
