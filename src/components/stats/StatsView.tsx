@@ -3,7 +3,7 @@
 import { useMemo, useState, memo } from 'react'
 import { usePathname } from 'next/navigation'
 import { useQuery, keepPreviousData } from '@tanstack/react-query'
-import { TrendDown, TrendUp, CurrencyDollar, ShoppingBag, Receipt, Hash, FileText, Package, CaretRight, Coins } from '@phosphor-icons/react/dist/ssr'
+import { TrendDown, TrendUp, CurrencyDollar, ShoppingBag, Receipt, Hash, FileText, Package, CaretRight, Coins, CircleNotch } from '@phosphor-icons/react/dist/ssr'
 import Link from 'next/link'
 import PageHeader from '@/components/shared/PageHeader'
 import InsightSurfaceAnchor from '@/components/insights/InsightSurfaceAnchor'
@@ -384,7 +384,12 @@ export default function StatsView({
               to={to}
               onChange={handlePeriodChange}
             />
-            {isFetching && <span className="text-xs text-hint shrink-0">Actualizando...</span>}
+            {isFetching && (
+              <span className="flex items-center gap-1.5 text-xs text-hint shrink-0">
+                <CircleNotch size={13} className="animate-spin" />
+                Actualizando...
+              </span>
+            )}
             <Link
               href={`/stats/report?period=${period}${from ? `&from=${from}` : ''}${to ? `&to=${to}` : ''}`}
               className="ml-auto inline-flex items-center gap-1.5 pill-tab border border-edge text-body hover:border-primary/30 hover:text-primary transition-[transform,color,border-color] duration-150 ease-[var(--ease-out)] shrink-0"
@@ -431,7 +436,7 @@ export default function StatsView({
             </Link>
           )}
 
-          <div className={`space-y-5 transition-opacity ${isFetching ? 'opacity-60' : ''}`}>
+          <div className={`space-y-5 transition-opacity duration-200 ${isFetching ? 'opacity-50 pointer-events-none' : ''}`} aria-busy={isFetching}>
             {/* KPI Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-4">
               <div className="surface-card p-5 flex flex-col gap-3">
