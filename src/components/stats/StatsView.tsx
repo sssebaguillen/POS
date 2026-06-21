@@ -3,7 +3,7 @@
 import { useMemo, useState, memo } from 'react'
 import { usePathname } from 'next/navigation'
 import { useQuery, keepPreviousData } from '@tanstack/react-query'
-import { TrendDown, TrendUp, CurrencyDollar, ShoppingBag, Receipt, Hash, FileText, Package, CaretRight, Coins, CircleNotch } from '@phosphor-icons/react/dist/ssr'
+import { TrendDown, TrendUp, CurrencyDollar, ShoppingBag, Receipt, Hash, FileText, Package, CaretRight, Coins, CircleNotch, Warning } from '@phosphor-icons/react/dist/ssr'
 import Link from 'next/link'
 import PageHeader from '@/components/shared/PageHeader'
 import InsightSurfaceAnchor from '@/components/insights/InsightSurfaceAnchor'
@@ -282,6 +282,7 @@ export default function StatsView({
   const grossProfit = marginTotals?.gross_profit ?? 0
   const marginPct = marginTotals?.margin_pct ?? null
   const prevGrossProfit = prevMarginTotals?.gross_profit ?? 0
+  const productsWithoutCost = marginTotals?.products_without_cost ?? 0
 
   const evolutionData = (evolution?.data ?? []).map(p => ({
     label: p.label,
@@ -499,6 +500,14 @@ export default function StatsView({
                   <p className="text-xs text-hint mt-1">
                     {marginPct != null ? `${marginPct.toFixed(1)}% de margen` : 'Sin costo cargado'}
                   </p>
+                  {marginPct != null && productsWithoutCost > 0 && (
+                    <p className="flex items-center gap-1 text-xs text-warning mt-1">
+                      <Warning size={12} weight="fill" className="shrink-0" />
+                      {productsWithoutCost === 1
+                        ? '1 producto sin costo — margen parcial'
+                        : `${productsWithoutCost} productos sin costo — margen parcial`}
+                    </p>
+                  )}
                 </div>
               </div>
             </div>
