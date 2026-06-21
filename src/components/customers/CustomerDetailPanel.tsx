@@ -1,11 +1,12 @@
 'use client'
 
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { X, Phone, EnvelopeSimple, IdentificationCard, Receipt } from '@phosphor-icons/react/dist/ssr'
+import { X, Phone, EnvelopeSimple, IdentificationCard, CaretDown } from '@phosphor-icons/react/dist/ssr'
 import { createClient } from '@/lib/supabase/client'
 import { useFormatMoney } from '@/lib/context/CurrencyContext'
 import { PAYMENT_LABELS } from '@/lib/payments'
+import { getSaleDetail } from '@/lib/api/sales'
 import type { PaymentMethod } from '@/lib/constants/domain'
 import type { Customer } from '@/lib/types'
 
@@ -22,8 +23,8 @@ interface AccountMovement {
 }
 
 const MOVEMENT_LABEL: Record<MovementType, string> = {
-  charge: 'Compra',
-  payment: 'Pago',
+  charge: 'Venta a crédito',
+  payment: 'Pago a cuenta',
   opening: 'Saldo inicial',
 }
 
@@ -39,6 +40,66 @@ function methodLabel(method: string | null): string | null {
   return PAYMENT_LABELS[method as PaymentMethod] ?? method
 }
 
+// Detalle de una venta a crédito, expandido inline en la fila. Reusa la RPC
+// get_sale_detail (misma que el dashboard) — solo se monta cuando la fila está abierta.
+function SaleDetailInline({ saleId, businessId }: { saleId: string; businessId: string }) {
+  const supabase = useMemo(() => createClient(), [])
+  const formatMoney = useFormatMoney()
+
+  const { data, isLoading, isError, refetch } = useQuery({
+    queryKey: ['sale-detail', businessId, saleId],
+    queryFn: async () => {
+      const res = await getSaleDetail(supabase, { saleId, businessId })
+      if (!res.ok) throw new Error(res.error)
+      return res.data
+    },
+  })
+
+  return (
+    <div className="mt-2.5 rounded-lg border border-edge/60 bg-card px-3 py-2.5">
+      {isLoading && <p className="text-xs text-muted-foreground">Cargando detalle…</p>}
+
+      {isError && (
+        <div className="space-y-1.5">
+          <p className="text-xs text-destructive">No se pudo cargar el detalle.</p>
+          <button
+            type="button"
+            onClick={() => refetch()}
+            className="text-xs text-destructive underline-offset-2 hover:underline"
+          >
+            Reintentar
+          </button>
+        </div>
+      )}
+
+      {!isLoading && !isError && data && (
+        <div className="space-y-1.5">
+          <ul className="space-y-1">
+            {(data.items ?? []).map(it => (
+              <li key={it.id} className="flex items-baseline justify-between gap-3 text-xs">
+                <span className="min-w-0 truncate text-foreground">
+                  {it.quantity}× {it.product_name}{it.variant_label ? ` · ${it.variant_label}` : ''}
+                </span>
+                <span className="shrink-0 tabular-nums text-muted-foreground">
+                  {formatMoney(it.unit_price * it.quantity)}
+                </span>
+              </li>
+            ))}
+            {(!data.items || data.items.length === 0) && (
+              <li className="text-xs text-muted-foreground">Sin ítems.</li>
+            )}
+          </ul>
+          {data.payment_method && (
+            <p className="border-t border-edge/40 pt-1.5 text-xs text-muted-foreground">
+              Método: {methodLabel(data.payment_method)}
+            </p>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
 interface Props {
   customer: Customer
   businessId: string
@@ -48,6 +109,7 @@ interface Props {
 export default function CustomerDetailPanel({ customer, businessId, onClose }: Props) {
   const supabase = useMemo(() => createClient(), [])
   const formatMoney = useFormatMoney()
+  const [expandedSaleId, setExpandedSaleId] = useState<string | null>(null)
 
   const { data: movements = [], isLoading, isError, refetch } = useQuery<AccountMovement[]>({
     queryKey: ['customer-account-movements', businessId, customer.id],
@@ -117,22 +179,22 @@ export default function CustomerDetailPanel({ customer, businessId, onClose }: P
 
           <section className="space-y-2">
             <h3 className="text-xs uppercase tracking-wide text-muted-foreground">Cuenta corriente</h3>
-            <div className="grid grid-cols-3 gap-2">
-              <div className="rounded-lg border border-border/70 bg-card px-3 py-2.5">
-                <p className="text-xs text-muted-foreground">Saldo actual</p>
-                <p className={`mt-1 text-sm font-semibold tabular-nums ${customer.credit_balance > 0 ? 'text-destructive' : 'text-foreground'}`}>
+            <div className="surface-card overflow-hidden grid grid-cols-3">
+              <div className="px-4 py-3 border-r border-edge/40">
+                <p className="text-label text-hint mb-1">Saldo actual</p>
+                <p className={`font-display text-lg font-bold leading-none tabular-nums ${customer.credit_balance > 0 ? 'text-destructive' : 'text-foreground'}`}>
                   {formatMoney(customer.credit_balance)}
                 </p>
               </div>
-              <div className="rounded-lg border border-border/70 bg-card px-3 py-2.5">
-                <p className="text-xs text-muted-foreground">Límite</p>
-                <p className="mt-1 text-sm font-semibold tabular-nums text-foreground">
+              <div className="px-4 py-3 border-r border-edge/40">
+                <p className="text-label text-hint mb-1">Límite</p>
+                <p className="font-display text-lg font-bold leading-none tabular-nums text-foreground">
                   {hasLimit ? formatMoney(customer.credit_limit) : '—'}
                 </p>
               </div>
-              <div className="rounded-lg border border-border/70 bg-card px-3 py-2.5">
-                <p className="text-xs text-muted-foreground">Disponible</p>
-                <p className="mt-1 text-sm font-semibold tabular-nums text-foreground">
+              <div className="px-4 py-3">
+                <p className="text-label text-hint mb-1">Disponible</p>
+                <p className="font-display text-lg font-bold leading-none tabular-nums text-foreground">
                   {hasLimit ? formatMoney(available) : '—'}
                 </p>
               </div>
@@ -168,21 +230,36 @@ export default function CustomerDetailPanel({ customer, businessId, onClose }: P
                 {movements.map(m => {
                   const isPayment = m.type === 'payment'
                   const method = isPayment ? methodLabel(m.method) : null
+                  const canExpand = m.type === 'charge' && !!m.sale_id
+                  const isExpanded = canExpand && expandedSaleId === m.sale_id
                   return (
                     <li key={m.id} className="rounded-lg border border-border/70 p-3">
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
                           <div className="flex items-center gap-2">
                             <span className="text-sm font-medium text-foreground">{MOVEMENT_LABEL[m.type]}</span>
-                            {m.sale_id && (
-                              <span className="inline-flex items-center gap-1 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium text-hint border border-edge">
-                                <Receipt size={11} /> Venta
-                              </span>
+                            {canExpand && (
+                              <button
+                                type="button"
+                                onClick={() => setExpandedSaleId(isExpanded ? null : m.sale_id)}
+                                className="inline-flex items-center gap-0.5 text-xs text-primary hover:underline"
+                              >
+                                {isExpanded ? 'Ocultar' : 'Ver detalle'}
+                                <CaretDown
+                                  size={11}
+                                  className={`transition-transform duration-150 ${isExpanded ? 'rotate-180' : ''}`}
+                                />
+                              </button>
                             )}
                           </div>
                           <p className="mt-0.5 text-xs text-muted-foreground">{formatTimestamp(m.created_at)}</p>
                           {method && (
                             <p className="mt-0.5 text-xs text-muted-foreground">{method}</p>
+                          )}
+                          {m.type === 'opening' && (
+                            <p className="mt-0.5 text-xs text-muted-foreground">
+                              Saldo registrado al iniciar la cuenta corriente
+                            </p>
                           )}
                         </div>
                         <div className="text-right shrink-0">
@@ -194,6 +271,9 @@ export default function CustomerDetailPanel({ customer, businessId, onClose }: P
                           </p>
                         </div>
                       </div>
+                      {isExpanded && m.sale_id && (
+                        <SaleDetailInline saleId={m.sale_id} businessId={businessId} />
+                      )}
                     </li>
                   )
                 })}
