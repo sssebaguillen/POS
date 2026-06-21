@@ -20,7 +20,7 @@ import type { SupportedCurrencyCode } from '@/lib/constants/currencies'
 import OnboardingWizard, { type OnboardingWizardProfile } from '@/components/onboarding/OnboardingWizard'
 import { useFormatMoney } from '@/lib/context/CurrencyContext'
 import { ResponsiveContainer, BarChart, Bar, XAxis, Tooltip } from 'recharts'
-import { Check } from '@phosphor-icons/react/dist/ssr'
+import { Check, CircleNotch, ChartBar } from '@phosphor-icons/react/dist/ssr'
 import { cn } from '@/lib/utils'
 
 interface ChartPoint {
@@ -182,7 +182,7 @@ export default function DashboardView({
     [initialKpis, initialBalance, initialHeatmap]
   )
 
-  const { data: overviewData } = useQuery<DashboardOverview>({
+  const { data: overviewData, isFetching } = useQuery<DashboardOverview>({
     queryKey: ['dashboard-overview', businessId, period, resolved.from, resolved.to],
     enabled: !!businessId && !!resolved.from && !!resolved.to,
     initialData: isInitialRange ? initialOverview : undefined,
@@ -314,18 +314,26 @@ export default function DashboardView({
       <div className="flex-1 overflow-y-auto">
         <div className="px-6 pt-4 pb-6 space-y-5">
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <DateRangeFilter
-              value={period}
-              from={fromDate}
-              to={toDate}
-              onChange={(p, f, t) => {
-                setPeriod(p)
-                // Limpiar from/to en períodos simples: resolveDateRange prioriza
-                // from/to explícitos, así que dejarlos stale rompería hoy/semana/mes.
-                setFromDate(periodNeedsCustomDates(p) ? (f ?? '') : '')
-                setToDate(periodNeedsCustomDates(p) ? (t ?? '') : '')
-              }}
-            />
+            <div className="flex items-center gap-3">
+              <DateRangeFilter
+                value={period}
+                from={fromDate}
+                to={toDate}
+                onChange={(p, f, t) => {
+                  setPeriod(p)
+                  // Limpiar from/to en períodos simples: resolveDateRange prioriza
+                  // from/to explícitos, así que dejarlos stale rompería hoy/semana/mes.
+                  setFromDate(periodNeedsCustomDates(p) ? (f ?? '') : '')
+                  setToDate(periodNeedsCustomDates(p) ? (t ?? '') : '')
+                }}
+              />
+              {!showHistory && isFetching && (
+                <span className="flex items-center gap-1.5 text-xs text-hint shrink-0">
+                  <CircleNotch size={13} className="animate-spin" />
+                  Actualizando...
+                </span>
+              )}
+            </div>
 
             <div className="flex items-center gap-2">
               {/* Glyph ambiente de IA: sugerencias de canal/globales del dashboard */}
@@ -373,7 +381,10 @@ export default function DashboardView({
               operators={operators}
             />
           ) : (
-            <>
+            <div
+              className={`space-y-5 transition-opacity duration-200 ${isFetching ? 'opacity-50 pointer-events-none' : ''}`}
+              aria-busy={isFetching}
+            >
               {/* KPI Cards */}
               <div className="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-3 gap-4 animate-fade-in">
                 <KPICard
@@ -439,7 +450,13 @@ export default function DashboardView({
                     {chartTitle}
                   </p>
                   {chartData.every(d => d.value === 0) ? (
-                    <p className="text-sm text-hint flex-1 min-h-[16rem] flex items-center justify-center">Sin datos para el período</p>
+                    <div className="flex-1 min-h-[16rem] flex flex-col items-center justify-center text-center gap-2">
+                      <span className="flex items-center justify-center w-9 h-9 rounded-full bg-muted text-hint">
+                        <ChartBar size={18} />
+                      </span>
+                      <p className="text-sm font-medium text-heading">Todavía no hay ventas</p>
+                      <p className="text-xs text-hint">Cuando vendas en este período, vas a ver el detalle acá.</p>
+                    </div>
                   ) : (
                     <div className="flex-1 min-h-[16rem]">
                     <ResponsiveContainer width="100%" height="100%">
@@ -538,7 +555,7 @@ export default function DashboardView({
                   )}
                 </div>
               </div>
-            </>
+            </div>
           )}
         </div>
       </div>
