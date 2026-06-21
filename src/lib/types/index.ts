@@ -159,6 +159,28 @@ export interface StatsKpis {
   period_to: string
 }
 
+export interface ReplenishmentRow {
+  id: string
+  name: string
+  sku: string | null
+  category_name: string | null
+  brand_name: string | null
+  has_variants: boolean
+  effective_stock: number
+  min_stock: number
+  cost: number
+  units_window: number
+  daily_velocity: number
+  days_to_stockout: number | null
+  suggested_qty: number
+}
+
+export interface ReplenishmentSummary {
+  products_count: number
+  out_of_stock_count: number
+  window_days: number
+}
+
 export interface MarginTotals {
   revenue: number
   cost_total: number

@@ -2,7 +2,7 @@
 
 import { usePathname } from 'next/navigation'
 import Link from 'next/link'
-import { X, ShoppingCart, Package, ClipboardText, ChartBar, ChartLine, Gear, Sun, Moon, SignOut, SidebarSimple, Receipt, UserCircle, Sparkle, Globe, ArrowSquareOut, ClockCounterClockwise, Users, Vault, Tray, SealPercent } from '@phosphor-icons/react/dist/ssr'
+import { X, ShoppingCart, Package, ClipboardText, ChartBar, ChartLine, Gear, Sun, Moon, SignOut, SidebarSimple, Receipt, UserCircle, Sparkle, Globe, ArrowSquareOut, ClockCounterClockwise, Users, Vault, Tray, SealPercent, ArrowsClockwise } from '@phosphor-icons/react/dist/ssr'
 import { useRouter } from 'next/navigation'
 import { useMemo } from 'react'
 import { useMounted } from '@/lib/hooks/useMounted'
@@ -37,6 +37,7 @@ const NAV_LINKS: NavLink[] = [
   { href: '/expenses',      label: 'Gastos',            icon: Receipt,       check: (p) => p.expenses === true },
   { href: '/cash-sessions', label: 'Caja',              icon: Vault,         check: (p) => p.reports === true },
   { href: '/inventory',   label: 'Inventario',        icon: Package,       check: (p) => p.inventory_read === true },
+  { href: '/inventory/replenishment', label: 'Reposición', icon: ArrowsClockwise, check: (p) => p.inventory_read === true },
   { href: '/price-lists', label: 'Listas de precios', icon: ClipboardText, check: (p) => p.inventory_read === true },
   { href: '/promotions',  label: 'Promociones',       icon: SealPercent,  check: (p) => p.inventory_read === true },
   { href: '/settings',    label: 'Configuración',     icon: Gear,      check: (p) => p.settings === true },
@@ -53,7 +54,7 @@ const NAV_SECTIONS = [
   },
   {
     label: 'Gestión',
-    hrefs: ['/inventory', '/price-lists', '/promotions'],
+    hrefs: ['/inventory', '/inventory/replenishment', '/price-lists', '/promotions'],
   },
   {
     label: 'Finanzas',
