@@ -3988,6 +3988,101 @@ $$;
 ALTER FUNCTION "public"."get_overstock"("p_business_id" "uuid", "p_limit" integer, "p_offset" integer) OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."get_replenishment_list"("p_business_id" "uuid", "p_window_days" integer DEFAULT 30, "p_limit" integer DEFAULT 500, "p_offset" integer DEFAULT 0) RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'extensions'
+    AS $$
+DECLARE
+  v_window integer := LEAST(GREATEST(COALESCE(p_window_days, 30), 7), 90);
+  v_limit  integer := LEAST(GREATEST(COALESCE(p_limit, 500), 1), 500);
+  v_offset integer := GREATEST(COALESCE(p_offset, 0), 0);
+BEGIN
+  IF auth.uid() IS NOT NULL THEN PERFORM public.assert_tenant(p_business_id); END IF;
+
+  RETURN (
+    WITH sales_agg AS (
+      SELECT
+        si.product_id,
+        COALESCE(SUM(si.quantity) FILTER (
+          WHERE s.created_at >= now() - make_interval(days => v_window)
+        ), 0) AS units_window
+      FROM sale_items si
+      JOIN sales s ON s.id = si.sale_id
+      WHERE s.business_id = p_business_id
+        AND s.status = 'completed'
+      GROUP BY si.product_id
+    ),
+    variant_agg AS (
+      SELECT
+        v.product_id,
+        COALESCE(SUM(v.stock), 0) AS v_stock
+      FROM product_variants v
+      WHERE v.business_id = p_business_id
+        AND v.is_active = true
+      GROUP BY v.product_id
+    ),
+    base AS (
+      SELECT
+        p.id, p.name, p.sku, COALESCE(p.cost, 0) AS cost,
+        c.name AS category_name,
+        b.name AS brand_name,
+        (va.product_id IS NOT NULL) AS has_variants,
+        CASE WHEN va.product_id IS NOT NULL THEN va.v_stock ELSE p.stock END AS effective_stock,
+        COALESCE(p.min_stock, 0) AS min_stock,
+        COALESCE(sa.units_window, 0)::numeric AS units_window
+      FROM products p
+      LEFT JOIN variant_agg va ON va.product_id = p.id
+      LEFT JOIN sales_agg   sa ON sa.product_id = p.id
+      LEFT JOIN categories  c  ON c.id = p.category_id
+      LEFT JOIN brands      b  ON b.id = p.brand_id
+      WHERE p.business_id = p_business_id
+        AND p.is_active = true
+    ),
+    flagged AS (
+      SELECT
+        *,
+        ROUND(units_window / v_window::numeric, 4) AS daily_velocity,
+        GREATEST(min_stock - effective_stock, 0)   AS suggested_qty,
+        CASE
+          WHEN units_window > 0
+          THEN ROUND(GREATEST(effective_stock, 0) / (units_window / v_window::numeric), 1)
+          ELSE NULL
+        END AS days_to_stockout
+      FROM base
+      WHERE effective_stock <= min_stock
+    )
+    SELECT jsonb_build_object(
+      'data', COALESCE((
+        SELECT jsonb_agg(to_jsonb(d))
+        FROM (
+          SELECT
+            id, name, sku, category_name, brand_name, has_variants,
+            effective_stock, min_stock, cost, units_window, daily_velocity,
+            days_to_stockout, suggested_qty
+          FROM flagged
+          ORDER BY
+            (effective_stock <= 0) DESC,
+            days_to_stockout ASC NULLS LAST,
+            daily_velocity DESC,
+            name ASC
+          LIMIT v_limit OFFSET v_offset
+        ) d
+      ), '[]'::jsonb),
+      'total', (SELECT COUNT(*) FROM flagged),
+      'summary', jsonb_build_object(
+        'products_count',     (SELECT COUNT(*) FROM flagged),
+        'out_of_stock_count', (SELECT COUNT(*) FROM flagged WHERE effective_stock <= 0),
+        'window_days',        v_window
+      )
+    )
+  );
+END;
+$$;
+
+
+ALTER FUNCTION "public"."get_replenishment_list"("p_business_id" "uuid", "p_window_days" integer, "p_limit" integer, "p_offset" integer) OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."get_owner_stats"("p_date_from" "date" DEFAULT NULL::"date", "p_date_to" "date" DEFAULT NULL::"date") RETURNS json
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public', 'extensions'
@@ -13865,6 +13960,12 @@ GRANT ALL ON FUNCTION "public"."get_operator_stats"("p_operator_id" "uuid", "p_d
 REVOKE ALL ON FUNCTION "public"."get_overstock"("p_business_id" "uuid", "p_limit" integer, "p_offset" integer) FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."get_overstock"("p_business_id" "uuid", "p_limit" integer, "p_offset" integer) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."get_overstock"("p_business_id" "uuid", "p_limit" integer, "p_offset" integer) TO "service_role";
+
+
+REVOKE ALL ON FUNCTION "public"."get_replenishment_list"("p_business_id" "uuid", "p_window_days" integer, "p_limit" integer, "p_offset" integer) FROM PUBLIC;
+REVOKE ALL ON FUNCTION "public"."get_replenishment_list"("p_business_id" "uuid", "p_window_days" integer, "p_limit" integer, "p_offset" integer) FROM "anon";
+GRANT ALL ON FUNCTION "public"."get_replenishment_list"("p_business_id" "uuid", "p_window_days" integer, "p_limit" integer, "p_offset" integer) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."get_replenishment_list"("p_business_id" "uuid", "p_window_days" integer, "p_limit" integer, "p_offset" integer) TO "service_role";
 
 
 
