@@ -3,20 +3,20 @@
 import { useMemo, useState, memo } from 'react'
 import { usePathname } from 'next/navigation'
 import { useQuery, keepPreviousData } from '@tanstack/react-query'
-import { TrendDown, TrendUp, CurrencyDollar, ShoppingBag, Receipt, Hash, FileText, Package, CaretRight } from '@phosphor-icons/react/dist/ssr'
+import { TrendDown, TrendUp, CurrencyDollar, ShoppingBag, Receipt, Hash, FileText, Package, CaretRight, Coins } from '@phosphor-icons/react/dist/ssr'
 import Link from 'next/link'
 import PageHeader from '@/components/shared/PageHeader'
 import InsightSurfaceAnchor from '@/components/insights/InsightSurfaceAnchor'
 import DateRangeFilter from '@/components/shared/DateRangeFilter'
 import PopNumber from '@/components/shared/PopNumber'
-import { buildDateParams, periodNeedsCustomDates, resolveDateRange, type DateRangePeriod } from '@/lib/date-utils'
+import { buildDateParams, periodNeedsCustomDates, resolveDateRange, getAdjacentPreviousRange, type DateRangePeriod } from '@/lib/date-utils'
 import { isPaymentMethod, normalizePayment, PAYMENT_BAR_COLORS } from '@/lib/payments'
 import { useFormatMoney } from '@/lib/context/CurrencyContext'
 import { cn } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
 import { normalizeOperatorSalesStatsRows } from '@/lib/mappers'
 import type {
-  DailySnapshotRow, OperatorSalesStatsRow, StatsKpis, StatsEvolution, StatsBreakdown, SalesHeatmapCell, DeadStockSummary, PromoImpact, SalesBySource,
+  DailySnapshotRow, OperatorSalesStatsRow, StatsKpis, StatsEvolution, StatsBreakdown, SalesHeatmapCell, DeadStockSummary, PromoImpact, SalesBySource, MarginTotals,
 } from '@/lib/types'
 import { SALE_SOURCE_LABELS } from '@/lib/constants/domain'
 import { promoBadgeLabel } from '@/lib/promotions'
@@ -54,6 +54,8 @@ interface StatsQueryData {
   heatmapCells: SalesHeatmapCell[]
   promoImpact: PromoImpact | null
   salesBySource: SalesBySource | null
+  marginTotals: MarginTotals | null
+  prevMarginTotals: MarginTotals | null
 }
 
 interface Props {
@@ -68,6 +70,8 @@ interface Props {
   deadStockSummary: DeadStockSummary | null
   promoImpact: PromoImpact | null
   salesBySource: SalesBySource | null
+  marginTotals: MarginTotals | null
+  prevMarginTotals: MarginTotals | null
   period: string
   from?: string
   to?: string
@@ -110,6 +114,8 @@ export default function StatsView({
   deadStockSummary,
   promoImpact: initialPromoImpact,
   salesBySource: initialSalesBySource,
+  marginTotals: initialMarginTotals,
+  prevMarginTotals: initialPrevMarginTotals,
   period: initialPeriod,
   from: initialFrom,
   to: initialTo,
@@ -135,7 +141,8 @@ export default function StatsView({
     queryKey: ['stats', businessId, period, from, to],
     queryFn: async () => {
       const resolvedRange = resolveDateRange(period, from, to, timezone)
-      const [kpisResult, evolutionResult, breakdownResult, topProductsResult, operatorsResult, dailySnapshotsResult, heatmapResult, promoImpactResult, salesBySourceResult] = await Promise.all([
+      const prevRange = getAdjacentPreviousRange(resolvedRange.from, resolvedRange.to)
+      const [kpisResult, evolutionResult, breakdownResult, topProductsResult, operatorsResult, dailySnapshotsResult, heatmapResult, promoImpactResult, salesBySourceResult, marginResult, prevMarginResult] = await Promise.all([
         supabase.rpc('get_stats_kpis', {
           p_business_id: businessId,
           p_from: resolvedRange.from,
@@ -183,6 +190,20 @@ export default function StatsView({
           p_from: resolvedRange.from,
           p_to: resolvedRange.to,
         }),
+        supabase.rpc('get_margin_analysis', {
+          p_business_id: businessId,
+          p_from: resolvedRange.from,
+          p_to: resolvedRange.to,
+          p_limit: 1,
+          p_offset: 0,
+        }),
+        supabase.rpc('get_margin_analysis', {
+          p_business_id: businessId,
+          p_from: prevRange.from,
+          p_to: prevRange.to,
+          p_limit: 1,
+          p_offset: 0,
+        }),
       ])
 
       return {
@@ -197,6 +218,8 @@ export default function StatsView({
         heatmapCells: (heatmapResult.data as unknown as { data: SalesHeatmapCell[] } | null)?.data ?? [],
         promoImpact: promoImpactResult.data as unknown as PromoImpact | null,
         salesBySource: salesBySourceResult.data as unknown as SalesBySource | null,
+        marginTotals: (marginResult.data as unknown as { totals: MarginTotals } | null)?.totals ?? null,
+        prevMarginTotals: (prevMarginResult.data as unknown as { totals: MarginTotals } | null)?.totals ?? null,
       }
     },
     initialData: isInitialPeriod
@@ -210,6 +233,8 @@ export default function StatsView({
           heatmapCells: initialHeatmapCells,
           promoImpact: initialPromoImpact,
           salesBySource: initialSalesBySource,
+          marginTotals: initialMarginTotals,
+          prevMarginTotals: initialPrevMarginTotals,
         }
       : undefined,
     initialDataUpdatedAt: isInitialPeriod ? mountedAt : undefined,
@@ -251,6 +276,12 @@ export default function StatsView({
   const prevAvgTicket = (kpis?.prev_total_sales ?? 0) > 0
     ? (kpis?.prev_total_revenue ?? 0) / (kpis?.prev_total_sales ?? 1)
     : 0
+
+  const marginTotals = data?.marginTotals ?? null
+  const prevMarginTotals = data?.prevMarginTotals ?? null
+  const grossProfit = marginTotals?.gross_profit ?? 0
+  const marginPct = marginTotals?.margin_pct ?? null
+  const prevGrossProfit = prevMarginTotals?.gross_profit ?? 0
 
   const evolutionData = (evolution?.data ?? []).map(p => ({
     label: p.label,
@@ -402,7 +433,7 @@ export default function StatsView({
 
           <div className={`space-y-5 transition-opacity ${isFetching ? 'opacity-60' : ''}`}>
             {/* KPI Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-4">
               <div className="surface-card p-5 flex flex-col gap-3">
                 <div className="flex items-start justify-between">
                   <span className="h-9 w-9 rounded-xl flex items-center justify-center shrink-0 bg-muted text-body">
@@ -448,6 +479,21 @@ export default function StatsView({
                 <div>
                   <p className="text-label text-hint mb-1">Total transacciones</p>
                   <PopNumber className="text-2xl font-bold text-heading leading-none" value={totalSales.toLocaleString('es-AR')} />
+                </div>
+              </div>
+              <div className="surface-card p-5 flex flex-col gap-3">
+                <div className="flex items-start justify-between">
+                  <span className="h-9 w-9 rounded-xl flex items-center justify-center shrink-0 bg-muted text-body">
+                    <Coins size={16} />
+                  </span>
+                  <DeltaBadge current={grossProfit} previous={prevGrossProfit} />
+                </div>
+                <div>
+                  <p className="text-label text-hint mb-1">Margen bruto</p>
+                  <PopNumber className="text-2xl font-bold text-heading leading-none" value={formatMoney(grossProfit)} />
+                  <p className="text-xs text-hint mt-1">
+                    {marginPct != null ? `${marginPct.toFixed(1)}% de margen` : 'Sin costo cargado'}
+                  </p>
                 </div>
               </div>
             </div>

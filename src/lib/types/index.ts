@@ -159,6 +159,15 @@ export interface StatsKpis {
   period_to: string
 }
 
+export interface MarginTotals {
+  revenue: number
+  cost_total: number
+  gross_profit: number
+  margin_pct: number | null
+  products_count: number
+  products_without_cost: number
+}
+
 export interface DayOfWeekEntry {
   dow: number
   label: string
