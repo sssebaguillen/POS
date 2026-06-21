@@ -478,9 +478,12 @@
    superficie. Borde apenas tintado para que el contorno acompañe el glow.
 ─────────────────────────────────────────────────────────────────────────────── */
 .offers-highlight {
+  /* Marco unificado en --promo (verde de ofertas): borde + halo igual que el
+     contenido (eyebrow / flag / precio) para que la zona se lea como "ofertas".
+     La card NO se tiñe (decisión previa): solo cambian el borde y el halo. */
   background: var(--card);
-  border-color: color-mix(in oklab, var(--primary) 20%, var(--border));
-  box-shadow: 0 0 36px -4px color-mix(in oklab, var(--primary) 16%, transparent);
+  border-color: color-mix(in oklab, var(--promo) 30%, var(--border));
+  box-shadow: 0 0 40px -4px color-mix(in oklab, var(--promo) 18%, transparent);
 }
 
 /* ─── Catalog card hover (variant products) ───────────────────────────────────
@@ -502,6 +505,31 @@
 
   .catalog-card:hover .catalog-card-panel {
     display: block;
+  }
+}
+
+/* Simple product card (sin variantes): mismo lift de tienda que la card de
+   variantes, pero sin la apertura del borde inferior (no tiene panel debajo).
+   Así las dos clases de card de la grilla reaccionan igual al hover. */
+.catalog-card-simple {
+  transition:
+    transform 200ms var(--ease-out),
+    border-color 200ms var(--ease-out),
+    box-shadow 200ms var(--ease-out);
+}
+@media (hover: hover) and (pointer: fine) {
+  .catalog-card-simple:hover {
+    border-color: color-mix(in oklab, var(--primary) 40%, transparent);
+    transform: translateY(-4px);
+    box-shadow: 0 8px 24px -6px rgb(0 0 0 / 0.18);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .catalog-card-simple {
+    transition: border-color 200ms var(--ease-out);
+  }
+  .catalog-card-simple:hover {
+    transform: none;
   }
 }
 

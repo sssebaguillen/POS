@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
+import Image from 'next/image'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { FadersHorizontal, X } from '@phosphor-icons/react/dist/ssr'
 import ProductGrid from '@/components/catalog/ProductGrid'
@@ -33,6 +34,11 @@ const SORT_OPTIONS = [
   { value: 'price-asc', label: 'Precio menor' },
   { value: 'price-desc', label: 'Precio mayor' },
 ]
+
+// Por debajo de este conteo, ordenar es cromo: la grilla entra casi entera en
+// pantalla y el dropdown solo estorba. Aparece cuando el catálogo crece lo
+// suficiente para que ordenar sea útil.
+const MIN_PRODUCTS_FOR_SORT = 8
 
 interface CatalogViewProps {
   slug: string
@@ -178,6 +184,16 @@ export default function CatalogView({
     })
   }, [variantAttributeGroups])
 
+  // Progressive disclosure del cromo de filtros: que los productos manden.
+  // El sort aparece con catálogo grande; "Más filtros" solo si hay algo que
+  // filtrar (marcas o variantes) — un drawer solo-precio no se gana el espacio.
+  const hasAdvancedFilters =
+    filterBrands.length > 0 || normalizedVariantAttributeGroups.length > 0
+  const showSort = products.length >= MIN_PRODUCTS_FOR_SORT
+  const showFilterControls = showSort || hasAdvancedFilters
+  const showControlRow =
+    products.length > 0 && (filterCategories.length > 0 || showFilterControls)
+
   const filteredProducts = useMemo(() => {
     let base = products
     if (searchQuery) {
@@ -239,12 +255,38 @@ export default function CatalogView({
 
   return (
     <div className="space-y-4 md:space-y-6">
-      {/* Identidad de la tienda — la cara del negocio antes de filtros y grilla.
-          El único h1 de la página; el logo ya vive en el navbar */}
-      <header className="max-w-2xl">
-        <h1 className="text-2xl font-bold text-foreground md:text-3xl">{business.name}</h1>
+      {/* Masthead de la tienda — identidad SIN caja: logo + nombre en display
+          directamente sobre el fondo cálido de la página, cerrado por una regla
+          fina. Es el único h1 y el momento de marca. Sin contenedor a propósito:
+          así el hero de ofertas (la card destacada de abajo) queda como único
+          foco enmarcado, sin dos superficies apiladas. Logo a escala real (el
+          del navbar es 36px). Sin CTA de WhatsApp ni métricas: el pedido va por
+          el carrito y el contacto vive en el footer. */}
+      <header className="border-b border-border/60 pb-5 md:pb-6">
+        <div className="flex items-center gap-4 sm:gap-5">
+          {business.logoUrl ? (
+            <span className="relative block h-14 w-14 shrink-0 overflow-hidden rounded-2xl border border-border/70 shadow-sm sm:h-16 sm:w-16">
+              <Image
+                src={business.logoUrl}
+                alt={business.name}
+                fill
+                className="object-cover"
+                sizes="64px"
+              />
+            </span>
+          ) : (
+            <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-primary text-2xl font-bold text-primary-foreground shadow-sm sm:h-16 sm:w-16 sm:text-3xl">
+              {business.name.charAt(0).toUpperCase()}
+            </span>
+          )}
+          <h1 className="min-w-0 font-display text-3xl font-bold leading-[1.05] tracking-tight text-foreground md:text-4xl">
+            {business.name}
+          </h1>
+        </div>
         {business.description && (
-          <p className="mt-1.5 text-sm text-muted-foreground md:text-base">{business.description}</p>
+          <p className="mt-3 max-w-[60ch] text-sm leading-relaxed text-muted-foreground md:mt-4 md:text-base">
+            {business.description}
+          </p>
         )}
       </header>
 
@@ -294,8 +336,9 @@ export default function CatalogView({
           )}
 
           <div className="space-y-4 lg:space-y-6">
-          {/* Fila única: chips de categoría (scrolleables) + orden + panel de filtros */}
-          {products.length > 0 && (
+          {/* Fila única: chips de categoría (scrolleables) + orden + panel de filtros.
+              Sort y "Más filtros" se revelan según relevancia (progressive disclosure). */}
+          {showControlRow && (
             <div className="flex flex-wrap items-center gap-2">
               {filterCategories.length > 0 && (
                 <div className="min-w-0 flex-1 basis-64">
@@ -309,38 +352,44 @@ export default function CatalogView({
                 </div>
               )}
 
-              <div className="ml-auto flex shrink-0 items-center gap-2">
-                <SelectDropdown
-                  value={sortValue}
-                  onChange={field => setFilterValue(v => ({ ...v, sortField: field }))}
-                  options={SORT_OPTIONS}
-                  className="w-36"
-                  usePortal
-                />
-                <button
-                  type="button"
-                  onClick={() => setIsFilterOpen(prev => !prev)}
-                  className={[
-                    'inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg border px-3 text-sm font-medium transition-[transform,background-color,border-color,color] duration-150 ease-[var(--ease-out)] active:scale-[0.97]',
-                    isFilterOpen
-                      ? 'bg-primary text-primary-foreground border-primary'
-                      : 'border-border bg-background text-foreground hover:border-primary/40',
-                  ].join(' ')}
-                >
-                  <FadersHorizontal className="h-3.5 w-3.5" />
-                  Más filtros
-                  {panelFilterCount > 0 && (
-                    <span className={[
-                      'ml-0.5 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-bold',
-                      isFilterOpen
-                        ? 'bg-primary-foreground/20 text-primary-foreground'
-                        : 'bg-primary text-primary-foreground',
-                    ].join(' ')}>
-                      {panelFilterCount}
-                    </span>
+              {showFilterControls && (
+                <div className="ml-auto flex shrink-0 items-center gap-2">
+                  {showSort && (
+                    <SelectDropdown
+                      value={sortValue}
+                      onChange={field => setFilterValue(v => ({ ...v, sortField: field }))}
+                      options={SORT_OPTIONS}
+                      className="w-36"
+                      usePortal
+                    />
                   )}
-                </button>
-              </div>
+                  {hasAdvancedFilters && (
+                    <button
+                      type="button"
+                      onClick={() => setIsFilterOpen(prev => !prev)}
+                      className={[
+                        'inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg border px-3 text-sm font-medium transition-[transform,background-color,border-color,color] duration-150 ease-[var(--ease-out)] active:scale-[0.97]',
+                        isFilterOpen
+                          ? 'bg-primary text-primary-foreground border-primary'
+                          : 'border-border bg-background text-foreground hover:border-primary/40',
+                      ].join(' ')}
+                    >
+                      <FadersHorizontal className="h-3.5 w-3.5" />
+                      Más filtros
+                      {panelFilterCount > 0 && (
+                        <span className={[
+                          'ml-0.5 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-bold',
+                          isFilterOpen
+                            ? 'bg-primary-foreground/20 text-primary-foreground'
+                            : 'bg-primary text-primary-foreground',
+                        ].join(' ')}>
+                          {panelFilterCount}
+                        </span>
+                      )}
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
           )}
 

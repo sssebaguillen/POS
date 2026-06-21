@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
-import { SealPercent, CaretLeft, CaretRight, Image as ImageIcon, ShoppingCart } from '@phosphor-icons/react/dist/ssr'
+import { SealPercent, CaretLeft, CaretRight, Clock, Image as ImageIcon, ShoppingCart } from '@phosphor-icons/react/dist/ssr'
 import { Button } from '@/components/ui/button'
 import { promoCountdownLabel } from '@/lib/promotions'
 import type { CatalogProduct } from '@/components/catalog/types'
@@ -96,56 +96,69 @@ function OfferSlide({
       aria-label={`Oferta ${index + 1} de ${total}`}
       className="w-full shrink-0 snap-center px-1"
     >
-      <div className="grid grid-cols-1 items-center gap-4 sm:grid-cols-[minmax(0,45%)_1fr] sm:gap-6 lg:gap-8">
-        {/* Imagen cubre todo el contenedor sin deformar (recorta lo que sobra) */}
-        <Link href={detailUrl} className="relative block h-44 w-full overflow-hidden rounded-xl bg-muted/40 sm:h-56 lg:h-72">
+      {/* Full-bleed dentro de la card: la imagen alinea con el eyebrow OFERTAS a
+          la izquierda (sin centrar/acotar — el margen izquierdo molestaba). */}
+      <div className="grid grid-cols-1 items-center gap-4 sm:grid-cols-[minmax(0,46%)_1fr] sm:gap-6 lg:gap-8">
+        {/* Imagen con la promo como flag (sticker de oferta), recorta sin deformar */}
+        <Link
+          href={detailUrl}
+          className="relative block aspect-[4/3] w-full overflow-hidden rounded-xl bg-muted/40 sm:aspect-auto sm:h-60 lg:h-72"
+        >
           {product.imageUrl ? (
             <Image
               src={product.imageUrl}
               alt={product.name}
               fill
               className="object-cover"
-              sizes="(max-width: 640px) 100vw, 40vw"
+              sizes="(max-width: 640px) 100vw, 46vw"
             />
           ) : (
             <span className="flex h-full w-full items-center justify-center text-muted-foreground">
               <ImageIcon className="h-12 w-12" />
             </span>
           )}
+          {product.promo && (
+            <span className="absolute left-3 top-3 rounded-lg bg-promo px-2.5 py-1 text-sm font-bold text-promo-foreground shadow-md">
+              {product.promo.label}
+            </span>
+          )}
         </Link>
 
         {/* Detalle */}
         <div className="min-w-0 pb-2 sm:py-2">
-          {product.promo && (
-            <p className="flex flex-wrap items-center gap-1.5">
-              <span className="rounded-md bg-promo/95 px-2 py-0.5 text-xs font-bold text-promo-foreground shadow-sm">
-                {product.promo.label}
-              </span>
-              {countdown && (
-                <span className="text-xs font-medium text-muted-foreground">{countdown}</span>
-              )}
+          {countdown && (
+            // Urgencia real (la promo cierra en ≤7 días): chip ámbar para que el
+            // tiempo pese, sin tapar el precio. El ámbar armoniza con el marco de
+            // la sección de ofertas; el verde queda para el ahorro.
+            <p className="inline-flex items-center gap-1.5 rounded-full border border-warning/20 bg-warning/10 px-2.5 py-1 text-xs font-semibold text-warning">
+              <Clock className="h-3.5 w-3.5" />
+              {countdown}
             </p>
           )}
-          <Link href={detailUrl} className="mt-2 block">
-            <h3 className="line-clamp-2 text-lg font-bold text-foreground sm:text-xl lg:text-2xl">
+          <Link href={detailUrl} className={`block ${countdown ? 'mt-2' : ''}`}>
+            <h3 className="line-clamp-2 text-xl font-bold leading-tight text-foreground sm:text-2xl lg:text-3xl">
               {product.name}
             </h3>
           </Link>
           {product.brandName && (
-            <p className="mt-0.5 text-sm text-muted-foreground">{product.brandName}</p>
+            <p className="mt-1 text-sm text-muted-foreground">{product.brandName}</p>
           )}
-          <p className="mt-2 text-2xl font-bold lg:text-3xl">
+          {/* Precio: el "ahora" manda (grande, en promo); el "antes" tachado al lado */}
+          <p className="mt-3 flex flex-wrap items-baseline gap-x-2 gap-y-0.5 tabular-nums">
             {product.hasVariants && product.variantCount > 1 && (
-              <span className="mr-1.5 text-base font-medium text-muted-foreground lg:text-lg">Desde</span>
+              <span className="text-base font-medium text-muted-foreground">Desde</span>
             )}
+            <span className={`text-3xl font-bold lg:text-4xl ${product.originalPrice !== null ? 'text-promo' : 'text-foreground'}`}>
+              ${currencyFormatter.format(product.salePrice)}
+            </span>
             {product.originalPrice !== null && (
-              <span className="mr-2 text-base font-medium text-muted-foreground line-through lg:text-lg">
+              <span className="text-base font-medium text-muted-foreground line-through lg:text-lg">
+                {/* sr-only: el tachado no se "oye"; sin esto el lector dice dos
+                    precios sin decir cuál es el viejo */}
+                <span className="sr-only">antes </span>
                 ${currencyFormatter.format(product.originalPrice)}
               </span>
             )}
-            <span className={product.originalPrice !== null ? 'text-promo' : 'text-foreground'}>
-              ${currencyFormatter.format(product.salePrice)}
-            </span>
           </p>
 
           <div className="mt-4 flex flex-wrap items-center gap-2">
@@ -211,21 +224,28 @@ export default function OffersCarousel({ offers, slug, onAddToCart }: OffersCaro
       role="region"
       aria-roledescription="carrusel"
       aria-label="Ofertas destacadas"
-      className="offers-highlight relative rounded-xl border p-4"
+      className="offers-highlight relative rounded-xl border p-5"
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
       onFocusCapture={() => setIsPaused(true)}
       onBlurCapture={() => setIsPaused(false)}
       onTouchStart={() => setIsPaused(true)}
     >
-      <Link
-        href={`/catalogo/${slug}/promotions`}
-        className="group mb-3 inline-flex items-center gap-1.5 text-sm font-bold text-promo transition-colors hover:text-promo/80"
-      >
-        <SealPercent className="h-4 w-4" />
-        Ofertas
-        <CaretRight className="h-4 w-4 transition-transform duration-150 ease-[var(--ease-out)] group-hover:translate-x-0.5" />
-      </Link>
+      {/* Cabecera del hero: eyebrow "Ofertas" + link a todas (en vez de un único
+          link combinado que hacía de título y de "ver más" a la vez) */}
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <p className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-promo">
+          <SealPercent className="h-4 w-4" />
+          Ofertas
+        </p>
+        <Link
+          href={`/catalogo/${slug}/promotions`}
+          className="group inline-flex items-center gap-1 text-sm font-medium text-promo transition-colors hover:text-promo/80"
+        >
+          Ver todas
+          <CaretRight className="h-4 w-4 transition-transform duration-150 ease-[var(--ease-out)] group-hover:translate-x-0.5" />
+        </Link>
+      </div>
 
       <div
         ref={trackRef}

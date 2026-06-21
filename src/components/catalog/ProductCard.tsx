@@ -77,16 +77,22 @@ function PriceBlock({ product }: { product: CatalogProduct }) {
   // (get_catalog_products) — el "Desde" lo hace explícito cuando hay más de una
   const showDesde = product.hasVariants && product.variantCount > 1
   return (
-    <p className="mt-1 text-base font-bold text-foreground">
+    // text-lg: salto claro sobre el título (text-sm) — el precio es el dato que
+    // decide la compra. tabular-nums alinea los dígitos columna a columna en la
+    // grilla, sin el baile de anchos de las cifras proporcionales.
+    <p className="mt-1 text-lg font-bold tabular-nums text-foreground">
       {showDesde && (
         <span className="mr-1 text-xs font-medium text-muted-foreground">Desde</span>
       )}
       {product.originalPrice !== null && (
         <span className="mr-1.5 text-sm font-medium text-muted-foreground line-through">
+          <span className="sr-only">antes </span>
           ${currencyFormatter.format(product.originalPrice)}
         </span>
       )}
       <span className={product.originalPrice !== null ? 'text-promo' : undefined}>
+        {/* "ahora" solo cuando hay precio viejo antes: marca cuál es el vigente */}
+        {product.originalPrice !== null && <span className="sr-only">ahora </span>}
         ${currencyFormatter.format(product.salePrice)}
       </span>
     </p>
@@ -184,7 +190,7 @@ export default function ProductCard({ product, slug, onAddToCart }: ProductCardP
     return (
       <Link
         href={detailUrl}
-        className={`block rounded-xl border border-border/70 bg-card p-4 transition-all duration-200 hover:border-primary/40 hover:shadow-sm ${isOutOfStock ? 'opacity-60' : ''}`}
+        className={`catalog-card-simple block rounded-xl border border-border/70 bg-card p-4 ${isOutOfStock ? 'opacity-60' : ''}`}
       >
         <div className="relative h-44 w-full overflow-hidden rounded-lg bg-muted/40">
           {product.imageUrl ? (
@@ -207,7 +213,7 @@ export default function ProductCard({ product, slug, onAddToCart }: ProductCardP
         </div>
         <div className="mt-3 flex items-start justify-between gap-2">
           <div className="min-w-0">
-            <h3 className="line-clamp-2 text-sm font-medium text-foreground">{product.name}</h3>
+            <h3 className="line-clamp-2 text-sm font-medium leading-snug text-foreground">{product.name}</h3>
             {product.brandName && (
               <p className="mt-0.5 text-xs text-muted-foreground">{product.brandName}</p>
             )}
@@ -273,7 +279,7 @@ export default function ProductCard({ product, slug, onAddToCart }: ProductCardP
           <PromoBadges product={product} />
         </div>
         <div className="mt-3 min-w-0">
-          <h3 className="line-clamp-2 text-sm font-medium text-foreground">{product.name}</h3>
+          <h3 className="line-clamp-2 text-sm font-medium leading-snug text-foreground">{product.name}</h3>
           {product.brandName && (
             <p className="mt-0.5 text-xs text-muted-foreground">{product.brandName}</p>
           )}
