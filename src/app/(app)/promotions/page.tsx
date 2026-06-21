@@ -11,7 +11,12 @@ export default async function PromotionsPage() {
   const activeOperator = await getActiveOperator(cookieStore)
   const businessId = await requireAuthenticatedBusinessId(supabase)
 
-  const [{ data: promotions }, { data: products }, { data: categories }, { data: brands }] = await Promise.all([
+  const [
+    { data: promotions, error: promotionsError },
+    { data: products, error: productsError },
+    { data: categories, error: categoriesError },
+    { data: brands, error: brandsError },
+  ] = await Promise.all([
     supabase
       .from('promotions')
       .select('id, business_id, name, kind, percent, offer_price, group_size, affected_units, pay_percent, product_id, category_id, brand_id, starts_at, ends_at, is_active, show_in_catalog, archived_at, created_at')
@@ -34,6 +39,9 @@ export default async function PromotionsPage() {
       .eq('business_id', businessId)
       .order('name'),
   ])
+
+  const promotionsLoadError = promotionsError || productsError || categoriesError || brandsError
+  if (promotionsLoadError) throw new Error(`promotions: ${promotionsLoadError.message}`)
 
   return (
     <PromotionsView

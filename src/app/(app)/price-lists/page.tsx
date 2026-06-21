@@ -11,7 +11,11 @@ export default async function PriceListsPage() {
   const activeOperator = await getActiveOperator(cookieStore)
   const businessId = await requireAuthenticatedBusinessId(supabase)
 
-  const [{ data: lists }, { data: products }, { data: variantCostRows }] = await Promise.all([
+  const [
+    { data: lists, error: listsError },
+    { data: products, error: productsError },
+    { data: variantCostRows, error: variantCostError },
+  ] = await Promise.all([
     supabase
       .from('price_lists')
       .select('id, business_id, name, description, multiplier, created_at, rounding_step, rounding_up')
@@ -30,14 +34,18 @@ export default async function PriceListsPage() {
       .eq('is_active', true),
   ])
 
+  const priceListsLoadError = listsError || productsError || variantCostError
+  if (priceListsLoadError) throw new Error(`price-lists: ${priceListsLoadError.message}`)
+
   const priceListIds = (lists ?? []).map(list => list.id)
 
-  const { data: overrides } = priceListIds.length
+  const { data: overrides, error: overridesError } = priceListIds.length
     ? await supabase
         .from('price_list_overrides')
         .select('id, price_list_id, product_id, brand_id, multiplier')
         .in('price_list_id', priceListIds)
-    : { data: [] }
+    : { data: [], error: null }
+  if (overridesError) throw new Error(`price-lists overrides: ${overridesError.message}`)
 
   // Build min-cost and min-price maps for variant products
   const variantCostByProduct = new Map<string, { minCost: number; minPrice: number }>()
