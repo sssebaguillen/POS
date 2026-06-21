@@ -27,6 +27,11 @@ export interface TopProductRow {
 
 type SortKey = 'units_sold' | 'revenue' | 'transaction_count' | 'gross_profit'
 
+function marginPctOf(row: TopProductRow): number | null {
+  if (!row.revenue) return null
+  return ((row.gross_profit ?? 0) / row.revenue) * 100
+}
+
 function SortIcon({ col, sortKey, sortAsc }: { col: SortKey; sortKey: SortKey; sortAsc: boolean }) {
   if (col !== sortKey) return <ArrowsDownUp size={12} className="text-hint/60" />
   return sortAsc
@@ -77,6 +82,7 @@ export default function TopProductsDetailView({ rows, total, kpis, period, from,
       'Unidades vendidas': r.units_sold,
       Ingresos: r.revenue,
       'Margen bruto': r.gross_profit,
+      '% Margen': marginPctOf(r) != null ? Number(marginPctOf(r)!.toFixed(1)) : '',
       Transacciones: r.transaction_count,
     })),
     [sorted]
@@ -205,7 +211,10 @@ export default function TopProductsDetailView({ rows, total, kpis, period, from,
                         {formatMoney(row.revenue ?? 0)}
                       </td>
                       <td className="px-4 py-3 text-right hidden lg:table-cell">
-                        {formatMoney(row.gross_profit ?? 0)}
+                        <div className="font-medium text-heading">{formatMoney(row.gross_profit ?? 0)}</div>
+                        <div className="text-xs text-hint">
+                          {marginPctOf(row) != null ? `${marginPctOf(row)!.toFixed(0)}%` : '—'}
+                        </div>
                       </td>
                       <td className="px-4 py-3 text-right hidden md:table-cell">{row.transaction_count}</td>
                     </tr>
