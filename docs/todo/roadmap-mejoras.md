@@ -19,7 +19,7 @@ dueño confíe en 5 minutos y en lo que destraba el lanzamiento — no en sumar 
 Secuencia principal:
 
 1. [x] **1.3 — Loop de compartir catálogo** (✅ PR #47) · [x] **2.4 — Etiquetas/códigos de barras** (✅)
-2. [ ] **2.1 — Ficha de cliente: estado de cuenta + saldo** → 🤖 **AGENTE** (sembrado en `backlog.md`, reads-only, **sin migración** — `customer_account_movements` ya existe y se lee directo)
+2. [x] **2.1 — Ficha de cliente: estado de cuenta + saldo** → ✅ **HECHO por el agente** (PR #53, mergeado 2026-06-21): `CustomerDetailPanel` drawer con contacto + KPIs de saldo + tabla de movimientos (`customer_account_movements`), reads-only, sin migración.
 3. [ ] **1.1 — Datos demo / sandbox** → **EN VIVO** (no agente: el seeding escribe ventas/stock = money-path, + decisión de UX). Rellenar después de 2.1.
 4. [ ] **2.2 — Devoluciones** → **EN VIVO** (no agente: money-path + bloqueante de UX del dueño). Empezar la exploración de UX ya; construir + su E2E.
 5. [ ] **2.3 — Módulo de compras `/purchases`** → **EN VIVO** (no agente: money-path, muta stock). Detrás de 2.2.
@@ -85,6 +85,9 @@ reingresa stock + ajusta caja/cuenta"**. Sin eso, las devoluciones descuadran ca
 Reposición vía compra (no edit manual de stock). Hoy lo cubre a medias el gasto-mercadería; para
 beta no es imprescindible. Cierra el loop de **Salud de inventario** (detecta stock muerto/
 sobrestock pero no hay acción de reponer). Diferido ~1 día. Ya esbozado en backlog/memoria.
+**Money-path (muta stock) → en vivo.** Su precursor **read-only "Reposición F1"** (lista "qué
+reponer" sin escribir nada, con RPC de velocidad nueva) **→ 🤖 AGENTE (sembrado 2026-06-21)** en
+`backlog.md`; F2 (preferred_supplier_id + WhatsApp) queda en vivo (decisión de producto).
 
 **2.4 — Impresión de etiquetas / códigos de barras** · `[x]` ✅ (2026-06-20, sesión en vivo)
 El POS ya **lee** scanner; ahora también **genera etiquetas imprimibles**. `PrintLabelsModal`
@@ -100,7 +103,10 @@ Térmica de rollo NO incluida (queda para después si se necesita).
 Driver diario: ergonomía, velocidad, mobile.
 
 **3.2 — Auditar primer uso / empty states / dashboard** · `[ ]`
-Atado a 1.1: primera impresión que define si se quedan.
+Atado a 1.1: primera impresión que define si se quedan. **Parcial → 🤖 AGENTE (sembrado
+2026-06-21):** estados de carga + vacíos de `/stats` y `/dashboard` (presentación pura, sin SQL),
+combinado con la propuesta de loading-states. **El flujo de onboarding (mutaciones, money-path-class)
+y el POS quedan FUERA** → en vivo.
 
 **3.3 — Pasada de motion** en micro-interacciones clave (agregar al carrito, éxito de pago) · `[ ]`
 Calidad percibida → confianza.
@@ -110,9 +116,10 @@ Calidad percibida → confianza.
 **4.1 — Thermonuclear sobre `InventoryPanel`** (~1291 líneas) · `[ ]`
 CLAUDE.md ya marca su refactor pendiente. Target perfecto para el primer "code judo".
 
-**4.2 — Cerrar barrido de errores tragados + error boundaries** · `[ ]`
-Hecho `/stats`; sembrado customers/providers. Cerrar con `error.tsx` a nivel `(app)` + revisar
-otros Server Components.
+**4.2 — Cerrar barrido de errores tragados + error boundaries** · `[ ]` → 🤖 **AGENTE** (sembrado 2026-06-21)
+Hecho `/stats`, `customers`/`providers` (PR #49). Cerrar con `error.tsx` a nivel `(app)` + revisar
+otros Server Components de solo lectura. **Excluir** los fetches money-path-adyacentes (caja/gastos/
+onboarding) → esos en vivo. No money-path, cero SQL.
 
 **4.3 — Ampliar E2E** · `[ ]`
 Hoy cubre registro→venta→caja. Sumar cuenta corriente / pedido-online→venta / devoluciones
@@ -122,6 +129,17 @@ cuando existan.
 
 ## Bitácora de decisiones
 
+- **2026-06-21** — Revisada y **mergeada la pila completa del agente** (#49, #50, #52, #53, #54, #55)
+  tras verificar cada PR contra `master` + `schema.sql` (la ficha de cliente #53 verificada contra la
+  tabla `customer_account_movements`: columnas/RLS/grant). ✅ **2.1 cerrado por el agente.** Con la cola
+  drenada, se **re-triajeó este roadmap** con el filtro no-money-path (migración permitida: el agente la
+  escribe sin aplicar, regla 4 del backlog; la aplica el dueño tras revisar) y se **sembró cola fresca**
+  de 5 items `🤖 SCHEDULE-OK` en `backlog.md`: cuentas por cobrar (chip+orden), margen bruto en `/stats`
+  (RPC ya existe), estados carga/vacíos `/stats`+`/dashboard`, error boundary raíz + barrido (4.2), y
+  Reposición F1 (read-only, RPC nueva). **Quedan en vivo** (money-path / decisión): 2.2 devoluciones,
+  2.3 compras (+ Reposición F2), 1.1 datos demo, 1.4 importación, 3.1 audit POS, 3.3 motion carrito/pago.
+  Pendiente fuera del repo: actualizar el prompt de la rutina (sacar el puntero a la segmentación POS/
+  online, ya hecha en PR #22).
 - **2026-06-20** — ✅ **1.3 completado** (PR #47): loop de compartir catálogo (QR + descargar +
   Compartir/WhatsApp) en Configuración → Catálogo, con pasada de `/impeccable` y fix del tamaño
   del QR. También se conectó el design system espejo de Claude Design (ver `DESIGN.md` + memoria).
