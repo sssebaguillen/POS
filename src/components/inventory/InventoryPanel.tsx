@@ -28,6 +28,7 @@ import ProductCard, { SelectionCheckbox } from '@/components/inventory/ProductCa
 import InsightSurfaceAnchor from '@/components/insights/InsightSurfaceAnchor'
 import ProductListRow from '@/components/inventory/ProductListRow'
 import ProductStockModal from '@/components/inventory/ProductStockModal'
+import PrintLabelsModal from '@/components/inventory/PrintLabelsModal'
 import type { PriceList, PriceListOverride } from '@/lib/types'
 import type { InventoryBrand, InventoryCategory, InventoryProduct } from '@/components/inventory/types'
 import { getStatus } from '@/components/inventory/types'
@@ -85,6 +86,7 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
   const [viewMode, setViewMode] = useState<'grid' | 'list'>(initialViewMode)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [selectionMode, setSelectionMode] = useState(false)
+  const [showLabels, setShowLabels] = useState(false)
   const [bulkLoading, setBulkLoading] = useState(false)
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false)
   const { showToast } = useToast()
@@ -1323,6 +1325,15 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
           onSetCatalog={handleBulkSetCatalog}
           onChangeCategory={handleBulkChangeCategory}
           onChangeBrand={handleBulkChangeBrand}
+          onPrintLabels={() => setShowLabels(true)}
+        />
+      )}
+
+      {showLabels && (
+        <PrintLabelsModal
+          products={products.filter(p => selectedIds.has(p.id))}
+          formatMoney={formatMoney}
+          onClose={() => setShowLabels(false)}
         />
       )}
     </div>

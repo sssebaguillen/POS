@@ -18,11 +18,11 @@ dueño confíe en 5 minutos y en lo que destraba el lanzamiento — no en sumar 
 
 Secuencia principal:
 
-1. [ ] **1.3 — Loop de compartir catálogo** + **2.4 — Etiquetas/códigos de barras** (quick wins juntos, en vivo)
-2. [ ] **2.1 — Ficha de cliente con estado de cuenta + historial** (scope reads-only → **agente nocturno**)
-3. [ ] **1.1 — Datos demo / sandbox** (rellenar después de 2.1 para que el demo ejercite la ficha nueva; flexible — los datos viven en DB, se puede antes)
-4. [ ] **2.2 — Devoluciones** (empezar la **exploración de UX ya**; construir en 1–2 días + su E2E)
-5. [ ] **2.3 — Módulo de compras `/purchases`** (detrás de 2.2)
+1. [x] **1.3 — Loop de compartir catálogo** (✅ PR #47) · [x] **2.4 — Etiquetas/códigos de barras** (✅)
+2. [ ] **2.1 — Ficha de cliente: estado de cuenta + saldo** → 🤖 **AGENTE** (sembrado en `backlog.md`, reads-only, **sin migración** — `customer_account_movements` ya existe y se lee directo)
+3. [ ] **1.1 — Datos demo / sandbox** → **EN VIVO** (no agente: el seeding escribe ventas/stock = money-path, + decisión de UX). Rellenar después de 2.1.
+4. [ ] **2.2 — Devoluciones** → **EN VIVO** (no agente: money-path + bloqueante de UX del dueño). Empezar la exploración de UX ya; construir + su E2E.
+5. [ ] **2.3 — Módulo de compras `/purchases`** → **EN VIVO** (no agente: money-path, muta stock). Detrás de 2.2.
 6. [ ] **UI/UX** con `/impeccable`, `/emil-design-eng`, `/transitions-dev` (POS + primer-uso)
 7. [ ] **1.4 — Importación/migración de datos** (feature self-serve; ver detalle — wedge de adopción)
 
@@ -51,9 +51,11 @@ borrable/aislado; sí decisión de producto.
 **1.2 — Naming/rebrand** · `[ ]`
 Bloqueante de go-to-market (ver [`branding.md`](branding.md) y memoria). Decisión, no dev.
 
-**1.3 — Loop de compartir catálogo** · `[ ]`
+**1.3 — Loop de compartir catálogo** · `[x]` ✅ (PR #47, 2026-06-20)
 El catálogo público (`puls.ar/slug`) es la superficie viral. Afordances de **compartir (QR +
 link)** desde la app → cada cliente difunde. Bajo costo, alto retorno de adopción.
+Hecho en Configuración → Catálogo: QR (escaneable + descargable en alta resolución), botón
+Compartir (Web Share API + fallback copiar), WhatsApp directo. Pasada de `/impeccable` aplicada.
 
 **1.4 — Importación / migración de datos reales** · `[ ]`
 Traer la historia real de un negocio establecido (productos + ventas de varios años + clientes)
@@ -84,10 +86,13 @@ Reposición vía compra (no edit manual de stock). Hoy lo cubre a medias el gast
 beta no es imprescindible. Cierra el loop de **Salud de inventario** (detecta stock muerto/
 sobrestock pero no hay acción de reponer). Diferido ~1 día. Ya esbozado en backlog/memoria.
 
-**2.4 — Impresión de etiquetas / códigos de barras** · `[ ]`
-El POS ya **lee** scanner; falta **generar etiquetas imprimibles** (precio + barcode). Necesidad
-real de kiosco/almacén. *(Ojo: tiene matices de formato — térmica vs hoja A4, simbología de
-barcode — que lo hacen menos trivial de lo que parece.)*
+**2.4 — Impresión de etiquetas / códigos de barras** · `[x]` ✅ (2026-06-20, sesión en vivo)
+El POS ya **lee** scanner; ahora también **genera etiquetas imprimibles**. `PrintLabelsModal`
+(abierto desde la selección de Inventario → "Etiquetas"): hoja A4 imprimible (`window.print` +
+`@media print` que aísla solo la hoja), barcode **Code128** de `barcode ?? sku` (jsbarcode), nombre
++ precio + marca. Presets de tamaño A4 (Chica/Mediana/Grande/Góndola), toggles mostrar marca /
+mostrar código, copias por producto, preview fiel al ancho A4 (lo que ves = lo que imprime).
+Térmica de rollo NO incluida (queda para después si se necesita).
 
 ### 3. Diseño / UX (con las skills)
 
@@ -117,6 +122,14 @@ cuando existan.
 
 ## Bitácora de decisiones
 
+- **2026-06-20** — ✅ **1.3 completado** (PR #47): loop de compartir catálogo (QR + descargar +
+  Compartir/WhatsApp) en Configuración → Catálogo, con pasada de `/impeccable` y fix del tamaño
+  del QR. También se conectó el design system espejo de Claude Design (ver `DESIGN.md` + memoria).
+  Sigue **2.4** (etiquetas/códigos de barras).
+- **2026-06-20** — Triaje agente vs vivo: **2.1 → agente** (sembrado en `backlog.md`; reads-only sobre `customer_account_movements`, sin migración). **2.2 / 2.3 / 1.1 → en vivo** (money-path y/o decisión de producto, no delegables al headless). La cola del agente queda: customers/providers error, higiene de tokens catálogo, y 2.1.
+- **2026-06-20** — ✅ **2.4 completado** (sesión en vivo, push directo a master): impresión de
+  etiquetas A4 con código de barras desde Inventario (`PrintLabelsModal` + jsbarcode), presets de
+  tamaño + toggles. Sigue **2.1** (ficha de cliente → candidato a agente nocturno).
 - **2026-06-20** — Creado el roadmap. **Orden refinado confirmado por el dueño:** (1.3+2.4) →
   2.1 → 1.1 → 2.2 → 2.3 → UI/UX → 1.4; transversales: thermonuclear por-feature, E2E con cada
   feature money-path, 4.2 al agente nocturno; 1.2 (naming) en paralelo. Distinción clave aclarada:

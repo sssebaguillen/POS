@@ -28,6 +28,10 @@ Generic SaaS dashboard look (blue/purple palette, hero metrics with glowing card
 4. Warm, not cold — the palette and tone should feel like a neighborhood shop, not a bank terminal.
 5. Errors are real — stock is finite, prices matter, mistakes cost money. Be honest and direct about warnings.
 
+## Product Scope & Ambition
+
+The initial target is small shops (almacén, kiosko, clothing, hardware), but **that is not a ceiling on functionality**. The product can and should grow toward richer capabilities found in more complete POS systems, as long as every feature stays **intuitive**. "Speed over completeness" governs *how an interaction feels* (fast, one tap, no manual), not *what the app is allowed to do* — simple to use is not the same as few features. When proposing or building features, be ambitious about the *what* and ruthless about keeping the *how* effortless. Don't self-censor a valuable capability because it seems "too much for a corner shop."
+
 ## Accessibility & Inclusion
 
 No explicit WCAG level specified. Touch targets should accommodate tablet POS use (common setup in Argentine small businesses). Both light and dark modes supported.

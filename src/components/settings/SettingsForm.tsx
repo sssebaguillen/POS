@@ -11,7 +11,8 @@ import { type SettingsBusiness, type SettingsOperator } from '@/components/setti
 import OperatorList from '@/components/settings/OperatorList'
 import { CURRENCIES, type SupportedCurrencyCode } from '@/lib/constants/currencies'
 import SelectDropdown from '@/components/ui/SelectDropdown'
-import { UploadSimple } from '@phosphor-icons/react/dist/ssr'
+import { UploadSimple, ShareNetwork, DownloadSimple, WhatsappLogo } from '@phosphor-icons/react/dist/ssr'
+import { QRCodeCanvas } from 'qrcode.react'
 import { usePillIndicator } from '@/hooks/usePillIndicator'
 import { BUSINESS_SLUG_REGEX } from '@/lib/validation'
 import { FieldErrorMessage, ShakeOnError } from '@/components/shared/ShakeError'
@@ -26,9 +27,10 @@ interface SettingsFormProps {
   priceLists: { id: string; name: string; multiplier: number }[]
 }
 
-// Multiplicador base de la lista en formato compacto (ej. 1.3 → "×1.3", 1.305 → "×1.305").
-function formatMultiplier(multiplier: number): string {
-  return `×${parseFloat(multiplier.toFixed(4)).toString()}`
+// Multiplicador de la lista como markup legible (ej. 1.35 → "35%", 1.305 → "30.5%").
+function formatMarkupPercent(multiplier: number): string {
+  const pct = parseFloat(((multiplier - 1) * 100).toFixed(1))
+  return `${pct}%`
 }
 
 const LOGO_ALLOWED_TYPES = new Set([
@@ -84,10 +86,22 @@ export default function SettingsForm({
   const priceListOptions = useMemo(
     () => [
       { value: '', label: 'Precio base (sin lista)' },
-      ...priceLists.map(pl => ({ value: pl.id, label: `${pl.name} (${formatMultiplier(pl.multiplier)})` })),
+      ...priceLists.map(pl => ({ value: pl.id, label: `${pl.name} ${formatMarkupPercent(pl.multiplier)}` })),
     ],
     [priceLists],
   )
+  // Render del selector de lista del catálogo: nombre + markup en verde olivo (--success),
+  // mucho más legible que el "(×1.35)" anterior. La opción base (sin lista) cae al label plano.
+  const renderPriceListOption = (option: { value: string; label: string }) => {
+    const pl = priceLists.find(p => p.id === option.value)
+    if (!pl) return <span className="truncate">{option.label}</span>
+    return (
+      <span className="flex items-center gap-1.5 truncate">
+        <span className="truncate">{pl.name}</span>
+        <span className="font-medium text-success">{formatMarkupPercent(pl.multiplier)}</span>
+      </span>
+    )
+  }
   const initialCurrency = (() => {
     const raw = business.settings?.currency
     if (typeof raw === 'string' && CURRENCIES.some(c => c.code === raw)) {
@@ -145,6 +159,17 @@ export default function SettingsForm({
     () => `puls.ar/${normalizedBusinessSlug}`,
     [normalizedBusinessSlug]
   )
+  // Para compartir/QR usamos el slug GUARDADO (no el del input editándose), así el enlace
+  // siempre apunta a un catálogo que existe.
+  const savedCatalogUrl = useMemo(
+    () => `${typeof window !== 'undefined' ? window.location.origin : ''}/catalogo/${business.slug}`,
+    [business.slug]
+  )
+  const whatsappShareUrl = useMemo(
+    () => `https://wa.me/?text=${encodeURIComponent(`Mirá nuestro catálogo: ${savedCatalogUrl}`)}`,
+    [savedCatalogUrl]
+  )
+  const qrCanvasRef = useRef<HTMLCanvasElement | null>(null)
 
   const canPreviewLogo = useMemo(() => {
     if (!hasLogoUrl) return false
@@ -373,6 +398,35 @@ export default function SettingsForm({
       setCopyError(message)
       setCopySuccess(false)
     }
+  }
+
+  // Compartir nativo (Web Share API → WhatsApp/etc. en mobile); fallback a copiar el enlace.
+  async function handleShareCatalog() {
+    setCopyError('')
+    if (typeof navigator !== 'undefined' && navigator.share) {
+      try {
+        await navigator.share({
+          title: business.name || 'Catálogo',
+          text: 'Mirá nuestro catálogo',
+          url: savedCatalogUrl,
+        })
+      } catch {
+        // el usuario canceló el share — no es un error
+      }
+      return
+    }
+    await handleCopyPublicUrl()
+  }
+
+  // Descarga el QR como PNG (para imprimir/pegar en el local). El canvas se renderiza a 512px
+  // aunque se muestre chico, así el PNG sale en alta resolución.
+  function handleDownloadQr() {
+    const canvas = qrCanvasRef.current
+    if (!canvas) return
+    const link = document.createElement('a')
+    link.download = `catalogo-${business.slug || 'pulsar'}-qr.png`
+    link.href = canvas.toDataURL('image/png')
+    link.click()
   }
 
   return (
@@ -682,6 +736,55 @@ export default function SettingsForm({
                 {copyError && <p className="text-xs text-destructive">{copyError}</p>}
               </div>
 
+              {business.slug && (
+                <div className="space-y-2">
+                  <label className="text-xs uppercase tracking-wide text-muted-foreground">
+                    Compartir tu catálogo
+                  </label>
+                  <div className="flex flex-col gap-5 rounded-xl border border-border bg-muted/30 p-5 sm:flex-row sm:items-start">
+                    <div className="mx-auto shrink-0 rounded-xl border border-border bg-white p-3 sm:mx-0">
+                      <QRCodeCanvas
+                        value={savedCatalogUrl}
+                        size={132}
+                        marginSize={1}
+                        aria-label="Código QR del catálogo"
+                      />
+                      {/* Copia oculta en alta resolución, solo para que "Descargar QR" salga nítido al imprimir */}
+                      <QRCodeCanvas
+                        ref={qrCanvasRef}
+                        value={savedCatalogUrl}
+                        size={1024}
+                        marginSize={4}
+                        className="hidden"
+                        aria-hidden="true"
+                      />
+                    </div>
+                    <div className="flex flex-1 flex-col gap-4">
+                      <p className="max-w-prose text-sm text-muted-foreground">
+                        Muéstralo o imprímelo en tu local para que tus clientes escaneen el código y
+                        vean tu catálogo. También puedes compartir el enlace directo.
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        <Button type="button" className="h-9 px-4" onClick={handleShareCatalog}>
+                          <ShareNetwork size={16} />
+                          Compartir
+                        </Button>
+                        <Button type="button" variant="outline" className="h-9 px-4" asChild>
+                          <a href={whatsappShareUrl} target="_blank" rel="noopener noreferrer">
+                            <WhatsappLogo size={16} weight="fill" />
+                            WhatsApp
+                          </a>
+                        </Button>
+                        <Button type="button" variant="outline" className="h-9 px-4" onClick={handleDownloadQr}>
+                          <DownloadSimple size={16} />
+                          Descargar QR
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               <div className="space-y-1.5">
                 <label className="text-xs uppercase tracking-wide text-muted-foreground">
                   Lista de precios del catálogo
@@ -691,6 +794,8 @@ export default function SettingsForm({
                   onChange={value => setForm(prev => ({ ...prev, catalogPriceListId: value }))}
                   options={priceListOptions}
                   placeholder="Precio base (sin lista)"
+                  renderOption={renderPriceListOption}
+                  renderSelected={renderPriceListOption}
                 />
                 <p className="text-xs text-muted-foreground">
                   Los precios del catálogo público se calcularán con el margen de la lista seleccionada. Si la lista se elimina, vuelve al precio base automáticamente.
