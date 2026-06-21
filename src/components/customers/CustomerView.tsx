@@ -14,6 +14,7 @@ import type { Customer } from '@/lib/types'
 import NewCustomerModal from './NewCustomerModal'
 import EditCustomerModal from './EditCustomerModal'
 import SettlePaymentModal from './SettlePaymentModal'
+import CustomerDetailPanel from './CustomerDetailPanel'
 
 type CreditFilter = 'all' | 'enabled' | 'disabled'
 
@@ -36,6 +37,7 @@ export default function CustomerView({ businessId, operatorId, initialCustomers 
   const [showNewModal, setShowNewModal] = useState(false)
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null)
   const [settlingCustomer, setSettlingCustomer] = useState<Customer | null>(null)
+  const [viewingCustomer, setViewingCustomer] = useState<Customer | null>(null)
   const [search, setSearch] = useState('')
   const [creditFilter, setCreditFilter] = useState<CreditFilter>('all')
   const [deletingCustomer, setDeletingCustomer] = useState<Customer | null>(null)
@@ -219,6 +221,14 @@ export default function CustomerView({ businessId, operatorId, initialCustomers 
                               type="button"
                               variant="outline"
                               className="h-8 px-3 text-xs"
+                              onClick={() => setViewingCustomer(customer)}
+                            >
+                              Ver
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              className="h-8 px-3 text-xs"
                               onClick={() => setEditingCustomer(customer)}
                             >
                               Editar
@@ -267,6 +277,14 @@ export default function CustomerView({ businessId, operatorId, initialCustomers 
           operatorId={operatorId}
           onSettled={nb => handleSettled(settlingCustomer.id, nb)}
           onClose={() => setSettlingCustomer(null)}
+        />
+      )}
+
+      {viewingCustomer && (
+        <CustomerDetailPanel
+          customer={viewingCustomer}
+          businessId={businessId}
+          onClose={() => setViewingCustomer(null)}
         />
       )}
 
