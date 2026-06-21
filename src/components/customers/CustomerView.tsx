@@ -16,12 +16,20 @@ import EditCustomerModal from './EditCustomerModal'
 import SettlePaymentModal from './SettlePaymentModal'
 import CustomerDetailPanel from './CustomerDetailPanel'
 
-type CreditFilter = 'all' | 'enabled' | 'disabled'
+type CreditFilter = 'all' | 'enabled' | 'disabled' | 'with_debt'
 
 const CREDIT_FILTERS: { value: CreditFilter; label: string }[] = [
   { value: 'all', label: 'Todos' },
   { value: 'enabled', label: 'Habilitado' },
   { value: 'disabled', label: 'Deshabilitado' },
+  { value: 'with_debt', label: 'Con deuda' },
+]
+
+type SortKey = 'name' | 'debt_desc'
+
+const SORT_OPTIONS: { value: SortKey; label: string }[] = [
+  { value: 'name', label: 'Nombre (A-Z)' },
+  { value: 'debt_desc', label: 'Deuda (mayor primero)' },
 ]
 
 interface Props {
@@ -40,15 +48,17 @@ export default function CustomerView({ businessId, operatorId, initialCustomers 
   const [viewingCustomer, setViewingCustomer] = useState<Customer | null>(null)
   const [search, setSearch] = useState('')
   const [creditFilter, setCreditFilter] = useState<CreditFilter>('all')
+  const [sortKey, setSortKey] = useState<SortKey>('name')
   const [deletingCustomer, setDeletingCustomer] = useState<Customer | null>(null)
   const [deleteError, setDeleteError] = useState<string | null>(null)
   const [deleting, setDeleting] = useState(false)
 
   const filteredCustomers = useMemo(() => {
     const q = search.trim().toLowerCase()
-    return customers.filter(c => {
+    const filtered = customers.filter(c => {
       if (creditFilter === 'enabled' && !c.is_credit_enabled) return false
       if (creditFilter === 'disabled' && c.is_credit_enabled) return false
+      if (creditFilter === 'with_debt' && !(c.credit_balance > 0)) return false
       if (!q) return true
       return (
         c.name.toLowerCase().includes(q) ||
@@ -56,7 +66,15 @@ export default function CustomerView({ businessId, operatorId, initialCustomers 
         (c.dni?.toLowerCase().includes(q) ?? false)
       )
     })
-  }, [customers, search, creditFilter])
+    if (sortKey === 'debt_desc') {
+      return [...filtered].sort(
+        (a, b) =>
+          b.credit_balance - a.credit_balance ||
+          a.name.localeCompare(b.name, 'es'),
+      )
+    }
+    return [...filtered].sort((a, b) => a.name.localeCompare(b.name, 'es'))
+  }, [customers, search, creditFilter, sortKey])
 
   function handleCreated(customer: Customer) {
     setCustomers(prev =>
@@ -138,6 +156,25 @@ export default function CustomerView({ businessId, operatorId, initialCustomers 
                   )}
                 >
                   {f.label}
+                </button>
+              )
+            })}
+          </div>
+          <div className="flex flex-wrap items-center gap-1.5 md:ml-auto">
+            <span className="text-xs text-hint">Ordenar:</span>
+            {SORT_OPTIONS.map(s => {
+              const active = sortKey === s.value
+              return (
+                <button
+                  key={s.value}
+                  type="button"
+                  onClick={() => setSortKey(s.value)}
+                  className={cn(
+                    'pill-tab',
+                    active && 'bg-primary/10 text-primary border border-primary/20 dark:bg-primary/15 dark:border-primary/30',
+                  )}
+                >
+                  {s.label}
                 </button>
               )
             })}
