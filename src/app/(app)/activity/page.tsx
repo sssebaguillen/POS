@@ -85,12 +85,12 @@ export default async function ActivityPage({
         : null
 
   const [
-    { data: operatorsRaw },
-    { data: rpcResult },
-    { data: categoriesRaw },
-    { data: brandsRaw },
-    { data: productsRaw },
-    { data: customersRaw },
+    { data: operatorsRaw, error: operatorsError },
+    { data: rpcResult, error: auditError },
+    { data: categoriesRaw, error: categoriesError },
+    { data: brandsRaw, error: brandsError },
+    { data: productsRaw, error: productsError },
+    { data: customersRaw, error: customersError },
   ] = await Promise.all([
     supabase
       .from('operators')
@@ -125,6 +125,10 @@ export default async function ActivityPage({
       .eq('business_id', businessId)
       .limit(5000),
   ])
+
+  const activityError =
+    operatorsError || auditError || categoriesError || brandsError || productsError || customersError
+  if (activityError) throw new Error(`activity: ${activityError.message}`)
 
   const operators: ActivityFilterOperator[] = (operatorsRaw ?? []).map(o => ({
     id: o.id,

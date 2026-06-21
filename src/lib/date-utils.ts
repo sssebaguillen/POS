@@ -63,6 +63,24 @@ export function getDateRange(
   return { from: startOfDay(fallback), to: endOfDay(now) }
 }
 
+// Ventana inmediatamente anterior, del mismo largo que [from, to].
+// Espejo del prev-period de get_stats_kpis (SQL): prev_to = from - 1; prev_from = prev_to - (length - 1).
+// Se usa para el delta de KPIs derivados client-side (ej. margen bruto) y así coincidir con las otras tarjetas.
+export function getAdjacentPreviousRange(
+  from: string | null,
+  to: string | null
+): DateRangeStrings {
+  if (!from || !to) return { from: null, to: null }
+  const [fy, fm, fd] = from.split('-').map(Number)
+  const [ty, tm, td] = to.split('-').map(Number)
+  const fromMs = Date.UTC(fy, fm - 1, fd)
+  const toMs = Date.UTC(ty, tm - 1, td)
+  const lengthDays = Math.round((toMs - fromMs) / 86_400_000) + 1
+  const prevTo = shiftDateString(from, -1)
+  const prevFrom = shiftDateString(prevTo, -(lengthDays - 1))
+  return { from: prevFrom, to: prevTo }
+}
+
 // Period → previous period Date objects (for trend comparison)
 
 export function getPreviousPeriodRange(

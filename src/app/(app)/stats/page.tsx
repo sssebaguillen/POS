@@ -4,9 +4,9 @@ import { createClient } from '@/lib/supabase/server'
 import StatsView from '@/components/stats/StatsView'
 import type { TopProductRow } from '@/components/stats/StatsView'
 import { requireAuthenticatedBusinessId, getBusinessTimezone } from '@/lib/business'
-import { resolveDateRange } from '@/lib/date-utils'
+import { resolveDateRange, getAdjacentPreviousRange } from '@/lib/date-utils'
 import { normalizeOperatorSalesStatsRows } from '@/lib/mappers'
-import type { DailySnapshotRow, OperatorSalesStatsRow, StatsKpis, StatsEvolution, StatsBreakdown, SalesHeatmapCell, DeadStockSummary, PromoImpact, SalesBySource } from '@/lib/types'
+import type { DailySnapshotRow, OperatorSalesStatsRow, StatsKpis, StatsEvolution, StatsBreakdown, SalesHeatmapCell, DeadStockSummary, PromoImpact, SalesBySource, MarginTotals } from '@/lib/types'
 
 interface SearchParams {
   period?: string
@@ -26,6 +26,7 @@ export default async function StatsPage({
 
   const period = params.period ?? 'mes'
   const { from, to } = resolveDateRange(period, params.from, params.to, timezone)
+  const prevRange = getAdjacentPreviousRange(from, to)
 
   const [
     { data: kpisRaw, error: kpisError },
@@ -38,6 +39,8 @@ export default async function StatsPage({
     { data: deadStockRaw, error: deadStockError },
     { data: promoImpactRaw, error: promoImpactError },
     { data: salesBySourceRaw, error: salesBySourceError },
+    { data: marginRaw, error: marginError },
+    { data: prevMarginRaw, error: prevMarginError },
   ] =
     await Promise.all([
       supabase.rpc('get_stats_kpis', {
@@ -95,6 +98,22 @@ export default async function StatsPage({
         p_from: from,
         p_to: to,
       }),
+      // Margen bruto del período (solo se usa `totals`; p_limit=1 minimiza el payload de `data`).
+      supabase.rpc('get_margin_analysis', {
+        p_business_id: businessId,
+        p_from: from,
+        p_to: to,
+        p_limit: 1,
+        p_offset: 0,
+      }),
+      // Margen del período anterior (para el delta de la tarjeta).
+      supabase.rpc('get_margin_analysis', {
+        p_business_id: businessId,
+        p_from: prevRange.from,
+        p_to: prevRange.to,
+        p_limit: 1,
+        p_offset: 0,
+      }),
     ])
 
   const statsError =
@@ -107,7 +126,9 @@ export default async function StatsPage({
     heatmapError ||
     deadStockError ||
     promoImpactError ||
-    salesBySourceError
+    salesBySourceError ||
+    marginError ||
+    prevMarginError
   if (statsError) throw new Error(`stats: ${statsError.message}`)
 
   const kpis = kpisRaw as unknown as StatsKpis | null
@@ -121,6 +142,8 @@ export default async function StatsPage({
   const deadStockSummary = (deadStockRaw as unknown as { summary: DeadStockSummary } | null)?.summary ?? null
   const promoImpact = promoImpactRaw as unknown as PromoImpact | null
   const salesBySource = salesBySourceRaw as unknown as SalesBySource | null
+  const marginTotals = (marginRaw as unknown as { totals: MarginTotals } | null)?.totals ?? null
+  const prevMarginTotals = (prevMarginRaw as unknown as { totals: MarginTotals } | null)?.totals ?? null
 
   return (
     <StatsView
@@ -135,6 +158,8 @@ export default async function StatsPage({
       deadStockSummary={deadStockSummary}
       promoImpact={promoImpact}
       salesBySource={salesBySource}
+      marginTotals={marginTotals}
+      prevMarginTotals={prevMarginTotals}
       period={period}
       from={params.from}
       to={params.to}

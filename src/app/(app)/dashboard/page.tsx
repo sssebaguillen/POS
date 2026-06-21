@@ -27,14 +27,14 @@ export default async function DashboardPage() {
   const hoy = resolveDateRange('hoy', undefined, undefined, timezone)
 
   const [
-    { data: kpisRaw },
-    { data: balanceRaw },
-    { data: heatmapRaw },
-    { data: lowStockRaw },
-    { data: business },
-    { data: profile },
-    { data: recentActivityRaw },
-    { data: operatorsData },
+    { data: kpisRaw, error: kpisError },
+    { data: balanceRaw, error: balanceError },
+    { data: heatmapRaw, error: heatmapError },
+    { data: lowStockRaw, error: lowStockError },
+    { data: business, error: businessError },
+    { data: profile, error: profileError },
+    { data: recentActivityRaw, error: recentActivityError },
+    { data: operatorsData, error: operatorsError },
   ] = await Promise.all([
     supabase.rpc('get_stats_kpis', { p_business_id: businessId, p_from: hoy.from, p_to: hoy.to }),
     supabase.rpc('get_business_balance', { p_business_id: businessId, p_from: hoy.from, p_to: hoy.to }),
@@ -61,6 +61,17 @@ export default async function DashboardPage() {
       .eq('business_id', businessId)
       .order('name'),
   ])
+
+  const dashboardError =
+    kpisError ||
+    balanceError ||
+    heatmapError ||
+    lowStockError ||
+    businessError ||
+    profileError ||
+    recentActivityError ||
+    operatorsError
+  if (dashboardError) throw new Error(`dashboard: ${dashboardError.message}`)
 
   const recentActivity =
     ((recentActivityRaw as unknown as { data: RecentActivityRow[] } | null)?.data ?? []) as RecentActivityRow[]
