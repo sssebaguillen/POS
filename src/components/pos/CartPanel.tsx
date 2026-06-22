@@ -3,7 +3,7 @@
 import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useQueryClient } from '@tanstack/react-query'
-import { Minus, PencilSimple, Percent, Plus, ShoppingCart, Trash, User, X } from '@phosphor-icons/react/dist/ssr'
+import { Minus, PencilSimple, Percent, Plus, ShoppingCart, Trash, User, Warning, X } from '@phosphor-icons/react/dist/ssr'
 import { Button } from '@/components/ui/button'
 import { useCartStore, resolveDiscountAmount, type DiscountMode } from '@/lib/store/cart.store'
 import { getCartItemId } from '@/lib/types/cart'
@@ -431,6 +431,14 @@ const CartPanel = forwardRef<CartPanelHandle, Props>(function CartPanel({ busine
                         ? adjusted.original_unit_price
                         : null
 
+                    // Aviso no bloqueante de venta a pérdida: el precio efectivo de la
+                    // línea (override manual, promo o lista) quedó por debajo del costo.
+                    // Solo señal visual — no toca la venta (principio 3: trust the operator).
+                    const unitCost = isFreeLine
+                      ? 0
+                      : (item.variant_id ? (item.variant_cost ?? 0) : item.product!.cost)
+                    const belowCost = !isFreeLine && unitCost > 0 && effectivePrice < unitCost
+
                     return (
                       <li key={itemId} className="px-4 py-3 flex items-start gap-3">
                         <div className="flex-1 min-w-0">
@@ -476,7 +484,7 @@ const CartPanel = forwardRef<CartPanelHandle, Props>(function CartPanel({ busine
                                         type="button"
                                         onClick={() => startPriceEdit(itemId, effectivePrice, 'unit')}
                                         aria-label="Editar precio unitario"
-                                        className="flex items-center gap-1 rounded-md px-1.5 py-2 -mx-1.5 -my-2 hover:bg-hover-bg transition-[background-color] duration-150 ease-[var(--ease-out)]"
+                                        className="flex items-center gap-1 rounded-md px-1.5 py-1 -mx-1.5 -my-1 hover:bg-hover-bg transition-[background-color] duration-150 ease-[var(--ease-out)]"
                                       >
                                         <span
                                           className={`text-xs tabular-nums ${
@@ -521,6 +529,12 @@ const CartPanel = forwardRef<CartPanelHandle, Props>(function CartPanel({ busine
                               )
                             })()}
                           </div>
+                          {belowCost && (
+                            <p className="flex items-center gap-1 mt-1 text-[10px] font-medium text-warning leading-none">
+                              <Warning size={11} className="shrink-0" />
+                              Bajo costo · {formatMoney(unitCost)} c/u
+                            </p>
+                          )}
                         </div>
 
                         <div className="flex items-center gap-1.5 shrink-0">
