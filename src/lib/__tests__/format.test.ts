@@ -25,6 +25,29 @@ describe('toTitleCase', () => {
   it('handles empty string', () => {
     expect(toTitleCase('')).toBe('')
   })
+
+  it('does not capitalize after ñ (Unicode-aware, no spurious caps)', () => {
+    expect(toTitleCase('piña colada')).toBe('Piña Colada')
+    expect(toTitleCase('cortina de baño')).toBe('Cortina De Baño')
+    expect(toTitleCase('niño')).toBe('Niño')
+  })
+
+  it('capitalizes a leading ñ', () => {
+    expect(toTitleCase('ñoquis')).toBe('Ñoquis')
+    expect(toTitleCase('ñandú')).toBe('Ñandú')
+  })
+
+  it('does not capitalize after accented vowels', () => {
+    expect(toTitleCase('juego de sábanas')).toBe('Juego De Sábanas')
+    expect(toTitleCase('jabón coté')).toBe('Jabón Coté')
+    expect(toTitleCase('óleo')).toBe('Óleo')
+    expect(toTitleCase('ÁRBOL navideño')).toBe('Árbol Navideño')
+  })
+
+  it('still title-cases across hyphens and leaves digits alone', () => {
+    expect(toTitleCase('coca-cola')).toBe('Coca-Cola')
+    expect(toTitleCase('3m cinta')).toBe('3m Cinta')
+  })
 })
 
 describe('getCurrencySymbol', () => {

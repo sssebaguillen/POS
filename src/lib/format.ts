@@ -1,7 +1,14 @@
 import { CURRENCIES } from '@/lib/constants/currencies'
 
 export function toTitleCase(str: string): string {
-  return str.toLowerCase().replace(/\b\w/g, c => c.toUpperCase())
+  // Capitaliza la primera letra de cada palabra (tras inicio de string o un
+  // separador que no sea letra/número). Unicode-aware vía \p{L}: la `ñ` y las
+  // vocales acentuadas cuentan como letras, así "piña" → "Piña" (no "PiñA") y
+  // "sábanas" → "Sábanas" (no "SáBanas"). El antiguo /\b\w/ trataba `\w` como
+  // [A-Za-z0-9_], dejando ñ/tildes como límite de palabra y rompiendo el casing.
+  return str
+    .toLowerCase()
+    .replace(/(^|[^\p{L}\p{N}])(\p{L})/gu, (_, sep, ch) => sep + ch.toUpperCase())
 }
 
 export function getCurrencySymbol(code: string): string {
