@@ -1,6 +1,26 @@
 {
-  "current": "0.0.8.2",
+  "current": "0.0.8.3",
   "releases": [
+    {
+      "version": "0.0.8.3",
+      "kind": "feature",
+      "date": "2026-06-22",
+      "label": "Análisis, clientes y reposición",
+      "changes": [
+        { "type": "new", "text": "Tus clientes ahora tienen ficha con cuenta corriente: ves el saldo que te deben, el detalle de cada compra a cuenta y los pagos. En la lista puedes filtrar por 'Con deuda' y ordenar por quién te debe más." },
+        { "type": "new", "text": "Llega el margen bruto a Estadísticas: tu ganancia y tu % de margen del período (con comparación contra el período anterior) y una columna de margen en el ranking de productos. En Tendencias puedes graficar tu 'Resultado' día a día. Si hay productos sin costo cargado, te avisamos que el margen es parcial." },
+        { "type": "new", "text": "Nueva pantalla de Reposición: la lista priorizada de qué reponer, ordenada por los productos más cerca de quedarse sin stock, con la cantidad sugerida para llegar a tu mínimo." },
+        { "type": "new", "text": "Ahora puedes imprimir etiquetas con código de barras de tus productos, para pegarlas y escanearlas en el POS." },
+        { "type": "new", "text": "El cierre de caja se puede imprimir: un comprobante del arqueo (efectivo esperado vs. contado, diferencia y desglose por medio de pago) para archivar o adjuntar al depósito." },
+        { "type": "new", "text": "Tu catálogo online se renueva: lo rediseñamos con una portada más clara y las ofertas destacadas, ahora puedes compartirlo por código QR o WhatsApp, y elegir qué lista de precios usa." },
+        { "type": "new", "text": "En el Resumen y las Estadísticas puedes separar las ventas del mostrador de los pedidos online, para ver cuánto aporta cada canal." },
+        { "type": "new", "text": "En el POS, si editas el precio de una línea por debajo del costo, te lo marcamos para que no vendas a pérdida sin querer (no bloquea: puedes venderlo igual)." },
+        { "type": "improvement", "text": "Pulimos los estados de carga y vacíos en todo el sistema (con ícono, título y un texto que explica qué vas a ver ahí) y renovamos toda la iconografía para un look más consistente." },
+        { "type": "fix", "text": "Las Estadísticas ahora calculan los períodos (hoy, semana, mes…) según la zona horaria de tu negocio, así los totales del día cierran cuando corresponde." },
+        { "type": "fix", "text": "Los nombres de productos con ñ o tildes ya no quedan con una mayúscula de más ('Piña', 'Sábanas'), y se respeta el uso intencional de mayúsculas como 'iPhone'." },
+        { "type": "fix", "text": "Si una pantalla no logra cargar sus datos, ahora te avisa y te deja reintentar —incluida la de recuperar contraseña— en vez de quedar vacía." }
+      ]
+    },
     {
       "version": "0.0.8.2",
       "kind": "feature",
