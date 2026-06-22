@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo } from 'react'
-import { ArrowUp, ArrowDown, ArrowsDownUp } from '@phosphor-icons/react/dist/ssr'
+import { ArrowUp, ArrowDown, ArrowsDownUp, Package } from '@phosphor-icons/react/dist/ssr'
 import { useRouter, usePathname } from 'next/navigation'
 import DateRangeFilter from '@/components/shared/DateRangeFilter'
 import PopNumber from '@/components/shared/PopNumber'
@@ -200,7 +200,15 @@ export default function TopProductsDetailView({ rows, total, kpis, period, from,
               <tbody>
                 {sorted.length === 0 ? (
                   <tr>
-                    <td colSpan={9} className="text-center text-hint py-12 text-sm">Sin datos para el período</td>
+                    <td colSpan={9} className="py-12">
+                      <div className="flex flex-col items-center justify-center text-center gap-2">
+                        <span className="flex items-center justify-center w-9 h-9 rounded-full bg-muted text-hint">
+                          <Package size={18} />
+                        </span>
+                        <p className="text-sm font-medium text-heading">Sin datos para el período</p>
+                        <p className="text-xs text-hint">Cuando vendas en este rango, vas a ver el ranking acá.</p>
+                      </div>
+                    </td>
                   </tr>
                 ) : (
                   sorted.map((row, idx) => (

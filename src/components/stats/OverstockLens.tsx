@@ -103,10 +103,14 @@ export default function OverstockLens({ rows, summary, page: initialPage, pageSi
           <tbody>
             {pageRows.length === 0 ? (
               <tr>
-                <td colSpan={6} className="text-center text-hint py-16">
-                  <Package size={28} className="mx-auto mb-3 opacity-40" />
-                  <p className="text-sm font-medium text-body">Sin sobrestock</p>
-                  <p className="text-xs text-hint mt-1">Comprás ajustado al ritmo de venta — no hay productos con stock de sobra.</p>
+                <td colSpan={6} className="py-16">
+                  <div className="flex flex-col items-center justify-center text-center gap-2">
+                    <span className="flex items-center justify-center w-9 h-9 rounded-full bg-muted text-hint">
+                      <Package size={18} />
+                    </span>
+                    <p className="text-sm font-medium text-heading">Sin sobrestock</p>
+                    <p className="text-xs text-hint">Comprás ajustado al ritmo de venta — no hay productos con stock de sobra.</p>
+                  </div>
                 </td>
               </tr>
             ) : (
