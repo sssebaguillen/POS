@@ -137,10 +137,12 @@ interface EmptyFilteredStateProps {
 
 function EmptyFilteredState({ onClearFilters }: EmptyFilteredStateProps) {
   return (
-    <div className="flex flex-col items-center justify-center py-16 px-4 text-center gap-3">
-      <Tray size={36} className="text-hint" />
-      <p className="text-heading font-semibold">Sin resultados</p>
-      <p className="text-sm text-body max-w-sm">
+    <div className="flex flex-col items-center justify-center py-16 px-4 text-center gap-2">
+      <span className="flex items-center justify-center w-9 h-9 rounded-full bg-muted text-hint">
+        <Tray size={18} />
+      </span>
+      <p className="text-sm font-medium text-heading">Sin resultados</p>
+      <p className="text-xs text-hint max-w-sm">
         Ningún evento coincide con los filtros activos.
       </p>
       <button
@@ -156,10 +158,12 @@ function EmptyFilteredState({ onClearFilters }: EmptyFilteredStateProps) {
 
 function EmptyActivityState() {
   return (
-    <div className="flex flex-col items-center justify-center py-16 px-4 text-center gap-3">
-      <Tray size={36} className="text-hint" />
-      <p className="text-heading font-semibold">Sin actividad registrada</p>
-      <p className="text-sm text-body max-w-sm">
+    <div className="flex flex-col items-center justify-center py-16 px-4 text-center gap-2">
+      <span className="flex items-center justify-center w-9 h-9 rounded-full bg-muted text-hint">
+        <Tray size={18} />
+      </span>
+      <p className="text-sm font-medium text-heading">Sin actividad registrada</p>
+      <p className="text-xs text-hint max-w-sm">
         Acá vas a ver cambios en ventas, productos, gastos, proveedores, listas de precios, configuración y operarios.
       </p>
     </div>

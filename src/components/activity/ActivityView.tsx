@@ -1,6 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
+import { CircleNotch } from '@phosphor-icons/react/dist/ssr'
 import PageHeader from '@/components/shared/PageHeader'
 import ActivityFiltersBar from '@/components/activity/ActivityFiltersBar'
 import ActivityResults from '@/components/activity/ActivityResults'
@@ -99,6 +100,13 @@ export default function ActivityView({
             onOperatorChange={(value) => navigate({ operator: value, page: 1 })}
             onDateChange={handleDateChange}
           />
+
+          {isPending && (
+            <span className="flex items-center gap-1.5 text-xs text-hint shrink-0">
+              <CircleNotch size={13} className="animate-spin" />
+              Actualizando...
+            </span>
+          )}
 
           <ActivityResults
             rows={rows}

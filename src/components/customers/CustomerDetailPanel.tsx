@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { X, Phone, EnvelopeSimple, IdentificationCard, CaretDown } from '@phosphor-icons/react/dist/ssr'
+import { X, Phone, EnvelopeSimple, IdentificationCard, CaretDown, CircleNotch, Receipt } from '@phosphor-icons/react/dist/ssr'
 import { createClient } from '@/lib/supabase/client'
 import { useFormatMoney } from '@/lib/context/CurrencyContext'
 import { PAYMENT_LABELS } from '@/lib/payments'
@@ -204,7 +204,12 @@ export default function CustomerDetailPanel({ customer, businessId, onClose }: P
           <section className="space-y-2">
             <h3 className="text-xs uppercase tracking-wide text-muted-foreground">Movimientos</h3>
 
-            {isLoading && <p className="text-sm text-muted-foreground">Cargando movimientos…</p>}
+            {isLoading && (
+              <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                <CircleNotch size={14} className="animate-spin" />
+                Cargando movimientos…
+              </p>
+            )}
 
             {isError && (
               <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2.5 space-y-2">
@@ -220,8 +225,12 @@ export default function CustomerDetailPanel({ customer, businessId, onClose }: P
             )}
 
             {!isLoading && !isError && movements.length === 0 && (
-              <div className="rounded-lg border border-border/70 bg-card px-3 py-6 text-center">
-                <p className="text-sm text-muted-foreground">Sin movimientos.</p>
+              <div className="rounded-lg border border-border/70 bg-card px-3 py-8 flex flex-col items-center justify-center text-center gap-2">
+                <span className="flex items-center justify-center w-9 h-9 rounded-full bg-muted text-hint">
+                  <Receipt size={18} />
+                </span>
+                <p className="text-sm font-medium text-heading">Sin movimientos</p>
+                <p className="text-xs text-hint">Las compras a cuenta y los pagos de este cliente van a aparecer acá.</p>
               </div>
             )}
 
