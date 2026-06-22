@@ -190,7 +190,7 @@ export default function CustomerView({ businessId, operatorId, initialCustomers 
                 <UsersThree size={18} />
               </span>
               <p className="text-sm font-medium text-heading">Todavía no hay clientes</p>
-              <p className="text-xs text-hint">Agregá el primero con el botón de arriba para llevar su cuenta corriente.</p>
+              <p className="text-xs text-hint">Agrega el primero con el botón de arriba para llevar su cuenta corriente.</p>
             </div>
           ) : filteredCustomers.length === 0 ? (
             <div className="surface-card px-6 py-12 flex flex-col items-center justify-center text-center gap-2">
@@ -198,7 +198,7 @@ export default function CustomerView({ businessId, operatorId, initialCustomers 
                 <MagnifyingGlass size={18} />
               </span>
               <p className="text-sm font-medium text-heading">Sin resultados</p>
-              <p className="text-xs text-hint">Probá con otra búsqueda o filtro.</p>
+              <p className="text-xs text-hint">Prueba con otra búsqueda o filtro.</p>
             </div>
           ) : (
             <div className="surface-card overflow-x-auto">
