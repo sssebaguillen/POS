@@ -66,7 +66,7 @@ export default function ProfileView({ profile, email, business }: Props) {
       .update({ name: nameInput.trim() })
       .eq('id', profile.id)
     setNameSaving(false)
-    if (error) { console.error(error); setNameError('No pudimos guardar el cambio. Intentá de nuevo.'); return }
+    if (error) { console.error(error); setNameError('No pudimos guardar el cambio. Intenta de nuevo.'); return }
     setName(nameInput.trim())
     setEditingName(false)
   }
@@ -87,7 +87,7 @@ export default function ProfileView({ profile, email, business }: Props) {
       console.error(error)
       const msg = error.message.toLowerCase().includes('already') || error.message.toLowerCase().includes('registered')
         ? 'Ese email ya está en uso.'
-        : 'No pudimos actualizar el email. Intentá de nuevo.'
+        : 'No pudimos actualizar el email. Intenta de nuevo.'
       setEmailError(msg)
       return
     }
@@ -102,7 +102,7 @@ export default function ProfileView({ profile, email, business }: Props) {
   }
 
   function validatePassword(): string | null {
-    if (!currentPw) return 'Ingresá tu contraseña actual'
+    if (!currentPw) return 'Ingresa tu contraseña actual'
     if (newPw.length < 8) return 'La nueva contraseña debe tener al menos 8 caracteres'
     if (newPw !== confirmPw) return 'Las contraseñas no coinciden'
     return null
@@ -119,7 +119,7 @@ export default function ProfileView({ profile, email, business }: Props) {
       console.error(error)
       const msg = error.message.toLowerCase().includes('least')
         ? 'La contraseña debe tener al menos 8 caracteres.'
-        : 'No pudimos cambiar la contraseña. Intentá de nuevo.'
+        : 'No pudimos cambiar la contraseña. Intenta de nuevo.'
       setPwError(msg)
       return
     }
@@ -198,7 +198,7 @@ export default function ProfileView({ profile, email, business }: Props) {
                   <div className="rounded-xl border border-primary/20 bg-primary/8 px-4 py-3 space-y-1">
                     <p className="text-sm font-medium text-primary">Email enviado</p>
                     <p className="text-sm text-body">
-                      Se envió un email de confirmación a <strong>{emailInput}</strong>. Revisá tu bandeja para completar el cambio.
+                      Se envió un email de confirmación a <strong>{emailInput}</strong>. Revisa tu bandeja para completar el cambio.
                     </p>
                   </div>
                   <Button variant="outline" size="sm" onClick={cancelEditEmail}>Cerrar</Button>
@@ -279,7 +279,7 @@ export default function ProfileView({ profile, email, business }: Props) {
                       type="password"
                       value={confirmPw}
                       onChange={e => { setConfirmPw(e.target.value); setPwError(null) }}
-                      placeholder="Repetí la nueva contraseña"
+                      placeholder="Repite la nueva contraseña"
                       onKeyDown={e => { if (e.key === 'Enter') savePassword(); if (e.key === 'Escape') cancelEditPassword() }}
                     />
                   </div>

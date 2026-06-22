@@ -22,12 +22,12 @@ const BUCKET_META: Record<DeadStockBucket, { label: string; badge: string; hint:
   dead: {
     label: 'Sin movimiento',
     badge: 'bg-destructive/10 text-destructive border border-destructive/20',
-    hint: 'Se vendió alguna vez, pero lleva meses sin moverse. Liquidá, rematá o dejá de reponer.',
+    hint: 'Se vendió alguna vez, pero lleva meses sin moverse. Liquida, remata o deja de reponer.',
   },
   never_sold: {
     label: 'Nunca vendido',
     badge: 'bg-slate-500/10 text-slate-600 border border-slate-500/20 dark:bg-slate-400/15 dark:text-slate-300 dark:border-slate-400/30',
-    hint: 'Nunca se vendió desde que entró. Evaluá liquidar o devolver al proveedor.',
+    hint: 'Nunca se vendió desde que entró. Evalúa liquidar o devolver al proveedor.',
   },
 }
 
@@ -118,7 +118,7 @@ export default function DeadStockLens({ rows, summary, bucket: initialBucket, pa
           <Warning size={16} className="shrink-0 mt-0.5" />
           <p>
             {missingCost} {missingCost === 1 ? 'producto sin costo cargado' : 'productos sin costo cargado'} —
-            cargá el costo en Inventario para ver su capital inmovilizado real.
+            carga el costo en Inventario para ver su capital inmovilizado real.
           </p>
         </div>
       )}

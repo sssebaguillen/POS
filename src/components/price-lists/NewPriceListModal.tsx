@@ -200,7 +200,7 @@ export default function NewPriceListModal({
           />
 
           <p className="rounded-lg border border-edge/70 bg-surface px-3 py-2 text-caption text-hint">
-            Esta lista calcula precios desde el costo y <span className="text-body font-medium">no cambia el precio base</span> de tus productos. Se aplica al elegirla en el POS o al exportarla. Después podés ajustar productos puntuales desde la tabla.
+            Esta lista calcula precios desde el costo y <span className="text-body font-medium">no cambia el precio base</span> de tus productos. Se aplica al elegirla en el POS o al exportarla. Después puedes ajustar productos puntuales desde la tabla.
           </p>
 
           <div className="pt-1 flex items-center justify-end gap-2.5">

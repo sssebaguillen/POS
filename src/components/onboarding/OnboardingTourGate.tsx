@@ -50,8 +50,8 @@ export default function OnboardingTourGate({ profileId, onboardingState }: Props
           <Compass size={18} />
         </div>
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-semibold text-heading">¿Querés un recorrido rápido?</p>
-          <p className="mt-0.5 text-xs text-subtle">Te muestro lo esencial en menos de un minuto. Podés hacerlo cuando quieras.</p>
+          <p className="text-sm font-semibold text-heading">¿Quieres un recorrido rápido?</p>
+          <p className="mt-0.5 text-xs text-subtle">Te muestro lo esencial en menos de un minuto. Puedes hacerlo cuando quieras.</p>
           <div className="mt-3 flex items-center gap-2">
             <Button className="h-8 px-3 text-xs" onClick={() => setMode('tour')}>
               Ver recorrido

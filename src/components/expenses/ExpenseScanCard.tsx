@@ -64,7 +64,7 @@ export default function ExpenseScanCard({ attachment, supabaseClient, onApply }:
       } else {
         if (!attachment.file) {
           setStatus('error')
-          setErrorMsg('Volvé a subir la planilla para poder escanearla.')
+          setErrorMsg('Vuelve a subir la planilla para poder escanearla.')
           return
         }
         const text = await spreadsheetToText(attachment.file)
@@ -78,13 +78,13 @@ export default function ExpenseScanCard({ attachment, supabaseClient, onApply }:
       const { data, error } = await supabaseClient.functions.invoke('extract-expense', { body })
       if (error) {
         setStatus('error')
-        setErrorMsg('No pudimos analizar el documento. Probá de nuevo en un momento.')
+        setErrorMsg('No pudimos analizar el documento. Prueba de nuevo en un momento.')
         return
       }
       const result = data as { success: boolean; suggestion: ExpenseSuggestion | null }
       if (!result?.success) {
         setStatus('error')
-        setErrorMsg('No pudimos analizar el documento. Probá de nuevo en un momento.')
+        setErrorMsg('No pudimos analizar el documento. Prueba de nuevo en un momento.')
         return
       }
       if (!result.suggestion) {
@@ -100,7 +100,7 @@ export default function ExpenseScanCard({ attachment, supabaseClient, onApply }:
       setStatus('result')
     } catch {
       setStatus('error')
-      setErrorMsg('No pudimos leer el archivo. Probá de nuevo.')
+      setErrorMsg('No pudimos leer el archivo. Prueba de nuevo.')
     }
   }
 
@@ -124,7 +124,7 @@ export default function ExpenseScanCard({ attachment, supabaseClient, onApply }:
         {status === 'empty' && (
           <p className="flex items-start gap-1.5 text-xs text-hint">
             <WarningCircle size={13} className="mt-px shrink-0" />
-            No pudimos extraer texto del documento. Completá los campos manualmente.
+            No pudimos extraer texto del documento. Completa los campos manualmente.
           </p>
         )}
       </div>
@@ -166,7 +166,7 @@ export default function ExpenseScanCard({ attachment, supabaseClient, onApply }:
     <div className="rounded-xl border border-primary/25 bg-primary/[0.04] p-3 space-y-3">
       <div className="flex items-center gap-1.5 text-xs font-medium text-primary">
         <Sparkle size={13} />
-        Sugerencia de la IA — revisá antes de aplicar
+        Sugerencia de la IA — revisa antes de aplicar
       </div>
       <dl className="space-y-1">
         {rows.map(r => (

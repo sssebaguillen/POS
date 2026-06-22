@@ -669,7 +669,7 @@ export default function VariantEditor({
           {attributeTypesError && (
             <p className="flex items-center gap-1.5 text-xs text-destructive">
               <Warning className="w-3.5 h-3.5 shrink-0" />
-              No se pudieron cargar los atributos. Recargá la página e intentá de nuevo.
+              No se pudieron cargar los atributos. Recarga la página e intenta de nuevo.
             </p>
           )}
 

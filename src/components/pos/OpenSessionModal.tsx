@@ -55,7 +55,7 @@ export default function OpenSessionModal({ open, operatorId, onOpened, onClose }
     setError(null)
     const openingAmount = parseFloat(amount || '0')
     if (isNaN(openingAmount) || openingAmount < 0) {
-      setError('Ingresá un monto válido')
+      setError('Ingresa un monto válido')
       setLoading(false)
       return
     }
@@ -101,7 +101,7 @@ export default function OpenSessionModal({ open, operatorId, onOpened, onClose }
             {isSuggested ? (
               <p className="text-xs text-primary mt-1.5 flex items-center gap-1">
                 <ArrowRight size={11} />
-                Sugerido del cierre anterior ({formatMoney(suggestedAmount)}) · Podés modificarlo
+                Sugerido del cierre anterior ({formatMoney(suggestedAmount)}) · Puedes modificarlo
               </p>
             ) : (
               <p className="text-xs text-muted-foreground mt-1.5">

@@ -704,7 +704,7 @@ export default function EditProductModal({
                 <div className="py-2 text-xs text-hint">Cargando variantes…</div>
               ) : variantError ? (
                 <div className="py-2 text-xs text-destructive">
-                  No se pudieron cargar las variantes. Cerrá y volvé a abrir el producto para reintentar.
+                  No se pudieron cargar las variantes. Cierra y vuelve a abrir el producto para reintentar.
                 </div>
               ) : (
                 <VariantEditor

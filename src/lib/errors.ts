@@ -90,7 +90,7 @@ export const ERR = {
   EXP3:  'No se encontró el gasto. (EXP-3)',
   EXP41: 'La descripción es obligatoria. (EXP-41)',
   EXP42: 'El monto debe ser mayor a 0. (EXP-42)',
-  EXP43: 'Agregá al menos un producto. (EXP-43)',
+  EXP43: 'Agrega al menos un producto. (EXP-43)',
   EXP5:  'Conflicto de costo: otro proceso modificó el costo de un producto. (EXP-5)',
   // INV — Inventario
   INV1:  'No se pudo guardar. Intenta de nuevo. (INV-1)',
@@ -112,7 +112,7 @@ export const ERR = {
   PRL1:  'No se pudo guardar la lista de precios. Intenta de nuevo. (PRL-1)',
   PRL41: 'El nombre es obligatorio. (PRL-41)',
   PRL42: 'El margen debe ser un número mayor a 0. (PRL-42)',
-  PRL43: 'Indicá qué hacer con los productos que no coinciden con este margen. (PRL-43)',
+  PRL43: 'Indica qué hacer con los productos que no coinciden con este margen. (PRL-43)',
   PRL5:  'Conflicto: algunos productos tienen precio manual que entraría en conflicto. (PRL-5)',
   // OPR — Operarios
   OPR1:  'No se pudo guardar el operario. Intenta de nuevo. (OPR-1)',
@@ -120,7 +120,7 @@ export const ERR = {
   OPR3:  'No se encontró el operario. (OPR-3)',
   OPR41: 'El nombre es obligatorio. (OPR-41)',
   OPR42: 'El PIN debe contener exactamente 4 o 6 dígitos. (OPR-42)',
-  OPR43: 'Completá ambos campos de PIN para continuar. (OPR-43)',
+  OPR43: 'Completa ambos campos de PIN para continuar. (OPR-43)',
   OPR44: 'Los PIN ingresados no coinciden. (OPR-44)',
   OPR71: 'Contraseña incorrecta. (OPR-71)',
   OPR72: 'PIN incorrecto. (OPR-72)',
@@ -132,13 +132,13 @@ export const ERR = {
   SET42: 'El slug ya está en uso. (SET-42)',
   SET43: 'El nombre del negocio es obligatorio. (SET-43)',
   SET6:  'No se pudo guardar el archivo. Verifica que pese menos de 2 MB e intenta de nuevo. (SET-6)',
-  SET61: 'Formato no permitido. Usá JPEG, PNG, WebP o SVG. (SET-61)',
+  SET61: 'Formato no permitido. Usa JPEG, PNG, WebP o SVG. (SET-61)',
   SET62: 'El archivo supera el máximo de 2 MB. (SET-62)',
   // AUT — Autenticación
   AUT1:  'No se pudo actualizar la contraseña. Intenta de nuevo. (AUT-1)',
   AUT41: 'La contraseña debe tener al menos 8 caracteres. (AUT-41)',
   AUT42: 'Las contraseñas no coinciden. (AUT-42)',
-  AUT71: 'El enlace expiró o ya fue usado. Solicitá uno nuevo desde el login. (AUT-71)',
+  AUT71: 'El enlace expiró o ya fue usado. Solicita uno nuevo desde el login. (AUT-71)',
   // CST — Clientes
   CST1:  'No se pudo guardar el cliente. Intenta de nuevo. (CST-1)',
   CST2:  'Sin permiso para gestionar clientes. (CST-2)',

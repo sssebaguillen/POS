@@ -166,7 +166,7 @@ export default function SettingsForm({
     [business.slug]
   )
   const whatsappShareUrl = useMemo(
-    () => `https://wa.me/?text=${encodeURIComponent(`Mirá nuestro catálogo: ${savedCatalogUrl}`)}`,
+    () => `https://wa.me/?text=${encodeURIComponent(`Mira nuestro catálogo: ${savedCatalogUrl}`)}`,
     [savedCatalogUrl]
   )
   const qrCanvasRef = useRef<HTMLCanvasElement | null>(null)
@@ -407,7 +407,7 @@ export default function SettingsForm({
       try {
         await navigator.share({
           title: business.name || 'Catálogo',
-          text: 'Mirá nuestro catálogo',
+          text: 'Mira nuestro catálogo',
           url: savedCatalogUrl,
         })
       } catch {
@@ -464,7 +464,7 @@ export default function SettingsForm({
         {activeTab === 'negocio' && (
           <div className="surface-card p-6 max-w-3xl mx-auto w-full">
             <h2 className="text-base font-semibold text-foreground font-display">Negocio</h2>
-            <p className="text-sm text-muted-foreground mt-1">Actualizá los datos visibles en el sistema y el catálogo público.</p>
+            <p className="text-sm text-muted-foreground mt-1">Actualiza los datos visibles en el sistema y el catálogo público.</p>
 
             <form onSubmit={handleSubmit} className="mt-6 space-y-5">
               <div className="space-y-1.5">
@@ -505,7 +505,7 @@ export default function SettingsForm({
                   placeholder="5491112345678"
                 />
                 <p className="text-xs text-muted-foreground">
-                  Incluí el código de país y área, solo números. Ej.: 5491112345678
+                  Incluye el código de país y área, solo números. Ej.: 5491112345678
                 </p>
               </div>
 

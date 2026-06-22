@@ -82,7 +82,7 @@ export default function OverstockLens({ rows, summary, page: initialPage, pageSi
       {/* Caption + export */}
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-xs text-hint">
-          Productos que rotan pero con 6+ meses de stock para su ritmo de venta. La plata no está perdida — frená la reposición.
+          Productos que rotan pero con 6+ meses de stock para su ritmo de venta. La plata no está perdida — frena la reposición.
         </p>
         <ExportCSVButton data={csvData} filename="sobrestock" />
       </div>

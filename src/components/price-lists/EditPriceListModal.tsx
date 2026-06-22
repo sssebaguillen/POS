@@ -224,7 +224,7 @@ export default function EditPriceListModal({
             />
 
             <p className="rounded-lg border border-edge/70 bg-surface px-3 py-2 text-caption text-hint">
-              El margen se aplica sobre el costo. Para precios distintos en productos puntuales, usá los ajustes por producto o marca en la tabla.
+              El margen se aplica sobre el costo. Para precios distintos en productos puntuales, usa los ajustes por producto o marca en la tabla.
             </p>
 
             <div className="pt-1 flex items-center justify-between gap-2.5">

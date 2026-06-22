@@ -555,7 +555,7 @@ export default function OnboardingWizard({
 
           {step === 4 && (
             <div className="space-y-3">
-              <p className="text-sm text-subtle">Invitá a alguien de tu equipo (opcional).</p>
+              <p className="text-sm text-subtle">Invita a alguien de tu equipo (opcional).</p>
               <NewOperatorModal
                 embedded
                 open
