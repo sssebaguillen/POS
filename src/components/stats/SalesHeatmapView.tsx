@@ -1,6 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
+import { CircleNotch, GridFour } from '@phosphor-icons/react/dist/ssr'
 import { usePathname } from 'next/navigation'
 import { useQuery, keepPreviousData } from '@tanstack/react-query'
 import DateRangeFilter from '@/components/shared/DateRangeFilter'
@@ -194,7 +195,12 @@ export default function SalesHeatmapView({
 
           <div className="flex items-center gap-2 text-xs text-hint">
             <span>Hora local del negocio · {hasData ? `${cells.length} franjas con actividad` : 'sin datos'}</span>
-            {isFetching && <span className="text-primary animate-pulse">· actualizando…</span>}
+            {isFetching && (
+              <span className="flex items-center gap-1.5 text-hint shrink-0">
+                <CircleNotch size={13} className="animate-spin" />
+                Actualizando...
+              </span>
+            )}
           </div>
 
           <div
@@ -244,9 +250,13 @@ export default function SalesHeatmapView({
 
               <div className={`transition-opacity duration-150 ${isFetching ? 'opacity-70' : 'opacity-100'}`}>
                 {!hasData ? (
-                  <p className="text-sm text-hint h-48 flex items-center justify-center">
-                    Sin ventas en el período. El heatmap se llena a medida que se registran ventas en el POS.
-                  </p>
+                  <div className="h-48 flex flex-col items-center justify-center text-center gap-2">
+                    <span className="flex items-center justify-center w-9 h-9 rounded-full bg-muted text-hint">
+                      <GridFour size={18} />
+                    </span>
+                    <p className="text-sm font-medium text-heading">Sin ventas en el período</p>
+                    <p className="text-xs text-hint max-w-xs">El heatmap se llena a medida que se registran ventas en el POS.</p>
+                  </div>
                 ) : (
                   <SalesHeatmap cells={cells} metric={activeMetric} />
                 )}

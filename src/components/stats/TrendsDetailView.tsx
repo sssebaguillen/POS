@@ -1,6 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
+import { CircleNotch, ChartLine } from '@phosphor-icons/react/dist/ssr'
 import { usePathname } from 'next/navigation'
 import { useQuery, keepPreviousData } from '@tanstack/react-query'
 import {
@@ -187,7 +188,12 @@ export default function TrendsDetailView({
 
           <div className="flex items-center gap-2 text-xs text-hint">
             <span>Período anterior comparado: <span className="font-medium text-body">{previous.from} → {previous.to}</span></span>
-            {isFetching && <span className="text-primary animate-pulse">· actualizando…</span>}
+            {isFetching && (
+              <span className="flex items-center gap-1.5 text-hint shrink-0">
+                <CircleNotch size={13} className="animate-spin" />
+                Actualizando...
+              </span>
+            )}
           </div>
 
           <div
@@ -249,9 +255,13 @@ export default function TrendsDetailView({
 
             <div className={`transition-opacity duration-150 ${isFetching ? 'opacity-70' : 'opacity-100'}`}>
               {!hasData ? (
-                <p className="text-sm text-hint h-72 flex items-center justify-center">
-                  Sin snapshots para el período. Las tendencias se llenan a medida que se generan ventas y gastos.
-                </p>
+                <div className="h-72 flex flex-col items-center justify-center text-center gap-2">
+                  <span className="flex items-center justify-center w-9 h-9 rounded-full bg-muted text-hint">
+                    <ChartLine size={18} />
+                  </span>
+                  <p className="text-sm font-medium text-heading">Sin datos para el período</p>
+                  <p className="text-xs text-hint max-w-xs">Las tendencias se llenan a medida que se generan ventas y gastos.</p>
+                </div>
               ) : (
                 <ResponsiveContainer width="100%" height={320}>
                   <LineChart data={chartData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
