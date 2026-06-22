@@ -22,11 +22,12 @@ import { usePillIndicator } from '@/hooks/usePillIndicator'
 import { createClient } from '@/lib/supabase/client'
 import type { StatsTrendsComparison } from '@/lib/types'
 
-type Metric = 'net_revenue' | 'expenses' | 'sales_count' | 'avg_ticket'
+type Metric = 'net_revenue' | 'expenses' | 'resultado' | 'sales_count' | 'avg_ticket'
 
 const METRICS: { key: Metric; label: string }[] = [
   { key: 'net_revenue', label: 'Ingresos netos' },
   { key: 'expenses',    label: 'Gastos' },
+  { key: 'resultado',   label: 'Resultado' },
   { key: 'sales_count', label: 'Ventas' },
   { key: 'avg_ticket',  label: 'Ticket promedio' },
 ]
@@ -42,7 +43,7 @@ interface Props {
 }
 
 function asMetric(value: string | undefined): Metric {
-  if (value === 'expenses' || value === 'sales_count' || value === 'avg_ticket' || value === 'net_revenue') {
+  if (value === 'expenses' || value === 'resultado' || value === 'sales_count' || value === 'avg_ticket' || value === 'net_revenue') {
     return value
   }
   return 'net_revenue'
@@ -141,11 +142,13 @@ export default function TrendsDetailView({
     current:
       activeMetric === 'net_revenue' ? d.current_net_revenue :
       activeMetric === 'expenses'    ? d.current_expenses :
+      activeMetric === 'resultado'   ? d.current_net_revenue - d.current_expenses :
       activeMetric === 'sales_count' ? d.current_sales_count :
                                        d.current_avg_ticket,
     previous:
       activeMetric === 'net_revenue' ? d.previous_net_revenue :
       activeMetric === 'expenses'    ? d.previous_expenses :
+      activeMetric === 'resultado'   ? d.previous_net_revenue - d.previous_expenses :
       activeMetric === 'sales_count' ? d.previous_sales_count :
                                        d.previous_avg_ticket,
   })), [days, activeMetric])
