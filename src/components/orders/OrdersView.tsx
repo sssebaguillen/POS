@@ -127,14 +127,24 @@ export default function OrdersView({ initialOrders, operatorId }: Props) {
     staleTime: 0,
   })
 
-  // Mark orders read for the whole business whenever this list refreshes —
-  // being on /orders means everything visible is "seen", including new orders
-  // that arrive while we're here. Persists in businesses.catalog_orders_read_at.
+  // Mark orders read for the whole business when /orders opens and whenever a
+  // NEW order arrives while we're here — being on /orders means everything
+  // visible is "seen". Persists in businesses.catalog_orders_read_at.
+  //
+  // Keyamos por el created_at más reciente, no por `orders`: el queryFn devuelve
+  // un array nuevo en cada poll de 10s, así que depender de `orders` disparaba el
+  // write `mark_catalog_orders_read` cada 10s aunque nada hubiera cambiado
+  // (~8.600 writes/operador/día). El máximo created_at solo se mueve cuando entra
+  // un pedido nuevo; un cambio de estado no lo toca → no re-acknowledgea de más.
+  const latestOrderAt = useMemo(
+    () => orders.reduce((max, o) => (o.created_at > max ? o.created_at : max), ''),
+    [orders],
+  )
   useEffect(() => {
     acknowledgeOrdersSeen().then(() => {
       queryClient.invalidateQueries({ queryKey: ['catalog_orders_unread'] })
     })
-  }, [orders, queryClient])
+  }, [latestOrderAt, queryClient])
 
   const pendientesCount = useMemo(
     () => orders.filter(o => PENDIENTES_STATUSES.includes(o.status)).length,
