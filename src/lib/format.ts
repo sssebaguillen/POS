@@ -11,6 +11,27 @@ export function toTitleCase(str: string): string {
     .replace(/(^|[^\p{L}\p{N}])(\p{L})/gu, (_, sep, ch) => sep + ch.toUpperCase())
 }
 
+/**
+ * Normaliza el casing de un nombre SOLO cuando el input viene uniforme (todo
+ * minúsculas o TODO MAYÚSCULAS), señal de tipeo perezoso/inconsistente:
+ * "coca cola" / "COCA COLA" → "Coca Cola".
+ *
+ * Si el texto ya mezcla mayúsculas y minúsculas, el usuario eligió ese casing
+ * a propósito y se respeta intacto: "iPhone 15 Pro", "Cable HDMI", "Arroz
+ * integral" quedan como se tipearon. Así no destruimos marcas con camelCase,
+ * acrónimos ni siglas (cosa que `toTitleCase` sí hacía al guardar productos).
+ *
+ * Edge cases asumidos: un nombre 100% en mayúsculas que sea acrónimo
+ * intencional ("TV LED 50") igual se normaliza ("Tv Led 50") — no hay forma de
+ * distinguirlo de "COCA COLA"; para conservarlo basta tipear una minúscula.
+ */
+export function normalizeName(str: string): string {
+  const hasLower = /\p{Ll}/u.test(str)
+  const hasUpper = /\p{Lu}/u.test(str)
+  if (hasLower && hasUpper) return str
+  return toTitleCase(str)
+}
+
 export function getCurrencySymbol(code: string): string {
   return CURRENCIES.find(c => c.code === code)?.symbol ?? '$'
 }

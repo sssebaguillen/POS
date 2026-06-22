@@ -19,7 +19,7 @@ import type { VariantPayloadNew, VariantPayloadEdit } from '@/components/invento
 import ImageUploadField from '@/components/inventory/shared/ImageUploadField'
 import { useImageUpload } from '@/hooks/useImageUpload'
 import { useCurrency } from '@/lib/context/CurrencyContext'
-import { getCurrencySymbol, toTitleCase } from '@/lib/format'
+import { getCurrencySymbol, normalizeName } from '@/lib/format'
 import CategoryIconPreview from '@/components/inventory/CategoryIconPreview'
 import PriceOverrideIndicator from '@/components/inventory/PriceOverrideIndicator'
 import FloatingDropdown from '@/components/ui/FloatingDropdown'
@@ -256,7 +256,7 @@ export default function NewProductModal({
 
     if (hasVariants && variantPayload) {
       const productPayload = {
-        name: toTitleCase(form.name.trim()),
+        name: normalizeName(form.name.trim()),
         sku: null,
         brand_id: form.brand_id || null,
         barcode: null,
@@ -347,7 +347,7 @@ export default function NewProductModal({
     const costNum = Number(form.cost) || 0
 
     const productData: Record<string, unknown> = {
-      name: toTitleCase(form.name.trim()),
+      name: normalizeName(form.name.trim()),
       sku: form.sku.trim() || null,
       brand_id: form.brand_id || null,
       barcode: form.barcode.trim() || null,

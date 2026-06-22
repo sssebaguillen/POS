@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   toTitleCase,
+  normalizeName,
   getCurrencySymbol,
   formatNumber,
   formatMoney,
@@ -47,6 +48,43 @@ describe('toTitleCase', () => {
   it('still title-cases across hyphens and leaves digits alone', () => {
     expect(toTitleCase('coca-cola')).toBe('Coca-Cola')
     expect(toTitleCase('3m cinta')).toBe('3m Cinta')
+  })
+})
+
+describe('normalizeName', () => {
+  it('title-cases uniformly-lowercase input', () => {
+    expect(normalizeName('coca cola')).toBe('Coca Cola')
+    expect(normalizeName('yerba la merced')).toBe('Yerba La Merced')
+    expect(normalizeName('piña colada')).toBe('Piña Colada')
+  })
+
+  it('title-cases uniformly-uppercase input', () => {
+    expect(normalizeName('COCA COLA')).toBe('Coca Cola')
+    expect(normalizeName('PIÑA COLADA')).toBe('Piña Colada')
+  })
+
+  it('preserves intentional mixed casing (brands, acronyms, camelCase)', () => {
+    expect(normalizeName('iPhone 15 Pro')).toBe('iPhone 15 Pro')
+    expect(normalizeName('MacBook Air')).toBe('MacBook Air')
+    expect(normalizeName('Cable HDMI')).toBe('Cable HDMI')
+    expect(normalizeName('Pilas AAA')).toBe('Pilas AAA')
+  })
+
+  it('respects sentence-case input as typed', () => {
+    expect(normalizeName('Arroz integral')).toBe('Arroz integral')
+    expect(normalizeName('Coca cola')).toBe('Coca cola')
+  })
+
+  it('handles empty string and digit-only names', () => {
+    expect(normalizeName('')).toBe('')
+    expect(normalizeName('123')).toBe('123')
+  })
+
+  // Edge case asumido: un acrónimo 100% en mayúsculas no se distingue de
+  // "COCA COLA", así que se normaliza. Para conservarlo se tipea una minúscula.
+  it('normalizes fully-uppercase acronym names (documented edge case)', () => {
+    expect(normalizeName('TV LED 50')).toBe('Tv Led 50')
+    expect(normalizeName('Tv LED 50')).toBe('Tv LED 50')
   })
 })
 

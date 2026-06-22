@@ -19,7 +19,7 @@ import { useImageUpload } from '@/hooks/useImageUpload'
 import { useComboboxNav } from '@/hooks/useComboboxNav'
 import { useProductForm, type ProductFormBase } from '@/hooks/useProductForm'
 import { useCurrency } from '@/lib/context/CurrencyContext'
-import { getCurrencySymbol, toTitleCase } from '@/lib/format'
+import { getCurrencySymbol, normalizeName } from '@/lib/format'
 import CategoryIconPreview from '@/components/inventory/CategoryIconPreview'
 import PriceOverrideIndicator from '@/components/inventory/PriceOverrideIndicator'
 import FloatingDropdown from '@/components/ui/FloatingDropdown'
@@ -276,7 +276,7 @@ export default function EditProductModal({
 
     onSaved(
       {
-        name: toTitleCase(form.name.trim()),
+        name: normalizeName(form.name.trim()),
         price: parsedPrice,
         cost: parsedCost || 0,
         stock: Math.trunc(Number(form.stock) || 0),
@@ -342,7 +342,7 @@ export default function EditProductModal({
     // variantes (la data real vive en product_variants) y no deben generar audit
     // events ruido cuando el usuario edita solo una variante.
     const parentChanges: Partial<InventoryProduct> = {}
-    const newName = toTitleCase(form.name.trim())
+    const newName = normalizeName(form.name.trim())
     if (newName !== product.name) parentChanges.name = newName
     const newBrandId = form.brand_id || null
     if (newBrandId !== (product.brand_id ?? null)) parentChanges.brand_id = newBrandId
