@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { GridFour, ListBullets, X, Plus, FadersHorizontal as FilterIcon, MagnifyingGlass, Tag, ArrowLineDown } from '@phosphor-icons/react/dist/ssr'
+import { GridFour, ListBullets, X, Plus, FadersHorizontal as FilterIcon, MagnifyingGlass, Tag, ArrowLineDown, Package } from '@phosphor-icons/react/dist/ssr'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -946,8 +946,18 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
 
       <div ref={scrollContainerRef} className="flex-1 overflow-y-auto p-5">
         {filtered.length === 0 ? (
-          <div className="surface-card p-12 text-center text-hint">
-            Sin resultados. Prueba ajustando los filtros.
+          <div className="surface-card p-12 flex flex-col items-center justify-center text-center gap-2">
+            <span className="flex items-center justify-center w-9 h-9 rounded-full bg-muted text-hint">
+              {products.length === 0 ? <Package size={18} /> : <MagnifyingGlass size={18} />}
+            </span>
+            <p className="text-sm font-medium text-heading">
+              {products.length === 0 ? 'Todavía no hay productos' : 'Sin resultados'}
+            </p>
+            <p className="text-xs text-hint">
+              {products.length === 0
+                ? 'Cargá tu primer producto para empezar a vender y controlar el stock.'
+                : 'Probá ajustando la búsqueda o los filtros.'}
+            </p>
           </div>
         ) : (
           <>

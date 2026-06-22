@@ -1,7 +1,7 @@
 'use client'
 
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
-import { CaretRight, DownloadSimple, Plus, MagnifyingGlass, X } from '@phosphor-icons/react/dist/ssr'
+import { CaretRight, DownloadSimple, Plus, MagnifyingGlass, X, Tag, Package } from '@phosphor-icons/react/dist/ssr'
 import PageHeader from '@/components/shared/PageHeader'
 import { Button } from '@/components/ui/button'
 import {
@@ -336,8 +336,12 @@ export default function PriceListsPanel({
 
       <div className="flex-1 overflow-y-auto p-5">
         {!activeList ? (
-          <div className="surface-card p-12 text-center text-hint">
-            Selecciona una lista de precios para ver los productos.
+          <div className="surface-card p-12 flex flex-col items-center justify-center text-center gap-2">
+            <span className="flex items-center justify-center w-9 h-9 rounded-full bg-muted text-hint">
+              <Tag size={18} />
+            </span>
+            <p className="text-sm font-medium text-heading">Elegí una lista de precios</p>
+            <p className="text-xs text-hint">Seleccioná una lista de arriba para ver y ajustar los precios de tus productos.</p>
           </div>
         ) : (
           <div className="surface-card overflow-hidden p-0">
@@ -563,8 +567,14 @@ function GroupedPriceRowsTable({
         <TableBody>
           {groupedRows.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={5} className="h-28 text-center text-sm text-hint">
-                No hay productos activos para calcular precios.
+              <TableCell colSpan={5} className="py-12">
+                <div className="flex flex-col items-center justify-center text-center gap-2">
+                  <span className="flex items-center justify-center w-9 h-9 rounded-full bg-muted text-hint">
+                    <Package size={18} />
+                  </span>
+                  <p className="text-sm font-medium text-heading">Sin productos para calcular</p>
+                  <p className="text-xs text-hint">No hay productos activos para esta lista. Probá con otra búsqueda o cargá productos en Inventario.</p>
+                </div>
               </TableCell>
             </TableRow>
           ) : (
