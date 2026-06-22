@@ -18,21 +18,24 @@ export default async function CashSessionsPage() {
     redirect('/pos')
   }
 
-  const [activeSessionResult, sessionsResult] = await Promise.all([
+  const [activeSessionResult, sessionsResult, businessResult] = await Promise.all([
     supabase.rpc('get_active_session'),
     supabase.rpc('get_sessions_list', { p_limit: 20, p_offset: 0 }),
+    supabase.from('businesses').select('name').eq('id', businessId).single(),
   ])
 
   const activeSession = activeSessionResult.data as ActiveSessionRow | null
   const sessionsData = (sessionsResult.data as { success: boolean; data: SessionRow[]; total: number } | null)
   const sessions = sessionsData?.data ?? []
   const total = sessionsData?.total ?? 0
+  const businessName = businessResult.data?.name ?? ''
 
   const operatorId = activeOperator?.role === 'owner' || !activeOperator ? null : activeOperator.profile_id
 
   return (
     <CashSessionsView
       businessId={businessId}
+      businessName={businessName}
       activeSession={activeSession}
       initialSessions={sessions}
       initialTotal={total}

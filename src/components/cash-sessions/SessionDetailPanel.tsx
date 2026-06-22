@@ -1,8 +1,9 @@
 'use client'
 
 import { useEffect, useMemo, useState, useCallback } from 'react'
-import { X } from '@phosphor-icons/react/dist/ssr'
+import { Printer, X } from '@phosphor-icons/react/dist/ssr'
 import { createClient } from '@/lib/supabase/client'
+import CashCloseDocument from '@/components/cash-sessions/CashCloseDocument'
 import { useFormatMoney } from '@/lib/context/CurrencyContext'
 import { PAYMENT_METHOD_LABELS } from '@/lib/constants/domain'
 import type { PaymentMethod } from '@/lib/constants/domain'
@@ -52,6 +53,7 @@ interface SessionDetail {
 interface Props {
   session: SessionRow
   operatorId: string | null
+  businessName: string
   onClose: () => void
   onCloseSession?: () => void
 }
@@ -77,7 +79,7 @@ function DiffLabel({ diff }: { diff: number | null }) {
   return <span className="text-xs font-medium text-destructive">faltante</span>
 }
 
-export default function SessionDetailPanel({ session, operatorId, onClose, onCloseSession }: Props) {
+export default function SessionDetailPanel({ session, operatorId, businessName, onClose, onCloseSession }: Props) {
   const formatMoney = useFormatMoney()
   const supabase = useMemo(() => createClient(), [])
   const { visible, closePanel } = useSlidePanelAnimation({ onClose })
@@ -454,7 +456,21 @@ export default function SessionDetailPanel({ session, operatorId, onClose, onClo
             </Button>
           </div>
         )}
+
+        {detail?.status === 'closed' && (
+          <div className="border-t border-border p-4 shrink-0">
+            <Button variant="outline" className="w-full gap-2" onClick={() => window.print()}>
+              <Printer size={16} />
+              Imprimir cierre
+            </Button>
+          </div>
+        )}
       </div>
+
+      {/* Comprobante de cierre imprimible (oculto en pantalla; solo @media print). */}
+      {detail?.status === 'closed' && (
+        <CashCloseDocument businessName={businessName} detail={detail} />
+      )}
     </div>
   )
 }

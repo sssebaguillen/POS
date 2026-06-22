@@ -13,6 +13,7 @@ import type { ActiveSessionRow, SessionRow } from '@/app/(app)/cash-sessions/pag
 
 interface Props {
   businessId: string
+  businessName: string
   activeSession: ActiveSessionRow | null
   initialSessions: SessionRow[]
   initialTotal: number
@@ -42,7 +43,7 @@ function DiffBadge({ diff, formatMoney }: { diff: number | null; formatMoney: (n
   return <span className="text-xs font-medium text-destructive">{formatMoney(diff)}</span>
 }
 
-export default function CashSessionsView({ businessId, activeSession: initialActiveSession, initialSessions, initialTotal, operatorId }: Props) {
+export default function CashSessionsView({ businessId, businessName, activeSession: initialActiveSession, initialSessions, initialTotal, operatorId }: Props) {
   const formatMoney = useFormatMoney()
   const supabase = useMemo(() => createClient(), [])
 
@@ -57,7 +58,7 @@ export default function CashSessionsView({ businessId, activeSession: initialAct
   const [showCloseModal, setShowCloseModal] = useState(false)
   const [selectedSession, setSelectedSession] = useState<SessionRow | null>(null)
 
-  const refetchSessions = useCallback(async () => {
+  const refetchSessions = useCallback(async (): Promise<SessionRow[]> => {
     const [activeResult, listResult] = await Promise.all([
       supabase.rpc('get_active_session'),
       supabase.rpc('get_sessions_list', { p_limit: PAGE_SIZE, p_offset: 0 }),
@@ -65,10 +66,13 @@ export default function CashSessionsView({ businessId, activeSession: initialAct
     if (activeResult.data !== undefined) setActiveSession(activeResult.data as ActiveSessionRow | null)
     const listData = listResult.data as { success: boolean; data: SessionRow[]; total: number } | null
     if (listData?.success) {
-      setSessions(listData.data ?? [])
+      const rows = listData.data ?? []
+      setSessions(rows)
       setTotal(listData.total)
       setOffset(0)
+      return rows
     }
+    return []
   }, [supabase])
 
   async function loadMore() {
@@ -96,10 +100,15 @@ export default function CashSessionsView({ businessId, activeSession: initialAct
   }
 
   async function handleClosed() {
+    // Capturamos el id de la sesión que se está cerrando ANTES de limpiar el estado,
+    // para reabrir su detalle (con el botón "Imprimir cierre") apenas se cierra.
+    // Esto vive SOLO acá (/cash-sessions); el cierre desde /pos no auto-abre nada.
+    const closedId = activeSession?.id ?? null
     setShowCloseModal(false)
-    setSelectedSession(null)
     setActiveSession(null)
-    await refetchSessions()
+    const rows = await refetchSessions()
+    const closedRow = closedId ? rows.find(s => s.id === closedId) ?? null : null
+    setSelectedSession(closedRow)
   }
 
   function openActiveSessionDetail() {
@@ -259,6 +268,7 @@ export default function CashSessionsView({ businessId, activeSession: initialAct
         <SessionDetailPanel
           session={selectedSession}
           operatorId={operatorId}
+          businessName={businessName}
           onClose={() => setSelectedSession(null)}
           onCloseSession={selectedSession.status === 'open' ? () => {
             setSelectedSession(null)
