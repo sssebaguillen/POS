@@ -2,7 +2,7 @@
 
 import { useCallback, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { SealPercent, DotsThreeVertical, Plus } from '@phosphor-icons/react/dist/ssr'
+import { SealPercent, DotsThreeVertical, Plus, MagnifyingGlass } from '@phosphor-icons/react/dist/ssr'
 import PageHeader from '@/components/shared/PageHeader'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -235,19 +235,21 @@ export default function PromotionsView({
         </div>
 
         {filtered.length === 0 ? (
-          <div className="surface-card p-12 text-center text-hint select-none">
-            <SealPercent size={40} className="mx-auto mb-3 opacity-40" />
+          <div className="surface-card p-12 flex flex-col items-center justify-center text-center gap-2 select-none">
+            <span className="flex items-center justify-center w-9 h-9 rounded-full bg-muted text-hint">
+              {promotions.length === 0 ? <SealPercent size={18} /> : <MagnifyingGlass size={18} />}
+            </span>
             {promotions.length === 0 ? (
               <>
-                <p className="text-sm font-medium text-body">Aún no hay promociones</p>
-                <p className="text-xs mt-1">
+                <p className="text-sm font-medium text-heading">Aún no hay promociones</p>
+                <p className="text-xs text-hint">
                   Crea ofertas como &quot;20% off&quot;, &quot;2x1&quot; o un precio especial. Aplican en el punto de venta
                   y se destacan en tu catálogo online.
                 </p>
                 {!readOnly && (
                   <Button
                     onClick={() => { setEditing(null); setModalOpen(true) }}
-                    className="mt-4 h-9 px-4 rounded-lg text-sm font-semibold bg-primary hover:bg-primary/90 text-primary-foreground"
+                    className="mt-2 h-9 px-4 rounded-lg text-sm font-semibold bg-primary hover:bg-primary/90 text-primary-foreground"
                   >
                     <Plus size={16} className="mr-1.5" />
                     Nueva promoción
@@ -255,11 +257,14 @@ export default function PromotionsView({
                 )}
               </>
             ) : (
-              <p className="text-sm">
-                {search.trim()
-                  ? `Sin resultados para «${search.trim()}»`
-                  : 'No hay promociones con este estado'}
-              </p>
+              <>
+                <p className="text-sm font-medium text-heading">Sin resultados</p>
+                <p className="text-xs text-hint">
+                  {search.trim()
+                    ? `No hay promociones para «${search.trim()}».`
+                    : 'No hay promociones con este estado.'}
+                </p>
+              </>
             )}
           </div>
         ) : (
