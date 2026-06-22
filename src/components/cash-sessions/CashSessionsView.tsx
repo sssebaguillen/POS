@@ -51,6 +51,7 @@ export default function CashSessionsView({ businessId, activeSession: initialAct
   const [total, setTotal] = useState(initialTotal)
   const [offset, setOffset] = useState(0)
   const [loadingMore, setLoadingMore] = useState(false)
+  const [loadMoreError, setLoadMoreError] = useState(false)
 
   const [showOpenModal, setShowOpenModal] = useState(false)
   const [showCloseModal, setShowCloseModal] = useState(false)
@@ -73,12 +74,19 @@ export default function CashSessionsView({ businessId, activeSession: initialAct
   async function loadMore() {
     const newOffset = offset + PAGE_SIZE
     setLoadingMore(true)
-    const { data } = await supabase.rpc('get_sessions_list', { p_limit: PAGE_SIZE, p_offset: newOffset })
+    setLoadMoreError(false)
+    const { data, error } = await supabase.rpc('get_sessions_list', { p_limit: PAGE_SIZE, p_offset: newOffset })
     const result = data as { success: boolean; data: SessionRow[]; total: number } | null
-    if (result?.success) {
-      setSessions(prev => [...prev, ...(result.data ?? [])])
-      setOffset(newOffset)
+    if (error || !result?.success) {
+      // Sin esto, un fallo de transporte dejaba al usuario creyendo que llegó al
+      // final del historial (perdiendo filas del trail de auditoría en silencio).
+      console.error('get_sessions_list (loadMore) failed', error)
+      setLoadMoreError(true)
+      setLoadingMore(false)
+      return
     }
+    setSessions(prev => [...prev, ...(result.data ?? [])])
+    setOffset(newOffset)
     setLoadingMore(false)
   }
 
@@ -220,7 +228,7 @@ export default function CashSessionsView({ businessId, activeSession: initialAct
                 </div>
 
                 {sessions.length < total && (
-                  <div className="border-t border-edge/60 px-4 py-3 text-center">
+                  <div className="border-t border-edge/60 px-4 py-3 text-center space-y-1.5">
                     <Button
                       variant="ghost"
                       size="sm"
@@ -229,6 +237,9 @@ export default function CashSessionsView({ businessId, activeSession: initialAct
                     >
                       {loadingMore ? 'Cargando…' : `Ver más (${total - sessions.length} restantes)`}
                     </Button>
+                    {loadMoreError && (
+                      <p className="text-xs text-destructive">No pudimos cargar más sesiones. Intenta de nuevo.</p>
+                    )}
                   </div>
                 )}
               </div>

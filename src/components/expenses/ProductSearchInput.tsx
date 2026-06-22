@@ -35,6 +35,7 @@ export default function ProductSearchInput({
   const [results, setResults] = useState<ProductResult[]>([])
   const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState(false)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
 
@@ -46,16 +47,22 @@ export default function ProductSearchInput({
         return
       }
       setLoading(true)
-      const { data } = await supabaseClient.rpc('search_expense_products', {
+      setError(false)
+      const { data, error: rpcError } = await supabaseClient.rpc('search_expense_products', {
         p_business_id: businessId,
         p_term: term,
         p_limit: 20,
       })
       setLoading(false)
-      if (data) {
-        setResults(data as ProductResult[])
+      if (rpcError) {
+        console.error('search_expense_products failed', rpcError)
+        setResults([])
+        setError(true)
         setOpen(true)
+        return
       }
+      setResults((data ?? []) as ProductResult[])
+      setOpen(true)
     },
     [supabaseClient, businessId]
   )
@@ -65,6 +72,7 @@ export default function ProductSearchInput({
     if (debounceRef.current) clearTimeout(debounceRef.current)
     if (!value.trim()) {
       setResults([])
+      setError(false)
       setOpen(false)
       return
     }
@@ -120,11 +128,15 @@ export default function ProductSearchInput({
             <p className="text-xs text-hint px-3 py-2">Buscando...</p>
           )}
 
-          {!loading && results.length === 0 && (
+          {!loading && error && (
+            <p className="text-sm text-destructive px-3 py-2">No pudimos buscar productos. Intenta de nuevo.</p>
+          )}
+
+          {!loading && !error && results.length === 0 && (
             <p className="text-sm text-hint px-3 py-2">Sin resultados</p>
           )}
 
-          {!loading && results.length > 0 && (
+          {!loading && !error && results.length > 0 && (
             <div className="max-h-56 overflow-y-auto py-1">
               {results.map(product => (
                 <button
