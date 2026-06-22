@@ -109,7 +109,7 @@ export default function OverstockLens({ rows, summary, page: initialPage, pageSi
                       <Package size={18} />
                     </span>
                     <p className="text-sm font-medium text-heading">Sin sobrestock</p>
-                    <p className="text-xs text-hint">Comprás ajustado al ritmo de venta — no hay productos con stock de sobra.</p>
+                    <p className="text-xs text-hint">Compras ajustado al ritmo de venta — no hay productos con stock de sobra.</p>
                   </div>
                 </td>
               </tr>
