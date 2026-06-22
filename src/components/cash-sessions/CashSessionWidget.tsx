@@ -111,30 +111,27 @@ export default function CashSessionWidget({
   // so only the top — with the info — shows. Square bottom (rounded-t-2xl) hides
   // cleanly behind the button.
   const className = cn(
-    'group relative z-0 -mb-4 flex w-full items-center gap-2.5 rounded-t-2xl bg-accent px-2.5 pt-2 pb-4 transition-[opacity,transform] duration-200 ease-[var(--ease-out)]',
+    'group relative z-0 -mb-4 flex w-full items-center gap-2 rounded-t-2xl bg-accent px-2.5 pt-1.5 pb-4 transition-[opacity,transform] duration-200 ease-[var(--ease-out)]',
     shown ? 'translate-y-0 opacity-100' : 'translate-y-1 opacity-0'
   )
-  // Hero is the number (money, or elapsed when the amount is gated); the label
-  // recedes; colour lives only in the icon + dot.
+  // Una sola línea para minimizar el alto: label en muted (trunca) y, si se puede
+  // ver el monto, el número en negrita a la derecha (shrink-0, nunca se trunca).
+  // Colour lives only in the icon + dot.
   const inner = (
     <>
-      <span className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-card text-emerald-600 dark:text-emerald-400">
-        <Vault size={16} />
+      <span className="relative flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-card text-emerald-600 dark:text-emerald-400">
+        <Vault size={14} />
         {cornerDot}
       </span>
-      <span className="min-w-0 flex-1">
-        <span className="block truncate text-[11px] text-muted-foreground">
-          Caja abierta{canSeeAmount ? ` · ${elapsedLabel}` : ''}
-        </span>
-        {canSeeAmount ? (
-          <PopNumber value={moneyLabel} className="block text-base font-bold leading-tight text-heading tabular-nums" />
-        ) : (
-          <span className="block text-base font-bold leading-tight text-heading tabular-nums">{elapsedLabel}</span>
-        )}
+      <span className="min-w-0 flex-1 truncate text-[11px] text-muted-foreground">
+        Caja abierta · {elapsedLabel}
       </span>
+      {canSeeAmount && (
+        <PopNumber value={moneyLabel} className="shrink-0 text-sm font-bold leading-none text-heading tabular-nums" />
+      )}
       {isLink && (
-        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-edge bg-card text-hint transition-colors duration-150 group-hover:bg-hover-bg group-hover:text-body">
-          <CaretRight size={15} />
+        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-edge bg-card text-hint transition-colors duration-150 group-hover:bg-hover-bg group-hover:text-body">
+          <CaretRight size={14} />
         </span>
       )}
     </>
