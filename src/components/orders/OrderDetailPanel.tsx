@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { X, Phone, MapPin, ClipboardText, Bicycle, ShoppingBag, Image as ImageIcon } from '@phosphor-icons/react/dist/ssr'
+import { X, Phone, MapPin, ClipboardText, Bicycle, ShoppingBag, Image as ImageIcon, CircleNotch } from '@phosphor-icons/react/dist/ssr'
 import Image from 'next/image'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase/client'
@@ -169,7 +169,12 @@ export default function OrderDetailPanel({ orderId, operatorId, onClose, onStatu
         </div>
 
         <div className="flex-1 overflow-y-auto px-5 py-5 space-y-5">
-          {loading && <p className="text-sm text-muted-foreground">Cargando pedido…</p>}
+          {loading && (
+            <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
+              <CircleNotch size={14} className="animate-spin" />
+              Cargando pedido…
+            </p>
+          )}
           {error && (
             <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2.5 space-y-2">
               <p className="text-xs text-destructive">{error}</p>

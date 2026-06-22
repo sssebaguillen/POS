@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Plus } from '@phosphor-icons/react/dist/ssr'
+import { Plus, UsersThree, MagnifyingGlass } from '@phosphor-icons/react/dist/ssr'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -185,14 +185,20 @@ export default function CustomerView({ businessId, operatorId, initialCustomers 
       <div className="flex-1 overflow-y-auto">
         <div className="px-5 pt-4 pb-6">
           {customers.length === 0 ? (
-            <div className="surface-card px-6 py-12 flex flex-col items-center gap-3">
-              <p className="text-body font-medium">Todavía no hay clientes.</p>
-              <p className="text-sm text-hint">Agrega el primero con el botón de arriba.</p>
+            <div className="surface-card px-6 py-12 flex flex-col items-center justify-center text-center gap-2">
+              <span className="flex items-center justify-center w-9 h-9 rounded-full bg-muted text-hint">
+                <UsersThree size={18} />
+              </span>
+              <p className="text-sm font-medium text-heading">Todavía no hay clientes</p>
+              <p className="text-xs text-hint">Agregá el primero con el botón de arriba para llevar su cuenta corriente.</p>
             </div>
           ) : filteredCustomers.length === 0 ? (
-            <div className="surface-card px-6 py-12 flex flex-col items-center gap-3">
-              <p className="text-body font-medium">Sin resultados.</p>
-              <p className="text-sm text-hint">Prueba con otra búsqueda o filtro.</p>
+            <div className="surface-card px-6 py-12 flex flex-col items-center justify-center text-center gap-2">
+              <span className="flex items-center justify-center w-9 h-9 rounded-full bg-muted text-hint">
+                <MagnifyingGlass size={18} />
+              </span>
+              <p className="text-sm font-medium text-heading">Sin resultados</p>
+              <p className="text-xs text-hint">Probá con otra búsqueda o filtro.</p>
             </div>
           ) : (
             <div className="surface-card overflow-x-auto">

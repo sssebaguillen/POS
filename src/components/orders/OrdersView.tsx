@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { ArrowsClockwise } from '@phosphor-icons/react/dist/ssr'
+import { ArrowsClockwise, ShoppingBag, ClipboardText } from '@phosphor-icons/react/dist/ssr'
 import { createClient } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
 import PageHeader from '@/components/shared/PageHeader'
@@ -273,16 +273,32 @@ export default function OrdersView({ initialOrders, operatorId }: Props) {
             </div>
 
             {filtered.length === 0 ? (
-              <div className="p-8 text-center text-sm text-hint">
-                {orders.length === 0
-                  ? 'Cuando un cliente envíe un pedido desde tu catálogo online, aparecerá acá.'
-                  : groupFilter === 'pendientes'
-                    ? 'Sin pedidos pendientes. Todo al día.'
-                    : groupFilter === 'en_curso'
-                      ? 'No hay pedidos en curso en este momento.'
-                      : search
-                        ? 'No hay pedidos que coincidan con la búsqueda.'
-                        : 'No hay pedidos cerrados en los últimos 30 días.'}
+              <div className="p-10 flex flex-col items-center justify-center text-center gap-2">
+                <span className="flex items-center justify-center w-9 h-9 rounded-full bg-muted text-hint">
+                  {orders.length === 0 ? <ShoppingBag size={18} /> : <ClipboardText size={18} />}
+                </span>
+                <p className="text-sm font-medium text-heading">
+                  {orders.length === 0
+                    ? 'Todavía no hay pedidos'
+                    : groupFilter === 'pendientes'
+                      ? 'Sin pedidos pendientes'
+                      : groupFilter === 'en_curso'
+                        ? 'Nada en curso'
+                        : search
+                          ? 'Sin coincidencias'
+                          : 'Sin pedidos cerrados'}
+                </p>
+                <p className="text-xs text-hint max-w-xs">
+                  {orders.length === 0
+                    ? 'Cuando un cliente envíe un pedido desde tu catálogo online, va a aparecer acá.'
+                    : groupFilter === 'pendientes'
+                      ? 'Todo al día — no hay pedidos esperando.'
+                      : groupFilter === 'en_curso'
+                        ? 'No hay pedidos en preparación o en camino en este momento.'
+                        : search
+                          ? 'No hay pedidos que coincidan con la búsqueda.'
+                          : 'No hay pedidos cerrados en los últimos 30 días.'}
+                </p>
               </div>
             ) : (
               <ul className="p-3 space-y-1.5">
