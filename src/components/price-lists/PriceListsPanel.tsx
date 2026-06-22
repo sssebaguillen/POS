@@ -277,7 +277,7 @@ export default function PriceListsPanel({
         </p>
         {lists.length === 0 ? (
           <div className="rounded-xl border border-dashed border-edge bg-surface-alt px-4 py-3 text-sm text-hint">
-            No hay listas de precios creadas. Creá una lista (ej. mayorista) para aplicar otro margen sin cambiar el precio base.
+            No hay listas de precios creadas. Crea una lista (ej. mayorista) para aplicar otro margen sin cambiar el precio base.
           </div>
         ) : (
           <div className="pill-tabs overflow-x-auto flex-nowrap pb-1">
@@ -340,8 +340,8 @@ export default function PriceListsPanel({
             <span className="flex items-center justify-center w-9 h-9 rounded-full bg-muted text-hint">
               <Tag size={18} />
             </span>
-            <p className="text-sm font-medium text-heading">Elegí una lista de precios</p>
-            <p className="text-xs text-hint">Seleccioná una lista de arriba para ver y ajustar los precios de tus productos.</p>
+            <p className="text-sm font-medium text-heading">Elige una lista de precios</p>
+            <p className="text-xs text-hint">Selecciona una lista de arriba para ver y ajustar los precios de tus productos.</p>
           </div>
         ) : (
           <div className="surface-card overflow-hidden p-0">
@@ -573,7 +573,7 @@ function GroupedPriceRowsTable({
                     <Package size={18} />
                   </span>
                   <p className="text-sm font-medium text-heading">Sin productos para calcular</p>
-                  <p className="text-xs text-hint">No hay productos activos para esta lista. Probá con otra búsqueda o cargá productos en Inventario.</p>
+                  <p className="text-xs text-hint">No hay productos activos para esta lista. Prueba con otra búsqueda o carga productos en Inventario.</p>
                 </div>
               </TableCell>
             </TableRow>

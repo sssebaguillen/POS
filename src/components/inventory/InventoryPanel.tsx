@@ -955,8 +955,8 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
             </p>
             <p className="text-xs text-hint">
               {products.length === 0
-                ? 'Cargá tu primer producto para empezar a vender y controlar el stock.'
-                : 'Probá ajustando la búsqueda o los filtros.'}
+                ? 'Carga tu primer producto para empezar a vender y controlar el stock.'
+                : 'Prueba ajustando la búsqueda o los filtros.'}
             </p>
           </div>
         ) : (
