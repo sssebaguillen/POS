@@ -3664,25 +3664,37 @@ DECLARE
 BEGIN
   PERFORM public.assert_tenant(p_business_id);
 
+  -- Stock efectivo variant-aware: si el producto tiene variantes activas, su
+  -- stock real es la suma del stock de esas variantes; si no, products.stock.
+  -- Mismo criterio que get_overstock / get_replenishment_list.
+  WITH variant_agg AS (
+    SELECT v.product_id, COALESCE(SUM(v.stock), 0) AS v_stock
+    FROM product_variants v
+    WHERE v.business_id = p_business_id
+      AND v.is_active = true
+    GROUP BY v.product_id
+  ),
+  flagged AS (
+    SELECT
+      p.id, p.name,
+      CASE WHEN va.product_id IS NOT NULL THEN va.v_stock ELSE p.stock END AS effective_stock,
+      COALESCE(p.min_stock, 0) AS min_stock
+    FROM products p
+    LEFT JOIN variant_agg va ON va.product_id = p.id
+    WHERE p.business_id = p_business_id
+      AND p.is_active = true
+      AND (CASE WHEN va.product_id IS NOT NULL THEN va.v_stock ELSE p.stock END) <= COALESCE(p.min_stock, 0)
+  )
   SELECT
-    COUNT(*) FILTER (WHERE stock <= 0),
-    COUNT(*) FILTER (WHERE stock > 0)
-  INTO v_out_count, v_low_count
-  FROM products
-  WHERE business_id = p_business_id
-    AND is_active = true
-    AND stock <= COALESCE(min_stock, 0);
-
-  SELECT COALESCE(
-    jsonb_agg(
-      jsonb_build_object('id', id, 'name', name, 'stock', stock, 'min_stock', COALESCE(min_stock, 0))
-      ORDER BY (stock <= 0) DESC, stock ASC, name ASC
-    ), '[]'::jsonb)
-  INTO v_products
-  FROM products
-  WHERE business_id = p_business_id
-    AND is_active = true
-    AND stock <= COALESCE(min_stock, 0);
+    COUNT(*) FILTER (WHERE effective_stock <= 0),
+    COUNT(*) FILTER (WHERE effective_stock > 0),
+    COALESCE(
+      jsonb_agg(
+        jsonb_build_object('id', id, 'name', name, 'stock', effective_stock, 'min_stock', min_stock)
+        ORDER BY (effective_stock <= 0) DESC, effective_stock ASC, name ASC
+      ), '[]'::jsonb)
+  INTO v_out_count, v_low_count, v_products
+  FROM flagged;
 
   RETURN jsonb_build_object(
     'out_count', v_out_count,
