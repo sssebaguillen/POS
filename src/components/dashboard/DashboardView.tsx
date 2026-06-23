@@ -8,6 +8,7 @@ import KPICard from '@/components/shared/KPICard'
 import Link from 'next/link'
 import SalesHistoryTable from '@/components/dashboard/SalesHistoryTable'
 import BalanceWidget from '@/components/dashboard/BalanceWidget'
+import ReceivableWidget from '@/components/dashboard/ReceivableWidget'
 import RecentActivityWidget from '@/components/dashboard/RecentActivityWidget'
 import InsightSurfaceAnchor from '@/components/insights/InsightSurfaceAnchor'
 import { usePillIndicator } from '@/hooks/usePillIndicator'
@@ -87,6 +88,7 @@ interface LowStockSummary {
 interface Props {
   operators: SalesHistoryOperator[]
   lowStockSummary: LowStockSummary
+  accountsReceivable: { total: number; debtors: number }
   businessId: string | null
   businessName: string
   timezone: string
@@ -126,6 +128,7 @@ function computeTrend(
 export default function DashboardView({
   operators,
   lowStockSummary,
+  accountsReceivable,
   businessId,
   businessName,
   timezone,
@@ -439,8 +442,14 @@ export default function DashboardView({
                     byCategory={balance.by_category}
                   />
                 </div>
-                <div className="xl:col-span-1 h-full">
-                  <RecentActivityWidget entries={recentActivity} />
+                <div className="xl:col-span-1 h-full flex flex-col gap-4">
+                  <ReceivableWidget
+                    total={accountsReceivable.total}
+                    debtors={accountsReceivable.debtors}
+                  />
+                  <div className="flex-1 min-h-0">
+                    <RecentActivityWidget entries={recentActivity} />
+                  </div>
                 </div>
               </div>
 

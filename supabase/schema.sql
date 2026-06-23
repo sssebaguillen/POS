@@ -2682,6 +2682,35 @@ ALTER FUNCTION "public"."delete_sale"("p_sale_id" "uuid", "p_business_id" "uuid"
 -- después del CREATE TABLE promotions — su tipo de retorno exige la tabla creada.
 
 
+CREATE OR REPLACE FUNCTION "public"."get_accounts_receivable_summary"("p_business_id" "uuid") RETURNS "jsonb"
+    LANGUAGE "plpgsql" STABLE SECURITY DEFINER
+    SET "search_path" TO 'public', 'extensions'
+    AS $$
+DECLARE
+  v_total   numeric;
+  v_debtors integer;
+BEGIN
+  IF auth.uid() IS NOT NULL THEN PERFORM public.assert_tenant(p_business_id); END IF;
+
+  SELECT
+    COALESCE(SUM(credit_balance) FILTER (WHERE credit_balance > 0), 0),
+    COUNT(*) FILTER (WHERE credit_balance > 0)
+  INTO v_total, v_debtors
+  FROM public.customers
+  WHERE business_id = p_business_id
+    AND deleted_at IS NULL;
+
+  RETURN jsonb_build_object(
+    'total_receivable', v_total,
+    'debtors_count', v_debtors
+  );
+END;
+$$;
+
+
+ALTER FUNCTION "public"."get_accounts_receivable_summary"("p_business_id" "uuid") OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."get_active_session"() RETURNS "jsonb"
     LANGUAGE "plpgsql" STABLE SECURITY DEFINER
     SET "search_path" TO 'public', 'extensions'
@@ -13966,6 +13995,12 @@ REVOKE ALL ON FUNCTION "public"."get_replenishment_list"("p_business_id" "uuid",
 REVOKE ALL ON FUNCTION "public"."get_replenishment_list"("p_business_id" "uuid", "p_window_days" integer, "p_limit" integer, "p_offset" integer) FROM "anon";
 GRANT ALL ON FUNCTION "public"."get_replenishment_list"("p_business_id" "uuid", "p_window_days" integer, "p_limit" integer, "p_offset" integer) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."get_replenishment_list"("p_business_id" "uuid", "p_window_days" integer, "p_limit" integer, "p_offset" integer) TO "service_role";
+
+
+REVOKE ALL ON FUNCTION "public"."get_accounts_receivable_summary"("p_business_id" "uuid") FROM PUBLIC;
+REVOKE ALL ON FUNCTION "public"."get_accounts_receivable_summary"("p_business_id" "uuid") FROM "anon";
+GRANT ALL ON FUNCTION "public"."get_accounts_receivable_summary"("p_business_id" "uuid") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."get_accounts_receivable_summary"("p_business_id" "uuid") TO "service_role";
 
 
 
