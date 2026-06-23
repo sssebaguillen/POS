@@ -35,6 +35,7 @@ export default async function DashboardPage() {
     { data: profile, error: profileError },
     { data: recentActivityRaw, error: recentActivityError },
     { data: operatorsData, error: operatorsError },
+    { data: receivableRaw, error: receivableError },
   ] = await Promise.all([
     supabase.rpc('get_stats_kpis', { p_business_id: businessId, p_from: hoy.from, p_to: hoy.to }),
     supabase.rpc('get_business_balance', { p_business_id: businessId, p_from: hoy.from, p_to: hoy.to }),
@@ -60,6 +61,7 @@ export default async function DashboardPage() {
       .select('id, name')
       .eq('business_id', businessId)
       .order('name'),
+    supabase.rpc('get_accounts_receivable_summary', { p_business_id: businessId }),
   ])
 
   const dashboardError =
@@ -70,7 +72,8 @@ export default async function DashboardPage() {
     businessError ||
     profileError ||
     recentActivityError ||
-    operatorsError
+    operatorsError ||
+    receivableError
   if (dashboardError) throw new Error(`dashboard: ${dashboardError.message}`)
 
   const recentActivity =
@@ -84,6 +87,15 @@ export default async function DashboardPage() {
     low_count: number
     products: { id: string; name: string; stock: number; min_stock: number }[]
   } | null) ?? { out_count: 0, low_count: 0, products: [] }
+
+  const receivableRow = (receivableRaw as unknown as {
+    total_receivable: number
+    debtors_count: number
+  } | null) ?? { total_receivable: 0, debtors_count: 0 }
+  const accountsReceivable = {
+    total: Number(receivableRow.total_receivable) || 0,
+    debtors: Number(receivableRow.debtors_count) || 0,
+  }
 
   const onboarding = parseOnboardingState(profile?.onboarding_state)
   const isOwnerProfile = profile?.role === 'owner'
@@ -135,6 +147,7 @@ export default async function DashboardPage() {
     <DashboardView
       operators={operators}
       lowStockSummary={lowStockSummary}
+      accountsReceivable={accountsReceivable}
       businessId={businessId}
       businessName={business?.name ?? ''}
       timezone={timezone}
