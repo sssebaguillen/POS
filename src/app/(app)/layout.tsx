@@ -14,6 +14,7 @@ import { parseOnboardingState } from '@/components/onboarding/onboarding-types'
 import OnboardingTourGate from '@/components/onboarding/OnboardingTourGate'
 import NewOrderNotifier from '@/components/orders/NewOrderNotifier'
 import NewInsightNotifier from '@/components/insights/NewInsightNotifier'
+import OfflineBanner from '@/components/shared/OfflineBanner'
 
 function luminance(hex: string): number {
   const r = parseInt(hex.slice(1, 3), 16) / 255
@@ -186,6 +187,7 @@ export default async function AppLayout({
             {children}
             <NewOrderNotifier />
             <NewInsightNotifier />
+            <OfflineBanner />
           </CurrencyProvider>
         </AppShell>
       </QueryProvider>
