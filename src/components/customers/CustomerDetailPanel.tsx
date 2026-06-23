@@ -2,15 +2,28 @@
 
 import { useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { X, Phone, EnvelopeSimple, IdentificationCard, CaretDown, CircleNotch, Receipt } from '@phosphor-icons/react/dist/ssr'
+import { X, Phone, EnvelopeSimple, IdentificationCard, CaretDown, CircleNotch, Receipt, ShoppingBag } from '@phosphor-icons/react/dist/ssr'
 import { createClient } from '@/lib/supabase/client'
 import { useFormatMoney } from '@/lib/context/CurrencyContext'
 import { PAYMENT_LABELS } from '@/lib/payments'
 import { getSaleDetail } from '@/lib/api/sales'
+import { cn } from '@/lib/utils'
 import type { PaymentMethod } from '@/lib/constants/domain'
 import type { Customer } from '@/lib/types'
 
 type MovementType = 'charge' | 'payment' | 'opening'
+
+interface CustomerSale {
+  id: string
+  created_at: string
+  total: number
+  status: string
+  source: string | null
+  method: string | null
+  item_count: number
+}
+
+type FichaView = 'compras' | 'movimientos'
 
 interface AccountMovement {
   id: string
@@ -38,6 +51,13 @@ function formatTimestamp(dateStr: string): string {
 function methodLabel(method: string | null): string | null {
   if (!method) return null
   return PAYMENT_LABELS[method as PaymentMethod] ?? method
+}
+
+function segClass(active: boolean): string {
+  return cn(
+    'px-3 py-1.5 rounded-md text-sm font-medium transition-colors',
+    active ? 'bg-card text-heading shadow-sm' : 'text-hint hover:text-body',
+  )
 }
 
 // Detalle de una venta a crédito, expandido inline en la fila. Reusa la RPC
@@ -110,6 +130,7 @@ export default function CustomerDetailPanel({ customer, businessId, onClose }: P
   const supabase = useMemo(() => createClient(), [])
   const formatMoney = useFormatMoney()
   const [expandedSaleId, setExpandedSaleId] = useState<string | null>(null)
+  const [view, setView] = useState<FichaView>('compras')
 
   const { data: movements = [], isLoading, isError, refetch } = useQuery<AccountMovement[]>({
     queryKey: ['customer-account-movements', businessId, customer.id],
@@ -122,6 +143,23 @@ export default function CustomerDetailPanel({ customer, businessId, onClose }: P
         .order('created_at', { ascending: false })
       if (error) throw new Error(error.message)
       return (data ?? []) as AccountMovement[]
+    },
+  })
+
+  const {
+    data: sales = [],
+    isLoading: salesLoading,
+    isError: salesError,
+    refetch: refetchSales,
+  } = useQuery<CustomerSale[]>({
+    queryKey: ['customer-sales', businessId, customer.id],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('get_customer_sales', {
+        p_business_id: businessId,
+        p_customer_id: customer.id,
+      })
+      if (error) throw new Error(error.message)
+      return (data as unknown as { data: CustomerSale[] } | null)?.data ?? []
     },
   })
 
@@ -201,9 +239,94 @@ export default function CustomerDetailPanel({ customer, businessId, onClose }: P
             </div>
           </section>
 
-          <section className="space-y-2">
-            <h3 className="text-xs uppercase tracking-wide text-muted-foreground">Movimientos</h3>
+          {/* Compras (historial completo) vs Movimientos (cuenta corriente) */}
+          <div className="flex items-center gap-1 p-1 rounded-lg bg-muted">
+            <button type="button" onClick={() => setView('compras')} className={cn(segClass(view === 'compras'), 'flex-1')}>
+              Compras
+            </button>
+            <button type="button" onClick={() => setView('movimientos')} className={cn(segClass(view === 'movimientos'), 'flex-1')}>
+              Movimientos
+            </button>
+          </div>
 
+          {view === 'compras' && (
+            <section className="space-y-2">
+              {salesLoading && (
+                <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                  <CircleNotch size={14} className="animate-spin" />
+                  Cargando compras…
+                </p>
+              )}
+
+              {salesError && (
+                <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2.5 space-y-2">
+                  <p className="text-xs text-destructive">No se pudieron cargar las compras.</p>
+                  <button
+                    type="button"
+                    onClick={() => refetchSales()}
+                    className="text-xs text-destructive underline-offset-2 hover:underline"
+                  >
+                    Reintentar
+                  </button>
+                </div>
+              )}
+
+              {!salesLoading && !salesError && sales.length === 0 && (
+                <div className="rounded-lg border border-border/70 bg-card px-3 py-8 flex flex-col items-center justify-center text-center gap-2">
+                  <span className="flex items-center justify-center w-9 h-9 rounded-full bg-muted text-hint">
+                    <ShoppingBag size={18} />
+                  </span>
+                  <p className="text-sm font-medium text-heading">Sin compras registradas</p>
+                  <p className="text-xs text-hint">Cuando este cliente compre (al contado o a cuenta), sus compras van a aparecer acá.</p>
+                </div>
+              )}
+
+              {!salesLoading && !salesError && sales.length > 0 && (
+                <ul className="space-y-2">
+                  {sales.map(sale => {
+                    const isExpanded = expandedSaleId === sale.id
+                    const method = methodLabel(sale.method)
+                    return (
+                      <li key={sale.id} className="rounded-lg border border-border/70 p-3">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="text-sm font-medium text-foreground">
+                                {sale.item_count} {sale.item_count === 1 ? 'artículo' : 'artículos'}
+                              </span>
+                              {sale.source === 'catalog' && (
+                                <span className="text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded bg-primary/10 text-primary">
+                                  Pedido online
+                                </span>
+                              )}
+                              <button
+                                type="button"
+                                onClick={() => setExpandedSaleId(isExpanded ? null : sale.id)}
+                                className="inline-flex items-center gap-0.5 text-xs text-primary hover:underline"
+                              >
+                                {isExpanded ? 'Ocultar' : 'Ver detalle'}
+                                <CaretDown
+                                  size={11}
+                                  className={`transition-transform duration-150 ${isExpanded ? 'rotate-180' : ''}`}
+                                />
+                              </button>
+                            </div>
+                            <p className="mt-0.5 text-xs text-muted-foreground">{formatTimestamp(sale.created_at)}</p>
+                            {method && <p className="mt-0.5 text-xs text-muted-foreground">{method}</p>}
+                          </div>
+                          <p className="text-sm font-semibold tabular-nums text-foreground shrink-0">{formatMoney(sale.total)}</p>
+                        </div>
+                        {isExpanded && <SaleDetailInline saleId={sale.id} businessId={businessId} />}
+                      </li>
+                    )
+                  })}
+                </ul>
+              )}
+            </section>
+          )}
+
+          {view === 'movimientos' && (
+          <section className="space-y-2">
             {isLoading && (
               <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
                 <CircleNotch size={14} className="animate-spin" />
@@ -289,6 +412,7 @@ export default function CustomerDetailPanel({ customer, businessId, onClose }: P
               </ul>
             )}
           </section>
+          )}
         </div>
       </div>
     </>
