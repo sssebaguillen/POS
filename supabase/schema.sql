@@ -5238,16 +5238,17 @@ BEGIN
   INTO v_rows
   FROM (
     SELECT
-      COALESCE(op.id::text, 'unknown')       AS operator_id,
-      COALESCE(op.name, 'Sin operador')      AS operator_name,
-      COALESCE(op.role, 'unknown')           AS operator_role,
-      COUNT(DISTINCT s.id)::int              AS transaction_count,
-      SUM(s.total)                           AS revenue,
-      AVG(s.total)                           AS avg_ticket,
-      SUM(si.quantity)::int                  AS units_sold
+      COALESCE(op.id::text, 'unknown')  AS operator_id,
+      COALESCE(op.name, 'Sin operador') AS operator_name,
+      COALESCE(op.role, 'unknown')      AS operator_role,
+      COUNT(DISTINCT s.id)::int         AS transaction_count,
+      SUM(s.total)                      AS revenue,
+      AVG(s.total)                      AS avg_ticket,
+      COALESCE(SUM(COALESCE(
+        (SELECT SUM(si.quantity) FROM public.sale_items si WHERE si.sale_id = s.id), 0
+      )), 0)::int                       AS units_sold
     FROM public.sales s
     LEFT JOIN public.operators op ON op.id = s.operator_id
-    LEFT JOIN public.sale_items si ON si.sale_id = s.id
     WHERE s.business_id = p_business_id
       AND s.status = 'completed'
       AND (p_from IS NULL OR (s.created_at AT TIME ZONE v_timezone)::date >= p_from)
