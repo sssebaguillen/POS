@@ -3,7 +3,7 @@
 import { useMemo, useState, memo } from 'react'
 import { usePathname } from 'next/navigation'
 import { useQuery, keepPreviousData } from '@tanstack/react-query'
-import { TrendDown, TrendUp, CurrencyDollar, ShoppingBag, Receipt, Hash, FileText, Package, CaretRight, Coins, CircleNotch, Warning } from '@phosphor-icons/react/dist/ssr'
+import { TrendDown, TrendUp, CurrencyDollar, ShoppingBag, Receipt, Hash, FileText, Package, CaretRight, Coins, CircleNotch, Warning, UsersThree } from '@phosphor-icons/react/dist/ssr'
 import Link from 'next/link'
 import PageHeader from '@/components/shared/PageHeader'
 import InsightSurfaceAnchor from '@/components/insights/InsightSurfaceAnchor'
@@ -436,6 +436,21 @@ export default function StatsView({
               <CaretRight size={18} className="text-hint group-hover:text-primary transition-colors shrink-0" />
             </Link>
           )}
+
+          {/* Analítica de clientes — independiente del período del dashboard (su propia pantalla) */}
+          <Link
+            href={`/stats/customers?period=${period}${from ? `&from=${from}` : ''}${to ? `&to=${to}` : ''}`}
+            className="surface-card flex items-center gap-4 p-4 hover:border-primary/30 transition-colors group"
+          >
+            <span className="h-10 w-10 rounded-xl flex items-center justify-center shrink-0 bg-muted text-body">
+              <UsersThree size={18} />
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-semibold text-heading">Analítica de clientes</p>
+              <p className="text-xs text-hint">Quién te compra más: ranking por facturación, frecuencia y última compra</p>
+            </div>
+            <CaretRight size={18} className="text-hint group-hover:text-primary transition-colors shrink-0" />
+          </Link>
 
           <div className={`space-y-5 transition-opacity duration-200 ${isFetching ? 'opacity-50 pointer-events-none' : ''}`} aria-busy={isFetching}>
             {/* KPI Cards */}

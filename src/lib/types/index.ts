@@ -355,6 +355,22 @@ export interface OperatorSalesStatsRow {
   units_sold: number
 }
 
+// Ranking de clientes por ventas (analítica de clientes) — RPC get_customer_stats.
+// Solo clientes identificados (ventas con customer_id). credit_balance es el saldo
+// actual de cuenta corriente (point-in-time, no del período); last_purchase_at es
+// la fecha de la última compra en el rango.
+export interface CustomerSalesStatsRow {
+  customer_id: string
+  customer_name: string
+  customer_phone: string | null
+  credit_balance: number
+  transactions: number
+  total_revenue: number
+  avg_ticket: number
+  units_sold: number
+  last_purchase_at: string | null
+}
+
 // Stock inmovilizado / capital inmovilizado (advanced analytics) — RPC get_dead_stock
 // Eje RECENCIA: never_sold (nunca vendió) | dead (lleva >= 90d sin moverse).
 // El eje cobertura (sobrestock) vive en una pantalla aparte (lente 2, pendiente).
