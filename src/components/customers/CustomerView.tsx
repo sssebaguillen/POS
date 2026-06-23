@@ -37,9 +37,10 @@ interface Props {
   businessId: string
   operatorId: string | null
   initialCustomers: Customer[]
+  accountsReceivable: { total: number; debtors: number }
 }
 
-export default function CustomerView({ businessId, operatorId, initialCustomers }: Props) {
+export default function CustomerView({ businessId, operatorId, initialCustomers, accountsReceivable }: Props) {
   const router = useRouter()
   const fmt = useFormatMoney()
   const supabase = useMemo(() => createClient(), [])
@@ -78,19 +79,12 @@ export default function CustomerView({ businessId, operatorId, initialCustomers 
     return [...filtered].sort((a, b) => a.name.localeCompare(b.name, 'es'))
   }, [customers, search, creditFilter, sortKey])
 
-  // Total de cuentas por cobrar — Σ saldos > 0 + nº de deudores. Sobre TODA la lista
-  // cargada (no el filtro activo): es el número de negocio "cuánto me deben".
-  const receivable = useMemo(() => {
-    let total = 0
-    let debtors = 0
-    for (const c of customers) {
-      if (c.credit_balance > 0) {
-        total += c.credit_balance
-        debtors += 1
-      }
-    }
-    return { total, debtors }
-  }, [customers])
+  // Total de cuentas por cobrar — exacto, agregado server-side por
+  // get_accounts_receivable_summary (misma fuente que la tarjeta del dashboard,
+  // sin el tope silencioso de PostgREST que tendría sumar la lista en memoria).
+  // Es el número de negocio "cuánto me deben"; se refresca con router.refresh()
+  // tras cada alta/edición/cobro.
+  const receivable = accountsReceivable
 
   function handleCreated(customer: Customer) {
     setCustomers(prev =>
