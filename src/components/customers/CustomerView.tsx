@@ -8,7 +8,8 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import ConfirmModal from '@/components/shared/ConfirmModal'
 import PageHeader from '@/components/shared/PageHeader'
-import { formatMoney } from '@/lib/format'
+import PopNumber from '@/components/shared/PopNumber'
+import { useFormatMoney } from '@/lib/context/CurrencyContext'
 import { cn } from '@/lib/utils'
 import type { Customer } from '@/lib/types'
 import NewCustomerModal from './NewCustomerModal'
@@ -40,6 +41,7 @@ interface Props {
 
 export default function CustomerView({ businessId, operatorId, initialCustomers }: Props) {
   const router = useRouter()
+  const fmt = useFormatMoney()
   const supabase = useMemo(() => createClient(), [])
   const [customers, setCustomers] = useState<Customer[]>(initialCustomers)
   const [showNewModal, setShowNewModal] = useState(false)
@@ -75,6 +77,20 @@ export default function CustomerView({ businessId, operatorId, initialCustomers 
     }
     return [...filtered].sort((a, b) => a.name.localeCompare(b.name, 'es'))
   }, [customers, search, creditFilter, sortKey])
+
+  // Total de cuentas por cobrar — Σ saldos > 0 + nº de deudores. Sobre TODA la lista
+  // cargada (no el filtro activo): es el número de negocio "cuánto me deben".
+  const receivable = useMemo(() => {
+    let total = 0
+    let debtors = 0
+    for (const c of customers) {
+      if (c.credit_balance > 0) {
+        total += c.credit_balance
+        debtors += 1
+      }
+    }
+    return { total, debtors }
+  }, [customers])
 
   function handleCreated(customer: Customer) {
     setCustomers(prev =>
@@ -184,6 +200,29 @@ export default function CustomerView({ businessId, operatorId, initialCustomers 
 
       <div className="flex-1 overflow-y-auto">
         <div className="px-5 pt-4 pb-6">
+          {customers.length > 0 && (
+            <div className="surface-card overflow-hidden mb-4">
+              <div className="grid grid-cols-2">
+                <div className="px-6 py-4 border-r border-edge/40">
+                  <p className="text-label text-hint mb-2">Por cobrar</p>
+                  <PopNumber
+                    value={fmt(receivable.total)}
+                    className={cn(
+                      'font-display text-xl font-bold leading-none tabular-nums',
+                      receivable.total > 0 ? 'text-destructive' : 'text-foreground',
+                    )}
+                  />
+                </div>
+                <div className="px-6 py-4">
+                  <p className="text-label text-hint mb-2">Deudores</p>
+                  <PopNumber
+                    value={String(receivable.debtors)}
+                    className="font-display text-xl font-bold leading-none tabular-nums text-foreground"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
           {customers.length === 0 ? (
             <div className="surface-card px-6 py-12 flex flex-col items-center justify-center text-center gap-2">
               <span className="flex items-center justify-center w-9 h-9 rounded-full bg-muted text-hint">
@@ -242,7 +281,7 @@ export default function CustomerView({ businessId, operatorId, initialCustomers 
                         <td className="px-4 py-3 text-right tabular-nums">
                           <div className="flex items-center justify-end gap-2">
                             <span className={hasDebt ? 'text-destructive font-semibold' : 'text-hint'}>
-                              {formatMoney(customer.credit_balance)}
+                              {fmt(customer.credit_balance)}
                             </span>
                             {hasDebt && (
                               <button
@@ -256,7 +295,7 @@ export default function CustomerView({ businessId, operatorId, initialCustomers 
                           </div>
                         </td>
                         <td className={`px-4 py-3 text-right tabular-nums hidden md:table-cell ${hasLimit ? 'text-body' : 'text-hint'}`}>
-                          {formatMoney(customer.credit_limit)}
+                          {fmt(customer.credit_limit)}
                         </td>
                         <td className="px-4 py-3 text-right">
                           <div className="flex items-center justify-end gap-2">
