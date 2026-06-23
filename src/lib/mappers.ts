@@ -1,4 +1,4 @@
-import type { OperatorSalesStatsRow, PriceList, PriceListOverride, ProductWithVariants, UserRole } from '@/lib/types'
+import type { CustomerSalesStatsRow, OperatorSalesStatsRow, PriceList, PriceListOverride, ProductWithVariants, UserRole } from '@/lib/types'
 import { isUserRole } from '@/lib/operator'
 
 type RelationValue<T> = T | T[] | null | undefined
@@ -118,4 +118,42 @@ export function normalizeOperatorSalesStatsRows(value: unknown): OperatorSalesSt
         units_sold: Number(row.units_sold ?? 0),
       }
     })
+}
+
+interface CustomerSalesStatsRowInput {
+  customer_id?: unknown
+  customer_name?: unknown
+  customer_phone?: unknown
+  credit_balance?: unknown
+  transactions?: unknown
+  transaction_count?: unknown
+  total_revenue?: unknown
+  revenue?: unknown
+  avg_ticket?: unknown
+  units_sold?: unknown
+  last_purchase_at?: unknown
+}
+
+export function normalizeCustomerSalesStatsRows(value: unknown): CustomerSalesStatsRow[] {
+  if (!Array.isArray(value)) {
+    return []
+  }
+
+  return value
+    .filter((row): row is CustomerSalesStatsRowInput => row !== null && typeof row === 'object')
+    .map(row => ({
+      customer_id: typeof row.customer_id === 'string' ? row.customer_id : '',
+      customer_name:
+        typeof row.customer_name === 'string' && row.customer_name.trim().length > 0
+          ? row.customer_name
+          : 'Sin nombre',
+      customer_phone: typeof row.customer_phone === 'string' ? row.customer_phone : null,
+      credit_balance: Number(row.credit_balance ?? 0),
+      transactions: Number(row.transactions ?? row.transaction_count ?? 0),
+      total_revenue: Number(row.total_revenue ?? row.revenue ?? 0),
+      avg_ticket: Number(row.avg_ticket ?? 0),
+      units_sold: Number(row.units_sold ?? 0),
+      last_purchase_at: typeof row.last_purchase_at === 'string' ? row.last_purchase_at : null,
+    }))
+    .filter(row => row.customer_id !== '')
 }
