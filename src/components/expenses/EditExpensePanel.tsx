@@ -120,6 +120,10 @@ export default function EditExpensePanel({
         setError(ERR.EXP43)
         return
       }
+      if (mercaderiaItems.some(i => i.quantity < 1)) {
+        setError(ERR.EXP44)
+        return
+      }
       setSaving(true)
       try {
         const { data, error: rpcError } = await supabase.rpc('update_mercaderia_expense', {
@@ -352,7 +356,7 @@ export default function EditExpensePanel({
           type="submit"
           form="edit-expense-form"
           className="flex-1 h-9 rounded-lg text-sm font-semibold bg-primary hover:bg-primary/90 text-primary-foreground"
-          disabled={saving || loadingItems}
+          disabled={saving || loadingItems || (isMercaderia && mercaderiaItems.some(i => i.quantity < 1))}
         >
           {saving ? 'Guardando...' : 'Guardar cambios'}
         </Button>

@@ -176,36 +176,31 @@ export default function MercaderiaItemsSection({
                   <label className="text-xs text-hint whitespace-nowrap">Cant.</label>
                   <input
                     type="number"
-                    min="1"
+                    min="0"
                     step="1"
-                    value={item.quantity}
-                    onChange={e =>
-                      updateItem(index, { quantity: Math.max(1, parseInt(e.target.value) || 1) })
-                    }
-                    className="w-16 h-8 rounded-lg border border-input bg-card px-2 text-sm text-center text-body focus:outline-none focus:ring-2 focus:ring-primary/40 dark:bg-input/30"
+                    inputMode="numeric"
+                    value={item.quantity === 0 ? '' : item.quantity}
+                    onChange={e => {
+                      const parsed = parseInt(e.target.value, 10)
+                      updateItem(index, { quantity: Number.isNaN(parsed) ? 0 : Math.max(0, parsed) })
+                    }}
+                    placeholder="0"
+                    aria-invalid={item.quantity < 1}
+                    className={cn(
+                      'w-16 h-8 rounded-lg border bg-card px-2 text-sm text-center text-body focus:outline-none focus:ring-2 focus:ring-primary/40 dark:bg-input/30',
+                      item.quantity < 1 ? 'border-destructive' : 'border-input'
+                    )}
                   />
                 </div>
 
-                {(() => {
-                  const delta = item.quantity - item._original_quantity
-                  const stockAfter = item.stock + delta
-                  return (
-                    <span className="text-xs text-hint whitespace-nowrap">
-                      Stock: <span className="tabular-nums">{item.stock}</span>
-                      {' → '}
-                      <span className={cn(
-                        'tabular-nums font-medium',
-                        delta > 0 ? 'text-success'
-                          : delta < 0 ? 'text-warning'
-                          : 'text-body'
-                      )}>{stockAfter}</span>
+                <div className="flex items-center gap-1.5 ml-auto">
+                  {item.unit_cost !== item._original_cost && item._original_cost > 0 && (
+                    <span className="text-[10px] text-amber-500 whitespace-nowrap">
+                      era {formatMoney(item._original_cost)}
                     </span>
-                  )
-                })()}
-
-                <div className="flex items-center gap-1.5 flex-1">
+                  )}
                   <label className="text-xs text-hint whitespace-nowrap">Costo unit.</label>
-                  <div className="relative flex-1">
+                  <div className="relative">
                     <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-hint">$</span>
                     <input
                       ref={
@@ -216,20 +211,44 @@ export default function MercaderiaItemsSection({
                       type="number"
                       min="0"
                       step="0.01"
+                      inputMode="decimal"
                       value={item.unit_cost}
                       onChange={e =>
                         updateItem(index, { unit_cost: parseFloat(e.target.value) || 0 })
                       }
-                      className="w-full h-8 rounded-lg border border-input bg-card pl-5 pr-2 text-sm text-body focus:outline-none focus:ring-2 focus:ring-primary/40 dark:bg-input/30"
+                      className="w-24 h-8 rounded-lg border border-input bg-card pl-5 pr-2 text-sm text-right text-body tabular-nums focus:outline-none focus:ring-2 focus:ring-primary/40 dark:bg-input/30"
                     />
                   </div>
-                  {item.unit_cost !== item._original_cost && item._original_cost > 0 && (
-                    <span className="text-[10px] text-amber-500 whitespace-nowrap">
-                      era {formatMoney(item._original_cost)}
-                    </span>
-                  )}
                 </div>
               </div>
+
+              {(() => {
+                const delta = item.quantity - item._original_quantity
+                const stockAfter = item.stock + delta
+                const noun = item.variant_label ? 'esta variante' : 'este producto'
+                const unit = Math.abs(stockAfter) === 1 ? 'unidad' : 'unidades'
+                const numClass = cn(
+                  'tabular-nums font-semibold',
+                  delta > 0 ? 'text-success'
+                    : delta < 0 ? 'text-warning'
+                    : 'text-body'
+                )
+                if (delta === 0) {
+                  return (
+                    <p className="text-xs text-hint">
+                      El stock de {noun} se mantiene en{' '}
+                      <span className={numClass}>{stockAfter}</span> {unit}.
+                    </p>
+                  )
+                }
+                return (
+                  <p className="text-xs text-hint">
+                    El stock de {noun} pasa de{' '}
+                    <span className="tabular-nums font-medium text-body">{item.stock}</span> a{' '}
+                    <span className={numClass}>{stockAfter}</span> {unit} al guardar.
+                  </p>
+                )
+              })()}
 
               <div className="flex items-center justify-between">
                 <label

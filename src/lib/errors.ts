@@ -91,6 +91,7 @@ export const ERR = {
   EXP41: 'La descripción es obligatoria. (EXP-41)',
   EXP42: 'El monto debe ser mayor a 0. (EXP-42)',
   EXP43: 'Agrega al menos un producto. (EXP-43)',
+  EXP44: 'Cada producto debe tener una cantidad de al menos 1. (EXP-44)',
   EXP5:  'Conflicto de costo: otro proceso modificó el costo de un producto. (EXP-5)',
   // INV — Inventario
   INV1:  'No se pudo guardar. Intenta de nuevo. (INV-1)',
