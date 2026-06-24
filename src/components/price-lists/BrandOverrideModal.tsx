@@ -7,12 +7,14 @@ import { Input } from '@/components/ui/input'
 import { X } from '@phosphor-icons/react/dist/ssr'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { VisuallyHidden } from '@radix-ui/react-visually-hidden'
-import type { PriceList, PriceListOverride } from '@/lib/types'
+import type { PriceList, PriceListOverride, PriceListOverrideRpcResult } from '@/lib/types'
 import { normalizePriceListOverride } from '@/lib/mappers'
 
 interface BrandOverrideModalProps {
   open: boolean
   onClose: () => void
+  businessId: string
+  operatorId: string | null
   brandId: string
   brandName: string
   priceListId: string
@@ -25,6 +27,8 @@ interface BrandOverrideModalProps {
 export default function BrandOverrideModal({
   open,
   onClose,
+  businessId,
+  operatorId,
   brandId,
   brandName,
   priceListId,
@@ -57,28 +61,24 @@ export default function BrandOverrideModal({
 
     setSaving(true)
 
-    const { data, error } = await supabase
-      .from('price_list_overrides')
-      .upsert(
-        {
-          price_list_id: priceListId,
-          product_id: null,
-          brand_id: brandId,
-          multiplier: 1 + parsedPercentage / 100,
-        },
-        { onConflict: 'price_list_id,brand_id' }
-      )
-      .select('id, price_list_id, product_id, brand_id, multiplier')
-      .single()
+    const { data, error: rpcError } = await supabase.rpc('upsert_price_list_override', {
+      p_operator_id: operatorId,
+      p_business_id: businessId,
+      p_price_list_id: priceListId,
+      p_product_id: null,
+      p_brand_id: brandId,
+      p_multiplier: 1 + parsedPercentage / 100,
+    })
 
-    if (error || !data) {
-      setError('No se pudo guardar el precio por marca.')
+    const result = data as PriceListOverrideRpcResult | null
+    if (rpcError || !result?.success || !result.override) {
+      setError(result?.error ?? 'No se pudo guardar el precio por marca.')
       setSaving(false)
       return
     }
 
     onSaved({
-      ...normalizePriceListOverride(data),
+      ...normalizePriceListOverride(result.override),
     })
 
     setSaving(false)
@@ -90,13 +90,15 @@ export default function BrandOverrideModal({
 
     setSaving(true)
 
-    const { error } = await supabase
-      .from('price_list_overrides')
-      .delete()
-      .eq('id', existingOverride.id)
+    const { data, error: rpcError } = await supabase.rpc('delete_price_list_override', {
+      p_operator_id: operatorId,
+      p_business_id: businessId,
+      p_override_id: existingOverride.id,
+    })
 
-    if (error) {
-      setError(error.message)
+    const result = data as PriceListOverrideRpcResult | null
+    if (rpcError || !result?.success) {
+      setError(result?.error ?? rpcError?.message ?? 'No se pudo restablecer el precio por marca.')
       setSaving(false)
       return
     }

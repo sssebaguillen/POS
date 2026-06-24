@@ -7,8 +7,8 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { CaretDown, CaretRight, X } from '@phosphor-icons/react/dist/ssr'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
-import type { PriceList, PriceListOverride } from '@/lib/types'
-import { unwrapProductWithVariants } from '@/lib/mappers'
+import type { PriceList, PriceListOverride, PriceListOverrideRpcResult } from '@/lib/types'
+import { unwrapProductWithVariants, normalizePriceListOverride } from '@/lib/mappers'
 import type { InventoryBrand, InventoryCategory, InventoryProduct } from '@/components/inventory/types'
 import { translateDbError } from '@/lib/errors'
 import FieldGroup from '@/components/inventory/FieldGroup'
@@ -228,14 +228,14 @@ export default function EditProductModal({
       if (isPriceEdited) {
         const upsertResults = await Promise.all(
           [...selectedListIds].map(listId =>
-            supabase
-              .from('price_list_overrides')
-              .upsert(
-                { price_list_id: listId, product_id: product.id, brand_id: null, multiplier },
-                { onConflict: 'price_list_id,product_id' }
-              )
-              .select('id, price_list_id, product_id, brand_id, multiplier')
-              .single()
+            supabase.rpc('upsert_price_list_override', {
+              p_operator_id: operatorId,
+              p_business_id: businessId,
+              p_price_list_id: listId,
+              p_product_id: product.id,
+              p_brand_id: null,
+              p_multiplier: multiplier,
+            })
           )
         )
 
@@ -243,26 +243,29 @@ export default function EditProductModal({
         if (deleteTargets.length > 0) {
           await Promise.all(
             deleteTargets.map(o =>
-              supabase.from('price_list_overrides').delete().eq('id', o.id)
+              supabase.rpc('delete_price_list_override', {
+                p_operator_id: operatorId,
+                p_business_id: businessId,
+                p_override_id: o.id,
+              })
             )
           )
         }
 
         nextOverrides = upsertResults
-          .filter(r => !r.error && r.data)
-          .map(r => ({
-            id: r.data!.id,
-            price_list_id: r.data!.price_list_id,
-            product_id: r.data!.product_id,
-            brand_id: r.data!.brand_id,
-            multiplier: Number(r.data!.multiplier),
-          }))
+          .map(r => (r.error ? null : (r.data as PriceListOverrideRpcResult | null)))
+          .filter((r): r is PriceListOverrideRpcResult => Boolean(r?.success && r.override))
+          .map(r => normalizePriceListOverride(r.override!))
 
       } else {
         if (existingOverrides.length > 0) {
           await Promise.all(
             existingOverrides.map(o =>
-              supabase.from('price_list_overrides').delete().eq('id', o.id)
+              supabase.rpc('delete_price_list_override', {
+                p_operator_id: operatorId,
+                p_business_id: businessId,
+                p_override_id: o.id,
+              })
             )
           )
         }
