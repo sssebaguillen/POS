@@ -32,6 +32,7 @@ import PrintLabelsModal from '@/components/inventory/PrintLabelsModal'
 import type { PriceList, PriceListOverride } from '@/lib/types'
 import type { InventoryBrand, InventoryCategory, InventoryProduct } from '@/components/inventory/types'
 import { computeInventoryStats } from '@/components/inventory/inventoryStats'
+import { sortProducts } from '@/components/inventory/inventorySort'
 import { getStatus } from '@/components/inventory/types'
 import { useToast } from '@/hooks/useToast'
 import { usePillIndicator } from '@/hooks/usePillIndicator'
@@ -172,27 +173,10 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
   const sortField = filterValue.sortField
   const sortDir = filterValue.sortDir
 
-  const sorted = useMemo(() => {
-    if (sortField === 'name' && sortDir === 'asc') return filtered
-    const arr = [...filtered]
-    if (sortField === 'name') {
-      arr.sort((a, b) => b.name.localeCompare(a.name))
-      return arr
-    }
-    arr.sort((a, b) => {
-      let va = 0
-      let vb = 0
-      if (sortField === 'price') { va = a.price; vb = b.price }
-      else if (sortField === 'cost') { va = a.cost; vb = b.cost }
-      else if (sortField === 'stock') { va = a.stock; vb = b.stock }
-      else if (sortField === 'margin') {
-        va = a.cost > 0 && a.price > 0 ? ((a.price - a.cost) / a.price) * 100 : 0
-        vb = b.cost > 0 && b.price > 0 ? ((b.price - b.cost) / b.price) * 100 : 0
-      }
-      return sortDir === 'asc' ? va - vb : vb - va
-    })
-    return arr
-  }, [filtered, sortField, sortDir])
+  const sorted = useMemo(
+    () => sortProducts(filtered, sortField, sortDir),
+    [filtered, sortField, sortDir],
+  )
 
   const visibleProducts = useMemo(() => sorted.slice(0, visibleCount), [sorted, visibleCount])
 
