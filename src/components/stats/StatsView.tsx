@@ -3,7 +3,7 @@
 import { useMemo, useState, memo } from 'react'
 import { usePathname } from 'next/navigation'
 import { useQuery, keepPreviousData } from '@tanstack/react-query'
-import { TrendDown, TrendUp, CurrencyDollar, ShoppingBag, Receipt, Hash, FileText, Package, CaretRight, Coins, CircleNotch, Warning, UsersThree } from '@phosphor-icons/react/dist/ssr'
+import { TrendDown, TrendUp, CurrencyDollar, ShoppingBag, Receipt, Hash, FileText, Package, CaretRight, Coins, CircleNotch, Warning, UsersThree, ChartBar, Clock, Tag } from '@phosphor-icons/react/dist/ssr'
 import Link from 'next/link'
 import PageHeader from '@/components/shared/PageHeader'
 import InsightSurfaceAnchor from '@/components/insights/InsightSurfaceAnchor'
@@ -34,6 +34,36 @@ function getWidgetToggleClass(isActive: boolean): string {
   return cn(
     'pill-tab border border-transparent transition-[transform,color,border-color] duration-150 ease-[var(--ease-out)]',
     isActive && 'bg-primary/10 text-primary border-primary/20 dark:bg-primary/15 dark:border-primary/30'
+  )
+}
+
+// Drill-in link shared by every widget header ("Ver detalle").
+// -my-1 py-1 grows the tap target without shifting the header baseline.
+const WIDGET_LINK_CLASS = 'inline-flex items-center text-xs text-primary font-medium hover:underline whitespace-nowrap -my-1 py-1'
+
+// Empty state for a widget that has no data for the active period.
+// Says what will appear here (onboarding through state, not a separate tutorial),
+// with an icon for visual interest. No CTA: copy stays correct whether the user
+// is brand-new or just looking at a quiet period.
+function EmptyWidget({
+  icon: Icon,
+  title,
+  hint,
+  className,
+}: {
+  icon: React.ComponentType<{ size?: number }>
+  title: string
+  hint?: string
+  className?: string
+}) {
+  return (
+    <div className={cn('flex flex-col items-center justify-center text-center gap-1.5 py-8 px-4', className)}>
+      <span className="h-9 w-9 rounded-xl bg-muted/70 flex items-center justify-center text-hint">
+        <Icon size={18} />
+      </span>
+      <p className="text-sm font-medium text-body">{title}</p>
+      {hint && <p className="text-xs text-hint max-w-[34ch] leading-relaxed">{hint}</p>}
+    </div>
   )
 }
 
@@ -273,6 +303,7 @@ export default function StatsView({
   const avgTicket = kpis?.avg_ticket ?? 0
   const prevRevenue = kpis?.prev_total_revenue ?? 0
   const prevUnits = kpis?.prev_total_units ?? 0
+  const prevSales = kpis?.prev_total_sales ?? 0
   const prevAvgTicket = (kpis?.prev_total_sales ?? 0) > 0
     ? (kpis?.prev_total_revenue ?? 0) / (kpis?.prev_total_sales ?? 1)
     : 0
@@ -376,8 +407,8 @@ export default function StatsView({
       </PageHeader>
 
       <div className="flex-1 overflow-y-auto">
-        <div className="px-5 pt-4 pb-6 space-y-5">
-          {/* Period filter */}
+        {/* Period toolbar — sticky so the active range stays visible while scrolling */}
+        <div className="sticky top-0 z-10 bg-surface border-b border-edge/60 px-5 py-3">
           <div className="flex items-center gap-4">
             <DateRangeFilter
               value={period}
@@ -399,132 +430,119 @@ export default function StatsView({
               Reporte PDF
             </Link>
           </div>
+        </div>
 
-          {/* Stock inmovilizado — independiente del período (estado "al día de hoy") */}
-          {deadStockSummary && (
-            <Link
-              href="/stats/inventory-health"
-              className="surface-card flex items-center gap-4 p-4 hover:border-primary/30 transition-colors group"
-            >
-              <span
-                className={cn(
-                  'h-10 w-10 rounded-xl flex items-center justify-center shrink-0',
-                  deadStockSummary.products_flagged > 0
-                    ? 'bg-warning/10 text-warning'
-                    : 'bg-muted text-body'
-                )}
-              >
-                <Package size={18} />
-              </span>
-              <div className="min-w-0 flex-1">
-                {deadStockSummary.products_flagged > 0 ? (
-                  <>
-                    <p className="text-sm font-semibold text-heading">
-                      {formatMoney(deadStockSummary.total_frozen_capital)} inmovilizados
-                    </p>
-                    <p className="text-xs text-hint">
-                      {deadStockSummary.products_flagged} {deadStockSummary.products_flagged === 1 ? 'producto sin rotación' : 'productos sin rotación'}
-                    </p>
-                  </>
-                ) : (
-                  <>
-                    <p className="text-sm font-semibold text-heading">Tu inventario rota bien</p>
-                    <p className="text-xs text-hint">Sin stock inmovilizado detectado</p>
-                  </>
-                )}
-              </div>
-              <CaretRight size={18} className="text-hint group-hover:text-primary transition-colors shrink-0" />
-            </Link>
-          )}
-
-          {/* Analítica de clientes — independiente del período del dashboard (su propia pantalla) */}
-          <Link
-            href={`/stats/customers?period=${period}${from ? `&from=${from}` : ''}${to ? `&to=${to}` : ''}`}
-            className="surface-card flex items-center gap-4 p-4 hover:border-primary/30 transition-colors group"
-          >
-            <span className="h-10 w-10 rounded-xl flex items-center justify-center shrink-0 bg-muted text-body">
-              <UsersThree size={18} />
-            </span>
-            <div className="min-w-0 flex-1">
-              <p className="text-sm font-semibold text-heading">Analítica de clientes</p>
-              <p className="text-xs text-hint">Quién te compra más: ranking por facturación, frecuencia y última compra</p>
-            </div>
-            <CaretRight size={18} className="text-hint group-hover:text-primary transition-colors shrink-0" />
-          </Link>
-
+        <div className="px-5 pt-5 pb-6 space-y-5">
           <div className={`space-y-5 transition-opacity duration-200 ${isFetching ? 'opacity-50 pointer-events-none' : ''}`} aria-busy={isFetching}>
-            {/* KPI Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-4">
-              <div className="surface-card p-5 flex flex-col gap-3">
-                <div className="flex items-start justify-between">
-                  <span className="h-9 w-9 rounded-xl flex items-center justify-center shrink-0 bg-muted text-body">
-                    <CurrencyDollar size={16} />
-                  </span>
+            {/* Banda-resumen: orienta antes de bajar al detalle. Densa y dividida a
+                propósito — distinta de las tarjetas con sparkline del Resumen (/dashboard)
+                para no duplicar su identidad. En /stats el "héroe" son los gráficos de abajo. */}
+            <div className="surface-card overflow-hidden">
+              <div className="flex flex-col xl:flex-row divide-y xl:divide-y-0 xl:divide-x divide-edge/60">
+                <div className="flex-1 min-w-0 p-4 sm:p-5 flex flex-col gap-1.5">
+                  <p className="text-label text-hint flex items-center gap-1.5">
+                    <CurrencyDollar size={13} className="shrink-0" />
+                    Ingresos
+                  </p>
+                  <PopNumber className="text-2xl font-bold text-heading leading-none tabular-nums" value={formatMoney(totalRevenue)} />
                   <DeltaBadge current={totalRevenue} previous={prevRevenue} />
                 </div>
-                <div>
-                  <p className="text-label text-hint mb-1">Ingresos totales</p>
-                  <PopNumber className="text-2xl font-bold text-heading leading-none" value={formatMoney(totalRevenue)} />
+                <div className="flex-1 min-w-0 p-4 sm:p-5 flex flex-col gap-1.5">
+                  <p className="text-label text-hint flex items-center gap-1.5">
+                    <Coins size={13} className="shrink-0" />
+                    Margen bruto
+                  </p>
+                  <PopNumber className="text-2xl font-bold text-heading leading-none tabular-nums" value={formatMoney(grossProfit)} />
+                  <div className="flex items-center gap-x-2 gap-y-0.5 flex-wrap">
+                    <DeltaBadge current={grossProfit} previous={prevGrossProfit} />
+                    {marginPct != null && (
+                      <span className={cn('text-[11px]', productsWithoutCost > 0 ? 'text-warning' : 'text-hint')}>
+                        {productsWithoutCost > 0 && <Warning size={11} weight="fill" className="inline mr-0.5 -mt-0.5" />}
+                        {marginPct.toFixed(1)}% de margen
+                      </span>
+                    )}
+                  </div>
                 </div>
-              </div>
-              <div className="surface-card p-5 flex flex-col gap-3">
-                <div className="flex items-start justify-between">
-                  <span className="h-9 w-9 rounded-xl flex items-center justify-center shrink-0 bg-muted text-body">
-                    <ShoppingBag size={16} />
-                  </span>
+                <div className="flex-1 min-w-0 p-4 sm:p-5 flex flex-col gap-1.5">
+                  <p className="text-label text-hint flex items-center gap-1.5">
+                    <ShoppingBag size={13} className="shrink-0" />
+                    Unidades
+                  </p>
+                  <PopNumber className="text-2xl font-bold text-heading leading-none tabular-nums" value={String(totalUnits)} />
                   <DeltaBadge current={totalUnits} previous={prevUnits} />
                 </div>
-                <div>
-                  <p className="text-label text-hint mb-1">Unidades vendidas</p>
-                  <PopNumber className="text-2xl font-bold text-heading leading-none" value={String(totalUnits)} />
-                </div>
-              </div>
-              <div className="surface-card p-5 flex flex-col gap-3">
-                <div className="flex items-start justify-between">
-                  <span className="h-9 w-9 rounded-xl flex items-center justify-center shrink-0 bg-muted text-body">
-                    <Receipt size={16} />
-                  </span>
+                <div className="flex-1 min-w-0 p-4 sm:p-5 flex flex-col gap-1.5">
+                  <p className="text-label text-hint flex items-center gap-1.5">
+                    <Receipt size={13} className="shrink-0" />
+                    Ticket prom.
+                  </p>
+                  <PopNumber className="text-2xl font-bold text-heading leading-none tabular-nums" value={formatMoney(avgTicket)} />
                   <DeltaBadge current={avgTicket} previous={prevAvgTicket} />
                 </div>
-                <div>
-                  <p className="text-label text-hint mb-1">Ticket promedio</p>
-                  <PopNumber className="text-2xl font-bold text-heading leading-none" value={formatMoney(avgTicket)} />
-                </div>
-              </div>
-              <div className="surface-card p-5 flex flex-col gap-3">
-                <div className="flex items-start justify-between">
-                  <span className="h-9 w-9 rounded-xl flex items-center justify-center shrink-0 bg-muted text-body">
-                    <Hash size={16} />
-                  </span>
-                </div>
-                <div>
-                  <p className="text-label text-hint mb-1">Total transacciones</p>
-                  <PopNumber className="text-2xl font-bold text-heading leading-none" value={totalSales.toLocaleString('es-AR')} />
-                </div>
-              </div>
-              <div className="surface-card p-5 flex flex-col gap-3">
-                <div className="flex items-start justify-between">
-                  <span className="h-9 w-9 rounded-xl flex items-center justify-center shrink-0 bg-muted text-body">
-                    <Coins size={16} />
-                  </span>
-                  <DeltaBadge current={grossProfit} previous={prevGrossProfit} />
-                </div>
-                <div>
-                  <p className="text-label text-hint mb-1">Margen bruto</p>
-                  <PopNumber className="text-2xl font-bold text-heading leading-none" value={formatMoney(grossProfit)} />
-                  <p className="text-xs text-hint mt-1">
-                    {marginPct != null ? `${marginPct.toFixed(1)}% de margen` : 'Sin costo cargado'}
+                <div className="flex-1 min-w-0 p-4 sm:p-5 flex flex-col gap-1.5">
+                  <p className="text-label text-hint flex items-center gap-1.5">
+                    <Hash size={13} className="shrink-0" />
+                    Transacciones
                   </p>
-                  {marginPct != null && productsWithoutCost > 0 && (
-                    <p className="flex items-center gap-1 text-xs text-warning mt-1">
-                      <Warning size={12} weight="fill" className="shrink-0" />
-                      {productsWithoutCost === 1
-                        ? '1 producto sin costo — margen parcial'
-                        : `${productsWithoutCost} productos sin costo — margen parcial`}
-                    </p>
-                  )}
+                  <PopNumber className="text-2xl font-bold text-heading leading-none tabular-nums" value={totalSales.toLocaleString('es-AR')} />
+                  <DeltaBadge current={totalSales} previous={prevSales} />
                 </div>
               </div>
+            </div>
+
+            {/* Accesos a otras pantallas (navegación, debajo de los números) */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Stock inmovilizado — estado actual, independiente del período */}
+              {deadStockSummary && (
+                <Link
+                  href="/stats/inventory-health"
+                  className="surface-card flex items-center gap-4 p-4 hover:border-primary/30 transition-colors group"
+                >
+                  <span
+                    className={cn(
+                      'h-10 w-10 rounded-xl flex items-center justify-center shrink-0',
+                      deadStockSummary.products_flagged > 0
+                        ? 'bg-warning/10 text-warning'
+                        : 'bg-muted text-body'
+                    )}
+                  >
+                    <Package size={18} />
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    {deadStockSummary.products_flagged > 0 ? (
+                      <>
+                        <p className="text-sm font-semibold text-heading">
+                          {formatMoney(deadStockSummary.total_frozen_capital)} inmovilizados
+                        </p>
+                        <p className="text-xs text-hint">
+                          {deadStockSummary.products_flagged} {deadStockSummary.products_flagged === 1 ? 'producto sin rotación' : 'productos sin rotación'} · estado actual
+                        </p>
+                      </>
+                    ) : (
+                      <>
+                        <p className="text-sm font-semibold text-heading">Tu inventario rota bien</p>
+                        <p className="text-xs text-hint">Sin stock inmovilizado · estado actual</p>
+                      </>
+                    )}
+                  </div>
+                  <CaretRight size={18} className="text-hint group-hover:text-primary transition-colors shrink-0" />
+                </Link>
+              )}
+
+              {/* Analítica de clientes — su propia pantalla */}
+              <Link
+                href={`/stats/customers?period=${period}${from ? `&from=${from}` : ''}${to ? `&to=${to}` : ''}`}
+                className="surface-card flex items-center gap-4 p-4 hover:border-primary/30 transition-colors group"
+              >
+                <span className="h-10 w-10 rounded-xl flex items-center justify-center shrink-0 bg-muted text-body">
+                  <UsersThree size={18} />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-semibold text-heading">Analítica de clientes</p>
+                  <p className="text-xs text-hint">Quién te compra más: ranking por facturación, frecuencia y última compra</p>
+                </div>
+                <CaretRight size={18} className="text-hint group-hover:text-primary transition-colors shrink-0" />
+              </Link>
             </div>
 
             {/* Charts row */}
@@ -552,7 +570,12 @@ export default function StatsView({
                 </div>
 
                 {evolutionData.length === 0 ? (
-                  <p className="text-sm text-hint h-48 flex items-center justify-center">Sin datos</p>
+                  <EmptyWidget
+                    icon={TrendUp}
+                    title="Sin ventas en el período"
+                    hint="Aquí aparece la evolución de tus ingresos y unidades, comparada con el período anterior."
+                    className="h-48 py-0"
+                  />
                 ) : (
                   <>
                     <div className="flex items-center gap-5 text-xs text-hint">
@@ -633,12 +656,16 @@ export default function StatsView({
               <div className="surface-card p-6 space-y-4">
                 <div className="flex items-center gap-3">
                   <p className="font-semibold text-heading font-display">Métodos de pago</p>
-                  <Link href="/stats/payment-methods" className="text-xs text-primary font-medium hover:underline whitespace-nowrap">
-                    Ver más →
+                  <Link href="/stats/payment-methods" className={WIDGET_LINK_CLASS}>
+                    Ver detalle →
                   </Link>
                 </div>
                 {paymentBreakdown.length === 0 ? (
-                  <p className="text-sm text-hint">Sin datos</p>
+                  <EmptyWidget
+                    icon={CurrencyDollar}
+                    title="Sin cobros en el período"
+                    hint="Aquí se reparte tu facturación por método de pago."
+                  />
                 ) : (
                   paymentBreakdown.map(row => (
                     <div key={row.method} className="space-y-1.5">
@@ -666,26 +693,26 @@ export default function StatsView({
                     <p className="font-semibold text-heading font-display">Ingresos vs gastos diarios</p>
                     <Link
                       href={`/stats/trends?period=${period}${from ? `&from=${from}` : ''}${to ? `&to=${to}` : ''}`}
-                      className="text-xs text-primary font-medium hover:underline whitespace-nowrap"
+                      className={WIDGET_LINK_CLASS}
                     >
                       Ver detalle →
                     </Link>
                   </div>
                   <p className="text-sm text-hint">
-                    Basado en snapshots diarios del negocio. Esta capa servirá también como base para insights automáticos.
+                    Tus ingresos comparados con tus gastos, día a día en el período.
                   </p>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 shrink-0">
                   <div className="rounded-xl border border-edge px-3 py-2 min-w-[132px]">
-                    <p className="text-[11px] uppercase tracking-wide text-hint">Ingresos netos</p>
+                    <p className="text-label text-hint">Ingresos netos</p>
                     <p className="text-sm font-semibold text-heading">{formatMoney(snapshotTotals.netRevenue)}</p>
                   </div>
                   <div className="rounded-xl border border-edge px-3 py-2 min-w-[132px]">
-                    <p className="text-[11px] uppercase tracking-wide text-hint">Gastos</p>
+                    <p className="text-label text-hint">Gastos</p>
                     <p className="text-sm font-semibold text-heading">{formatMoney(snapshotTotals.expenses)}</p>
                   </div>
                   <div className="rounded-xl border border-edge px-3 py-2 min-w-[132px]">
-                    <p className="text-[11px] uppercase tracking-wide text-hint">Mejor día</p>
+                    <p className="text-label text-hint">Mejor día</p>
                     <p className="text-sm font-semibold text-heading">
                       {bestRevenueDay ? `${bestRevenueDay.label} · ${formatMoney(bestRevenueDay.netRevenue)}` : 'Sin datos'}
                     </p>
@@ -694,9 +721,25 @@ export default function StatsView({
               </div>
 
               {snapshotTrendData.length === 0 ? (
-                <p className="text-sm text-hint h-48 flex items-center justify-center">Sin snapshots para el período</p>
+                <EmptyWidget
+                  icon={Coins}
+                  title="Sin movimientos en el período"
+                  hint="Aquí se comparan tus ingresos contra tus gastos, día a día."
+                  className="h-48 py-0"
+                />
               ) : (
-                <ResponsiveContainer width="100%" height={240}>
+                <>
+                  <div className="flex items-center gap-5 text-xs text-hint">
+                    <span className="flex items-center gap-1.5">
+                      <svg width="16" height="3" viewBox="0 0 16 3"><line x1="0" y1="1.5" x2="16" y2="1.5" stroke="var(--primary)" strokeWidth="2" /></svg>
+                      Ingresos netos
+                    </span>
+                    <span className="flex items-center gap-1.5">
+                      <svg width="16" height="3" viewBox="0 0 16 3"><line x1="0" y1="1.5" x2="16" y2="1.5" stroke="var(--destructive)" strokeWidth="2" /></svg>
+                      Gastos
+                    </span>
+                  </div>
+                  <ResponsiveContainer width="100%" height={240}>
                   <LineChart
                     data={snapshotTrendData}
                     margin={{ top: 5, right: 10, left: 0, bottom: 5 }}
@@ -747,13 +790,14 @@ export default function StatsView({
                     <Line
                       type="monotone"
                       dataKey="expenses"
-                      stroke="#C66A2B"
+                      stroke="var(--destructive)"
                       strokeWidth={2}
                       dot={false}
                       name="Gastos"
                     />
                   </LineChart>
-                </ResponsiveContainer>
+                  </ResponsiveContainer>
+                </>
               )}
             </div>
 
@@ -765,7 +809,7 @@ export default function StatsView({
                     <p className="font-semibold text-heading font-display">Heatmap por día y hora</p>
                     <Link
                       href={`/stats/heatmap?period=${period}${from ? `&from=${from}` : ''}${to ? `&to=${to}` : ''}`}
-                      className="text-xs text-primary font-medium hover:underline whitespace-nowrap"
+                      className={WIDGET_LINK_CLASS}
                     >
                       Ver detalle →
                     </Link>
@@ -775,9 +819,12 @@ export default function StatsView({
                   </p>
                 </div>
                 {heatmapCells.length === 0 ? (
-                  <p className="text-sm text-hint h-32 flex items-center justify-center">
-                    Sin ventas en el período
-                  </p>
+                  <EmptyWidget
+                    icon={Clock}
+                    title="Sin ventas en el período"
+                    hint="Aquí se marcan tus horas y días pico de venta."
+                    className="h-32 py-0"
+                  />
                 ) : (
                   <SalesHeatmap cells={heatmapCells} metric="sales_count" compact />
                 )}
@@ -786,7 +833,12 @@ export default function StatsView({
               <div className="surface-card p-6 space-y-4">
                 <p className="font-semibold text-heading font-display">Distribución por día</p>
                 {dayOfWeekData.length === 0 || totalSales === 0 ? (
-                  <p className="text-sm text-hint h-24 flex items-center justify-center">Sin datos para el período</p>
+                  <EmptyWidget
+                    icon={ChartBar}
+                    title="Sin datos para el período"
+                    hint="Aquí se distribuye tu facturación por día de la semana."
+                    className="h-24 py-0"
+                  />
                 ) : (
                   <ResponsiveContainer width="100%" height={220}>
                     <BarChart data={dayOfWeekData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
@@ -823,8 +875,8 @@ export default function StatsView({
                 <div className="flex items-center justify-between gap-3">
                   <div className="flex items-center gap-3">
                     <p className="font-semibold text-heading font-display">Ventas por operador</p>
-                    <Link href="/stats/operators" className="text-xs text-primary font-medium hover:underline whitespace-nowrap">
-                      Ver más →
+                    <Link href="/stats/operators" className={WIDGET_LINK_CLASS}>
+                      Ver detalle →
                     </Link>
                   </div>
                   <div className="flex items-center gap-1.5">
@@ -845,7 +897,11 @@ export default function StatsView({
                   </div>
                 </div>
                 {sortedOperators.length === 0 ? (
-                  <p className="text-sm text-hint">Sin datos</p>
+                  <EmptyWidget
+                    icon={UsersThree}
+                    title="Sin ventas registradas"
+                    hint="Aquí se rankean tus operadores por monto y operaciones."
+                  />
                 ) : (
                   sortedOperators.map((row, idx) => (
                     <div key={row.operator_id ?? row.operator_name} className="flex items-center gap-3">
@@ -866,8 +922,8 @@ export default function StatsView({
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <p className="font-semibold text-heading font-display">Ranking de productos</p>
-                    <Link href="/stats/top-products" className="text-xs text-primary font-medium hover:underline whitespace-nowrap">
-                      Ver más →
+                    <Link href="/stats/top-products" className={WIDGET_LINK_CLASS}>
+                      Ver detalle →
                     </Link>
                   </div>
                   <div className="flex items-center gap-1.5">
@@ -888,7 +944,11 @@ export default function StatsView({
                   </div>
                 </div>
                 {sortedTopProducts.length === 0 ? (
-                  <p className="text-sm text-hint">Sin datos</p>
+                  <EmptyWidget
+                    icon={ShoppingBag}
+                    title="Sin productos vendidos"
+                    hint="Aquí aparecen tus productos más vendidos, por monto o unidades."
+                  />
                 ) : (
                   sortedTopProducts.map((row, idx) => (
                     <div key={row.id} className="flex items-center gap-3">
@@ -907,8 +967,8 @@ export default function StatsView({
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <p className="font-semibold text-heading font-display">Desglose</p>
-                    <Link href="/stats/breakdown" className="text-xs text-primary font-medium hover:underline whitespace-nowrap">
-                      Ver más →
+                    <Link href="/stats/breakdown" className={WIDGET_LINK_CLASS}>
+                      Ver detalle →
                     </Link>
                   </div>
                   <div className="flex items-center gap-1.5">
@@ -929,7 +989,11 @@ export default function StatsView({
                   </div>
                 </div>
                 {breakdownData.length === 0 ? (
-                  <p className="text-sm text-hint">Sin datos</p>
+                  <EmptyWidget
+                    icon={Tag}
+                    title="Sin datos para el período"
+                    hint="Aquí se desglosa tu facturación por categoría o marca."
+                  />
                 ) : (
                   breakdownData.map(row => (
                     <div key={row.label} className="space-y-1.5">
@@ -952,7 +1016,7 @@ export default function StatsView({
                 <div className="space-y-1">
                   <div className="flex items-center gap-3">
                     <p className="font-semibold text-heading font-display">Canal de venta</p>
-                    <Link href="/orders" className="text-xs text-primary font-medium hover:underline whitespace-nowrap">
+                    <Link href="/orders" className={WIDGET_LINK_CLASS}>
                       Ver pedidos →
                     </Link>
                   </div>
@@ -962,7 +1026,7 @@ export default function StatsView({
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="rounded-xl border border-edge px-4 py-3">
-                    <p className="text-[11px] uppercase tracking-wide text-hint">{SALE_SOURCE_LABELS.pos}</p>
+                    <p className="text-label text-hint">{SALE_SOURCE_LABELS.pos}</p>
                     <p className="text-lg font-semibold text-heading tabular-nums">{formatMoney(salesBySource.pos.revenue)}</p>
                     <p className="text-xs text-hint">
                       {salesBySource.pos.count} venta{salesBySource.pos.count !== 1 ? 's' : ''}
@@ -970,7 +1034,7 @@ export default function StatsView({
                     </p>
                   </div>
                   <div className="rounded-xl border border-primary/20 bg-primary/5 px-4 py-3">
-                    <p className="text-[11px] uppercase tracking-wide text-hint">{SALE_SOURCE_LABELS.catalog}</p>
+                    <p className="text-label text-hint">{SALE_SOURCE_LABELS.catalog}</p>
                     <p className="text-lg font-semibold text-heading tabular-nums">{formatMoney(salesBySource.catalog.revenue)}</p>
                     <p className="text-xs text-hint">
                       {salesBySource.catalog.count} venta{salesBySource.catalog.count !== 1 ? 's' : ''}
@@ -992,7 +1056,7 @@ export default function StatsView({
                 <div className="space-y-1">
                   <div className="flex items-center gap-3">
                     <p className="font-semibold text-heading font-display">Impacto de promociones</p>
-                    <Link href="/promotions" className="text-xs text-primary font-medium hover:underline whitespace-nowrap">
+                    <Link href="/promotions" className={WIDGET_LINK_CLASS}>
                       Ver promociones →
                     </Link>
                   </div>
@@ -1003,18 +1067,18 @@ export default function StatsView({
                 {promoTotals && promoTotals.promo_sales_count > 0 && (
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 shrink-0">
                     <div className="rounded-xl border border-edge px-3 py-2 min-w-[132px]">
-                      <p className="text-[11px] uppercase tracking-wide text-hint">Ventas con promo</p>
+                      <p className="text-label text-hint">Ventas con promo</p>
                       <p className="text-sm font-semibold text-heading">
                         {promoTotals.promo_sales_count} de {promoTotals.total_sales_count}
                         <span className="text-xs font-medium text-hint"> · {promoShare.toFixed(0)}%</span>
                       </p>
                     </div>
                     <div className="rounded-xl border border-edge px-3 py-2 min-w-[132px]">
-                      <p className="text-[11px] uppercase tracking-wide text-hint">Facturado con promo</p>
+                      <p className="text-label text-hint">Facturado con promo</p>
                       <p className="text-sm font-semibold text-heading">{formatMoney(promoTotals.promo_revenue)}</p>
                     </div>
                     <div className="rounded-xl border border-edge px-3 py-2 min-w-[132px]">
-                      <p className="text-[11px] uppercase tracking-wide text-hint">Descuento resignado</p>
+                      <p className="text-label text-hint">Descuento resignado</p>
                       <p className="text-sm font-semibold text-heading">{formatMoney(promoTotals.promo_discount_total)}</p>
                     </div>
                   </div>
@@ -1022,10 +1086,14 @@ export default function StatsView({
               </div>
 
               {promoRows.length === 0 ? (
-                <p className="text-sm text-hint">Sin ventas con promoción en este período.</p>
+                <EmptyWidget
+                  icon={Tag}
+                  title="Sin promociones aplicadas"
+                  hint="Aquí se mide cuánto vendiste con promoción y el descuento que resignaste."
+                />
               ) : (
                 <div className="space-y-3">
-                  <div className="hidden sm:flex items-center gap-3 text-[11px] uppercase tracking-wide text-hint">
+                  <div className="hidden sm:flex items-center gap-3 text-label text-hint">
                     <span className="w-5 shrink-0" />
                     <span className="flex-1">Promoción</span>
                     <span className="w-16 text-right shrink-0">Ventas</span>
