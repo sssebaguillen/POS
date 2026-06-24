@@ -1,8 +1,9 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Plus, UsersThree, MagnifyingGlass } from '@phosphor-icons/react/dist/ssr'
+import { useInfiniteQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query'
+import { Plus, UsersThree, MagnifyingGlass, CircleNotch, WarningCircle } from '@phosphor-icons/react/dist/ssr'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -33,51 +34,85 @@ const SORT_OPTIONS: { value: SortKey; label: string }[] = [
   { value: 'debt_desc', label: 'Deuda (mayor primero)' },
 ]
 
+const PAGE_SIZE = 50
+
+interface CustomersListPage {
+  data: Customer[]
+  total: number
+}
+
 interface Props {
   businessId: string
   operatorId: string | null
   initialCustomers: Customer[]
+  initialTotal: number
   accountsReceivable: { total: number; debtors: number }
 }
 
-export default function CustomerView({ businessId, operatorId, initialCustomers, accountsReceivable }: Props) {
+export default function CustomerView({ businessId, operatorId, initialCustomers, initialTotal, accountsReceivable }: Props) {
   const router = useRouter()
   const fmt = useFormatMoney()
   const supabase = useMemo(() => createClient(), [])
-  const [customers, setCustomers] = useState<Customer[]>(initialCustomers)
+  const queryClient = useQueryClient()
   const [showNewModal, setShowNewModal] = useState(false)
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null)
   const [settlingCustomer, setSettlingCustomer] = useState<Customer | null>(null)
   const [viewingCustomer, setViewingCustomer] = useState<Customer | null>(null)
   const [search, setSearch] = useState('')
+  const [debouncedSearch, setDebouncedSearch] = useState('')
   const [creditFilter, setCreditFilter] = useState<CreditFilter>('all')
   const [sortKey, setSortKey] = useState<SortKey>('name')
   const [deletingCustomer, setDeletingCustomer] = useState<Customer | null>(null)
   const [deleteError, setDeleteError] = useState<string | null>(null)
   const [deleting, setDeleting] = useState(false)
 
-  const filteredCustomers = useMemo(() => {
-    const q = search.trim().toLowerCase()
-    const filtered = customers.filter(c => {
-      if (creditFilter === 'enabled' && !c.is_credit_enabled) return false
-      if (creditFilter === 'disabled' && c.is_credit_enabled) return false
-      if (creditFilter === 'with_debt' && !(c.credit_balance > 0)) return false
-      if (!q) return true
-      return (
-        c.name.toLowerCase().includes(q) ||
-        (c.phone?.toLowerCase().includes(q) ?? false) ||
-        (c.dni?.toLowerCase().includes(q) ?? false)
-      )
+  // Debounce de la búsqueda para no disparar el query en cada tecla.
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(search.trim()), 300)
+    return () => clearTimeout(t)
+  }, [search])
+
+  // Lista paginada server-side (búsqueda/filtro/orden resueltos en la RPC). El
+  // cambio de cualquier filtro cambia la queryKey → arranca de offset 0 solo.
+  const isDefaultQuery = debouncedSearch === '' && creditFilter === 'all' && sortKey === 'name'
+
+  const { data, isFetching, isFetchingNextPage, hasNextPage, fetchNextPage, isError, refetch } =
+    useInfiniteQuery<CustomersListPage>({
+      queryKey: ['customers', businessId, debouncedSearch, creditFilter, sortKey],
+      initialPageParam: 0,
+      placeholderData: keepPreviousData,
+      staleTime: 30_000,
+      queryFn: async ({ pageParam }) => {
+        const { data, error } = await supabase.rpc('get_customers_list', {
+          p_business_id: businessId,
+          p_search: debouncedSearch || null,
+          p_credit_filter: creditFilter,
+          p_sort: sortKey,
+          p_limit: PAGE_SIZE,
+          p_offset: (pageParam as number) * PAGE_SIZE,
+        })
+        if (error) throw new Error(error.message)
+        return (data as unknown as CustomersListPage) ?? { data: [], total: 0 }
+      },
+      getNextPageParam: (_lastPage, allPages) => {
+        const loaded = allPages.reduce((n, p) => n + p.data.length, 0)
+        const total = allPages[0]?.total ?? 0
+        return loaded < total ? allPages.length : undefined
+      },
+      initialData: isDefaultQuery
+        ? { pages: [{ data: initialCustomers, total: initialTotal }], pageParams: [0] }
+        : undefined,
     })
-    if (sortKey === 'debt_desc') {
-      return [...filtered].sort(
-        (a, b) =>
-          b.credit_balance - a.credit_balance ||
-          a.name.localeCompare(b.name, 'es'),
-      )
-    }
-    return [...filtered].sort((a, b) => a.name.localeCompare(b.name, 'es'))
-  }, [customers, search, creditFilter, sortKey])
+
+  const customers = useMemo(() => (data?.pages ?? []).flatMap(p => p.data), [data])
+  const total = data?.pages[0]?.total ?? 0
+  const hasActiveFilters = debouncedSearch !== '' || creditFilter !== 'all'
+  const hasCustomers = initialTotal > 0 || accountsReceivable.debtors > 0 || customers.length > 0
+
+  function reloadList() {
+    void queryClient.invalidateQueries({ queryKey: ['customers', businessId] })
+    router.refresh()
+  }
 
   // Total de cuentas por cobrar — exacto, agregado server-side por
   // get_accounts_receivable_summary (misma fuente que la tarjeta del dashboard,
@@ -86,12 +121,9 @@ export default function CustomerView({ businessId, operatorId, initialCustomers,
   // tras cada alta/edición/cobro.
   const receivable = accountsReceivable
 
-  function handleCreated(customer: Customer) {
-    setCustomers(prev =>
-      [...prev, customer].sort((a, b) => a.name.localeCompare(b.name, 'es'))
-    )
+  function handleCreated() {
     setShowNewModal(false)
-    router.refresh()
+    reloadList()
   }
 
   async function handleDeleteConfirm() {
@@ -108,28 +140,19 @@ export default function CustomerView({ businessId, operatorId, initialCustomers,
       setDeleting(false)
       return
     }
-    setCustomers(prev => prev.filter(c => c.id !== deletingCustomer.id))
     setDeletingCustomer(null)
     setDeleting(false)
-    router.refresh()
+    reloadList()
   }
 
-  function handleUpdated(customer: Customer) {
-    setCustomers(prev =>
-      prev
-        .map(c => (c.id === customer.id ? customer : c))
-        .sort((a, b) => a.name.localeCompare(b.name, 'es'))
-    )
+  function handleUpdated() {
     setEditingCustomer(null)
-    router.refresh()
+    reloadList()
   }
 
-  function handleSettled(customerId: string, nextBalance: number) {
-    setCustomers(prev =>
-      prev.map(c => (c.id === customerId ? { ...c, credit_balance: nextBalance } : c))
-    )
+  function handleSettled() {
     setSettlingCustomer(null)
-    router.refresh()
+    reloadList()
   }
 
   return (
@@ -194,7 +217,7 @@ export default function CustomerView({ businessId, operatorId, initialCustomers,
 
       <div className="flex-1 overflow-y-auto">
         <div className="px-5 pt-4 pb-6">
-          {customers.length > 0 && (
+          {hasCustomers && (
             <div className="surface-card overflow-hidden mb-4">
               <div className="grid grid-cols-2">
                 <div className="px-6 py-4 border-r border-edge/40">
@@ -217,25 +240,48 @@ export default function CustomerView({ businessId, operatorId, initialCustomers,
               </div>
             </div>
           )}
-          {customers.length === 0 ? (
+          {isError ? (
             <div className="surface-card px-6 py-12 flex flex-col items-center justify-center text-center gap-2">
               <span className="flex items-center justify-center w-9 h-9 rounded-full bg-muted text-hint">
-                <UsersThree size={18} />
+                <WarningCircle size={18} />
               </span>
-              <p className="text-sm font-medium text-heading">Todavía no hay clientes</p>
-              <p className="text-xs text-hint">Agrega el primero con el botón de arriba para llevar su cuenta corriente.</p>
+              <p className="text-sm font-medium text-heading">No se pudo cargar la lista</p>
+              <p className="text-xs text-hint">Revisa tu conexión e intenta de nuevo.</p>
+              <Button
+                type="button"
+                variant="outline"
+                className="h-8 px-3 text-xs mt-1"
+                onClick={() => void refetch()}
+              >
+                Reintentar
+              </Button>
             </div>
-          ) : filteredCustomers.length === 0 ? (
-            <div className="surface-card px-6 py-12 flex flex-col items-center justify-center text-center gap-2">
-              <span className="flex items-center justify-center w-9 h-9 rounded-full bg-muted text-hint">
-                <MagnifyingGlass size={18} />
-              </span>
-              <p className="text-sm font-medium text-heading">Sin resultados</p>
-              <p className="text-xs text-hint">Prueba con otra búsqueda o filtro.</p>
+          ) : customers.length === 0 && isFetching ? (
+            <div className="surface-card px-6 py-12 flex flex-col items-center justify-center text-center gap-2 text-hint">
+              <CircleNotch size={20} className="animate-spin" />
+              <p className="text-xs">Cargando clientes…</p>
             </div>
+          ) : customers.length === 0 ? (
+            hasActiveFilters ? (
+              <div className="surface-card px-6 py-12 flex flex-col items-center justify-center text-center gap-2">
+                <span className="flex items-center justify-center w-9 h-9 rounded-full bg-muted text-hint">
+                  <MagnifyingGlass size={18} />
+                </span>
+                <p className="text-sm font-medium text-heading">Sin resultados</p>
+                <p className="text-xs text-hint">Prueba con otra búsqueda o filtro.</p>
+              </div>
+            ) : (
+              <div className="surface-card px-6 py-12 flex flex-col items-center justify-center text-center gap-2">
+                <span className="flex items-center justify-center w-9 h-9 rounded-full bg-muted text-hint">
+                  <UsersThree size={18} />
+                </span>
+                <p className="text-sm font-medium text-heading">Todavía no hay clientes</p>
+                <p className="text-xs text-hint">Agrega el primero con el botón de arriba para llevar su cuenta corriente.</p>
+              </div>
+            )
           ) : (
-            <div className="surface-card overflow-x-auto">
-              <table className="w-full text-sm min-w-[600px]">
+            <div className="surface-card overflow-x-auto" aria-busy={isFetching && !isFetchingNextPage}>
+              <table className={cn('w-full text-sm min-w-[600px] transition-opacity', isFetching && !isFetchingNextPage && 'opacity-60')}>
                 <thead className="border-b border-edge/60">
                   <tr className="text-xs text-hint font-medium">
                     <th className="text-foreground text-left px-4 py-3">Nombre</th>
@@ -247,7 +293,7 @@ export default function CustomerView({ businessId, operatorId, initialCustomers,
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredCustomers.map(customer => {
+                  {customers.map(customer => {
                     const hasDebt = customer.credit_balance > 0
                     const hasLimit = customer.credit_limit > 0
                     return (
@@ -324,6 +370,18 @@ export default function CustomerView({ businessId, operatorId, initialCustomers,
                   })}
                 </tbody>
               </table>
+              {hasNextPage && (
+                <div className="px-3 pb-3 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => fetchNextPage()}
+                    disabled={isFetchingNextPage}
+                    className="w-full h-9 rounded-lg border border-edge text-sm text-body hover:bg-hover-bg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    {isFetchingNextPage ? 'Cargando…' : `Cargar más (${customers.length} de ${total})`}
+                  </button>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -351,7 +409,7 @@ export default function CustomerView({ businessId, operatorId, initialCustomers,
         <SettlePaymentModal
           customer={settlingCustomer}
           operatorId={operatorId}
-          onSettled={nb => handleSettled(settlingCustomer.id, nb)}
+          onSettled={() => handleSettled()}
           onClose={() => setSettlingCustomer(null)}
         />
       )}
