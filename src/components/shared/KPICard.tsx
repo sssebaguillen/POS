@@ -22,6 +22,10 @@ interface Props {
   subtitle?: string
   sparkline?: SparkPoint[]
   children?: ReactNode
+  /** Realza la cifra (más grande) para la métrica primaria del dashboard. */
+  emphasis?: boolean
+  /** Permite que el contenedor controle el span en la grilla (ej. xl:col-span-2). */
+  className?: string
 }
 
 // Catmull-Rom → curva Bézier suave (línea redondeada, sin segmentos rígidos)
@@ -91,7 +95,7 @@ function Sparkline({ points, className }: { points: SparkPoint[]; className?: st
   )
 }
 
-function KPICard({ label, value, trend, subtitle, sparkline, children }: Props) {
+function KPICard({ label, value, trend, subtitle, sparkline, children, emphasis = false, className }: Props) {
   const hasSpark = !!sparkline && sparkline.length > 1
   const sparkColor =
     trend?.direction === 'up'
@@ -101,9 +105,15 @@ function KPICard({ label, value, trend, subtitle, sparkline, children }: Props) 
       : 'text-primary/50'
 
   return (
-    <div className="surface-card p-5 flex flex-col h-full">
+    <div className={cn('surface-card p-5 flex flex-col h-full', className)}>
       <p className="text-xs font-medium text-hint mb-2.5">{label}</p>
-      <PopNumber className="text-3xl font-bold text-heading leading-none tracking-tight" value={value} />
+      <PopNumber
+        className={cn(
+          'font-display font-bold text-heading leading-none tracking-tight tabular-nums',
+          emphasis ? 'text-4xl' : 'text-3xl'
+        )}
+        value={value}
+      />
 
       {trend ? (
         <div className="mt-2 space-y-0.5">

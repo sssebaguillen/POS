@@ -20,7 +20,7 @@ export default function ReceivableWidget({ total, debtors }: Props) {
   const hasDebt = total > 0
 
   return (
-    <div className="surface-card p-5 flex flex-col gap-3 animate-fade-in">
+    <div className="surface-card p-6 flex flex-col gap-3 animate-fade-in">
       <div className="flex items-start justify-between">
         <div>
           <p className="font-semibold text-heading font-display">Por cobrar</p>

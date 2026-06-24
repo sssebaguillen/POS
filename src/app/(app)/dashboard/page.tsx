@@ -64,17 +64,19 @@ export default async function DashboardPage() {
     supabase.rpc('get_accounts_receivable_summary', { p_business_id: businessId }),
   ])
 
-  const dashboardError =
-    kpisError ||
-    balanceError ||
-    heatmapError ||
-    lowStockError ||
-    businessError ||
-    profileError ||
-    recentActivityError ||
-    operatorsError ||
-    receivableError
-  if (dashboardError) throw new Error(`dashboard: ${dashboardError.message}`)
+  // Core: sin esto el Resumen no significa nada (las cifras del día, el negocio,
+  // el perfil). Falla → error boundary.
+  const coreError = kpisError || balanceError || businessError || profileError
+  if (coreError) throw new Error(`dashboard: ${coreError.message}`)
+
+  // Widgets secundarios degradan de forma independiente: una RPC caída (por cobrar,
+  // actividad, stock, operarios, heatmap) no debe vaciar todo el dashboard. Cada uno
+  // ya tiene un fallback seguro más abajo (?? defaults / [] / estado vacío).
+  const secondaryError =
+    heatmapError || lowStockError || recentActivityError || operatorsError || receivableError
+  if (secondaryError) {
+    console.error('dashboard: widget secundario degradado:', secondaryError.message)
+  }
 
   const recentActivity =
     ((recentActivityRaw as unknown as { data: RecentActivityRow[] } | null)?.data ?? []) as RecentActivityRow[]

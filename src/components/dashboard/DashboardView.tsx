@@ -20,7 +20,7 @@ import type { InventoryBrand } from '@/components/inventory/types'
 import type { SupportedCurrencyCode } from '@/lib/constants/currencies'
 import OnboardingWizard, { type OnboardingWizardProfile } from '@/components/onboarding/OnboardingWizard'
 import { useFormatMoney } from '@/lib/context/CurrencyContext'
-import { ResponsiveContainer, BarChart, Bar, XAxis, Tooltip } from 'recharts'
+import { ResponsiveContainer, BarChart, Bar, XAxis, Tooltip, LabelList } from 'recharts'
 import { Check, CircleNotch, ChartBar } from '@phosphor-icons/react/dist/ssr'
 import { cn } from '@/lib/utils'
 
@@ -59,6 +59,15 @@ function buildHourlyChart(cells: SalesHeatmapCell[]): ChartPoint[] {
 // resto de períodos → barras por día/semana desde get_stats_evolution
 function buildEvolutionChart(evo: StatsEvolution | null): ChartPoint[] {
   return (evo?.data ?? []).map(p => ({ label: p.label, value: p.revenue, transactions: p.count }))
+}
+
+// Etiqueta compacta sobre cada barra (rangos cortos) — sin símbolo de moneda para no
+// solaparse y para que el gráfico sea legible al toque en tablet, donde el tooltip hover
+// no aplica. Solo se muestra con pocas barras (ver gate length <= 8).
+function compactBarValue(v: number): string {
+  if (v >= 1_000_000) return `${(v / 1_000_000).toFixed(1)}M`
+  if (v >= 1_000) return `${Math.round(v / 1_000)}k`
+  return String(Math.round(v))
 }
 
 export interface RecentActivityRow {
@@ -240,9 +249,9 @@ export default function DashboardView({
   const lowStockCount = lowStockSummary.low_count
   const outOfStock = useMemo(() => lowStockProducts.filter(p => p.stock <= 0), [lowStockProducts])
   const lowStock = useMemo(() => lowStockProducts.filter(p => p.stock > 0), [lowStockProducts])
-  // Compact peek for the "Stock crítico" KPI: a faithful 2-item miniature of the
-  // alerts widget — same priority order (sin stock first, then stock bajo) and the
-  // same severity tokens, so glance and detail read as one system.
+  // Peek de 2 ítems en la KPI "Stock crítico": miniatura fiel del widget de alertas
+  // (mismo orden de prioridad y mismos tokens de severidad). Llena la card y da el dato
+  // de un vistazo; la lista completa vive en "Alertas de stock".
   const alertPreview = useMemo(() => {
     const rows = lowStockProducts
       .slice(0, 2)
@@ -388,9 +397,13 @@ export default function DashboardView({
               className={`space-y-5 transition-opacity duration-200 ${isFetching ? 'opacity-50 pointer-events-none' : ''}`}
               aria-busy={isFetching}
             >
-              {/* KPI Cards */}
-              <div className="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-3 gap-4 animate-fade-in">
+              {/* KPI Cards — "Total vendido" lidera: ocupa el doble de ancho y la cifra
+                  más grande, porque es la pregunta nº1 del dueño al abrir el Resumen.
+                  El detalle de stock vive en "Alertas de stock" (sin duplicar acá). */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 xl:grid-cols-4 gap-4 animate-fade-in">
                 <KPICard
+                  className="xl:col-span-2"
+                  emphasis
                   label="Total vendido"
                   value={fmt(totalSold)}
                   trend={trendLabel ? kpiTrends.total : undefined}
@@ -454,7 +467,7 @@ export default function DashboardView({
               </div>
 
               <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-                <div className="surface-card p-6 animate-fade-in flex flex-col" style={{ animationDelay: '80ms' }}>
+                <div className="surface-card p-6 animate-fade-in flex flex-col">
                   <p className="font-semibold text-heading mb-4 font-display">
                     {chartTitle}
                   </p>
@@ -498,7 +511,35 @@ export default function DashboardView({
                           fillOpacity={0.8}
                           radius={[4, 4, 0, 0]}
                           maxBarSize={32}
-                        />
+                        >
+                          {/* Rangos cortos: etiqueta el valor sobre cada barra para que el
+                              gráfico sea legible al toque (sin depender del tooltip hover). */}
+                          {chartData.length <= 8 && (
+                            <LabelList
+                              dataKey="value"
+                              position="top"
+                              content={(props) => {
+                                const { x, y, width, value } = props as {
+                                  x?: number; y?: number; width?: number; value?: number
+                                }
+                                const v = Number(value ?? 0)
+                                if (v <= 0 || x == null || y == null || width == null) return null
+                                return (
+                                  <text
+                                    x={x + width / 2}
+                                    y={y - 4}
+                                    textAnchor="middle"
+                                    fontSize={9}
+                                    fontWeight={600}
+                                    fill="var(--color-hint)"
+                                  >
+                                    {compactBarValue(v)}
+                                  </text>
+                                )
+                              }}
+                            />
+                          )}
+                        </Bar>
                       </BarChart>
                     </ResponsiveContainer>
                     </div>

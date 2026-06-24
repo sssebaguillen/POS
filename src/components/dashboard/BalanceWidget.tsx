@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import { Receipt } from '@phosphor-icons/react/dist/ssr'
 import { cn } from '@/lib/utils'
 import { useFormatMoney } from '@/lib/context/CurrencyContext'
 import PopNumber from '@/components/shared/PopNumber'
@@ -51,7 +52,7 @@ export default function BalanceWidget({
   const hiddenCount = entries.length - visible.length
 
   return (
-    <div className="surface-card p-5 h-full flex flex-col gap-4 animate-fade-in">
+    <div className="surface-card p-6 h-full flex flex-col gap-4 animate-fade-in">
       <div className="flex items-start justify-between">
         <div>
           <p className="font-semibold text-heading font-display">{title}</p>
@@ -84,7 +85,13 @@ export default function BalanceWidget({
       {/* Composición de egresos por categoría: barra segmentada + lista */}
       <div className="flex-1 flex flex-col min-h-0">
         {entries.length === 0 ? (
-          <p className="text-sm text-hint flex-1 flex items-center justify-center">Sin egresos en el período</p>
+          <div className="flex-1 flex flex-col items-center justify-center text-center gap-2 py-8">
+            <span className="flex items-center justify-center w-9 h-9 rounded-full bg-muted text-hint">
+              <Receipt size={18} />
+            </span>
+            <p className="text-sm font-medium text-heading">Sin egresos en el período</p>
+            <p className="text-xs text-hint">Cuando cargues gastos, vas a ver acá su distribución por categoría.</p>
+          </div>
         ) : (
           <>
             <p className="text-xs text-hint uppercase tracking-wide mb-2.5">Egresos por categoría</p>

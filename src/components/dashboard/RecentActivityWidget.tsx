@@ -40,7 +40,7 @@ function extractSaleTotal(row: RecentActivityRow): number | null {
 export default function RecentActivityWidget({ entries }: Props) {
   const fmt = useFormatMoney()
   return (
-    <div className="surface-card p-5 h-full flex flex-col">
+    <div className="surface-card p-6 h-full flex flex-col">
       <div className="flex items-start justify-between mb-4">
         <div>
           <p className="font-semibold text-heading font-display">Actividad reciente</p>
