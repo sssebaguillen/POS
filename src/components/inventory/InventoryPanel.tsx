@@ -32,7 +32,8 @@ import PrintLabelsModal from '@/components/inventory/PrintLabelsModal'
 import type { PriceList, PriceListOverride } from '@/lib/types'
 import type { InventoryBrand, InventoryCategory, InventoryProduct } from '@/components/inventory/types'
 import { computeInventoryStats } from '@/components/inventory/inventoryStats'
-import { getStatus } from '@/components/inventory/types'
+import { sortProducts } from '@/components/inventory/inventorySort'
+import { filterProducts } from '@/components/inventory/inventoryFilter'
 import { useToast } from '@/hooks/useToast'
 import { usePillIndicator } from '@/hooks/usePillIndicator'
 import { useFormatMoney } from '@/lib/context/CurrencyContext'
@@ -147,52 +148,25 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
     setProducts(data)
   }, [businessId, supabase])
 
-  const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase()
-    const catalogOnly = filterValue.stockStatus === 'catalog-only' || filterValue.showInCatalogOnly
-    return products.filter(product => {
-      const status = getStatus(product)
-      const matchesQuery =
-        q.length === 0 ||
-        product.name.toLowerCase().includes(q) ||
-        (product.sku ?? '').toLowerCase().includes(q) ||
-        (product.barcode ?? '').toLowerCase().includes(q)
-      const matchesCategory =
-        selectedCategories.length === 0 ||
-        (product.category_id !== null && selectedCategories.includes(product.category_id))
-      const matchesBrand =
-        selectedBrands.length === 0 ||
-        (product.brand_id != null && selectedBrands.includes(product.brand_id))
-      const matchesStatus = effectiveStatusFilter === 'all' || status === effectiveStatusFilter
-      const matchesCatalog = !catalogOnly || product.show_in_catalog === true
-      return matchesQuery && matchesCategory && matchesBrand && matchesStatus && matchesCatalog
-    })
-  }, [products, query, selectedCategories, selectedBrands, effectiveStatusFilter, filterValue.stockStatus, filterValue.showInCatalogOnly])
+  const filtered = useMemo(
+    () => filterProducts(products, {
+      query,
+      categoryIds: selectedCategories,
+      brandIds: selectedBrands,
+      statusFilter: effectiveStatusFilter,
+      stockStatus: filterValue.stockStatus,
+      showInCatalogOnly: filterValue.showInCatalogOnly,
+    }),
+    [products, query, selectedCategories, selectedBrands, effectiveStatusFilter, filterValue.stockStatus, filterValue.showInCatalogOnly],
+  )
 
   const sortField = filterValue.sortField
   const sortDir = filterValue.sortDir
 
-  const sorted = useMemo(() => {
-    if (sortField === 'name' && sortDir === 'asc') return filtered
-    const arr = [...filtered]
-    if (sortField === 'name') {
-      arr.sort((a, b) => b.name.localeCompare(a.name))
-      return arr
-    }
-    arr.sort((a, b) => {
-      let va = 0
-      let vb = 0
-      if (sortField === 'price') { va = a.price; vb = b.price }
-      else if (sortField === 'cost') { va = a.cost; vb = b.cost }
-      else if (sortField === 'stock') { va = a.stock; vb = b.stock }
-      else if (sortField === 'margin') {
-        va = a.cost > 0 && a.price > 0 ? ((a.price - a.cost) / a.price) * 100 : 0
-        vb = b.cost > 0 && b.price > 0 ? ((b.price - b.cost) / b.price) * 100 : 0
-      }
-      return sortDir === 'asc' ? va - vb : vb - va
-    })
-    return arr
-  }, [filtered, sortField, sortDir])
+  const sorted = useMemo(
+    () => sortProducts(filtered, sortField, sortDir),
+    [filtered, sortField, sortDir],
+  )
 
   const visibleProducts = useMemo(() => sorted.slice(0, visibleCount), [sorted, visibleCount])
   // Render diferido de la lista: al pasar a "Todos" se crean ~60 filas en el mismo
