@@ -33,7 +33,10 @@ function toYMD(date: Date): string {
   return `${y}-${m}-${d}`
 }
 
-function formatDisplay(str: string): string {
+// Formats a date-only string (YYYY-MM-DD) as dd/mm/aaaa, parsing in LOCAL time.
+// Reuse this for any date-only column display — `new Date("YYYY-MM-DD")` parses as
+// UTC midnight and shows the previous day in negative-offset zones (e.g. AR, UTC-3).
+export function formatDateDisplay(str: string): string {
   const d = parseLocalDate(str)
   if (!d) return ''
   return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`
@@ -100,7 +103,7 @@ export function DatePicker({ value, onChange, className, placeholder = 'dd/mm/aa
           )}
         >
           <CalendarIcon className="h-3.5 w-3.5 shrink-0 text-hint" />
-          <span>{value ? formatDisplay(value) : placeholder}</span>
+          <span>{value ? formatDateDisplay(value) : placeholder}</span>
         </button>
       </PopoverPrimitive.Trigger>
 

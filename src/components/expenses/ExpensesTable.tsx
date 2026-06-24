@@ -10,6 +10,7 @@ import { VisuallyHidden } from '@radix-ui/react-visually-hidden'
 import { Button } from '@/components/ui/button'
 import { useToast } from '@/hooks/useToast'
 import { useFormatMoney } from '@/lib/context/CurrencyContext'
+import { formatDateDisplay } from '@/components/ui/DatePicker'
 
 /** Extracts the storage path from either a legacy full Supabase URL or a bare path. */
 function extractStoragePath(url: string): string {
@@ -143,7 +144,7 @@ export default function ExpensesTable({ expenses, businessId, operatorId, supaba
             {expenses.map(expense => (
               <tr key={expense.id} className="border-b border-edge/40 hover:bg-hover-bg transition-colors">
                 <td className="px-4 py-3 text-hint text-xs whitespace-nowrap">
-                  {new Date(expense.date).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                  {formatDateDisplay(expense.date)}
                 </td>
                 <td className="px-4 py-3 max-w-[200px]">
                   <span className="text-body truncate block">{expense.description}</span>
