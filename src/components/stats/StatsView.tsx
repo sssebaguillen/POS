@@ -374,6 +374,7 @@ export default function StatsView({
   const posShare = salesBySource && sourceTotalCount > 0
     ? (salesBySource.pos.count / sourceTotalCount) * 100
     : 0
+  const showSalesChannel = !!salesBySource && salesBySource.catalog.count > 0
 
   const snapshotTrendData = dailySnapshots.map(snapshot => ({
     label: formatSnapshotLabel(snapshot.snapshot_date),
@@ -1010,9 +1011,13 @@ export default function StatsView({
               </div>
             </div>
 
+            {/* Canal de venta + Impacto de promociones comparten fila (2/4 c/u): suelen
+                tener poco contenido y el detalle vive en sus páginas dedicadas. Si no hay
+                ventas por catálogo, Impacto ocupa el ancho completo (no media fila vacía). */}
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
             {/* Canal de venta: Mostrador vs Pedido online */}
-            {salesBySource && salesBySource.catalog.count > 0 && (
-              <div className="surface-card p-6 space-y-4">
+            {showSalesChannel && (
+              <div className="surface-card p-6 flex flex-col gap-4">
                 <div className="space-y-1">
                   <div className="flex items-center gap-3">
                     <p className="font-semibold text-heading font-display">Canal de venta</p>
@@ -1042,8 +1047,8 @@ export default function StatsView({
                     </p>
                   </div>
                 </div>
-                {/* Barra de proporción */}
-                <div className="h-2 w-full rounded-full bg-muted overflow-hidden flex" aria-hidden>
+                {/* Barra de proporción — anclada al fondo para llenar el card si se estira */}
+                <div className="h-2 w-full rounded-full bg-muted overflow-hidden flex mt-auto" aria-hidden>
                   <div className="h-full bg-subtle/60" style={{ width: `${posShare}%` }} />
                   <div className="h-full bg-primary" style={{ width: `${catalogShare}%` }} />
                 </div>
@@ -1051,7 +1056,7 @@ export default function StatsView({
             )}
 
             {/* Impacto de promociones */}
-            <div className="surface-card p-6 space-y-4">
+            <div className={cn('surface-card p-6 flex flex-col gap-4', !showSalesChannel && 'xl:col-span-2')}>
               <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
                 <div className="space-y-1">
                   <div className="flex items-center gap-3">
@@ -1090,6 +1095,7 @@ export default function StatsView({
                   icon={Tag}
                   title="Sin promociones aplicadas"
                   hint="Aquí se mide cuánto vendiste con promoción y el descuento que resignaste."
+                  className="flex-1"
                 />
               ) : (
                 <div className="space-y-3">
@@ -1119,6 +1125,7 @@ export default function StatsView({
                   ))}
                 </div>
               )}
+            </div>
             </div>
 
           </div>
