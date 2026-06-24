@@ -11,20 +11,29 @@ export default async function CustomersPage() {
   const cookieStore = await cookies()
   const activeOperator = await getActiveOperator(cookieStore)
 
+  const PAGE_SIZE = 50
+
   const [{ data, error }, { data: receivableRaw, error: receivableError }] = await Promise.all([
-    supabase
-      .from('customers')
-      .select('id, business_id, name, phone, email, dni, credit_balance, credit_limit, is_credit_enabled, notes, created_at')
-      .eq('business_id', businessId)
-      .is('deleted_at', null)
-      .order('name', { ascending: true }),
+    // Primera página server-side (búsqueda/filtro/orden por defecto) — la lista
+    // se pagina en CustomerView. Evita el tope silencioso de PostgREST de traer
+    // toda la tabla sin .limit().
+    supabase.rpc('get_customers_list', {
+      p_business_id: businessId,
+      p_search: null,
+      p_credit_filter: 'all',
+      p_sort: 'name',
+      p_limit: PAGE_SIZE,
+      p_offset: 0,
+    }),
     supabase.rpc('get_accounts_receivable_summary', { p_business_id: businessId }),
   ])
 
   if (error) throw new Error(`customers: ${error.message}`)
   if (receivableError) throw new Error(`customers receivable: ${receivableError.message}`)
 
-  const customers = (data ?? []) as Customer[]
+  const listResult = (data as unknown as { data: Customer[]; total: number } | null) ?? { data: [], total: 0 }
+  const customers = listResult.data ?? []
+  const initialTotal = Number(listResult.total) || 0
 
   // Total exacto de cuentas por cobrar, agregado server-side (misma RPC que el
   // dashboard) — evita el tope silencioso de PostgREST de sumar la lista en memoria.
@@ -42,6 +51,7 @@ export default async function CustomersPage() {
       businessId={businessId}
       operatorId={activeOperator?.profile_id ?? null}
       initialCustomers={customers}
+      initialTotal={initialTotal}
       accountsReceivable={accountsReceivable}
     />
   )
