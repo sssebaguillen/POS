@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input'
 import { X } from '@phosphor-icons/react/dist/ssr'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { VisuallyHidden } from '@radix-ui/react-visually-hidden'
-import type { PriceListOverride } from '@/lib/types'
+import type { PriceListOverride, PriceListOverrideRpcResult } from '@/lib/types'
 import type { PriceListProduct } from '@/components/price-lists/types'
 import { normalizePriceListOverride } from '@/lib/mappers'
 import { useFormatMoney } from '@/lib/context/CurrencyContext'
@@ -15,6 +15,8 @@ import { useFormatMoney } from '@/lib/context/CurrencyContext'
 interface ProductOverrideModalProps {
   open: boolean
   onClose: () => void
+  businessId: string
+  operatorId: string | null
   priceListId: string
   product: PriceListProduct
   currentOverride: PriceListOverride | null
@@ -27,6 +29,8 @@ interface ProductOverrideModalProps {
 export default function ProductOverrideModal({
   open,
   onClose,
+  businessId,
+  operatorId,
   priceListId,
   product,
   currentOverride,
@@ -58,23 +62,46 @@ export default function ProductOverrideModal({
     onClose()
   }
 
+  async function deleteOverride(overrideId: string, fallbackMessage: string): Promise<boolean> {
+    const { data, error: rpcError } = await supabase.rpc('delete_price_list_override', {
+      p_operator_id: operatorId,
+      p_business_id: businessId,
+      p_override_id: overrideId,
+    })
+    const result = data as PriceListOverrideRpcResult | null
+    if (rpcError || !result?.success) {
+      setError(result?.error ?? rpcError?.message ?? fallbackMessage)
+      return false
+    }
+    return true
+  }
+
+  async function upsertProductOverride(multiplier: number, fallbackMessage: string): Promise<PriceListOverride | null> {
+    const { data, error: rpcError } = await supabase.rpc('upsert_price_list_override', {
+      p_operator_id: operatorId,
+      p_business_id: businessId,
+      p_price_list_id: priceListId,
+      p_product_id: product.id,
+      p_brand_id: null,
+      p_multiplier: multiplier,
+    })
+    const result = data as PriceListOverrideRpcResult | null
+    if (rpcError || !result?.success || !result.override) {
+      setError(result?.error ?? rpcError?.message ?? fallbackMessage)
+      return null
+    }
+    return normalizePriceListOverride(result.override)
+  }
+
   async function handleReset() {
     if (!currentOverride && !brandOverride) return
     setSaving(true)
     setError(null)
 
     if (currentOverride) {
-      const { error: deleteError } = await supabase
-        .from('price_list_overrides')
-        .delete()
-        .eq('id', currentOverride.id)
-
+      const ok = await deleteOverride(currentOverride.id, 'Error al restablecer el override')
       setSaving(false)
-
-      if (deleteError) {
-        setError(deleteError.message)
-        return
-      }
+      if (!ok) return
 
       onSaved(null)
       onClose()
@@ -82,27 +109,11 @@ export default function ProductOverrideModal({
     }
 
     // brand override only: pin product to list base multiplier to bypass brand override
-    const { data, error: insertError } = await supabase
-      .from('price_list_overrides')
-      .insert({
-        price_list_id: priceListId,
-        product_id: product.id,
-        brand_id: null,
-        multiplier: listMultiplier,
-      })
-      .select('id, price_list_id, product_id, brand_id, multiplier')
-      .single()
-
+    const override = await upsertProductOverride(listMultiplier, 'Error al restablecer el override')
     setSaving(false)
+    if (!override) return
 
-    if (insertError || !data) {
-      setError(insertError?.message ?? 'Error al restablecer el override')
-      return
-    }
-
-    onSaved({
-      ...normalizePriceListOverride(data),
-    })
+    onSaved(override)
     onClose()
   }
 
@@ -120,17 +131,9 @@ export default function ProductOverrideModal({
         return
       }
 
-      const { error: deleteError } = await supabase
-        .from('price_list_overrides')
-        .delete()
-        .eq('id', currentOverride.id)
-
+      const ok = await deleteOverride(currentOverride.id, 'Error al eliminar override')
       setSaving(false)
-
-      if (deleteError) {
-        setError(deleteError.message)
-        return
-      }
+      if (!ok) return
 
       onSaved(null)
       onClose()
@@ -146,49 +149,14 @@ export default function ProductOverrideModal({
 
     const parsedMultiplier = 1 + parsedPercentage / 100
 
-    if (currentOverride) {
-      const { data, error: updateError } = await supabase
-        .from('price_list_overrides')
-        .update({ multiplier: parsedMultiplier })
-        .eq('id', currentOverride.id)
-        .select('id, price_list_id, product_id, brand_id, multiplier')
-        .single()
-
-      setSaving(false)
-
-      if (updateError || !data) {
-        setError(updateError?.message ?? 'Error al actualizar override')
-        return
-      }
-
-      onSaved({
-        ...normalizePriceListOverride(data),
-      })
-      onClose()
-      return
-    }
-
-    const { data, error: insertError } = await supabase
-      .from('price_list_overrides')
-      .insert({
-        price_list_id: priceListId,
-        product_id: product.id,
-        brand_id: null,
-        multiplier: parsedMultiplier,
-      })
-      .select('id, price_list_id, product_id, brand_id, multiplier')
-      .single()
-
+    const override = await upsertProductOverride(
+      parsedMultiplier,
+      currentOverride ? 'Error al actualizar override' : 'Error al crear override'
+    )
     setSaving(false)
+    if (!override) return
 
-    if (insertError || !data) {
-      setError(insertError?.message ?? 'Error al crear override')
-      return
-    }
-
-    onSaved({
-      ...normalizePriceListOverride(data),
-    })
+    onSaved(override)
     onClose()
   }
 

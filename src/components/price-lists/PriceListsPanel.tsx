@@ -432,6 +432,8 @@ export default function PriceListsPanel({
           key={`${activeList.id}:${overrideProduct.id}:${activeListOverrides.find(override => override.product_id === overrideProduct.id)?.id ?? 'new'}`}
           open={Boolean(overrideProduct)}
           onClose={() => setOverrideProductId(null)}
+          businessId={businessId}
+          operatorId={operatorId}
           priceListId={activeList.id}
           product={overrideProduct}
           currentOverride={
@@ -453,6 +455,8 @@ export default function PriceListsPanel({
           key={`${activeList.id}:${overrideBrandId}:${selectedBrandOverride?.id ?? 'new'}`}
           open={Boolean(overrideBrandId)}
           onClose={() => setOverrideBrandId(null)}
+          businessId={businessId}
+          operatorId={operatorId}
           brandId={overrideBrandId}
           brandName={groupedRows.find(group => group.brandId === overrideBrandId)?.label ?? 'Marca'}
           priceListId={activeList.id}

@@ -142,6 +142,19 @@ export interface PriceListOverride {
   multiplier: number
 }
 
+// Resultado de las RPCs guardadas upsert_price_list_override / delete_price_list_override
+export interface PriceListOverrideRpcResult {
+  success: boolean
+  error?: string
+  override?: {
+    id: string
+    price_list_id: string
+    product_id: string | null
+    brand_id: string | null
+    multiplier: number | string
+  } | null
+}
+
 // Stats RPC response types
 
 export interface StatsKpis {
