@@ -1,7 +1,7 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
 import { GridFour, ListBullets, X, Plus, FadersHorizontal as FilterIcon, MagnifyingGlass, Tag, ArrowLineDown, Package } from '@phosphor-icons/react/dist/ssr'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
@@ -194,6 +194,13 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
   }, [filtered, sortField, sortDir])
 
   const visibleProducts = useMemo(() => sorted.slice(0, visibleCount), [sorted, visibleCount])
+  // Render diferido de la lista: al pasar a "Todos" se crean ~60 filas en el mismo
+  // commit que mueve el indicador de los pill-tabs; ese render pesado se come el
+  // frame y la transición CSS del indicador se saltea (salta en vez de deslizar).
+  // useDeferredValue baja la prioridad de la lista para que el indicador (y el
+  // resaltado de pill) pinten primero y la transición corra; la lista llega 1 frame
+  // después. Solo presentación — no toca paginación, selección ni mutaciones de stock.
+  const deferredProducts = useDeferredValue(visibleProducts)
 
   // Reset de paginación cuando cambia el conjunto filtrado/ordenado, vía el patrón recomendado
   // de React "ajustar estado durante el render" (no en un efecto): comparamos una clave de los
@@ -997,7 +1004,7 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
             </div>
             {viewMode === 'grid' ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4">
-            {visibleProducts.map(product => (
+            {deferredProducts.map(product => (
               <ProductCard
                 key={product.id}
                 product={product}
@@ -1042,7 +1049,7 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {visibleProducts.map(product => (
+                {deferredProducts.map(product => (
                   <ProductListRow
                     key={product.id}
                     product={product}
