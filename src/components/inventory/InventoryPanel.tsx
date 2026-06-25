@@ -8,8 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Table, TableBody, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import PageHeader from '@/components/shared/PageHeader'
-import { createPortal } from 'react-dom'
-import ProductFilter, {
+import {
   EMPTY_FILTER,
   countActiveFilters,
   type ProductFilterValue,
@@ -34,6 +33,7 @@ import type { InventoryBrand, InventoryCategory, InventoryProduct } from '@/comp
 import { computeInventoryStats } from '@/components/inventory/inventoryStats'
 import InventoryStatsFooter from '@/components/inventory/InventoryStatsFooter'
 import InventoryActiveFilters from '@/components/inventory/InventoryActiveFilters'
+import InventoryFilterDrawer from '@/components/inventory/InventoryFilterDrawer'
 import { sortProducts } from '@/components/inventory/inventorySort'
 import { filterProducts } from '@/components/inventory/inventoryFilter'
 import { useToast } from '@/hooks/useToast'
@@ -1165,62 +1165,15 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
         onCancel={() => setPendingConfirm(null)}
       />
 
-      {typeof document !== 'undefined' && createPortal(
-        <>
-          <div
-            className={`fixed inset-0 z-40 transition-opacity duration-200 ${filterOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}
-            onClick={() => setFilterOpen(false)}
-          />
-          <div
-            className={`fixed right-0 top-0 bottom-0 z-50 w-72 bg-card border-l border-edge flex flex-col transition-transform duration-200 ease-in-out ${filterOpen ? 'translate-x-0' : 'translate-x-full'}`}
-            style={{ boxShadow: '-4px 0 32px rgba(0,0,0,0.10)' }}
-          >
-            <div className="flex items-center justify-between px-5 py-4 border-b border-edge shrink-0">
-              <div className="flex items-center gap-2">
-                <FilterIcon size={16} className="text-subtle" />
-                <span className="font-semibold text-sm text-heading">Filtros</span>
-                {activeFilterCount > 0 && (
-                  <span className="text-xs font-bold bg-primary text-primary-foreground rounded-full w-5 h-5 flex items-center justify-center">
-                    {activeFilterCount}
-                  </span>
-                )}
-              </div>
-              <button
-                type="button"
-                onClick={() => setFilterOpen(false)}
-                className="text-subtle hover:text-body transition-[transform,background-color,color] duration-150 ease-[var(--ease-out)] active:scale-95 rounded-lg p-1 hover:bg-hover-bg"
-              >
-                <X size={16} />
-              </button>
-            </div>
-            <div className="flex-1 overflow-y-auto p-4">
-              <ProductFilter
-                modules={['category', 'brand', 'price-range', 'stock-status', 'sort']}
-                layout="sidebar"
-                value={filterValue}
-                onChange={setFilterValue}
-                categories={categories.map(c => ({ id: c.id, name: c.name, icon: c.icon, icon_color: c.icon_color }))}
-                brands={brands.map(b => ({ id: b.id, name: b.name }))}
-                sortOptions={[
-                  { field: 'name', label: 'Nombre' },
-                  { field: 'price', label: 'Precio de venta' },
-                  { field: 'cost', label: 'Costo' },
-                  { field: 'stock', label: 'Stock' },
-                  { field: 'margin', label: 'Margen' },
-                ]}
-                stockStatusOptions={[
-                  { value: 'all', label: 'Todos' },
-                  { value: 'low-stock', label: 'Stock bajo' },
-                  { value: 'out-of-stock', label: 'Sin stock' },
-                  { value: 'discontinued', label: 'Discontinuados' },
-                  { value: 'catalog-only', label: 'Solo en catálogo' },
-                ]}
-              />
-            </div>
-          </div>
-        </>,
-        document.body
-      )}
+      <InventoryFilterDrawer
+        open={filterOpen}
+        onClose={() => setFilterOpen(false)}
+        activeFilterCount={activeFilterCount}
+        value={filterValue}
+        onChange={setFilterValue}
+        categories={categories}
+        brands={brands}
+      />
 
 
       {!readOnly && selectedIds.size > 0 && (
