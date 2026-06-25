@@ -33,6 +33,7 @@ import type { PriceList, PriceListOverride } from '@/lib/types'
 import type { InventoryBrand, InventoryCategory, InventoryProduct } from '@/components/inventory/types'
 import { computeInventoryStats } from '@/components/inventory/inventoryStats'
 import InventoryStatsFooter from '@/components/inventory/InventoryStatsFooter'
+import InventoryActiveFilters from '@/components/inventory/InventoryActiveFilters'
 import { sortProducts } from '@/components/inventory/inventorySort'
 import { filterProducts } from '@/components/inventory/inventoryFilter'
 import { useToast } from '@/hooks/useToast'
@@ -41,7 +42,6 @@ import { useFormatMoney } from '@/lib/context/CurrencyContext'
 import { trackFeatureUsed } from '@/lib/analytics'
 import { fetchInventoryProducts } from '@/lib/inventory-products'
 import { translateDbError, ERR } from '@/lib/errors'
-import CategoryIconPreview from '@/components/inventory/CategoryIconPreview'
 
 const PAGE_SIZE = 60
 
@@ -857,50 +857,15 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
       </div>
 
       {activeFilterCount > 0 && (
-        <div className="flex flex-wrap items-center gap-2 px-5 py-2.5 bg-surface border-b border-edge/60">
-          {selectedCategories.map(id => {
-            const cat = categories.find(c => c.id === id)
-            if (!cat) return null
-            return (
-              <span key={id} className="flex items-center gap-1.5 text-xs bg-primary/10 text-primary rounded-full px-2.5 py-1 font-medium">
-                <CategoryIconPreview icon={cat.icon} color={cat.icon_color ?? 'var(--primary)'} size={12} />
-                {cat.name}
-                <button
-                  type="button"
-                  onClick={() => setFilterValue(prev => ({ ...prev, categoryIds: prev.categoryIds.filter(c => c !== id) }))}
-                  aria-label={`Quitar categoría ${cat.name}`}
-                  className="hover:opacity-70 transition-[transform,opacity] duration-150 ease-[var(--ease-out)] active:scale-95 p-0.5 -m-0.5 touch-manipulation"
-                >
-                  <X size={11} />
-                </button>
-              </span>
-            )
-          })}
-          {selectedBrands.map(id => {
-            const brand = brands.find(b => b.id === id)
-            if (!brand) return null
-            return (
-              <span key={id} className="flex items-center gap-1.5 text-xs bg-surface-alt text-body border border-edge rounded-full px-2.5 py-1 font-medium">
-                {brand.name}
-                <button
-                  type="button"
-                  onClick={() => setFilterValue(prev => ({ ...prev, brandIds: prev.brandIds.filter(b => b !== id) }))}
-                  aria-label={`Quitar marca ${brand.name}`}
-                  className="hover:opacity-70 transition-[transform,opacity] duration-150 ease-[var(--ease-out)] active:scale-95 p-0.5 -m-0.5 touch-manipulation"
-                >
-                  <X size={11} />
-                </button>
-              </span>
-            )
-          })}
-          <button
-            type="button"
-            onClick={() => setFilterValue(prev => ({ ...prev, categoryIds: [], brandIds: [] }))}
-            className="text-xs text-subtle hover:text-body transition-[transform,color] duration-150 ease-[var(--ease-out)] active:scale-[0.97]"
-          >
-            Limpiar todo
-          </button>
-        </div>
+        <InventoryActiveFilters
+          selectedCategories={selectedCategories}
+          selectedBrands={selectedBrands}
+          categories={categories}
+          brands={brands}
+          onRemoveCategory={id => setFilterValue(prev => ({ ...prev, categoryIds: prev.categoryIds.filter(c => c !== id) }))}
+          onRemoveBrand={id => setFilterValue(prev => ({ ...prev, brandIds: prev.brandIds.filter(b => b !== id) }))}
+          onClearAll={() => setFilterValue(prev => ({ ...prev, categoryIds: [], brandIds: [] }))}
+        />
       )}
 
       {crudError && (
