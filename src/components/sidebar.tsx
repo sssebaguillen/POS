@@ -65,7 +65,11 @@ const NAV_SECTIONS = [
 const TOUR_ATTR_BY_HREF: Record<string, string> = {
   '/inventory': 'sidebar-inventory',
   '/expenses': 'sidebar-gastos',
+  '/cash-sessions': 'sidebar-caja',
+  '/customers': 'sidebar-customers',
+  '/orders': 'sidebar-orders',
   '/price-lists': 'sidebar-price-lists',
+  '/promotions': 'sidebar-promotions',
   '/pos': 'sidebar-pos',
 }
 
