@@ -225,7 +225,7 @@ export default function CustomerView({ businessId, operatorId, initialCustomers,
                   <PopNumber
                     value={fmt(receivable.total)}
                     className={cn(
-                      'font-display text-xl font-bold leading-none tabular-nums',
+                      'font-display text-2xl font-bold leading-none tabular-nums',
                       receivable.total > 0 ? 'text-destructive' : 'text-foreground',
                     )}
                   />
@@ -234,7 +234,7 @@ export default function CustomerView({ businessId, operatorId, initialCustomers,
                   <p className="text-label text-hint mb-2">Deudores</p>
                   <PopNumber
                     value={String(receivable.debtors)}
-                    className="font-display text-xl font-bold leading-none tabular-nums text-foreground"
+                    className="font-display text-2xl font-bold leading-none tabular-nums text-foreground"
                   />
                 </div>
               </div>
