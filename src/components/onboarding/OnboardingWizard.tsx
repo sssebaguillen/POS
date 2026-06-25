@@ -172,7 +172,8 @@ export default function OnboardingWizard({
       .eq('id', businessId)
 
     if (error) {
-      setStep0Error(error.message)
+      console.error('Onboarding business update failed', error.message)
+      setStep0Error('No pudimos guardar los datos del negocio. Revisa tu conexión e intenta de nuevo.')
       return
     }
 
@@ -203,7 +204,8 @@ export default function OnboardingWizard({
     })
     const result = rpcResult as { success: boolean; error?: string; id?: string } | null
     if (rpcError || !result?.success) {
-      setCategoryError(result?.error ?? rpcError?.message ?? 'Error al crear la categoría')
+      if (rpcError) console.error('create_category_guarded failed', rpcError.message)
+      setCategoryError(result?.error ?? 'No pudimos crear la categoría. Intenta de nuevo.')
       setCategorySaving(false)
       return
     }
@@ -241,7 +243,8 @@ export default function OnboardingWizard({
     })
     const result = rpcResult as { success: boolean; error?: string; id?: string } | null
     if (rpcError || !result?.success) {
-      setBrandError(result?.error ?? rpcError?.message ?? 'Error al crear la marca')
+      if (rpcError) console.error('create_brand_guarded failed', rpcError.message)
+      setBrandError(result?.error ?? 'No pudimos crear la marca. Intenta de nuevo.')
       setBrandSaving(false)
       return
     }
