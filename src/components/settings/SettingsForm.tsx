@@ -72,8 +72,12 @@ const ALL_TABS: { key: SettingsTab; label: string; ownerOnly: boolean }[] = [
   { key: 'operarios', label: 'Operarios', ownerOnly: false },
 ]
 
+// Alerta de éxito tokenizada: espejo exacto de la alerta de error de este form
+// (border-destructive/30 bg-destructive/5 text-destructive) usando el token --success
+// ("verde olivo", mismo que el markup de listas de arriba). Patrón canónico ya usado
+// en auth/UpdatePasswordView — sin paleta Tailwind cruda (verde-200/700) hardcodeada.
 const SUCCESS_CLASS =
-  'rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-700 dark:border-green-500/30 dark:bg-green-500/10 dark:text-green-400'
+  'rounded-lg border border-success/30 bg-success/5 px-3 py-2 text-sm text-success'
 
 export default function SettingsForm({
   business,
