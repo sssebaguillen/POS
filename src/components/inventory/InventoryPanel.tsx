@@ -32,6 +32,7 @@ import PrintLabelsModal from '@/components/inventory/PrintLabelsModal'
 import type { PriceList, PriceListOverride } from '@/lib/types'
 import type { InventoryBrand, InventoryCategory, InventoryProduct } from '@/components/inventory/types'
 import { computeInventoryStats } from '@/components/inventory/inventoryStats'
+import InventoryStatsFooter from '@/components/inventory/InventoryStatsFooter'
 import { sortProducts } from '@/components/inventory/inventorySort'
 import { filterProducts } from '@/components/inventory/inventoryFilter'
 import { useToast } from '@/hooks/useToast'
@@ -212,10 +213,7 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
     return () => { timers.forEach(id => clearTimeout(id)) }
   }, [])
 
-  const { activeProducts, totalStock, inventoryValue, avgMargin, outOfStock, lowStock, categoryCount } = useMemo(
-    () => computeInventoryStats(products),
-    [products],
-  )
+  const stats = useMemo(() => computeInventoryStats(products), [products])
 
   const updateProduct = useCallback(async (productId: string, values: Partial<InventoryProduct>) => {
     if (readOnly) {
@@ -1160,35 +1158,7 @@ export default function InventoryPanel({ businessId, operatorId, readOnly, initi
         />
       )}
 
-      <div className="bg-surface border-t border-edge/60 px-4 py-2 flex items-center gap-4 text-caption text-subtle shrink-0 overflow-x-auto whitespace-nowrap">
-        <span className="flex items-center gap-1.5 shrink-0">
-          <span className="w-2 h-2 rounded-full bg-success" />
-          <span className="hidden inv:inline">{activeProducts.length} productos activos</span>
-          <span className="inv:hidden">{activeProducts.length} activos</span>
-        </span>
-        <span className="shrink-0">
-          <span className="hidden inv:inline">{totalStock} uds en stock</span>
-          <span className="inv:hidden">{totalStock} uds.</span>
-        </span>
-        <span className="shrink-0">
-          <span className="hidden inv:inline">Valor inventario {formatMoney(inventoryValue)}</span>
-          <span className="inv:hidden">{formatMoney(inventoryValue)}</span>
-        </span>
-        <span className="shrink-0">
-          <span className="hidden inv:inline">Margen promedio {avgMargin.toFixed(0)}%</span>
-          <span className="inv:hidden">~{avgMargin.toFixed(0)}%</span>
-        </span>
-        <span className="flex items-center gap-1.5 shrink-0">
-          <span className="w-2 h-2 rounded-full bg-destructive" />
-          {outOfStock} sin stock
-        </span>
-        <span className="flex items-center gap-1.5 shrink-0">
-          <span className="w-2 h-2 rounded-full bg-warning" />
-          <span className="hidden inv:inline">{lowStock} stock bajo</span>
-          <span className="inv:hidden">{lowStock} bajo</span>
-        </span>
-        <span className="ml-auto shrink-0 hidden inv:inline">{categoryCount} categorías</span>
-      </div>
+      <InventoryStatsFooter stats={stats} formatMoney={formatMoney} />
 
       {quickEditCategoryProduct !== null && businessId && (
         <QuickEditCategoryModal
